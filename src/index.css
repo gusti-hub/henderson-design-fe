@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+    font-family: "Inter", sans-serif;
+    scrollbar-width: thin;
+}
+
+.textured-bg {
+    background-color: #ffffff;
+    background-image: url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
+}
+
+table th,
+td,
+tr {
+    padding: 0.5rem;
+    border: 2px solid #e0e0e0;
+    font-size: 14px;
+    text-align: center;
+}
+
+table th {
+    background: #F9FAFC;
+}
+
+table td {
+    min-width: 5rem;
+}
+
+.minHeight {
+    min-height: calc(100vh);
+}
+
+.dashHeight {
+    max-height: calc(100vh - 7rem);
+}
+@layer base {
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+  
