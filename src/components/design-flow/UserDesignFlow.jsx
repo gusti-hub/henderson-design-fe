@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Check, CreditCard, ChevronRight, ArrowLeft } from 'lucide-react';
-import AreaSelection from './AreaSelection';
+import { Check, ChevronRight, ArrowLeft } from 'lucide-react';
 import FloorPlanSelection from './FloorPlanSelection';
-import FurnitureCustomization from './FurnitureCustomization';
 import OrderReview from './OrderReview';
 import PaymentPage from './PaymentPage';
 import AreaCustomization from './AreaCustomization';
@@ -16,8 +14,6 @@ const UserDesignFlow = () => {
   });
   const [existingOrder, setExistingOrder] = useState(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
-
-  const [selectedArea, setSelectedArea] = useState(null);
   const [customizations, setCustomizations] = useState({});
 
   useEffect(() => {
@@ -64,7 +60,7 @@ const UserDesignFlow = () => {
         body: JSON.stringify({
           selectedPlan,
           clientInfo,
-          status: currentStep === 5 ? 'completed' : 'in_progress',
+          status: currentStep === 4 ? 'completed' : 'in_progress',
           step: currentStep
         })
       });
@@ -79,14 +75,14 @@ const UserDesignFlow = () => {
 
   const steps = [
     { number: 1, title: 'Choose Floor Plan' },
-    { number: 2, title: 'Design Your Space' },  // Updated title
+    { number: 2, title: 'Design Your Space' },
     { number: 3, title: 'Review Order' },
     { number: 4, title: 'Payment' }
   ];
 
   const handleNext = async () => {
     await saveProgress();
-    setCurrentStep(prev => Math.min(prev + 1, 5));
+    setCurrentStep(prev => Math.min(prev + 1, 4));
   };
 
   const handleBack = () => {
@@ -116,34 +112,35 @@ const UserDesignFlow = () => {
     return renderCurrentStep();
   };
 
-    // Add this function
-    const handleAreaSelect = (area) => {
-        console.log("Selected area:", area);
-        setSelectedArea(area);
-        handleNext();
-    };
-
   const renderCurrentStep = () => {
     switch (currentStep) {
-        case 1:
-          return <FloorPlanSelection onNext={handleFloorPlanSelection} />;
-        case 2:
-        return <AreaCustomization 
+      case 1:
+        return (
+          <FloorPlanSelection 
+            onNext={handleFloorPlanSelection} 
+            showNavigationButtons={false}
+          />
+        );
+      case 2:
+        return (
+          <AreaCustomization 
             selectedPlan={selectedPlan}
             onComplete={(customizations) => {
-            setCustomizations(customizations);
-            handleNext();
+              setCustomizations(customizations);
+              handleNext();
             }}
-        />;
-        case 4:
-          return <OrderReview />;
-        case 5:
-          return <PaymentPage />;
-        default:
-          return null;
-      }
+          />
+        );
+      case 3:
+        return <OrderReview />;
+      case 4:
+        return <PaymentPage />;
+      default:
+        return null;
+    }
   };
 
+  // Only show initial content for first step
   if (!existingOrder && currentStep === 1) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -188,19 +185,17 @@ const UserDesignFlow = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {renderStepContent()}
 
-        {/* Navigation Buttons */}
-        {!isViewOnly && (
+        {/* Navigation Buttons - Only show for steps 2-4 */}
+        {!isViewOnly && currentStep > 1 && (
           <div className="flex justify-between mt-8">
-            {currentStep > 1 && (
-              <button
-                onClick={handleBack}
-                className="flex items-center px-6 py-2 text-gray-600 border rounded-lg hover:bg-gray-50"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </button>
-            )}
-            {currentStep < 5 && (
+            <button
+              onClick={handleBack}
+              className="flex items-center px-6 py-2 text-gray-600 border rounded-lg hover:bg-gray-50"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </button>
+            {currentStep < 4 && (
               <button
                 onClick={handleNext}
                 className="ml-auto flex items-center px-6 py-2 text-white rounded-lg hover:opacity-90"
