@@ -90,10 +90,23 @@ const UserDesignFlow = () => {
   };
 
   const handleFloorPlanSelection = async (data) => {
-    setSelectedPlan(data.selectedPlan);
-    setClientInfo(data.clientInfo);
-    await saveProgress();
-    setCurrentStep(2);
+    try {
+      console.log('Floor plan selection data:', data); // Debug log
+      
+      // Extract the complete plan details
+      const planDetails = data.selectedPlan;
+      
+      setSelectedPlan({
+        ...planDetails,
+        clientInfo: data.clientInfo
+      });
+
+      setClientInfo(data.clientInfo);
+      await saveProgress();
+      setCurrentStep(2);
+    } catch (error) {
+      console.error('Error in floor plan selection:', error);
+    }
   };
 
   const renderStepContent = () => {
@@ -125,6 +138,7 @@ const UserDesignFlow = () => {
         return (
           <AreaCustomization 
             selectedPlan={selectedPlan}
+            floorPlanImage={selectedPlan?.image}
             onComplete={(customizations) => {
               setCustomizations(customizations);
               handleNext();
@@ -140,7 +154,6 @@ const UserDesignFlow = () => {
     }
   };
 
-  // Only show initial content for first step
   if (!existingOrder && currentStep === 1) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -153,7 +166,6 @@ const UserDesignFlow = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Progress Bar */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
@@ -181,11 +193,9 @@ const UserDesignFlow = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {renderStepContent()}
 
-        {/* Navigation Buttons - Only show for steps 2-4 */}
         {!isViewOnly && currentStep > 1 && (
           <div className="flex justify-between mt-8">
             <button

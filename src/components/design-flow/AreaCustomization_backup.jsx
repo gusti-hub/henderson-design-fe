@@ -2,141 +2,134 @@ import React, { useState } from 'react';
 import { X, Trash2, AlertCircle } from 'lucide-react';
 
 const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
-  const [selectedTab, setSelectedTab] = useState(null);
+  const [selectedArea, setSelectedArea] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [currentProduct, setCurrentProduct] = useState(null);
   const [occupiedAreas, setOccupiedAreas] = useState({
-    livingRoom: null,
-    primaryBedroom: null,
-    bedroom2: null,
-    kitchen: null,
-    pantry: null,
-    primaryCloset: null,
-    walkInCloset: null,
-    primaryBath: null,
-    bath2: null,
-    den: null
+    bedArea: null,
+    wardrobeArea: null,
+    bedsideTable: null
   });
-
-  const tabs = [
-    { id: 'livingRoom', label: 'Living/Dining' },
-    { id: 'primaryBedroom', label: 'Primary Bedroom' },
-    { id: 'bedroom2', label: 'Bedroom 2' },
-    { id: 'kitchen', label: 'Kitchen' },
-    { id: 'pantry', label: 'Pantry/Laundry' },
-    { id: 'primaryCloset', label: 'Primary Walk-in Closet' },
-    { id: 'walkInCloset', label: 'Walk-in Closet' },
-    { id: 'primaryBath', label: 'Primary Bath' },
-    { id: 'bath2', label: 'Bath 2' },
-    { id: 'den', label: 'Den' }
-  ];
 
   // Product catalog
   const catalog = {
-    livingRoom: {
-      areaName: 'Living/Dining',
+    bedArea: {
+      areaName: 'Bed Area',
       products: [
         {
-          id: 'sofa',
-          name: 'Modern Sofa',
-          basePrice: 1200,
-          image: '/api/placeholder/400/300',
-          options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Fabric', 'Leather']
-          },
-          prices: {
-            colors: {
-              White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
-            },
-            materials: {
-              Fabric: { price: 0 },
-              Leather: { price: 300 }
-            }
-          }
-        },
-        {
-          id: 'diningTable',
-          name: 'Dining Table Set',
-          basePrice: 1500,
-          image: '/api/placeholder/400/300',
-          options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Fabric', 'Leather']
-          },
-          prices: {
-            colors: {
-              White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
-            },
-            materials: {
-              Fabric: { price: 0 },
-              Leather: { price: 300 }
-            }
-          }
-        }
-      ]
-    },
-    primaryBedroom: {
-      areaName: 'Primary Bedroom',
-      products: [
-        {
-          id: 'kingBed',
-          name: 'King Bed Frame',
-          basePrice: 1000,
-          image: '/api/placeholder/400/300',
-          options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Fabric', 'Leather']
-          },
-          prices: {
-            colors: {
-              White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
-            },
-            materials: {
-              Fabric: { price: 0 },
-              Leather: { price: 300 }
-            }
-          }
-        }
-      ]
-    },
-    bedroom2: {
-      areaName: 'Bedroom 2',
-      products: [
-        {
-          id: 'queenBed',
+          id: 'queen-bed',
           name: 'Queen Bed Frame',
           basePrice: 800,
           image: '/api/placeholder/400/300',
           options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Fabric', 'Leather']
+            colors: ['White', 'Brown', 'Black'],
+            materials: ['Wood', 'Metal', 'Upholstered']
           },
           prices: {
             colors: {
               White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
+              Brown: { price: 50 },
+              Black: { price: 100 }
             },
             materials: {
-              Fabric: { price: 0 },
-              Leather: { price: 300 }
+              Wood: { price: 0 },
+              Metal: { price: 200 },
+              Upholstered: { price: 300 }
+            }
+          }
+        },
+        {
+          id: 'king-bed',
+          name: 'King Bed Frame',
+          basePrice: 1000,
+          image: '/api/placeholder/400/300',
+          options: {
+            colors: ['White', 'Brown', 'Black'],
+            materials: ['Wood', 'Metal', 'Upholstered']
+          },
+          prices: {
+            colors: {
+              White: { price: 0 },
+              Brown: { price: 75 },
+              Black: { price: 150 }
+            },
+            materials: {
+              Wood: { price: 0 },
+              Metal: { price: 250 },
+              Upholstered: { price: 400 }
             }
           }
         }
       ]
     },
-    // Add similar structure for other areas
+    wardrobeArea: {
+      areaName: 'Wardrobe Area',
+      products: [
+        {
+          id: 'wardrobe',
+          name: 'Wardrobe',
+          basePrice: 1500,
+          image: '/api/placeholder/400/300',
+          options: {
+            colors: ['White', 'Brown', 'Black'],
+            materials: ['Wood', 'Metal']
+          },
+          prices: {
+            colors: {
+              White: { price: 0 },
+              Brown: { price: 100 },
+              Black: { price: 100 }
+            },
+            materials: {
+              Wood: { price: 0 },
+              Metal: { price: 200 }
+            }
+          }
+        }
+      ]
+    },
+    bedsideTable: {
+      areaName: 'Bedside Table Area',
+      products: [
+        {
+          id: 'bedside-table',
+          name: 'Bedside Table',
+          basePrice: 250,
+          image: '/api/placeholder/400/300',
+          options: {
+            colors: ['White', 'Brown', 'Black'],
+            materials: ['Wood', 'Metal']
+          },
+          prices: {
+            colors: {
+              White: { price: 0 },
+              Brown: { price: 25 },
+              Black: { price: 25 }
+            },
+            materials: {
+              Wood: { price: 0 },
+              Metal: { price: 50 }
+            }
+          }
+        }
+      ]
+    }
+  };
+
+  const positions = {
+    bedArea: { x: 100, y: 100, width: 200, height: 150, label: "Bed Area" },
+    wardrobeArea: { x: 400, y: 100, width: 150, height: 200, label: "Wardrobe Area" },
+    bedsideTable: { x: 100, y: 300, width: 100, height: 100, label: "Bedside Table" }
   };
 
   const isAreaOccupied = (areaKey) => {
-    return Boolean(occupiedAreas[areaKey]);
+    return occupiedAreas[areaKey] !== null;
+  };
+
+  const handleAreaClick = (areaKey) => {
+    if (!isAreaOccupied(areaKey)) {
+      setSelectedArea(areaKey);
+    }
   };
 
   const handleCustomize = (product) => {
@@ -144,19 +137,20 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   };
 
   const handleAddProduct = (productWithOptions) => {
-    if (selectedTab && !isAreaOccupied(selectedTab)) {
+    if (selectedArea && !isAreaOccupied(selectedArea)) {
       const newProduct = {
         ...productWithOptions,
-        areaKey: selectedTab
+        areaKey: selectedArea
       };
 
-      // setOccupiedAreas(prev => ({
-      //   ...prev,
-      //   [selectedTab]: productWithOptions.id
-      // }));
+      setOccupiedAreas(prev => ({
+        ...prev,
+        [selectedArea]: productWithOptions.id
+      }));
 
       setSelectedProducts(prev => [...prev, newProduct]);
       setCurrentProduct(null);
+      setSelectedArea(null);
     }
   };
 
@@ -167,6 +161,13 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
       [productToRemove.areaKey]: null
     }));
     setSelectedProducts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleComplete = () => {
+    onComplete && onComplete({
+      products: selectedProducts,
+      totalPrice: selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0)
+    });
   };
 
   const CustomizationModal = ({ product, onClose, onAdd }) => {
@@ -269,98 +270,111 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8">
-          {/* Floor Plan View with Background Image */}
+          {/* Floor Plan */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <h2 className="text-2xl font-light mb-4" style={{ color: '#005670' }}>
               Floor Plan View
             </h2>
             <div className="relative w-full h-[400px] border border-gray-200 rounded-lg">
               <svg width="100%" height="100%" viewBox="0 0 800 600">
-                {floorPlanImage && (
+                {/* Background Floor Plan Image */}
+                {selectedPlan?.image && (
                   <image
-                    href={floorPlanImage}
+                    href={selectedPlan.image}
                     width="800"
                     height="600"
-                    //opacity="0.3"
+                    opacity="1"
                     preserveAspectRatio="xMidYMid meet"
                   />
                 )}
-                {/* <rect x="50" y="50" width="700" height="500" fill="none" stroke="#005670" strokeWidth="2" /> */}
+                
+                {/* Room outline */}
+                <rect 
+                  x="50" 
+                  y="50" 
+                  width="700" 
+                  height="500" 
+                  fill="none" 
+                  stroke="#005670" 
+                  strokeWidth="2" 
+                />
+
+                {/* Interactive Areas */}
+                {Object.entries(positions).map(([area, pos]) => {
+                  const isOccupied = isAreaOccupied(area);
+                  const product = selectedProducts.find(p => p.areaKey === area);
+                  
+                  return (
+                    <g key={area} onClick={() => handleAreaClick(area)}>
+                      <rect
+                        x={pos.x}
+                        y={pos.y}
+                        width={pos.width}
+                        height={pos.height}
+                        className={`
+                          ${isOccupied 
+                            ? 'fill-green-100/70 stroke-green-500'
+                            : selectedArea === area
+                              ? 'fill-blue-100/70 stroke-blue-500'
+                              : 'fill-gray-100/70 stroke-gray-300 hover:fill-blue-50/70'
+                          } 
+                          cursor-pointer transition-colors
+                        `}
+                        strokeWidth="2"
+                      />
+                      <text
+                        x={pos.x + pos.width/2}
+                        y={pos.y + pos.height/2}
+                        textAnchor="middle"
+                        className="text-sm fill-gray-600 pointer-events-none"
+                      >
+                        {isOccupied ? product?.name : pos.label}
+                      </text>
+                    </g>
+                  );
+                })}
               </svg>
             </div>
           </div>
 
-          {/* Tabs Navigation */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="border-b border-gray-200">
-              <nav className="flex flex-wrap">
-                {tabs.map((tab) => {
-                  const isOccupied = isAreaOccupied(tab.id);
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSelectedTab(tab.id)}
-                      className={`
-                        px-6 py-3 text-sm font-medium
-                        ${selectedTab === tab.id ? 'border-b-2 border-[#005670] text-[#005670]' : 'text-gray-500'}
-                        ${isOccupied ? 'bg-green-50 cursor-not-allowed' : 'hover:text-[#005670]'}
-                      `}
-                    >
-                      {tab.label}
-                      {isOccupied && (
-                        <span className="ml-2 text-xs text-green-600">(Selected)</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* Product Grid */}
-            <div className="p-6">
-              {selectedTab ? (
-                !isAreaOccupied(selectedTab) ? (
-                  <div className="grid grid-cols-2 gap-6">
-                    {catalog[selectedTab].products.map((product) => (
-                      <div
-                        key={product.id}
-                        className="bg-white rounded-lg shadow-sm overflow-hidden border"
+          {/* Product Grid */}
+          {selectedArea && (
+            <div className="grid grid-cols-2 gap-6">
+              {!isAreaOccupied(selectedArea) ? (
+                catalog[selectedArea].products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-lg shadow-sm overflow-hidden"
+                  >
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold">{product.name}</h3>
+                      <p className="text-gray-600">Starting at ${product.basePrice}</p>
+                      <button
+                        onClick={() => handleCustomize(product)}
+                        className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"
                       >
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-48 object-cover"
-                        />
-                        <div className="p-4">
-                          <h3 className="text-lg font-semibold">{product.name}</h3>
-                          <p className="text-gray-600">Starting at ${product.basePrice}</p>
-                          <button
-                            onClick={() => handleCustomize(product)}
-                            className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"
-                          >
-                            Customize
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="text-yellow-500" />
-                      <p className="text-yellow-700">
-                        You have already selected furniture for this area. Remove the existing item to select a new one.
-                      </p>
+                        Customize
+                      </button>
                     </div>
                   </div>
-                )
+                ))
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  Select an area above to view available furniture options
+                <div className="col-span-2 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="text-yellow-500" />
+                    <p className="text-yellow-700">
+                      This area already has furniture placed. Remove the existing furniture to place a new one.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Selected Products Panel */}

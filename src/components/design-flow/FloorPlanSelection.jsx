@@ -94,7 +94,7 @@ const FloorPlanSelection = ({ onNext }) => {
       id: 'custom',
       title: 'Owner package',
       description: 'Standard layout optimized for Owner',
-      availablePlans: '2 floor plans available',
+      availablePlans: '10 floor plans available',
       images: [
         '/images/custom_plan/custom_1.png',
         '/images/custom_plan/custom_2.png',
@@ -258,7 +258,18 @@ const FloorPlanSelection = ({ onNext }) => {
 
   const handleNext = () => {
     if (validateForm()) {
-      onNext({ selectedPlan, clientInfo });
+      // Find the complete plan data
+      const selectedPlanData = floorPlanTypes[selectedPlanType].plans.find(
+        plan => plan.id === selectedPlan
+      );
+  
+      // Debug log
+      console.log('Selected plan data:', selectedPlanData);
+  
+      onNext({ 
+        selectedPlan: selectedPlanData,
+        clientInfo
+      });
     }
   };
 

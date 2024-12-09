@@ -54,6 +54,7 @@ const AdminPanel = () => {
     { icon: FileText, label: 'Orders', path: '/orders' },
     { icon: Users, label: 'User Management', path: '/user-management' },
     { icon: Users, label: 'Client Management', path: '/client-management' },
+    { icon: Store, label: 'Product Configuration', path: '/product' },
     { divider: true },
     { icon: User, label: 'Profile', path: '/profile' },
     { divider: true },
