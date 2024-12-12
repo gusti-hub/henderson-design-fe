@@ -19,6 +19,8 @@ import UserManagement from './UserManagement';
 import Profile from './Profile';
 import AdminOrderManagement from './AdminOrderManagement';
 import ClientManagement from './ClientManagement';
+import ProductConfiguration from './ProductConfiguration';
+import ProductMapping from './ProductMapping';
 import { useNavigate } from 'react-router-dom';
 
 const AdminPanel = () => {
@@ -54,6 +56,8 @@ const AdminPanel = () => {
     { icon: FileText, label: 'Orders', path: '/orders' },
     { icon: Users, label: 'User Management', path: '/user-management' },
     { icon: Users, label: 'Client Management', path: '/client-management' },
+    { icon: Store, label: 'Product Configuration', path: '/product' },
+    { icon: MapPin, label: 'Product Mapping', path: '/product-mapping' },
     { divider: true },
     { icon: User, label: 'Profile', path: '/profile' },
     { divider: true },
@@ -78,6 +82,10 @@ const AdminPanel = () => {
         return <AdminOrderManagement />;
       case '/profile':
         return <Profile />;
+      case '/product':
+        return <ProductConfiguration />
+      case '/product-mapping':
+        return <ProductMapping />  
       default:
         return (
           <div>

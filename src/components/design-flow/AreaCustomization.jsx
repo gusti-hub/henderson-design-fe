@@ -1,263 +1,335 @@
-import React, { useState } from 'react';
-import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
-import FloorPlan from './FloorPlan';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Trash2, AlertCircle } from 'lucide-react';
+import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 
-const AreaCustomization = ({ selectedPlan, onComplete }) => {
-  const [selectedArea, setSelectedArea] = useState(null);
-  const [areaCustomizations, setAreaCustomizations] = useState({});
-  const [activePreview, setActivePreview] = useState(0);
+const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
+  const [selectedTab, setSelectedTab] = useState(null);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [currentProduct, setCurrentProduct] = useState(null);
+  const [activeSpot, setActiveSpot] = useState(null);
+  const [occupiedSpots, setOccupiedSpots] = useState({});
 
-  const areas = {
-    'cuisine': {
-      name: 'Cuisine',
-      furniture: [
-        {
-          type: 'Dining Table',
-          options: {
-            materials: ['Wood', 'Marble', 'Glass'],
-            colors: ['Natural Oak', 'White', 'Black'],
-            styles: ['Modern', 'Classic', 'Industrial']
-          }
-        },
-        {
-          type: 'Dining Chairs',
-          options: {
-            materials: ['Wood', 'Metal', 'Upholstered'],
-            colors: ['Natural', 'White', 'Gray', 'Black'],
-            styles: ['Modern', 'Classic', 'Industrial']
-          }
-        }
-      ]
-    },
-    'meeting1': {
-      name: 'Meeting Room 1',
-      furniture: [
-        {
-          type: 'Conference Table',
-          options: {
-            materials: ['Wood', 'Glass'],
-            colors: ['Natural Oak', 'White', 'Black'],
-            styles: ['Modern', 'Executive']
-          }
-        },
-        {
-          type: 'Office Chairs',
-          options: {
-            materials: ['Mesh', 'Leather', 'Fabric'],
-            colors: ['Black', 'Gray', 'Navy'],
-            styles: ['Ergonomic', 'Executive']
-          }
-        }
-      ]
-    },
-    'open-space': {
-      name: 'Open Space',
-      furniture: [
-        {
-          type: 'Workstations',
-          options: {
-            materials: ['Wood', 'Metal', 'Laminate'],
-            colors: ['White', 'Gray', 'Natural'],
-            styles: ['Modern', 'Minimalist']
-          }
-        },
-        {
-          type: 'Task Chairs',
-          options: {
-            materials: ['Mesh', 'Fabric'],
-            colors: ['Black', 'Gray', 'Blue'],
-            styles: ['Ergonomic', 'Basic']
-          }
-        }
-      ]
+  // Get dimensions and furniture spots for the selected plan
+  const planDimensions = useMemo(() => 
+    getPlanDimensions(selectedPlan.id), [selectedPlan]
+  );
+  
+  const furnitureSpots = useMemo(() => 
+    generateFurnitureAreas(selectedPlan.id), [selectedPlan]
+  );
+
+  // Update parent component when products change
+  useEffect(() => {
+    if (selectedProducts.length > 0) {
+      const totalPrice = selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0);
+      onComplete({
+        selectedProducts,
+        totalPrice,
+        spotSelections: occupiedSpots,
+        floorPlanId: selectedPlan.id
+      });
+    }
+  }, [selectedProducts]);
+
+  const handleSpotClick = (spotId) => {
+    console.log(spotId);
+    if (!occupiedSpots[spotId]) {
+      setSelectedTab(spotId);
+      setActiveSpot(spotId);
     }
   };
 
-  const handleAreaSelect = (areaId) => {
-    setSelectedArea(areaId);
+  const handleCustomize = (product) => {
+    setCurrentProduct(product);
   };
 
-  const handleCustomization = (furnitureType, optionType, value) => {
-    if (!selectedArea) return;
+  const handleAddProduct = (productWithOptions) => {
+    if (selectedTab && !occupiedSpots[selectedTab]) {
+      const newProduct = {
+        ...productWithOptions,
+        spotId: selectedTab,
+        spotName: furnitureSpots[selectedTab]?.label || 'Unknown',
+        coordinates: furnitureSpots[selectedTab]?.dimensions || {}
+      };
 
-    setAreaCustomizations(prev => ({
+      setOccupiedSpots(prev => ({
+        ...prev,
+        [selectedTab]: productWithOptions.id
+      }));
+
+      setSelectedProducts(prev => {
+        const updatedProducts = [...prev, newProduct];
+        return updatedProducts;
+      });
+      
+      setCurrentProduct(null);
+      setSelectedTab(null);
+      setActiveSpot(null);
+    }
+  };
+
+  const handleRemoveProduct = (index) => {
+    const productToRemove = selectedProducts[index];
+    setOccupiedSpots(prev => ({
       ...prev,
-      [selectedArea]: {
-        ...prev[selectedArea],
-        [furnitureType]: {
-          ...prev[selectedArea]?.[furnitureType],
-          [optionType]: value
-        }
-      }
+      [productToRemove.spotId]: null
     }));
+    setSelectedProducts(prev => {
+      const updatedProducts = prev.filter((_, i) => i !== index);
+      return updatedProducts;
+    });
+  };
+
+  const CustomizationModal = ({ product, onClose, onAdd }) => {
+    const [selectedOptions, setSelectedOptions] = useState({
+      color: '',
+      material: ''
+    });
+
+    const calculateTotalPrice = () => {
+      if (!selectedOptions.color || !selectedOptions.material) return product.basePrice;
+      
+      const colorPrice = product.prices.colors[selectedOptions.color].price;
+      const materialPrice = product.prices.materials[selectedOptions.material].price;
+      return product.basePrice + colorPrice + materialPrice;
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-2xl w-full m-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold">{product.name}</h3>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X size={20} />
+            </button>
+          </div>
+
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-64 object-cover rounded-lg mb-6"
+          />
+
+          <div className="space-y-6 mb-6">
+            <div>
+              <h4 className="font-semibold mb-2">Color</h4>
+              <div className="flex gap-2">
+                {product.options.colors.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedOptions(prev => ({ ...prev, color }))}
+                    className={`px-4 py-2 rounded-lg border ${
+                      selectedOptions.color === color
+                        ? 'border-[#005670] bg-[#005670]/10'
+                        : 'border-gray-200 hover:border-[#005670]'
+                    }`}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-2">Material</h4>
+              <div className="flex gap-2">
+                {product.options.materials.map(material => (
+                  <button
+                    key={material}
+                    onClick={() => setSelectedOptions(prev => ({ ...prev, material }))}
+                    className={`px-4 py-2 rounded-lg border ${
+                      selectedOptions.material === material
+                        ? 'border-[#005670] bg-[#005670]/10'
+                        : 'border-gray-200 hover:border-[#005670]'
+                    }`}
+                  >
+                    {material}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-xl font-bold">
+              Total Price: ${calculateTotalPrice()}
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              onAdd({
+                ...product,
+                selectedOptions,
+                finalPrice: calculateTotalPrice()
+              });
+            }}
+            disabled={!selectedOptions.color || !selectedOptions.material}
+            className={`w-full py-2 rounded-lg ${
+              !selectedOptions.color || !selectedOptions.material
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-[#005670] text-white hover:bg-opacity-90'
+            }`}
+          >
+            Add to Space
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="grid grid-cols-12 gap-8">
-        {/* Left: Floor Plan */}
-        <div className="col-span-5">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-medium mb-4" style={{ color: '#005670' }}>
-              Select Area to Customize
-            </h2>
-            <FloorPlan 
-              onAreaSelect={handleAreaSelect}
-              selectedArea={selectedArea}
-              customizedAreas={Object.keys(areaCustomizations)}
-            />
-          </div>
-          
-          {/* Customization Summary */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
-            <h2 className="text-xl font-medium mb-4" style={{ color: '#005670' }}>
-              Customized Areas
-            </h2>
-            <div className="space-y-4">
-              {Object.entries(areaCustomizations).map(([areaId, furnitureSelections]) => (
-                <div 
-                  key={areaId} 
-                  className="p-4 border rounded-lg cursor-pointer hover:border-[#005670]"
-                  onClick={() => setSelectedArea(areaId)}
-                >
-                  <h3 className="font-medium mb-2">{areas[areaId]?.name}</h3>
-                  {Object.entries(furnitureSelections).map(([furnitureType, options]) => (
-                    <div key={furnitureType} className="ml-4 text-sm text-gray-600">
-                      <p className="font-medium text-gray-900">{furnitureType}</p>
-                      <p>Material: {options.material}</p>
-                      <p>Color: {options.color}</p>
-                      <p>Style: {options.style}</p>
-                    </div>
-                  ))}
-                </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="flex flex-col gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-2xl font-light mb-4 text-[#005670]">
+            Design Your Space - {selectedPlan.title}
+          </h2>
+          <div className="relative w-full h-[600px] border border-gray-200 rounded-lg">
+            <svg 
+              width="100%" 
+              height="100%" 
+              viewBox={`0 0 ${planDimensions.width} ${planDimensions.height}`} 
+              className="w-full h-full"
+            >
+              <image
+                href={floorPlanImage}
+                width={planDimensions.width}
+                height={planDimensions.height}
+                preserveAspectRatio="xMidYMid meet"
+              />
+              
+              {Object.values(furnitureSpots).map((spot) => (
+                <g key={spot.id}>
+                  <path
+                    d={spot.path}
+                    fill={activeSpot === spot.id ? "rgba(0,86,112,0.2)" : "transparent"}
+                    stroke={activeSpot === spot.id ? "#005670" : "#ccc"}
+                    strokeWidth="2"
+                    cursor={occupiedSpots[spot.id] ? "not-allowed" : "pointer"}
+                    onClick={() => handleSpotClick(spot.id)}
+                  />
+                  {occupiedSpots[spot.id] ? (
+                    <text
+                      x={spot.center.x}
+                      y={spot.center.y}
+                      textAnchor="middle"
+                      fill="#005670"
+                      className="text-sm"
+                    >
+                      ✓
+                    </text>
+                  ) : (
+                    <text
+                      x={spot.center.x}
+                      y={spot.center.y}
+                      textAnchor="middle"
+                      fill="#666"
+                      className="text-xs"
+                    >
+                      {spot.label}
+                    </text>
+                  )}
+                </g>
               ))}
-            </div>
+            </svg>
           </div>
         </div>
 
-        {/* Right: Customization Options & Preview */}
-        <div className="col-span-7">
-          {selectedArea ? (
-            <div className="space-y-6">
-              {/* Preview */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-medium mb-4" style={{ color: '#005670' }}>Preview</h2>
-                <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                  <img 
-                    src="/api/placeholder/800/400" 
-                    alt="Room Preview" 
-                    className="w-full h-full object-cover"
+        {/* Product Selection and Cart */}
+        <div className="grid grid-cols-3 gap-6">
+          {/* Available Products */}
+          <div className="col-span-2 bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-xl font-bold mb-6">Available Products</h3>
+            {selectedTab && furnitureSpots[selectedTab]?.product && (
+              <div className="grid grid-cols-2 gap-6">
+                <div
+                  className="bg-white rounded-lg shadow-sm overflow-hidden border"
+                >
+                  <img
+                    src={furnitureSpots[selectedTab].product.image}
+                    alt={furnitureSpots[selectedTab].product.name}
+                    className="w-full h-48 object-cover"
                   />
-                  
-                  <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold">
+                      {furnitureSpots[selectedTab].product.name}
+                    </h3>
+                    <p className="text-gray-600">
+                      Starting at ${furnitureSpots[selectedTab].product.basePrice}
+                    </p>
                     <button
-                      onClick={() => setActivePreview(prev => Math.max(prev - 1, 0))}
-                      className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center hover:bg-white"
+                      onClick={() => handleCustomize(furnitureSpots[selectedTab].product)}
+                      className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"
                     >
-                      <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <button
-                      onClick={() => setActivePreview(prev => prev + 1)}
-                      className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center hover:bg-white"
-                    >
-                      <ArrowRight className="w-6 h-6" />
+                      Customize
                     </button>
                   </div>
                 </div>
               </div>
+            )}
+            {!selectedTab && (
+              <div className="text-center py-12 text-gray-500">
+                Click on a furniture spot in the floor plan to view available products
+              </div>
+            )}
+          </div>
 
-              {/* Customization Options */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-medium mb-4" style={{ color: '#005670' }}>
-                  Customize {areas[selectedArea]?.name}
-                </h2>
-                
-                <div className="space-y-6">
-                  {areas[selectedArea]?.furniture.map((item, index) => (
-                    <div key={index} className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-4">{item.type}</h3>
-                      
-                      {/* Material Selection */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">Material</label>
-                        <div className="flex flex-wrap gap-2">
-                          {item.options.materials.map(material => (
-                            <button
-                              key={material}
-                              onClick={() => handleCustomization(item.type, 'material', material)}
-                              className={`px-3 py-1 rounded-full text-sm border transition-colors
-                                ${areaCustomizations[selectedArea]?.[item.type]?.material === material 
-                                  ? 'bg-[#005670] text-white' 
-                                  : 'hover:bg-gray-50'}`}
-                            >
-                              {material}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Color Selection */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">Color</label>
-                        <div className="flex flex-wrap gap-2">
-                          {item.options.colors.map(color => (
-                            <button
-                              key={color}
-                              onClick={() => handleCustomization(item.type, 'color', color)}
-                              className={`px-3 py-1 rounded-full text-sm border transition-colors
-                                ${areaCustomizations[selectedArea]?.[item.type]?.color === color 
-                                  ? 'bg-[#005670] text-white' 
-                                  : 'hover:bg-gray-50'}`}
-                            >
-                              {color}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Style Selection */}
+          {/* Selected Products */}
+          <div className="col-span-1 bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-xl font-bold mb-6">Selected Products</h3>
+            {selectedProducts.length === 0 ? (
+              <p className="text-gray-500">No products selected yet</p>
+            ) : (
+              <div className="space-y-4">
+                {selectedProducts.map((product, index) => (
+                  <div key={index} className="flex justify-between items-center border-b pb-4">
+                    <div className="flex gap-4">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-20 h-20 object-cover rounded"
+                      />
                       <div>
-                        <label className="block text-sm font-medium mb-2">Style</label>
-                        <div className="flex flex-wrap gap-2">
-                          {item.options.styles.map(style => (
-                            <button
-                              key={style}
-                              onClick={() => handleCustomization(item.type, 'style', style)}
-                              className={`px-3 py-1 rounded-full text-sm border transition-colors
-                                ${areaCustomizations[selectedArea]?.[item.type]?.style === style 
-                                  ? 'bg-[#005670] text-white' 
-                                  : 'hover:bg-gray-50'}`}
-                            >
-                              {style}
-                            </button>
-                          ))}
-                        </div>
+                        <h4 className="font-semibold">{product.name}</h4>
+                        <p className="text-xs text-gray-500">{product.spotName}</p>
+                        <p className="text-sm text-gray-600">
+                          {product.selectedOptions.color} - {product.selectedOptions.material}
+                        </p>
+                        <p className="text-gray-600">${product.finalPrice}</p>
                       </div>
                     </div>
-                  ))}
+                    <button
+                      onClick={() => handleRemoveProduct(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                ))}
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total</span>
+                    <span>
+                      ${selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <p className="text-center text-gray-500">
-                Select an area from the floor plan to customize
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="flex justify-end mt-8">
-        <button
-          onClick={() => onComplete(areaCustomizations)}
-          className="px-6 py-2 text-white rounded-lg hover:opacity-90"
-          style={{ backgroundColor: '#005670' }}
-        >
-          Continue to Review
-        </button>
-      </div>
+      {currentProduct && (
+        <CustomizationModal
+          product={currentProduct}
+          onClose={() => {
+            setCurrentProduct(null);
+            setSelectedTab(null);
+            setActiveSpot(null);
+          }}
+          onAdd={handleAddProduct}
+        />
+      )}
     </div>
   );
 };

@@ -6,7 +6,8 @@ const FloorPlanSelection = ({ onNext }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [clientInfo, setClientInfo] = useState({
     name: '',
-    unitNumber: ''
+    unitNumber: '',
+    floorPlan: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
@@ -94,7 +95,7 @@ const FloorPlanSelection = ({ onNext }) => {
       id: 'custom',
       title: 'Owner package',
       description: 'Standard layout optimized for Owner',
-      availablePlans: '2 floor plans available',
+      availablePlans: '10 floor plans available',
       images: [
         '/images/custom_plan/custom_1.png',
         '/images/custom_plan/custom_2.png',
@@ -230,7 +231,8 @@ const FloorPlanSelection = ({ onNext }) => {
         const data = await response.json();
         setClientInfo({
           name: data.name,
-          unitNumber: data.unitNumber
+          unitNumber: data.unitNumber,
+          floorPlan: data.floorPlan
         });
       }
     } catch (error) {
@@ -258,7 +260,18 @@ const FloorPlanSelection = ({ onNext }) => {
 
   const handleNext = () => {
     if (validateForm()) {
-      onNext({ selectedPlan, clientInfo });
+      // Find the complete plan data
+      const selectedPlanData = floorPlanTypes[selectedPlanType].plans.find(
+        plan => plan.id === selectedPlan
+      );
+  
+      // Debug log
+      console.log('Selected plan data:', selectedPlanData);
+  
+      onNext({ 
+        selectedPlan: selectedPlanData,
+        clientInfo
+      });
     }
   };
 
@@ -298,7 +311,9 @@ const FloorPlanSelection = ({ onNext }) => {
           </button>
           
           <div className="space-y-8">
-            {floorPlanTypes[selectedPlanType].plans.map(plan => (
+            {floorPlanTypes[selectedPlanType].plans.filter(plan => 
+              plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
+              ).map(plan => (
               <div
                 key={plan.id}
                 onClick={() => setSelectedPlan(plan.id)}

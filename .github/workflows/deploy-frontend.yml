@@ -1,37 +1,52 @@
-name: Deploy Frontend
+name: Deploy Frontend to Digital Ocean
 
 on:
   push:
     branches: [ main ]
 
+env:
+  REGISTRY: "registry.digitalocean.com/hale-project"
+  IMAGE_NAME: "frontend-app"
+
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build container image
+        run: docker build -t $IMAGE_NAME:latest .
       
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          
+      
       - name: Log in to DO Container Registry
         run: doctl registry login --expiry-seconds 600
       
-      - name: Build container image
-        run: docker build -t registry.digitalocean.com/hale-project-container-registry/portal-fe:$(echo $GITHUB_SHA | head -c7) .
-      
       - name: Push image to DO Container Registry
-        run: docker push registry.digitalocean.com/hale-project-container-registry/portal-fe:$(echo $GITHUB_SHA | head -c7)
+        run: |
+          docker tag $IMAGE_NAME:latest $REGISTRY/$IMAGE_NAME:latest
+          docker push $REGISTRY/$IMAGE_NAME:latest
       
       - name: Deploy to Digital Ocean droplet
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          password: ${{ secrets.DROPLET_PASSWORD }}
+          source: "docker-compose.yml"
+          target: "/app"
+          
+      - name: Execute deployment commands
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USERNAME }}
           password: ${{ secrets.DROPLET_PASSWORD }}
           script: |
-            docker pull registry.digitalocean.com/hale-project-container-registry/portal-fe:$(echo $GITHUB_SHA | head -c7)
-            docker stop frontend || true
-            docker rm frontend || true
-            docker run -d --name frontend -p 3001:80 registry.digitalocean.com/hale-project-container-registry/portal-fe:$(echo $GITHUB_SHA | head -c7)
+            cd /app
+            docker-compose pull
+            docker-compose up -d

@@ -15,6 +15,7 @@ const ClientManagement = () => {
     email: '',
     password: '',
     unitNumber: '',
+    floorPlan: '',
     role: 'user'  // Always 'user' for clients
   });
   const [errors, setErrors] = useState({});
@@ -26,9 +27,11 @@ const ClientManagement = () => {
   const [itemsPerPage] = useState(10);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [floorPlans, setFloorPlans] = useState([]);
 
   useEffect(() => {
     fetchClients();
+    fetchFloorPlans();
   }, []);
 
   useEffect(() => {
@@ -44,6 +47,21 @@ const ClientManagement = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
+  const fetchFloorPlans = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/clients/floor-plans', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      setFloorPlans(data);
+    } catch (error) {
+      console.error('Error fetching floor plans:', error);
+    }
+  };
+  
   const fetchClients = async () => {
     setLoading(true);
     try {
@@ -116,6 +134,7 @@ const ClientManagement = () => {
       newErrors.email = 'Invalid email format';
     }
     if (!formData.unitNumber) newErrors.unitNumber = 'Unit number is required';
+    if (!formData.floorPlan) newErrors.floorPlan = 'Floor plan is required';
     if (modalMode === 'create' && !formData.password) {
       newErrors.password = 'Password is required';
     }
@@ -175,6 +194,7 @@ const ClientManagement = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Number</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floor Plan</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -190,6 +210,7 @@ const ClientManagement = () => {
                 <td className="px-6 py-4">{client.name}</td>
                 <td className="px-6 py-4">{client.email}</td>
                 <td className="px-6 py-4">{client.unitNumber}</td>
+                <td className="px-6 py-4">{client.floorPlan}</td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
                     <button
@@ -300,6 +321,23 @@ const ClientManagement = () => {
                   className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
                 />
                 {errors.unitNumber && <p className="text-red-500 text-sm mt-1">{errors.unitNumber}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Floor Plan</label>
+                <select
+                  value={formData.floorPlan}
+                  onChange={(e) => setFormData({ ...formData, floorPlan: e.target.value })}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                >
+                  <option value="">Select a floor plan</option>
+                  {floorPlans.map((plan) => (
+                    <option key={plan} value={plan}>
+                      {plan}
+                    </option>
+                  ))}
+                </select>
+                {errors.floorPlan && <p className="text-red-500 text-sm mt-1">{errors.floorPlan}</p>}
               </div>
 
               {modalMode === 'create' ? (

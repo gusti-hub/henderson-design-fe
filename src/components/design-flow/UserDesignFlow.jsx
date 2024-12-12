@@ -14,7 +14,15 @@ const UserDesignFlow = () => {
   });
   const [existingOrder, setExistingOrder] = useState(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
-  const [customizations, setCustomizations] = useState({});
+  const [designSelections, setDesignSelections] = useState(null);
+  const [paymentDetails, setPaymentDetails] = useState({
+    method: '', // 'cheque' or 'bank_transfer'
+    installments: [
+      { percent: 25, dueDate: null, status: 'pending', amount: 0 },
+      { percent: 50, dueDate: null, status: 'pending', amount: 0 },
+      { percent: 25, dueDate: null, status: 'pending', amount: 0 }
+    ]
+  });
 
   useEffect(() => {
     checkExistingOrder();
@@ -35,12 +43,27 @@ const UserDesignFlow = () => {
           setExistingOrder(order);
           setSelectedPlan(order.selectedPlan);
           setClientInfo(order.clientInfo);
+          setDesignSelections(order.designSelections);
+          setPaymentDetails(order.paymentDetails || paymentDetails);
           setIsViewOnly(order.status === 'completed');
         }
       }
     } catch (error) {
       console.error('Error checking existing order:', error);
     }
+  };
+
+  const calculatePaymentSchedule = (totalAmount) => {
+    const today = new Date();
+    return paymentDetails.installments.map((installment, index) => {
+      const dueDate = new Date(today);
+      dueDate.setMonth(today.getMonth() + (index * 3)); // 3 months between payments
+      return {
+        ...installment,
+        dueDate: dueDate.toISOString(),
+        amount: (totalAmount * (installment.percent / 100))
+      };
+    });
   };
 
   const saveProgress = async () => {
@@ -51,6 +74,15 @@ const UserDesignFlow = () => {
         ? `http://localhost:5000/api/orders/${existingOrder._id}`
         : 'http://localhost:5000/api/orders';
 
+      // Calculate payment schedule if we have design selections
+      let updatedPaymentDetails = paymentDetails;
+      if (designSelections?.totalPrice) {
+        updatedPaymentDetails = {
+          ...paymentDetails,
+          installments: calculatePaymentSchedule(designSelections.totalPrice)
+        };
+      }
+
       const response = await fetch(endpoint, {
         method,
         headers: {
@@ -60,6 +92,8 @@ const UserDesignFlow = () => {
         body: JSON.stringify({
           selectedPlan,
           clientInfo,
+          designSelections,
+          paymentDetails: updatedPaymentDetails,
           status: currentStep === 4 ? 'completed' : 'in_progress',
           step: currentStep
         })
@@ -68,6 +102,7 @@ const UserDesignFlow = () => {
       if (!response.ok) throw new Error('Failed to save progress');
       const data = await response.json();
       setExistingOrder(data);
+      setPaymentDetails(updatedPaymentDetails);
     } catch (error) {
       console.error('Error saving progress:', error);
     }
@@ -77,7 +112,7 @@ const UserDesignFlow = () => {
     { number: 1, title: 'Choose Floor Plan' },
     { number: 2, title: 'Design Your Space' },
     { number: 3, title: 'Review Order' },
-    { number: 4, title: 'Payment' }
+    { number: 4, title: 'Payment Schedule' }
   ];
 
   const handleNext = async () => {
@@ -90,10 +125,32 @@ const UserDesignFlow = () => {
   };
 
   const handleFloorPlanSelection = async (data) => {
-    setSelectedPlan(data.selectedPlan);
-    setClientInfo(data.clientInfo);
+    try {
+      const planDetails = data.selectedPlan;
+      setSelectedPlan({
+        ...planDetails,
+        clientInfo: data.clientInfo
+      });
+      setClientInfo(data.clientInfo);
+      await saveProgress();
+      setCurrentStep(2);
+    } catch (error) {
+      console.error('Error in floor plan selection:', error);
+    }
+  };
+
+  const handleDesignComplete = (selections) => {
+    setDesignSelections(selections);
+    //handleNext();
+  };
+
+  const handlePaymentSetup = async (paymentMethod) => {
+    const updatedPaymentDetails = {
+      ...paymentDetails,
+      method: paymentMethod
+    };
+    setPaymentDetails(updatedPaymentDetails);
     await saveProgress();
-    setCurrentStep(2);
   };
 
   const renderStepContent = () => {
@@ -125,22 +182,31 @@ const UserDesignFlow = () => {
         return (
           <AreaCustomization 
             selectedPlan={selectedPlan}
-            onComplete={(customizations) => {
-              setCustomizations(customizations);
-              handleNext();
-            }}
+            floorPlanImage={selectedPlan?.image}
+            onComplete={handleDesignComplete}
           />
         );
       case 3:
-        return <OrderReview />;
+        return (
+          <OrderReview 
+            selectedPlan={selectedPlan}
+            designSelections={designSelections}
+            clientInfo={clientInfo}
+          />
+        );
       case 4:
-        return <PaymentPage />;
+        return (
+          <PaymentPage 
+            totalAmount={designSelections?.totalPrice || 0}
+            paymentDetails={paymentDetails}
+            onPaymentSetup={handlePaymentSetup}
+          />
+        );
       default:
         return null;
     }
   };
 
-  // Only show initial content for first step
   if (!existingOrder && currentStep === 1) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -153,7 +219,6 @@ const UserDesignFlow = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Progress Bar */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
@@ -181,11 +246,9 @@ const UserDesignFlow = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {renderStepContent()}
 
-        {/* Navigation Buttons - Only show for steps 2-4 */}
         {!isViewOnly && currentStep > 1 && (
           <div className="flex justify-between mt-8">
             <button
