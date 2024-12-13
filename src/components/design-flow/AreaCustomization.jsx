@@ -8,11 +8,21 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [currentProduct, setCurrentProduct] = useState(null);
   const [activeSpot, setActiveSpot] = useState(null);
   const [occupiedSpots, setOccupiedSpots] = useState({});
+  const [availableProducts, setAvailableProducts] = useState([]);
 
   // Get dimensions and furniture spots for the selected plan
   const planDimensions = useMemo(() => 
     getPlanDimensions(selectedPlan.id), [selectedPlan]
   );
+
+  const arrayBufferToBase64 = (buffer) => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  };
   
   const furnitureSpots = useMemo(() => 
     generateFurnitureAreas(selectedPlan.id), [selectedPlan]
@@ -31,16 +41,79 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
     }
   }, [selectedProducts]);
 
-  const handleSpotClick = (spotId) => {
-    console.log(spotId);
+  const handleSpotClick = async (spotId) => {
     if (!occupiedSpots[spotId]) {
       setSelectedTab(spotId);
       setActiveSpot(spotId);
+      
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Fetch products for this location from mapping
+        const mappingResponse = await fetch(
+          `http://localhost:5000/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+        const mappingData = await mappingResponse.json();
+        
+        if (mappingData.products && mappingData.products.length > 0) {
+          // Get detailed product info including variants for each product
+          const productDetailsPromises = mappingData.products.map(async (product) => {
+            try {
+              // Fetch variants for each product
+              const variantsResponse = await fetch(
+                `http://localhost:5000/api/products/${product._id}/variants`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                }
+              );
+              const variantsData = await variantsResponse.json();
+              
+              // Combine basic product info with its variants
+              return {
+                ...product,
+                variants: variantsData.variants
+              };
+            } catch (error) {
+              console.error(`Error fetching variants for product ${product._id}:`, error);
+              return null;
+            }
+          });
+  
+          const productDetails = await Promise.all(productDetailsPromises);
+          const validProducts = productDetails.filter(p => p !== null);
+          setAvailableProducts(validProducts);
+        } else {
+          setAvailableProducts([]);
+        }
+      } catch (error) {
+        console.error('Error fetching available products:', error);
+        setAvailableProducts([]);
+      }
     }
   };
 
-  const handleCustomize = (product) => {
-    setCurrentProduct(product);
+  const handleCustomize = async (product) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/products/${product._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const fullProductData = await response.json();
+      console.log('Full product data:', fullProductData); // Debug log
+      setCurrentProduct(fullProductData);
+    } catch (error) {
+      console.error('Error fetching complete product data:', error);
+      setCurrentProduct(product);
+    }
   };
 
   const handleAddProduct = (productWithOptions) => {
@@ -82,18 +155,66 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
 
   const CustomizationModal = ({ product, onClose, onAdd }) => {
     const [selectedOptions, setSelectedOptions] = useState({
-      color: '',
-      material: ''
+      finish: '',
+      fabric: ''
     });
-
-    const calculateTotalPrice = () => {
-      if (!selectedOptions.color || !selectedOptions.material) return product.basePrice;
-      
-      const colorPrice = product.prices.colors[selectedOptions.color].price;
-      const materialPrice = product.prices.materials[selectedOptions.material].price;
-      return product.basePrice + colorPrice + materialPrice;
+  
+    // Helper function to get variant image
+    const getVariantImage = () => {
+      // Get the selected variant based on options
+      const selectedVariant = product.variants.find(variant => 
+        variant.fabric === selectedOptions.fabric && 
+        variant.finish === selectedOptions.finish
+      );
+  
+      // Return image from selected variant if it exists
+      if (selectedVariant?.image?.data) {
+        return {
+          contentType: selectedVariant.image.contentType,
+          data: selectedVariant.image.data.data
+        };
+      }
+  
+      // Otherwise return first variant's image if available
+      if (product.variants[0]?.image?.data) {
+        return {
+          contentType: product.variants[0].image.contentType,
+          data: product.variants[0].image.data.data
+        };
+      }
+  
+      return null;
     };
+  
+    const getVariantPrice = () => {
+      const selectedVariant = product.variants.find(variant => 
+        variant.fabric === selectedOptions.fabric && 
+        variant.finish === selectedOptions.finish
+      );
+      return selectedVariant ? selectedVariant.price : product.basePrice;
+    };
+  
+    const image = getVariantImage();
 
+    const hasFinishOptions = product.variants.some(v => v.finish);
+    const hasFabricOptions = product.variants.some(v => v.fabric);
+  
+    // Modified validation check
+    const isValid = () => {
+      if (hasFinishOptions && hasFabricOptions) {
+        // Both attributes are available, require both
+        return selectedOptions.finish && selectedOptions.fabric;
+      } else if (hasFinishOptions) {
+        // Only finish is available
+        return selectedOptions.finish;
+      } else if (hasFabricOptions) {
+        // Only fabric is available
+        return selectedOptions.fabric;
+      }
+      // No attributes required
+      return true;
+    };
+  
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-2xl w-full m-4">
@@ -103,68 +224,81 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
               <X size={20} />
             </button>
           </div>
-
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-64 object-cover rounded-lg mb-6"
-          />
-
+  
+          {/* Display image */}
+          {image ? (
+            <img
+              src={`data:${image.contentType};base64,${arrayBufferToBase64(image.data)}`}
+              alt={product.name}
+              className="w-full h-64 object-cover rounded-lg mb-6"
+            />
+          ) : (
+            <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-6">
+              <span className="text-gray-400">No image available</span>
+            </div>
+          )}
+  
           <div className="space-y-6 mb-6">
-            <div>
-              <h4 className="font-semibold mb-2">Color</h4>
-              <div className="flex gap-2">
-                {product.options.colors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedOptions(prev => ({ ...prev, color }))}
-                    className={`px-4 py-2 rounded-lg border ${
-                      selectedOptions.color === color
-                        ? 'border-[#005670] bg-[#005670]/10'
-                        : 'border-gray-200 hover:border-[#005670]'
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
+            {/* Finish options */}
+            {hasFinishOptions && (
+              <div>
+                <h4 className="font-semibold mb-2">Finish</h4>
+                <div className="flex gap-2">
+                  {[...new Set(product.variants.map(v => v.finish).filter(Boolean))].map(finish => (
+                    <button
+                      key={finish}
+                      onClick={() => setSelectedOptions(prev => ({ ...prev, finish }))}
+                      className={`px-4 py-2 rounded-lg border ${
+                        selectedOptions.finish === finish
+                          ? 'border-[#005670] bg-[#005670]/10'
+                          : 'border-gray-200 hover:border-[#005670]'
+                      }`}
+                    >
+                      {finish}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-2">Material</h4>
-              <div className="flex gap-2">
-                {product.options.materials.map(material => (
-                  <button
-                    key={material}
-                    onClick={() => setSelectedOptions(prev => ({ ...prev, material }))}
-                    className={`px-4 py-2 rounded-lg border ${
-                      selectedOptions.material === material
-                        ? 'border-[#005670] bg-[#005670]/10'
-                        : 'border-gray-200 hover:border-[#005670]'
-                    }`}
-                  >
-                    {material}
-                  </button>
-                ))}
+            )}
+  
+            {/* Fabric options */}
+            {hasFabricOptions && (
+              <div>
+                <h4 className="font-semibold mb-2">Fabric</h4>
+                <div className="flex gap-2">
+                  {[...new Set(product.variants.map(v => v.fabric).filter(Boolean))].map(fabric => (
+                    <button
+                      key={fabric}
+                      onClick={() => setSelectedOptions(prev => ({ ...prev, fabric }))}
+                      className={`px-4 py-2 rounded-lg border ${
+                        selectedOptions.fabric === fabric
+                          ? 'border-[#005670] bg-[#005670]/10'
+                          : 'border-gray-200 hover:border-[#005670]'
+                      }`}
+                    >
+                      {fabric}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-
+            )}
+  
             <div className="text-xl font-bold">
-              Total Price: ${calculateTotalPrice()}
+              Total Price: ${getVariantPrice()}
             </div>
           </div>
-
+  
           <button
             onClick={() => {
               onAdd({
                 ...product,
                 selectedOptions,
-                finalPrice: calculateTotalPrice()
+                finalPrice: getVariantPrice()
               });
             }}
-            disabled={!selectedOptions.color || !selectedOptions.material}
+            disabled={!isValid()}
             className={`w-full py-2 rounded-lg ${
-              !selectedOptions.color || !selectedOptions.material
+              !isValid()
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-[#005670] text-white hover:bg-opacity-90'
             }`}
@@ -175,6 +309,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
       </div>
     );
   };
+  
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -239,38 +374,45 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           {/* Available Products */}
           <div className="col-span-2 bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold mb-6">Available Products</h3>
-            {selectedTab && furnitureSpots[selectedTab]?.product && (
+            {selectedTab && availableProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-6">
-                <div
-                  className="bg-white rounded-lg shadow-sm overflow-hidden border"
-                >
-                  <img
-                    src={furnitureSpots[selectedTab].product.image}
-                    alt={furnitureSpots[selectedTab].product.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold">
-                      {furnitureSpots[selectedTab].product.name}
-                    </h3>
-                    <p className="text-gray-600">
-                      Starting at ${furnitureSpots[selectedTab].product.basePrice}
-                    </p>
-                    <button
-                      onClick={() => handleCustomize(furnitureSpots[selectedTab].product)}
-                      className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"
-                    >
-                      Customize
-                    </button>
+                {availableProducts.map(product => (
+                  <div
+                    key={product._id}
+                    className="bg-white rounded-lg shadow-sm overflow-hidden border"
+                  >
+                    {product.image && (
+                      <img
+                        src={`data:${product.image.contentType};base64,${arrayBufferToBase64(product.image.data.data)}`}
+                        alt={product.name}
+                        className="w-full h-48 object-cover"
+                      />
+                    )}
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold">
+                        {product.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {product.product_id}
+                      </p>
+                      <p className="text-gray-600">
+                        Starting at ${product.basePrice}
+                      </p>
+                      <button
+                        onClick={() => handleCustomize(product)}
+                        className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"
+                      >
+                        Customize
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            )}
-            {!selectedTab && (
-              <div className="text-center py-12 text-gray-500">
-                Click on a furniture spot in the floor plan to view available products
-              </div>
-            )}
+            ) : (
+            <div className="text-center py-12 text-gray-500">
+              {selectedTab ? 'No products available for this location' : 'Click on a furniture spot in the floor plan to view available products'}
+            </div>
+          )}
           </div>
 
           {/* Selected Products */}

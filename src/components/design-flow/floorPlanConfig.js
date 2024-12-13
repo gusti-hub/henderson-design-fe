@@ -16,98 +16,98 @@ export const floorPlanConfig = {
     dimensions: { width: 800, height: 600 },
     furniture: {
       sofa: {
-        id: 'sofa',
-        label: 'Modern Sofa',
+        id: 'Test 1',
+        label: 'Dining Table 1',
         coordinates: {
-          x: 200,
-          y: 250,
-          width: 150,
-          height: 80
+          x: 380,
+          y: 245,
+          width: 140,
+          height: 40
         },
-        product: {
-          id: 'sofa',
-          name: 'Modern Sofa',
-          basePrice: 1200,
-          image: '/api/placeholder/400/300',
-          options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Fabric', 'Leather']
-          },
-          prices: {
-            colors: {
-              White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
-            },
-            materials: {
-              Fabric: { price: 0 },
-              Leather: { price: 300 }
-            }
-          }
-        }
+        // product: {
+        //   id: 'sofa',
+        //   name: 'Modern Sofa',
+        //   basePrice: 1200,
+        //   image: '/api/placeholder/400/300',
+        //   options: {
+        //     colors: ['White', 'Gray', 'Beige'],
+        //     materials: ['Fabric', 'Leather']
+        //   },
+        //   prices: {
+        //     colors: {
+        //       White: { price: 0 },
+        //       Gray: { price: 50 },
+        //       Beige: { price: 100 }
+        //     },
+        //     materials: {
+        //       Fabric: { price: 0 },
+        //       Leather: { price: 300 }
+        //     }
+        //   }
+        // }
       },
       diningTable: {
-        id: 'diningTable',
-        label: 'Dining Table',
+        id: 'Test 2',
+        label: 'Dining Table 2',
         coordinates: {
-          x: 400,
-          y: 250,
-          width: 120,
-          height: 120
+          x: 270,
+          y: 335,
+          width: 45,
+          height: 95
         },
-        product: {
-          id: 'diningTable',
-          name: 'Dining Table Set',
-          basePrice: 1500,
-          image: '/api/placeholder/400/300',
-          options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Wood', 'Glass']
-          },
-          prices: {
-            colors: {
-              White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
-            },
-            materials: {
-              Wood: { price: 0 },
-              Glass: { price: 200 }
-            }
-          }
-        }
+        // product: {
+        //   id: 'diningTable',
+        //   name: 'Dining Table Set',
+        //   basePrice: 1500,
+        //   image: '/api/placeholder/400/300',
+        //   options: {
+        //     colors: ['White', 'Gray', 'Beige'],
+        //     materials: ['Wood', 'Glass']
+        //   },
+        //   prices: {
+        //     colors: {
+        //       White: { price: 0 },
+        //       Gray: { price: 50 },
+        //       Beige: { price: 100 }
+        //     },
+        //     materials: {
+        //       Wood: { price: 0 },
+        //       Glass: { price: 200 }
+        //     }
+        //   }
+        // }
       },
-      bed: {
-        id: 'bed',
-        label: 'King Bed',
-        coordinates: {
-          x: 100,
-          y: 100,
-          width: 200,
-          height: 160
-        },
-        product: {
-          id: 'kingBed',
-          name: 'King Bed Frame',
-          basePrice: 1000,
-          image: '/api/placeholder/400/300',
-          options: {
-            colors: ['White', 'Gray', 'Beige'],
-            materials: ['Fabric', 'Leather']
-          },
-          prices: {
-            colors: {
-              White: { price: 0 },
-              Gray: { price: 50 },
-              Beige: { price: 100 }
-            },
-            materials: {
-              Fabric: { price: 0 },
-              Leather: { price: 300 }
-            }
-          }
-        }
-      }
+      // bed: {
+      //   id: 'bed',
+      //   label: 'King Bed',
+      //   coordinates: {
+      //     x: 100,
+      //     y: 100,
+      //     width: 200,
+      //     height: 160
+      //   },
+      //   product: {
+      //     id: 'kingBed',
+      //     name: 'King Bed Frame',
+      //     basePrice: 1000,
+      //     image: '/api/placeholder/400/300',
+      //     options: {
+      //       colors: ['White', 'Gray', 'Beige'],
+      //       materials: ['Fabric', 'Leather']
+      //     },
+      //     prices: {
+      //       colors: {
+      //         White: { price: 0 },
+      //         Gray: { price: 50 },
+      //         Beige: { price: 100 }
+      //       },
+      //       materials: {
+      //         Fabric: { price: 0 },
+      //         Leather: { price: 300 }
+      //       }
+      //     }
+      //   }
+      // }
     }
   },
   'investor-b': {

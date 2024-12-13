@@ -28,7 +28,7 @@ const FloorPlanSelection = ({ onNext }) => {
           id: 'investor-a',
           title: 'Residence 00A',
           description: '2 Bedroom + 2 Bath, Level: 7-33 (All)',
-          image: '/images/investor_plan/Alia_00A.svg',
+          image: '/images/investor_plan/Alia_00A.png',
           details: [
             'Total: 1,419 Sq. Ft.',
             'Interior: 1,235 Sq. Ft.',
