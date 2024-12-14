@@ -98,6 +98,28 @@ const validateForm = () => {
       localStorage.setItem('name', data.name);
       localStorage.setItem('role', data.role);
   
+      // Check for existing order before redirecting
+      if (data.role === 'user') {
+        try {
+          const orderResponse = await fetch('http://localhost:5000/api/orders/user-order', {
+            headers: {
+              'Authorization': `Bearer ${data.token}`
+            }
+          });
+  
+          if (orderResponse.ok) {
+            const orderData = await orderResponse.json();
+            if (orderData) {
+              // Store relevant order data
+              localStorage.setItem('currentStep', orderData.status === 'confirmed' ? '4' : orderData.step?.toString() || '1');
+              // You can store other necessary order data here
+            }
+          }
+        } catch (orderError) {
+          console.error('Error fetching order:', orderError);
+        }
+      }
+  
       // Redirect based on role
       if (data.role === 'user') {
         navigate('/dashboard');

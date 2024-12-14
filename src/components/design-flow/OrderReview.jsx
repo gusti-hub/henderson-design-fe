@@ -1,7 +1,8 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check, AlertTriangle } from 'lucide-react';
 
-const OrderReview = ({ selectedPlan, designSelections, clientInfo }) => {
+const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrder }) => {
+
   // Early return if no selections are available
   if (!designSelections?.selectedProducts || !selectedPlan) {
     return (
@@ -66,9 +67,20 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo }) => {
             <div key={index} className="border-b pb-4 last:border-b-0">
               <div className="flex items-start gap-4">
                 <img
-                  src={product.image}
+                  src={
+                    product.variants.find(v => 
+                      v.fabric === product.selectedOptions.fabric && 
+                      v.finish === product.selectedOptions.finish
+                    )?.image?.url || 
+                    product.variants[0]?.image?.url ||
+                    '/placeholder-image.png'
+                  }
                   alt={product.name}
                   className="w-24 h-24 object-cover rounded"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/placeholder-image.png';
+                  }}
                 />
                 <div className="flex-1">
                   <h4 className="font-medium text-lg">{product.name}</h4>
@@ -76,12 +88,12 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo }) => {
                   
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-600">Color</label>
-                      <p>{product.selectedOptions.color}</p>
+                      <label className="block text-sm text-gray-600">Finish</label>
+                      <p>{product.selectedOptions.finish || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-600">Material</label>
-                      <p>{product.selectedOptions.material}</p>
+                      <label className="block text-sm text-gray-600">Fabric</label>
+                      <p>{product.selectedOptions.fabric || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-600">Price</label>
@@ -103,6 +115,18 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo }) => {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Warning and Confirmation */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-2 text-amber-800">
+          <AlertTriangle className="w-5 h-5" />
+          <p className="font-medium">Important Notice</p>
+        </div>
+        <p className="mt-2 text-sm text-amber-700">
+          Once you confirm this order, you won't be able to modify your selections. 
+          Please review all details carefully before proceeding.
+        </p>
       </div>
     </div>
   );

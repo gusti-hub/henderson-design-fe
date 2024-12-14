@@ -50,19 +50,8 @@ const ProductConfiguration = () => {
   };
 
   const getImageUrl = (image) => {
-    if (!image || !image.data) return null;
-    
-    try {
-      // Handle image.data whether it's a Buffer or regular object
-      const imageData = image.data.data ? image.data.data : image.data;
-      const uint8Array = new Uint8Array(imageData);
-      const binary = uint8Array.reduce((str, byte) => str + String.fromCharCode(byte), '');
-      const base64 = btoa(binary);
-      return `data:${image.contentType};base64,${base64}`;
-    } catch (error) {
-      console.error('Error converting image:', error);
-      return null;
-    }
+    if (!image) return null;
+    return image.url || null;
   };
 
   // Remove variant
@@ -103,10 +92,30 @@ const ProductConfiguration = () => {
   // Handle variant change
   const handleVariantChange = (index, field, value) => {
     const newVariants = [...formData.variants];
-    newVariants[index] = {
-      ...newVariants[index],
-      [field]: value
-    };
+    if (field === 'image') {
+      // Handle file upload
+      const file = value;
+      if (file && file.size > 5 * 1024 * 1024) {
+        setErrors(prev => ({ 
+          ...prev, 
+          [`variant_${index}_image`]: 'Image size should be less than 5MB' 
+        }));
+        return;
+      }
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      newVariants[index] = {
+        ...newVariants[index],
+        image: file,
+        imagePreview: previewUrl
+      };
+    } else {
+      // Handle other fields
+      newVariants[index] = {
+        ...newVariants[index],
+        [field]: value
+      };
+    }
     setFormData({
       ...formData,
       variants: newVariants
@@ -145,44 +154,79 @@ const ProductConfiguration = () => {
   // Handle variant image change
   const handleVariantImageChange = (index, file) => {
     if (file) {
+      // Check file size
       if (file.size > 5 * 1024 * 1024) {
         setErrors({ ...errors, [`variant_${index}_image`]: 'Image size should be less than 5MB' });
         return;
       }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newVariants = [...formData.variants];
-        newVariants[index] = {
-          ...newVariants[index],
-          image: file,
-          imagePreview: reader.result
-        };
-        setFormData({
-          ...formData,
-          variants: newVariants
-        });
+  
+      console.log('Handling new image for variant', index, file); // Debug log
+  
+      // Create preview URL
+      const objectUrl = URL.createObjectURL(file);
+      
+      const newVariants = [...formData.variants];
+      newVariants[index] = {
+        ...newVariants[index],
+        image: file, // Store the File object for upload
+        imagePreview: objectUrl // Store preview URL
       };
-      reader.readAsDataURL(file);
-      setErrors({ ...errors, [`variant_${index}_image`]: null });
+  
+      console.log('Updated variant:', newVariants[index]); // Debug log
+  
+      setFormData({
+        ...formData,
+        variants: newVariants
+      });
+  
+      // Clear any existing image error
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`variant_${index}_image`];
+        return newErrors;
+      });
     }
   };
 
+  useEffect(() => {
+    return () => {
+      // Cleanup object URLs when component unmounts or modal closes
+      formData.variants.forEach(variant => {
+        if (variant.imagePreview && !variant.imagePreview.startsWith('http')) {
+          URL.revokeObjectURL(variant.imagePreview);
+        }
+      });
+    };
+  }, [])
+
   const handleDeleteVariantImage = (variantIndex) => {
+    console.log('Deleting image for variant', variantIndex); // Debug log
+  
     const newVariants = [...formData.variants];
+    const variant = newVariants[variantIndex];
+  
+    // Clean up object URL if it exists
+    if (variant.imagePreview && !variant.imagePreview.startsWith('http')) {
+      URL.revokeObjectURL(variant.imagePreview);
+    }
+  
+    // Reset image data
     newVariants[variantIndex] = {
-      ...newVariants[variantIndex],
+      ...variant,
       image: null,
       imagePreview: null
     };
+  
+    console.log('Updated variant after delete:', newVariants[variantIndex]); // Debug log
+  
     setFormData({
       ...formData,
       variants: newVariants
     });
-    
-    // Clear any existing image error for this variant
-    setErrors(prevErrors => {
-      const newErrors = { ...prevErrors };
+  
+    // Clear any existing image errors
+    setErrors(prev => {
+      const newErrors = { ...prev };
       delete newErrors[`variant_${variantIndex}_image`];
       return newErrors;
     });
@@ -296,45 +340,61 @@ const handleCloseModal = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-  
+
     setSubmitLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const url = modalMode === 'create'
-        ? 'http://localhost:5000/api/products'
-        : `http://localhost:5000/api/products/${selectedProduct._id}`;
-  
       const formDataToSend = new FormData();
       
       // Append basic product data
       formDataToSend.append('product_id', formData.product_id);
       formDataToSend.append('name', formData.name);
       formDataToSend.append('basePrice', formData.basePrice.toString());
-  
-      // Format variants data
-      const variantsData = formData.variants.map(variant => ({
-        finish: variant.finish || '',
-        fabric: variant.fabric || '',
-        price: parseFloat(variant.price)
-      }));
-  
-      // Append variants as JSON string
-      formDataToSend.append('variants', JSON.stringify(variantsData));
-  
-      // Append images
-      formData.variants.forEach((variant, index) => {
+
+      // Track which variants have files to upload
+      let fileCount = 0;
+      
+      // Process variants and track their image status
+      const variantsForSubmission = formData.variants.map((variant, index) => {
+        // If there's a new file to upload
         if (variant.image instanceof File) {
           formDataToSend.append('images', variant.image);
+          fileCount++;
+          return {
+            finish: variant.finish || '',
+            fabric: variant.fabric || '',
+            price: parseFloat(variant.price),
+            imageIndex: fileCount - 1 // Track which uploaded file corresponds to this variant
+          };
+        } 
+        // If it's an existing image (has URL and key)
+        else if (variant.image?.url && variant.image?.key) {
+          return {
+            finish: variant.finish || '',
+            fabric: variant.fabric || '',
+            price: parseFloat(variant.price),
+            image: variant.image // Keep existing image data
+          };
+        }
+        // If no image
+        else {
+          return {
+            finish: variant.finish || '',
+            fabric: variant.fabric || '',
+            price: parseFloat(variant.price),
+            image: null
+          };
         }
       });
-  
-      console.log('Sending data:', {
-        product_id: formData.product_id,
-        name: formData.name,
-        basePrice: formData.basePrice,
-        variants: variantsData
-      });
-  
+
+      formDataToSend.append('variants', JSON.stringify(variantsForSubmission));
+
+      console.log('Submitting variants:', variantsForSubmission); // Debug log
+      
+      const token = localStorage.getItem('token');
+      const url = modalMode === 'create'
+        ? 'http://localhost:5000/api/products'
+        : `http://localhost:5000/api/products/${selectedProduct._id}`;
+
       const response = await fetch(url, {
         method: modalMode === 'create' ? 'POST' : 'PUT',
         headers: {
@@ -342,19 +402,20 @@ const handleCloseModal = () => {
         },
         body: formDataToSend
       });
-  
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save product');
+      }
+
       const responseData = await response.json();
       console.log('Server response:', responseData);
-  
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to save product');
-      }
-  
+
       await fetchProducts();
       handleCloseModal();
     } catch (error) {
       console.error('Error:', error);
-      setErrors({ ...errors, form: error.message });
+      setErrors(prev => ({ ...prev, submit: error.message }));
     } finally {
       setSubmitLoading(false);
     }
@@ -679,40 +740,45 @@ const handleCloseModal = () => {
                     </div>
 
                     {/* Variant Image */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Variant Image
-                      </label>
-                      <div className="mt-1">
-                        {variant.imagePreview ? (
-                          <div className="relative inline-block">
-                            <img
-                              src={variant.imagePreview}
-                              alt={`Variant ${index + 1}`}
-                              className="w-32 h-32 object-cover rounded"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteVariantImage(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="w-32 h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
-                            <ImageIcon className="w-8 h-8 text-gray-400" />
-                            <span className="mt-2 text-sm text-gray-500">Upload Image</span>
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
-                            />
-                          </label>
-                        )}
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Variant Image
+                    </label>
+                    <div className="mt-1">
+                      {variant.imagePreview || (variant.image?.url) ? (
+                        <div className="relative inline-block">
+                          <img
+                            src={variant.imagePreview || variant.image?.url}
+                            alt={`Variant ${index + 1}`}
+                            className="w-32 h-32 object-cover rounded"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteVariantImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-32 h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                          <ImageIcon className="w-8 h-8 text-gray-400" />
+                          <span className="mt-2 text-sm text-gray-500">Upload Image</span>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
+                          />
+                        </label>
+                      )}
+                      {errors[`variant_${index}_image`] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors[`variant_${index}_image`]}
+                        </p>
+                      )}
                     </div>
+                  </div>
                   </div>
                 </div>
               ))}

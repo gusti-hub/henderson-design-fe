@@ -1,86 +1,395 @@
 import React, { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Building2, CreditCard, Check, Upload } from 'lucide-react';
 
-const PaymentPage = () => {
+const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelections, selectedPlan, clientInfo,  orderId }) => {
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [copied, setCopied] = useState(false);
-  const bankDetails = {
-    bank: "Bank Central Asia",
-    accountNumber: "1234567890",
-    accountName: "Henderson Design"
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+    }
   };
 
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleMethodSelect = (method) => {
+    setPaymentMethod(method);
+  };
+
+  const renderPaymentDetails = () => {
+    switch (paymentMethod) {
+      case 'bank_transfer':
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+            <h3 className="text-lg font-medium mb-4 text-[#005670]">Bank Transfer Details</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600">Bank Name</p>
+                <p className="font-medium">Bank Central Asia (BCA)</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Account Number</p>
+                <p className="font-medium">1234567890</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Account Name</p>
+                <p className="font-medium">Henderson Design</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Reference Number</p>
+                <p className="font-medium">HDG-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'wire_transfer':
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+            <h3 className="text-lg font-medium mb-4 text-[#005670]">Wire Transfer Details</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600">Bank Name</p>
+                <p className="font-medium">Bank Central Asia (BCA)</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">SWIFT Code</p>
+                <p className="font-medium">CENAIDJA</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Account Number</p>
+                <p className="font-medium">1234567890</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Account Name</p>
+                <p className="font-medium">Henderson Design</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Bank Address</p>
+                <p className="font-medium">BCA KCU Mangga Dua, Jakarta</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Reference Number</p>
+                <p className="font-medium">HDG-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'cheque':
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+            <h3 className="text-lg font-medium mb-4 text-[#005670]">Cheque Details</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600">Pay to the Order of</p>
+                <p className="font-medium">Henderson Design</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Delivery Address</p>
+                <p className="font-medium">Henderson Design Office</p>
+                <p className="text-gray-600">Jl. MH Thamrin No. 1</p>
+                <p className="text-gray-600">Jakarta 10310</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Reference Number</p>
+                <p className="font-medium">HDG-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mt-4">
+                <p className="text-sm text-yellow-700">
+                  Please write the reference number on the back of your cheque.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const handleFileUpload = async (file, installmentIndex) => {
+    try {
+      const formData = new FormData();
+      formData.append('paymentProof', file);
+      formData.append('installmentIndex', installmentIndex);
+  
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/orders/${orderId}/payment-proof`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+  
+      if (response.ok) {
+        // Update local state
+        const updatedPaymentDetails = { ...paymentDetails };
+        updatedPaymentDetails.installments[installmentIndex].status = 'uploaded';
+        updatedPaymentDetails.installments[installmentIndex].proofOfPayment = {
+          filename: file.name,
+          uploadDate: new Date()
+        };
+        onPaymentSetup(updatedPaymentDetails);
+      }
+    } catch (error) {
+      console.error('Error uploading payment proof:', error);
+    }
+  };
+  
+  // Add this component for payment status display
+  const PaymentStatusBadge = ({ status }) => {
+    const getStatusStyle = () => {
+      switch (status) {
+        case 'pending':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'uploaded':
+          return 'bg-blue-100 text-blue-800';
+        case 'verified':
+          return 'bg-green-100 text-green-800';
+        case 'rejected':
+          return 'bg-red-100 text-red-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
+  
+    return (
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusStyle()}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-light mb-6" style={{ color: '#005670' }}>
-        Complete Your Payment
-      </h2>
+    <div className="max-w-3xl mx-auto p-6">
+      <h2 className="text-2xl font-medium mb-8 text-[#005670]">Complete Your Payment</h2>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-        <h3 className="text-lg font-medium mb-4" style={{ color: '#005670' }}>
-          Bank Transfer Details
-        </h3>
-
-        <div className="space-y-4">
+      {/* Client & Plan Information */}
+      <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
+        <h3 className="text-lg font-medium mb-4 text-[#005670]">Client Information</h3>
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Bank Name</label>
-            <p className="font-medium">{bankDetails.bank}</p>
+            <p className="text-sm text-gray-600">Name</p>
+            <p className="font-medium">{clientInfo?.name}</p>
           </div>
-
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Account Number</label>
-            <div className="flex items-center gap-2">
-              <p className="font-medium">{bankDetails.accountNumber}</p>
-              <button
-                onClick={() => handleCopy(bankDetails.accountNumber)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4 text-gray-400" />
+            <p className="text-sm text-gray-600">Unit Number</p>
+            <p className="font-medium">{clientInfo?.unitNumber}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Floor Plan</p>
+            <p className="font-medium">{selectedPlan?.title}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Description</p>
+            <p className="font-medium">{selectedPlan?.description}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Method Selection */}
+      <div className="mb-8">
+        <h3 className="text-xl font-medium mb-4 text-[#005670]">Select Payment Method</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <button
+            onClick={() => handleMethodSelect('bank_transfer')}
+            className={`p-6 rounded-lg border flex flex-col items-center gap-3 transition-all
+              ${paymentMethod === 'bank_transfer' ? 'border-[#005670] bg-[#005670]/5' : 'border-gray-200'}`}
+          >
+            <Building2 
+              className={`w-8 h-8 ${paymentMethod === 'bank_transfer' ? 'text-[#005670]' : 'text-gray-400'}`}
+            />
+            <span className={`text-center ${paymentMethod === 'bank_transfer' ? 'text-[#005670]' : 'text-gray-600'}`}>
+              Bank Transfer
+            </span>
+          </button>
+
+          <button
+            onClick={() => handleMethodSelect('wire_transfer')}
+            className={`p-6 rounded-lg border flex flex-col items-center gap-3 transition-all
+              ${paymentMethod === 'wire_transfer' ? 'border-[#005670] bg-[#005670]/5' : 'border-gray-200'}`}
+          >
+            <CreditCard 
+              className={`w-8 h-8 ${paymentMethod === 'wire_transfer' ? 'text-[#005670]' : 'text-gray-400'}`}
+            />
+            <span className={`text-center ${paymentMethod === 'wire_transfer' ? 'text-[#005670]' : 'text-gray-600'}`}>
+              Wire Transfer
+            </span>
+          </button>
+
+          <button
+            onClick={() => handleMethodSelect('cheque')}
+            className={`p-6 rounded-lg border flex flex-col items-center gap-3 transition-all
+              ${paymentMethod === 'cheque' ? 'border-[#005670] bg-[#005670]/5' : 'border-gray-200'}`}
+          >
+            <Check 
+              className={`w-8 h-8 ${paymentMethod === 'cheque' ? 'text-[#005670]' : 'text-gray-400'}`}
+            />
+            <span className={`text-center ${paymentMethod === 'cheque' ? 'text-[#005670]' : 'text-gray-600'}`}>
+              Cheque
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Payment Details */}
+      {renderPaymentDetails()}
+
+      {/* Upload Payment Proof
+      {paymentMethod && paymentMethod !== 'cheque' && (
+        <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+          <h3 className="text-lg font-medium mb-4 text-[#005670]">Upload Payment Proof</h3>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              id="payment-proof"
+              onChange={handleFileChange}
+            />
+            <label
+              htmlFor="payment-proof"
+              className="cursor-pointer inline-flex items-center px-6 py-3 bg-[#005670] text-white rounded-lg hover:bg-[#004560] transition-colors"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              Select File
+            </label>
+            <p className="text-sm text-gray-500 mt-3">
+              Upload your payment receipt (JPG, PNG, PDF)
+            </p>
+            {selectedFile && (
+              <p className="text-sm text-gray-600 mt-2">
+                Selected file: {selectedFile.name}
+              </p>
+            )}
+          </div>
+        </div>
+      )} */}
+
+      {/* Order Summary */}
+      <div className="mt-8">
+        <h3 className="text-xl mb-6 text-[#005670]">Order Summary</h3>
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          {designSelections?.selectedProducts?.map((product, index) => (
+            <div key={index} className="flex items-start gap-4 border-b pb-4 mb-4 last:border-b-0">
+              <img
+                src={
+                  product.variants.find(v => 
+                    v.fabric === product.selectedOptions.fabric && 
+                    v.finish === product.selectedOptions.finish
+                  )?.image?.url || 
+                  product.variants[0]?.image?.url ||
+                  '/placeholder-image.png'
+                }
+                alt={product.name}
+                className="w-20 h-20 object-cover rounded"
+              />
+              <div className="flex-1">
+                <h4 className="font-medium">{product.name}</h4>
+                <p className="text-sm text-gray-600">Location: {product.spotName}</p>
+                {product.selectedOptions && (
+                  <p className="text-sm text-gray-600">
+                    {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
+                    {product.selectedOptions.finish && product.selectedOptions.fabric && ' - '}
+                    {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
+                  </p>
                 )}
-              </button>
+                <p className="font-medium mt-1 text-[#005670]">
+                  ${product.finalPrice.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {/* Total */}
+          <div className="pt-4 mt-4 border-t">
+            <div className="flex justify-between">
+              <span className="font-medium">Total Amount</span>
+              <span className="font-bold text-[#005670]">
+                ${totalAmount.toFixed(2)}
+              </span>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Account Name</label>
-            <p className="font-medium">{bankDetails.accountName}</p>
+      {/* Payment Schedule */}
+      <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+      <h3 className="text-lg font-medium mb-4 text-[#005670]">Payment Schedule</h3>
+      {paymentDetails?.installments?.map((installment, index) => (
+        <div key={index} className="mb-6 last:mb-0 border rounded-lg p-4">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="font-medium">
+                {index === 0 ? 'First Payment (25%)' :
+                index === 1 ? 'Second Payment (50%)' :
+                'Final Payment (25%)'}
+              </p>
+              <p className="text-sm text-gray-500">
+                Due: {new Date(installment.dueDate).toLocaleDateString()}
+              </p>
+              <p className="text-[#005670] font-medium">
+                ${installment.amount.toFixed(2)}
+              </p>
+            </div>
+            <PaymentStatusBadge status={installment.status} />
           </div>
-        </div>
-      </div>
 
-      {/* Upload Payment Proof */}
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h3 className="text-lg font-medium mb-4" style={{ color: '#005670' }}>
-          Upload Payment Proof
-        </h3>
+          {/* Current proof of payment if exists */}
+          {installment.proofOfPayment && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">
+                Upload Date: {new Date(installment.proofOfPayment.uploadDate).toLocaleDateString()}
+              </p>
+              <p className="text-sm font-medium">
+                File: {installment.proofOfPayment.filename}
+              </p>
+              {installment.status === 'rejected' && (
+                <p className="text-sm text-red-600 mt-1">
+                  Payment proof was rejected. Please upload a new one.
+                </p>
+              )}
+            </div>
+          )}
 
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            id="payment-proof"
-          />
-          <label
-            htmlFor="payment-proof"
-            className="cursor-pointer inline-block px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#005670' }}
-          >
-            Select File
-          </label>
-          <p className="text-sm text-gray-500 mt-2">
-            Upload your payment receipt (JPG, PNG, PDF)
-          </p>
+          {/* Upload section */}
+          {(installment.status === 'pending' || installment.status === 'rejected') && (
+            <div className="mt-4">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                id={`payment-proof-${index}`}
+                onChange={(e) => handleFileUpload(e.target.files[0], index)}
+              />
+              <label
+                htmlFor={`payment-proof-${index}`}
+                className="cursor-pointer inline-flex items-center px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {installment.status === 'rejected' ? 'Upload New Proof' : 'Upload Payment Proof'}
+              </label>
+            </div>
+          )}
+
+          {/* Status message */}
+          {installment.status === 'uploaded' && (
+            <p className="text-sm text-blue-600 mt-2">
+              Payment proof is under review. We'll update the status once verified.
+            </p>
+          )}
+          {installment.status === 'verified' && (
+            <p className="text-sm text-green-600 mt-2">
+              Payment has been verified. Thank you!
+            </p>
+          )}
         </div>
-      </div>
+      ))}
+    </div>
     </div>
   );
 };

@@ -10,19 +10,79 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [occupiedSpots, setOccupiedSpots] = useState({});
   const [availableProducts, setAvailableProducts] = useState([]);
 
+  useEffect(() => {
+    const restoreState = async () => {
+      try {
+        // First try to get data from localStorage for immediate display
+        const savedProducts = localStorage.getItem('selectedProducts');
+        const savedSpots = localStorage.getItem('occupiedSpots');
+        
+        if (savedProducts && savedSpots) {
+          setSelectedProducts(JSON.parse(savedProducts));
+          setOccupiedSpots(JSON.parse(savedSpots));
+        }
+        
+        // Then try to get data from the server
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/orders/user-order', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const order = await response.json();
+          if (order?.selectedProducts?.length > 0) {
+            setSelectedProducts(order.selectedProducts);
+            setOccupiedSpots(order.occupiedSpots || {});
+            
+            // Update localStorage with server data
+            localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
+            localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
+          }
+        }
+      } catch (error) {
+        console.error('Error restoring state:', error);
+      }
+    };
+  
+    restoreState();
+  }, []);
+
+  useEffect(() => {
+    const previousPlanId = localStorage.getItem('currentPlanId');
+    
+    if (previousPlanId && previousPlanId !== selectedPlan.id) {
+      // Clear all selections if floor plan changed
+      setSelectedProducts([]);
+      setOccupiedSpots({});
+      setCurrentProduct(null);
+      setSelectedTab(null);
+      setActiveSpot(null);
+      
+      // Clear localStorage
+      localStorage.removeItem('selectedProducts');
+      localStorage.removeItem('occupiedSpots');
+      localStorage.removeItem('designSelections');
+    }
+    
+    // Save current plan ID
+    localStorage.setItem('currentPlanId', selectedPlan.id);
+  }, [selectedPlan.id]);
+
   // Get dimensions and furniture spots for the selected plan
   const planDimensions = useMemo(() => 
     getPlanDimensions(selectedPlan.id), [selectedPlan]
   );
 
-  const arrayBufferToBase64 = (buffer) => {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-  };
+  // const arrayBufferToBase64 = (buffer) => {
+  //   let binary = '';
+  //   const bytes = new Uint8Array(buffer);
+  //   for (let i = 0; i < bytes.length; i++) {
+  //     binary += String.fromCharCode(bytes[i]);
+  //   }
+  //   return window.btoa(binary);
+  // };
   
   const furnitureSpots = useMemo(() => 
     generateFurnitureAreas(selectedPlan.id), [selectedPlan]
@@ -32,6 +92,11 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   useEffect(() => {
     if (selectedProducts.length > 0) {
       const totalPrice = selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0);
+      
+      // Save to localStorage
+      localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+      localStorage.setItem('occupiedSpots', JSON.stringify(occupiedSpots));
+      
       onComplete({
         selectedProducts,
         totalPrice,
@@ -39,7 +104,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         floorPlanId: selectedPlan.id
       });
     }
-  }, [selectedProducts]);
+  }, [selectedProducts, occupiedSpots]);
 
   const handleSpotClick = async (spotId) => {
     if (!occupiedSpots[spotId]) {
@@ -125,15 +190,19 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         coordinates: furnitureSpots[selectedTab]?.dimensions || {}
       };
 
-      setOccupiedSpots(prev => ({
-        ...prev,
+      const updatedOccupiedSpots = {
+        ...occupiedSpots,
         [selectedTab]: productWithOptions.id
-      }));
+      };
 
-      setSelectedProducts(prev => {
-        const updatedProducts = [...prev, newProduct];
-        return updatedProducts;
-      });
+      const updatedProducts = [...selectedProducts, newProduct];
+
+      setOccupiedSpots(updatedOccupiedSpots);
+      setSelectedProducts(updatedProducts);
+      
+      // Save immediately to localStorage
+      localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
+      localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
       
       setCurrentProduct(null);
       setSelectedTab(null);
@@ -141,17 +210,43 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
     }
   };
 
-  const handleRemoveProduct = (index) => {
+  // In AreaCustomization.jsx, modify handleRemoveProduct:
+  const handleRemoveProduct = async (index) => {
     const productToRemove = selectedProducts[index];
-    setOccupiedSpots(prev => ({
-      ...prev,
+    const updatedOccupiedSpots = {
+      ...occupiedSpots,
       [productToRemove.spotId]: null
-    }));
-    setSelectedProducts(prev => {
-      const updatedProducts = prev.filter((_, i) => i !== index);
-      return updatedProducts;
+    };
+    
+    const updatedProducts = selectedProducts.filter((_, i) => i !== index);
+    
+    // Update local state
+    setOccupiedSpots(updatedOccupiedSpots);
+    setSelectedProducts(updatedProducts);
+    
+    // Update localStorage
+    localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
+    localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
+    
+    // Call onComplete with updated data
+    onComplete({
+      selectedProducts: updatedProducts,
+      totalPrice: updatedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
+      spotSelections: updatedOccupiedSpots,
+      floorPlanId: selectedPlan.id
     });
   };
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      // Save state before component unmounts
+      if (selectedProducts.length > 0) {
+        localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+        localStorage.setItem('occupiedSpots', JSON.stringify(occupiedSpots));
+      }
+    };
+  }, [selectedProducts, occupiedSpots]);
 
   const CustomizationModal = ({ product, onClose, onAdd }) => {
     const [selectedOptions, setSelectedOptions] = useState({
@@ -166,23 +261,17 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         variant.fabric === selectedOptions.fabric && 
         variant.finish === selectedOptions.finish
       );
-  
-      // Return image from selected variant if it exists
-      if (selectedVariant?.image?.data) {
-        return {
-          contentType: selectedVariant.image.contentType,
-          data: selectedVariant.image.data.data
-        };
+    
+      // Return image URL from selected variant if it exists
+      if (selectedVariant?.image?.url) {
+        return selectedVariant.image.url;
       }
-  
-      // Otherwise return first variant's image if available
-      if (product.variants[0]?.image?.data) {
-        return {
-          contentType: product.variants[0].image.contentType,
-          data: product.variants[0].image.data.data
-        };
+    
+      // If no selected variant image, try first variant
+      if (product.variants[0]?.image?.url) {
+        return product.variants[0].image.url;
       }
-  
+    
       return null;
     };
   
@@ -228,9 +317,13 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           {/* Display image */}
           {image ? (
             <img
-              src={`data:${image.contentType};base64,${arrayBufferToBase64(image.data)}`}
+              src={image}
               alt={product.name}
               className="w-full h-64 object-cover rounded-lg mb-6"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/placeholder-image.png'; // Add fallback image
+              }}
             />
           ) : (
             <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-6">
@@ -381,12 +474,20 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                     key={product._id}
                     className="bg-white rounded-lg shadow-sm overflow-hidden border"
                   >
-                    {product.image && (
+                    {product.variants[0]?.image?.url ? (
                       <img
-                        src={`data:${product.image.contentType};base64,${arrayBufferToBase64(product.image.data.data)}`}
+                        src={product.variants[0].image.url}
                         alt={product.name}
                         className="w-full h-48 object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/placeholder-image.png'; // Add a fallback image
+                        }}
                       />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                        <span className="text-gray-400">No image</span>
+                      </div>
                     )}
                     <div className="p-4">
                       <h3 className="text-lg font-semibold">
@@ -419,23 +520,44 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           <div className="col-span-1 bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold mb-6">Selected Products</h3>
             {selectedProducts.length === 0 ? (
-              <p className="text-gray-500">No products selected yet</p>
-            ) : (
+                <div className="text-center py-6">
+                  <p className="text-gray-500 mb-2">No products selected yet</p>
+                  <p className="text-sm text-amber-600 flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    Please select at least one product to proceed
+                  </p>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {selectedProducts.map((product, index) => (
                   <div key={index} className="flex justify-between items-center border-b pb-4">
                     <div className="flex gap-4">
                       <img
-                        src={product.image}
+                        src={
+                          product.variants.find(v => 
+                            v.fabric === product.selectedOptions.fabric && 
+                            v.finish === product.selectedOptions.finish
+                          )?.image?.url || 
+                          product.variants[0]?.image?.url ||
+                          '/placeholder-image.png'
+                        }
                         alt={product.name}
                         className="w-20 h-20 object-cover rounded"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/placeholder-image.png';
+                        }}
                       />
                       <div>
                         <h4 className="font-semibold">{product.name}</h4>
                         <p className="text-xs text-gray-500">{product.spotName}</p>
-                        <p className="text-sm text-gray-600">
-                          {product.selectedOptions.color} - {product.selectedOptions.material}
-                        </p>
+                        {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && (
+                          <p className="text-sm text-gray-600">
+                            {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
+                            {product.selectedOptions.finish && product.selectedOptions.fabric && ' - '}
+                            {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
+                          </p>
+                        )}
                         <p className="text-gray-600">${product.finalPrice}</p>
                       </div>
                     </div>
