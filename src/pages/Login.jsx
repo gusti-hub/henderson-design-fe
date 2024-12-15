@@ -13,17 +13,17 @@ const Login = () => {
 
   const slides = [
     {
-      image: "./public/images/pict_1.jpg", // Using placeholder as required
+      image: "/images/pict_1.jpg", // Using placeholder as required
       title: "LUXURY LIVING",
       description: "Creating spaces that inspire and elevate your lifestyle"
     },
     {
-      image: "./public/images/pict_2.jpg",
+      image: "/images/pict_2.jpg",
       title: "THOUGHTFUL DESIGN",
       description: "Every detail carefully curated for your perfect home"
     },
     {
-      image: "./public/images/pict_3.png",
+      image: "/images/pict_3.png",
       title: "EXPERT CRAFTSMANSHIP",
       description: "Bringing luxury and comfort to every corner"
     }
