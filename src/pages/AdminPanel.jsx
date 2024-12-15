@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import UserManagement from './UserManagement';
 import Profile from './Profile';
-import AdminOrderManagement from './AdminOrderManagement';
+import AdminOrderList from './AdminOrderList';
+import AdminOrderDetail from './AdminOrderDetail';
 import ClientManagement from './ClientManagement';
 import ProductConfiguration from './ProductConfiguration';
 import ProductMapping from './ProductMapping';
 import { useNavigate } from 'react-router-dom';
+import { backendServer } from '../utils/info';
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -73,19 +75,24 @@ const AdminPanel = () => {
   };
 
   const renderContent = () => {
+    if (activeMenu.startsWith('/orders/')) {
+      const orderId = activeMenu.split('/orders/')[1];
+      return <AdminOrderDetail orderId={orderId} setActiveMenu={setActiveMenu} />;
+    }
+  
     switch (activeMenu) {
       case '/user-management':
         return <UserManagement />;
       case '/client-management':
         return <ClientManagement />;  
       case '/orders':
-        return <AdminOrderManagement />;
+        return <AdminOrderList onOrderClick={(orderId) => setActiveMenu(`/orders/${orderId}`)} />;
       case '/profile':
         return <Profile />;
       case '/product':
-        return <ProductConfiguration />
+        return <ProductConfiguration />;
       case '/product-mapping':
-        return <ProductMapping />  
+        return <ProductMapping />;  
       default:
         return (
           <div>

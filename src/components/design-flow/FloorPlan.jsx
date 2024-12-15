@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { backendServer } from '../../utils/info';
 
 const FloorPlan = ({ onAreaSelect, onAreaHover, selectedArea }) => {
   const areas = [

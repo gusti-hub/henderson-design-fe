@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Key, User, Mail, Save } from 'lucide-react';
+import { backendServer } from '../utils/info';
 
 const Profile = () => {
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ const Profile = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${backendServer}/api/users/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -99,7 +100,7 @@ const Profile = () => {
         updateData.newPassword = formData.newPassword;
       }
   
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${backendServer}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

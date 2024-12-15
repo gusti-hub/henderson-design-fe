@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, Image, ArrowLeft, ArrowRight } from 'lucide-react';
+import { backendServer } from '../../utils/info';
 
 const FurnitureCustomization = ({ selectedArea }) => {
   const [selectedFurniture, setSelectedFurniture] = useState(null);

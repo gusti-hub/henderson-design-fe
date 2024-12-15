@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
 import { Building2, CreditCard, Check, Upload } from 'lucide-react';
+import { backendServer } from '../../utils/info';
 
 const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelections, selectedPlan, clientInfo,  orderId }) => {
   const [paymentMethod, setPaymentMethod] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [copied, setCopied] = useState(false);
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
+  const [uploadingIndex, setUploadingIndex] = useState(null);
 
   const handleMethodSelect = (method) => {
     setPaymentMethod(method);
@@ -111,13 +104,33 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
   };
 
   const handleFileUpload = async (file, installmentIndex) => {
+
+    const confirmed = window.confirm(
+      "Are you sure you want to upload this payment proof? Once uploaded, you cannot change the file."
+    );
+  
+    if (!confirmed) {
+      return;
+    }
+
     try {
+      setUploadingIndex(installmentIndex);
+  
       const formData = new FormData();
       formData.append('paymentProof', file);
       formData.append('installmentIndex', installmentIndex);
   
+      // Update local state immediately for better UX
+      const updatedPaymentDetails = { ...paymentDetails };
+      updatedPaymentDetails.installments[installmentIndex].status = 'uploaded';
+      updatedPaymentDetails.installments[installmentIndex].proofOfPayment = {
+        filename: file.name,
+        uploadDate: new Date()
+      };
+      onPaymentSetup(updatedPaymentDetails);
+  
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/orders/${orderId}/payment-proof`, {
+      const response = await fetch(`${backendServer}/api/orders/${orderId}/payment-proof`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -125,18 +138,33 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
         body: formData
       });
   
-      if (response.ok) {
-        // Update local state
-        const updatedPaymentDetails = { ...paymentDetails };
-        updatedPaymentDetails.installments[installmentIndex].status = 'uploaded';
-        updatedPaymentDetails.installments[installmentIndex].proofOfPayment = {
-          filename: file.name,
-          uploadDate: new Date()
-        };
-        onPaymentSetup(updatedPaymentDetails);
+      if (!response.ok) {
+        throw new Error('Failed to upload payment proof');
       }
+  
+      const data = await response.json();
+      
+      // Update again with server response to get the file URL
+      // if (data.paymentDetails) {
+      //   //onPaymentSetup(data.paymentDetails);
+
+        
+      // }
+  
+      // Show success message
+      alert('Payment proof uploaded successfully');
+      window.location.reload();
     } catch (error) {
       console.error('Error uploading payment proof:', error);
+      alert('Failed to upload payment proof. Please try again.');
+      
+      // Revert local state if upload failed
+      const revertedPaymentDetails = { ...paymentDetails };
+      revertedPaymentDetails.installments[installmentIndex].status = 'pending';
+      revertedPaymentDetails.installments[installmentIndex].proofOfPayment = null;
+      onPaymentSetup(revertedPaymentDetails);
+    } finally {
+      setUploadingIndex(null);
     }
   };
   
@@ -345,14 +373,21 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
               <p className="text-sm text-gray-600">
                 Upload Date: {new Date(installment.proofOfPayment.uploadDate).toLocaleDateString()}
               </p>
-              <p className="text-sm font-medium">
-                File: {installment.proofOfPayment.filename}
-              </p>
-              {installment.status === 'rejected' && (
-                <p className="text-sm text-red-600 mt-1">
-                  Payment proof was rejected. Please upload a new one.
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium">
+                  File: {installment.proofOfPayment.filename}
                 </p>
-              )}
+                {installment.proofOfPayment.url && (
+                  <a 
+                    href={installment.proofOfPayment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#005670] hover:underline text-sm flex items-center"
+                  >
+                    Download
+                  </a>
+                )}
+              </div>
             </div>
           )}
 
@@ -364,14 +399,20 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
                 accept="image/*,.pdf"
                 className="hidden"
                 id={`payment-proof-${index}`}
-                onChange={(e) => handleFileUpload(e.target.files[0], index)}
+                onChange={(e) => {
+                  if (e.target.files[0]) {
+                    handleFileUpload(e.target.files[0], index);
+                  }
+                }}
               />
               <label
                 htmlFor={`payment-proof-${index}`}
                 className="cursor-pointer inline-flex items-center px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
               >
                 <Upload className="w-4 h-4 mr-2" />
-                {installment.status === 'rejected' ? 'Upload New Proof' : 'Upload Payment Proof'}
+                {uploadingIndex === index ? 'Uploading...' : 
+                installment.status === 'rejected' ? 'Upload New Proof' : 
+                'Upload Payment Proof'}
               </label>
             </div>
           )}
@@ -385,6 +426,11 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
           {installment.status === 'verified' && (
             <p className="text-sm text-green-600 mt-2">
               Payment has been verified. Thank you!
+            </p>
+          )}
+          {installment.status === 'rejected' && (
+            <p className="text-sm text-red-600 mt-2">
+              Payment proof was rejected. Please upload a new one.
             </p>
           )}
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { backendServer } from '../utils/info';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -79,7 +80,7 @@ const validateForm = () => {
     setLoading(true);
   
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${backendServer}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,7 +102,7 @@ const validateForm = () => {
       // Check for existing order before redirecting
       if (data.role === 'user') {
         try {
-          const orderResponse = await fetch('http://localhost:5000/api/orders/user-order', {
+          const orderResponse = await fetch(`${backendServer}/api/orders/user-order`, {
             headers: {
               'Authorization': `Bearer ${data.token}`
             }

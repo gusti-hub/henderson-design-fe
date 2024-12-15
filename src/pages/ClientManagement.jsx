@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
+import { backendServer } from '../utils/info';
 
 const ClientManagement = () => {
   const [clients, setClients] = useState([]);
@@ -50,7 +51,7 @@ const ClientManagement = () => {
   const fetchFloorPlans = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/clients/floor-plans', {
+      const response = await fetch(`${backendServer}/api/clients/floor-plans`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -67,7 +68,7 @@ const ClientManagement = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:5000/api/clients?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`, 
+        `${backendServer}/api/clients?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`, 
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -94,8 +95,8 @@ const ClientManagement = () => {
     try {
       const token = localStorage.getItem('token');
       const url = modalMode === 'create' 
-        ? 'http://localhost:5000/api/clients'
-        : `http://localhost:5000/api/clients/${selectedClient._id}`;
+        ? `${backendServer}/api/clients`
+        : `${backendServer}/api/clients/${selectedClient._id}`;
   
       // Only include password in the request if it's being changed
       const submitData = { ...formData };
@@ -234,7 +235,7 @@ const ClientManagement = () => {
                         if (window.confirm('Are you sure you want to delete this client?')) {
                           try {
                             const token = localStorage.getItem('token');
-                            const response = await fetch(`http://localhost:5000/api/clients/${client._id}`, {
+                            const response = await fetch(`${backendServer}/api/clients/${client._id}`, {
                               method: 'DELETE',
                               headers: {
                                 'Authorization': `Bearer ${token}`

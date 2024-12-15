@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Trash2, AlertCircle } from 'lucide-react';
+import { backendServer } from '../../utils/info';
 
 const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [selectedTab, setSelectedTab] = useState(null);

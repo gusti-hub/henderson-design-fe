@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, ShieldCheck } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
+import { backendServer } from '../utils/info';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -46,7 +47,7 @@ const UserManagement = () => {
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(
-            `http://localhost:5000/api/users/admins?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
+            `${backendServer}/api/users/admins?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
             {
                 headers: {
                 'Authorization': `Bearer ${token}`
@@ -92,8 +93,8 @@ const UserManagement = () => {
     try {
       const token = localStorage.getItem('token');
       const url = modalMode === 'create' 
-        ? 'http://localhost:5000/api/users/admins'
-        : `http://localhost:5000/api/users/admins/${selectedUser._id}`;
+        ? `${backendServer}/api/users/admins`
+        : `${backendServer}/api/users/admins/${selectedUser._id}`;
   
       // Only include password if it's provided in edit mode or if creating new user
       const submitData = { ...formData };
@@ -216,7 +217,7 @@ const UserManagement = () => {
                       onClick={async () => {
                         if (window.confirm('Are you sure you want to delete this admin user?')) {
                           const token = localStorage.getItem('token');
-                          await fetch(`http://localhost:5000/api/users/admins/${user._id}`, {
+                          await fetch(`${backendServer}/api/users/admins/${user._id}`, {
                             method: 'DELETE',
                             headers: {
                               'Authorization': `Bearer ${token}`

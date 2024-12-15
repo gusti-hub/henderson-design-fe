@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
+import { backendServer } from '../utils/info';
 
 const ProductMapping = () => {
   const [mappings, setMappings] = useState([]);
@@ -54,7 +55,7 @@ const ProductMapping = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:5000/api/location-mappings?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
+        `${backendServer}/api/location-mappings?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -74,7 +75,7 @@ const ProductMapping = () => {
   const fetchFloorPlans = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/clients/floor-plans', {
+      const response = await fetch(`${backendServer}/api/clients/floor-plans`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -89,7 +90,7 @@ const ProductMapping = () => {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/products/basic-info', {
+      const response = await fetch(`${backendServer}/api/products/basic-info`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -120,8 +121,8 @@ const ProductMapping = () => {
     try {
       const token = localStorage.getItem('token');
       const url = modalMode === 'create' 
-        ? 'http://localhost:5000/api/location-mappings'
-        : `http://localhost:5000/api/location-mappings/${selectedMapping._id}`;
+        ? `${backendServer}/api/location-mappings`
+        : `${backendServer}/api/location-mappings/${selectedMapping._id}`;
 
       const response = await fetch(url, {
         method: modalMode === 'create' ? 'POST' : 'PUT',
@@ -231,7 +232,7 @@ const ProductMapping = () => {
                       onClick={async () => {
                         if (window.confirm('Are you sure you want to delete this mapping?')) {
                           const token = localStorage.getItem('token');
-                          await fetch(`http://localhost:5000/api/location-mappings/${mapping._id}`, {
+                          await fetch(`${backendServer}/api/location-mappings/${mapping._id}`, {
                             method: 'DELETE',
                             headers: {
                               'Authorization': `Bearer ${token}`

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Trash2, AlertCircle } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
+import { backendServer } from '../../utils/info';
 
 const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [selectedTab, setSelectedTab] = useState(null);
@@ -24,7 +25,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         
         // Then try to get data from the server
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/orders/user-order', {
+        const response = await fetch(`${backendServer}/api/orders/user-order`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -116,7 +117,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         
         // Fetch products for this location from mapping
         const mappingResponse = await fetch(
-          `http://localhost:5000/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.id}`,
+          `${backendServer}/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.id}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -131,7 +132,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
             try {
               // Fetch variants for each product
               const variantsResponse = await fetch(
-                `http://localhost:5000/api/products/${product._id}/variants`,
+                `${backendServer}/api/products/${product._id}/variants`,
                 {
                   headers: {
                     'Authorization': `Bearer ${token}`
@@ -167,7 +168,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const handleCustomize = async (product) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/products/${product._id}`, {
+      const response = await fetch(`${backendServer}/api/products/${product._id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -4,6 +4,7 @@ import FloorPlanSelection from './FloorPlanSelection';
 import OrderReview from './OrderReview';
 import PaymentPage from './PaymentPage';
 import AreaCustomization from './AreaCustomization';
+import { backendServer } from '../../utils/info';
 
 const UserDesignFlow = () => {
   const [currentStep, setCurrentStep] = useState(() => {
@@ -57,7 +58,7 @@ const UserDesignFlow = () => {
           return;
         }
   
-        const response = await fetch('http://localhost:5000/api/orders/user-order', {
+        const response = await fetch(`${backendServer}/api/orders/user-order`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -116,7 +117,7 @@ const UserDesignFlow = () => {
   // const checkExistingOrder = async () => {
   //   try {
   //     const token = localStorage.getItem('token');
-  //     const response = await fetch('http://localhost:5000/api/orders/user-order', {
+  //     const response = await fetch('${backendServer}/api/orders/user-order', {
   //       headers: {
   //         'Authorization': `Bearer ${token}`
   //       }
@@ -156,8 +157,8 @@ const UserDesignFlow = () => {
       const token = localStorage.getItem('token');
       const method = existingOrder ? 'PUT' : 'POST';
       const endpoint = existingOrder 
-        ? `http://localhost:5000/api/orders/${existingOrder._id}`
-        : 'http://localhost:5000/api/orders';
+        ? `${backendServer}/api/orders/${existingOrder._id}`
+        : `${backendServer}/api/orders`;
   
       let updatedPaymentDetails = {
         method: paymentDetails?.method?.method || paymentDetails?.method || '',
@@ -237,7 +238,7 @@ const UserDesignFlow = () => {
       if (orderId) {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+          const response = await fetch(`${backendServer}/api/orders/${orderId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -330,7 +331,7 @@ const UserDesignFlow = () => {
       try {
         // Update order status to confirmed
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/orders/${existingOrder._id}`, {
+        const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -393,7 +394,7 @@ const UserDesignFlow = () => {
   
       // Proceed with floor plan change
       if (existingOrder && existingOrder.selectedPlan?.id !== planDetails.id) {
-        const response = await fetch(`http://localhost:5000/api/orders/${existingOrder._id}`, {
+        const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,

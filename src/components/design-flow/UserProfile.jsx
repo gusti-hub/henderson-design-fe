@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, Building } from 'lucide-react';
+import { backendServer } from '../../utils/info';
 
 const UserProfile = () => {
   const [profile, setProfile] = useState({
@@ -18,7 +19,7 @@ const UserProfile = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${backendServer}/api/users/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -35,7 +36,7 @@ const UserProfile = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${backendServer}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

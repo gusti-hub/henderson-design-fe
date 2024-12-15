@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, Image as ImageIcon } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
+import { backendServer } from '../utils/info';
 
 const ProductConfiguration = () => {
   // Predefined attribute options
@@ -255,7 +256,7 @@ const handleCloseModal = () => {
       try {
         const token = localStorage.getItem('token');
         const response = await fetch(
-          `http://localhost:5000/api/products/${productId}`,
+          `${backendServer}/api/products/${productId}`,
           {
             method: 'DELETE',
             headers: {
@@ -310,7 +311,7 @@ const handleCloseModal = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:5000/api/products?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
+        `${backendServer}/api/products?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -392,8 +393,8 @@ const handleCloseModal = () => {
       
       const token = localStorage.getItem('token');
       const url = modalMode === 'create'
-        ? 'http://localhost:5000/api/products'
-        : `http://localhost:5000/api/products/${selectedProduct._id}`;
+        ? `${backendServer}/api/products`
+        : `${backendServer}/api/products/${selectedProduct._id}`;
 
       const response = await fetch(url, {
         method: modalMode === 'create' ? 'POST' : 'PUT',

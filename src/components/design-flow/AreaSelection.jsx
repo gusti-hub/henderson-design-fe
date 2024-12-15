@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import FloorPlan from './FloorPlan';
+import { backendServer } from '../../utils/info';
 
 const AreaSelection = ({ selectedPlan, onAreaSelect }) => {
   const [selectedArea, setSelectedArea] = useState(null);

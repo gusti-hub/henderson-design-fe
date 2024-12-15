@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { backendServer } from '../../utils/info';
 
 const FloorPlanSelection = ({ onNext }) => {
   const [selectedPlanType, setSelectedPlanType] = useState(null);
@@ -221,7 +222,7 @@ const FloorPlanSelection = ({ onNext }) => {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
 
-      const response = await fetch(`http://localhost:5000/api/clients/${userId}`, {
+      const response = await fetch(`${backendServer}/api/clients/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
