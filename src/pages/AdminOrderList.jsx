@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2, Download, FileText } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import Pagination from '../components/common/Pagination';
 
 const AdminOrderList = ({ onOrderClick }) => {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchOrders();
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, currentPage]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${backendServer}/api/orders?search=${searchTerm}&status=${filterStatus}`, 
+        `${backendServer}/api/orders?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}&status=${filterStatus}`, 
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -26,6 +30,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       );
       const data = await response.json();
       setOrders(data.orders);
+      setTotalPages(data.totalPages);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -33,15 +38,59 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
-  const getStepLabel = (step) => {
-    const steps = {
-      1: 'Choose Floor Plan',
-      2: 'Design Your Space',
-      3: 'Review Order',
-      4: 'Payment Schedule'
-    };
-    return steps[step] || 'Unknown Step';
+  const handleDownload = async (orderId, type) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${backendServer}/api/orders/${orderId}/${type}`, 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download ${type}`);
+      }
+  
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-${type}-${orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(`Error downloading ${type}:`, error);
+      alert(`Failed to download ${type}. Please try again.`);
+    }
   };
+  
+
+  const getOrderStatus = (order) => {
+    // If order has a status, use it directly
+    if (order.status) {
+      return order.status.charAt(0).toUpperCase() + order.status.slice(1);
+    }
+  
+    // Fallback to step-based status
+    switch (order.step) {
+      case 1:
+        return 'Floor Plan Selection';
+      case 2:
+        return 'Space Design';
+      case 3:
+        return 'Order Review';
+      case 4:
+        return 'Payment Schedule';
+      default:
+        return 'In Progress';
+    }
+  };
+  
 
   return (
     <div className="p-6">
@@ -50,7 +99,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <input
           type="text"
-          placeholder="Search by client name..."
+          placeholder="Search by client name or order ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="px-4 py-2 border rounded-lg"
@@ -61,9 +110,11 @@ const AdminOrderList = ({ onOrderClick }) => {
           className="px-4 py-2 border rounded-lg"
         >
           <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="processing">Processing</option>
           <option value="completed">Completed</option>
+          <option value="pending">Floor Plan Selection</option>
+          <option value="designing">Space Design</option>
+          <option value="reviewing">Order Review</option>
+          <option value="payment">Payment Schedule</option>
         </select>
       </div>
 
@@ -74,32 +125,71 @@ const AdminOrderList = ({ onOrderClick }) => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floor Plan</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Step</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {orders.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">{order.clientInfo?.name}</td>
-                  <td className="px-6 py-4">{order.selectedPlan?.title}</td>
-                  <td className="px-6 py-4">{getStepLabel(order.step)}</td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => onOrderClick(order._id)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan="4" className="px-6 py-4 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   </td>
                 </tr>
-              ))}
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                    No orders found
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">{order.clientInfo?.name}</td>
+                    <td className="px-6 py-4">{order.selectedPlan?.title}</td>
+                    <td className="px-6 py-4">{getOrderStatus(order)}</td>
+                    <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => onOrderClick(order._id)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="View Details"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(order._id, 'summary')}
+                        className="text-gray-600 hover:text-gray-800"
+                        title="Download Summary"
+                      >
+                        <Download className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(order._id, 'proposal')}
+                        className="text-gray-600 hover:text-gray-800"
+                        title="Download Proposal"
+                      >
+                        <FileText className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination 
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={(page) => setCurrentPage(page)}
+      />
     </div>
   );
 };
+
 
 export default AdminOrderList;

@@ -19,11 +19,12 @@ const ProductConfiguration = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     product_id: '',
     name: '',
+    description: '',
     basePrice: '',
     variants: [] // Will store combinations of attributes with their specific prices and images
   });
@@ -137,6 +138,7 @@ const ProductConfiguration = () => {
     setFormData({
       product_id: product.product_id,
       name: product.name,
+      description: product.description || '',
       basePrice: product.basePrice,
       variants: product.variants.map(v => ({
         ...v,
@@ -240,6 +242,7 @@ const handleCloseModal = () => {
     setFormData({
       product_id: '',
       name: '',
+      description: '',
       basePrice: '',
       variants: []
     });
@@ -281,6 +284,7 @@ const handleCloseModal = () => {
     const newErrors = {};
     if (!formData.product_id) newErrors.product_id = 'Product ID is required';
     if (!formData.name) newErrors.name = 'Name is required';
+    if (!formData.description) newErrors.description = 'Description is required';
     if (!formData.basePrice || isNaN(formData.basePrice)) {
       newErrors.basePrice = 'Valid base price is required';
     }
@@ -349,6 +353,7 @@ const handleCloseModal = () => {
       // Append basic product data
       formDataToSend.append('product_id', formData.product_id);
       formDataToSend.append('name', formData.name);
+      formDataToSend.append('description', formData.description);
       formDataToSend.append('basePrice', formData.basePrice.toString());
 
       // Track which variants have files to upload
@@ -467,6 +472,7 @@ const handleCloseModal = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th> */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Base Price</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variants</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -483,6 +489,11 @@ const handleCloseModal = () => {
             <tr key={product._id}>
               <td className="px-6 py-4">{product.product_id}</td>
               <td className="px-6 py-4">{product.name}</td>
+              {/* <td className="px-6 py-4">
+                  <div className="max-w-xs overflow-hidden text-ellipsis">
+                    {product.description}
+                  </div>
+              </td> */}
               <td className="px-6 py-4">${product.basePrice}</td>
               <td className="px-6 py-4">
                 <div className="space-y-2">
@@ -551,8 +562,8 @@ const handleCloseModal = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-4xl w-full p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-light" style={{ color: '#005670' }}>
                 {modalMode === 'create' ? 'Add New Product' : 'Edit Product'}
@@ -592,6 +603,22 @@ const handleCloseModal = () => {
                   />
                   {errors.name && (
                     <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                  )}
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                    placeholder="Enter product details including dimensions, materials, and other specifications..."
+                  />
+                  {errors.description && (
+                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
                   )}
                 </div>
 

@@ -1,10 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, X, Download } from 'lucide-react';
+import { ArrowLeft, Check, X } from 'lucide-react';
 import { backendServer } from '../utils/info';
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, action }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-medium mb-2">Confirm Payment Status Update</h3>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to {action?.status} this payment? This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 border rounded-lg"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     fetchOrderDetails();
@@ -27,7 +58,14 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
     }
   };
 
-  const handlePaymentVerification = async (installmentIndex, status) => {
+  const handlePaymentAction = (installmentIndex, status) => {
+    setPendingAction({ installmentIndex, status });
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!pendingAction) return;
+
     try {
       const token = localStorage.getItem('token');
       await fetch(`${backendServer}/api/orders/${orderId}/payment-status`, {
@@ -37,33 +75,23 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          installmentIndex,
-          status: status === 'approve' ? 'verified' : 'rejected'
+          installmentIndex: pendingAction.installmentIndex,
+          status: pendingAction.status === 'approve' ? 'verified' : 'rejected'
         })
       });
       fetchOrderDetails();
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to update payment status');
+    } finally {
+      setShowConfirmDialog(false);
+      setPendingAction(null);
     }
   };
 
-  const downloadPDF = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${backendServer}/api/orders/${orderId}/pdf`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `order-${orderId}.pdf`;
-      a.click();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to download PDF');
-    }
+  const handleCloseDialog = () => {
+    setShowConfirmDialog(false);
+    setPendingAction(null);
   };
 
   if (loading) {
@@ -77,23 +105,14 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setActiveMenu('/orders')}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <h2 className="text-2xl font-medium text-[#005670]">Order Details</h2>
-        </div>
-        <button
-          onClick={downloadPDF}
-          className="flex items-center gap-2 px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+      <div className="flex items-center gap-4 mb-6">
+        <button 
+          onClick={() => setActiveMenu('/orders')}
+          className="text-gray-600 hover:text-gray-800"
         >
-          <Download className="w-4 h-4" />
-          Download Summary
+          <ArrowLeft className="w-6 h-6" />
         </button>
+        <h2 className="text-2xl font-medium text-[#005670]">Order Details</h2>
       </div>
 
       {/* Client Information */}
@@ -206,14 +225,14 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
               {installment.status === 'uploaded' && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handlePaymentVerification(index, 'approve')}
+                    onClick={() => handlePaymentAction(index, 'approve')}
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
                     <Check className="w-4 h-4" />
                     Approve
                   </button>
                   <button
-                    onClick={() => handlePaymentVerification(index, 'reject')}
+                    onClick={() => handlePaymentAction(index, 'reject')}
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                   >
                     <X className="w-4 h-4" />
@@ -225,6 +244,14 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
           ))}
         </div>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmDialog}
+        onClose={handleCloseDialog}
+        onConfirm={handleConfirmAction}
+        action={pendingAction}
+      />
     </div>
   );
 };

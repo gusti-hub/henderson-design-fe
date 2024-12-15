@@ -307,14 +307,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full m-4">
+        <div className="bg-white rounded-lg p-6 max-w-2xl w-full m-4 overflow-y-auto max-h-[90vh]">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold">{product.name}</h3>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
               <X size={20} />
             </button>
           </div>
-  
+    
           {/* Display image */}
           {image ? (
             <img
@@ -331,7 +331,19 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
               <span className="text-gray-400">No image available</span>
             </div>
           )}
-  
+    
+          <div className="space-y-6 mb-6">
+            <div>
+              <h4 className="font-semibold mb-2">Description</h4>
+              <textarea
+                readOnly
+                value={product.description || 'No description available.'}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#005670]/20 resize-none overflow-y-auto max-h-56 bg-gray-50 text-gray-600"
+                rows={6} // Adjust the number of rows to show the desired default height
+              />
+            </div>
+          </div>
+    
           <div className="space-y-6 mb-6">
             {/* Finish options */}
             {hasFinishOptions && (
@@ -354,7 +366,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                 </div>
               </div>
             )}
-  
+    
             {/* Fabric options */}
             {hasFabricOptions && (
               <div>
@@ -376,18 +388,18 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                 </div>
               </div>
             )}
-  
+    
             <div className="text-xl font-bold">
               Total Price: ${getVariantPrice()}
             </div>
           </div>
-  
+    
           <button
             onClick={() => {
               onAdd({
                 ...product,
                 selectedOptions,
-                finalPrice: getVariantPrice()
+                finalPrice: getVariantPrice(),
               });
             }}
             disabled={!isValid()}
@@ -402,6 +414,8 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         </div>
       </div>
     );
+    
+    
   };
   
 
