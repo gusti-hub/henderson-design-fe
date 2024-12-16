@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Trash2, AlertCircle } from 'lucide-react';
+import { X, Trash2, AlertCircle, Loader } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import { backendServer } from '../../utils/info';
 
@@ -11,6 +11,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [occupiedSpots, setOccupiedSpots] = useState({});
   const [availableProducts, setAvailableProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
     const restoreState = async () => {
@@ -292,6 +293,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
       finish: '',
       fabric: ''
     });
+    const [modalImageLoading, setModalImageLoading] = useState(true);
   
     // Helper function to get variant image
     const getVariantImage = () => {
@@ -354,13 +356,22 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           </div>
     
           {/* Display image */}
+          {modalImageLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <Loader className="w-12 h-12 text-[#005670] animate-spin" />
+            </div>
+          )}
           {image ? (
             <div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white">
               <img
                 src={image}
                 alt={product.name}
-                className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                className={`max-w-full max-h-full h-auto w-auto object-contain rounded-lg transition-opacity duration-300 ${
+                  modalImageLoading ? 'opacity-0' : 'opacity-100'
+                }`}
+                onLoad={() => setModalImageLoading(false)}
                 onError={(e) => {
+                  setModalImageLoading(false);
                   e.target.onerror = null;
                   e.target.src = '/placeholder-image.png';
                 }}
@@ -580,13 +591,22 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                     key={product._id}
                     className="bg-white rounded-lg shadow-sm overflow-hidden border"
                   >
+                    {imageLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                        <Loader className="w-8 h-8 text-[#005670] animate-spin" />
+                      </div>
+                    )}
                     {product.variants[0]?.image?.url ? (
                       <div className="relative w-full h-48">
                         <img
                           src={product.variants[0].image.url}
                           alt={product.name}
-                          className="absolute inset-0 w-full h-full object-contain"
+                          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${
+                            imageLoading ? 'opacity-0' : 'opacity-100'
+                          }`}
+                          onLoad={() => setImageLoading(false)}
                           onError={(e) => {
+                            setImageLoading(false);
                             e.target.onerror = null;
                             e.target.src = '/placeholder-image.png';
                           }}
