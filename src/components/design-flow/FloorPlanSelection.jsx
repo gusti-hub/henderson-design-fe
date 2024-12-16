@@ -130,7 +130,7 @@ const FloorPlanSelection = ({ onNext }) => {
           id: 'custom-c',
           title: 'Residence 03B',
           description: '2 Bedroom / 2.5 Bath + Den, Level: 7-37 (Odd)',
-          image: '/images/custom_plan/Alia_03B.svg',
+          image: '/images/custom_plan/Alia_03B.png',
           details: [
             'Total: 1,493 Sq. Ft.',
             'Interior: 1,435 Sq. Ft.',

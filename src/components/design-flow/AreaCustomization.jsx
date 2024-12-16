@@ -10,6 +10,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [activeSpot, setActiveSpot] = useState(null);
   const [occupiedSpots, setOccupiedSpots] = useState({});
   const [availableProducts, setAvailableProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const restoreState = async () => {
@@ -108,62 +109,92 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   }, [selectedProducts, occupiedSpots]);
 
   const handleSpotClick = async (spotId) => {
-    if (!occupiedSpots[spotId]) {
+    // First check if spot exists in occupiedSpots and has a value
+    if (Object.keys(occupiedSpots).includes(spotId) && occupiedSpots[spotId] !== null) {
+      const occupyingProduct = selectedProducts.find(p => p.spotId === spotId);
+      if (occupyingProduct) {
+        alert(`This space is already occupied by: ${occupyingProduct.name}. Please remove it first if you want to place a different item.`);
+      }
+      return; // Exit early if spot is occupied
+    }
+  
+    try {
       setSelectedTab(spotId);
       setActiveSpot(spotId);
+      setIsLoading(true);
+      setAvailableProducts([]); // Clear previous products while loading
       
-      try {
-        const token = localStorage.getItem('token');
-        
-        // Fetch products for this location from mapping
-        const mappingResponse = await fetch(
-          `${backendServer}/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.id}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+      const token = localStorage.getItem('token');
+      
+      // Fetch products for this location from mapping
+      const mappingResponse = await fetch(
+        `${backendServer}/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
-        );
-        const mappingData = await mappingResponse.json();
-        
-        if (mappingData.products && mappingData.products.length > 0) {
-          // Get detailed product info including variants for each product
-          const productDetailsPromises = mappingData.products.map(async (product) => {
-            try {
-              // Fetch variants for each product
-              const variantsResponse = await fetch(
-                `${backendServer}/api/products/${product._id}/variants`,
-                {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
-                  }
-                }
-              );
-              const variantsData = await variantsResponse.json();
-              
-              // Combine basic product info with its variants
-              return {
-                ...product,
-                variants: variantsData.variants
-              };
-            } catch (error) {
-              console.error(`Error fetching variants for product ${product._id}:`, error);
-              return null;
-            }
-          });
-  
-          const productDetails = await Promise.all(productDetailsPromises);
-          const validProducts = productDetails.filter(p => p !== null);
-          setAvailableProducts(validProducts);
-        } else {
-          setAvailableProducts([]);
         }
-      } catch (error) {
-        console.error('Error fetching available products:', error);
+      );
+      const mappingData = await mappingResponse.json();
+      
+      if (mappingData.products && mappingData.products.length > 0) {
+        // Get detailed product info including variants for each product
+        const productDetailsPromises = mappingData.products.map(async (product) => {
+          try {
+            // Fetch variants for each product
+            const variantsResponse = await fetch(
+              `${backendServer}/api/products/${product._id}/variants`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }
+            );
+            const variantsData = await variantsResponse.json();
+            
+            return {
+              ...product,
+              variants: variantsData.variants
+            };
+          } catch (error) {
+            console.error(`Error fetching variants for product ${product._id}:`, error);
+            return null;
+          }
+        });
+  
+        // Check again if spot became occupied during API call
+        if (Object.keys(occupiedSpots).includes(spotId) && occupiedSpots[spotId] !== null) {
+          setSelectedTab(null);
+          setActiveSpot(null);
+          setAvailableProducts([]);
+          return;
+        }
+  
+        const productDetails = await Promise.all(productDetailsPromises);
+        const validProducts = productDetails.filter(p => p !== null);
+        setAvailableProducts(validProducts);
+      } else {
         setAvailableProducts([]);
       }
+    } catch (error) {
+      console.error('Error fetching available products:', error);
+      setAvailableProducts([]);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const ProductSkeleton = () => (
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden border animate-pulse">
+      <div className="relative w-full h-48 bg-gray-200"/>
+      <div className="p-4 space-y-3">
+        <div className="h-6 bg-gray-200 rounded w-3/4"/>
+        <div className="h-4 bg-gray-200 rounded w-1/2"/>
+        <div className="h-4 bg-gray-200 rounded w-1/3"/>
+        <div className="mt-4 h-10 bg-gray-200 rounded"/>
+      </div>
+    </div>
+  );
 
   const handleCustomize = async (product) => {
     try {
@@ -184,30 +215,37 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
 
   const handleAddProduct = (productWithOptions) => {
     if (selectedTab && !occupiedSpots[selectedTab]) {
+      const currentSpot = Object.values(furnitureSpots).find(spot => 
+        spot.id === selectedTab || spot.label === selectedTab
+      );
+  
       const newProduct = {
         ...productWithOptions,
         spotId: selectedTab,
-        spotName: furnitureSpots[selectedTab]?.label || 'Unknown',
-        coordinates: furnitureSpots[selectedTab]?.dimensions || {}
+        spotName: currentSpot?.area || 'Unknown Area',
+        coordinates: currentSpot?.dimensions || {},
+        selectedOptions: productWithOptions.selectedOptions || {},
+        finalPrice: productWithOptions.finalPrice || productWithOptions.basePrice
       };
-
+  
       const updatedOccupiedSpots = {
         ...occupiedSpots,
-        [selectedTab]: productWithOptions.id
+        [selectedTab]: productWithOptions._id // Use _id instead of id
       };
-
+  
       const updatedProducts = [...selectedProducts, newProduct];
-
+  
+      // Update all states at once
       setOccupiedSpots(updatedOccupiedSpots);
       setSelectedProducts(updatedProducts);
-      
-      // Save immediately to localStorage
-      localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
-      localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
-      
       setCurrentProduct(null);
       setSelectedTab(null);
       setActiveSpot(null);
+      setAvailableProducts([]); // Clear available products
+  
+      // Update localStorage
+      localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
+      localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
     }
   };
 
@@ -317,17 +355,19 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
     
           {/* Display image */}
           {image ? (
-            <img
-              src={image}
-              alt={product.name}
-              className="w-full h-64 object-cover rounded-lg mb-6"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/placeholder-image.png'; // Add fallback image
-              }}
-            />
+            <div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white">
+              <img
+                src={image}
+                alt={product.name}
+                className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/placeholder-image.png';
+                }}
+              />
+            </div>
           ) : (
-            <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg mb-6">
+            <div className="w-full h-[500px] bg-gray-200 flex items-center justify-center rounded-lg mb-6">
               <span className="text-gray-400">No image available</span>
             </div>
           )}
@@ -426,7 +466,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           <h2 className="text-2xl font-light mb-4 text-[#005670]">
             Design Your Space - {selectedPlan.title}
           </h2>
-          <div className="relative w-full h-[600px] border border-gray-200 rounded-lg">
+          <div className="relative w-full h-[900px] border border-gray-200 rounded-lg">
             <svg 
               width="100%" 
               height="100%" 
@@ -444,29 +484,75 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                 <g key={spot.id}>
                   <path
                     d={spot.path}
-                    fill={activeSpot === spot.id ? "rgba(0,86,112,0.2)" : "transparent"}
-                    stroke={activeSpot === spot.id ? "#005670" : "#ccc"}
+                    fill={
+                      occupiedSpots[spot.id] 
+                        ? "rgba(203, 213, 225, 0.3)" // Light gray fill for occupied spots
+                        : activeSpot === spot.id 
+                          ? "rgba(0,86,112,0.2)" 
+                          : "transparent"
+                    }
+                    stroke={
+                      occupiedSpots[spot.id]
+                        ? "#94a3b8" // Gray border for occupied spots
+                        : activeSpot === spot.id 
+                          ? "#005670" 
+                          : "transparent"
+                    }
                     strokeWidth="2"
                     cursor={occupiedSpots[spot.id] ? "not-allowed" : "pointer"}
-                    onClick={() => handleSpotClick(spot.id)}
+                    onClick={() => {
+                      if (occupiedSpots[spot.id]) {
+                        // Show tooltip or message that spot is occupied
+                        const productName = selectedProducts.find(p => p.spotId === spot.id)?.name;
+                        alert(`This spot is occupied by: ${productName}. Remove the current item to select a new one.`);
+                        return;
+                      }
+                      handleSpotClick(spot.id);
+                    }}
                   />
                   {occupiedSpots[spot.id] ? (
-                    <text
-                      x={spot.center.x}
-                      y={spot.center.y}
-                      textAnchor="middle"
-                      fill="#005670"
-                      className="text-sm"
-                    >
-                      ✓
-                    </text>
+                    <>
+                      <text
+                        x={spot.labelPosition.x}
+                        y={spot.labelPosition.y - 10} // Offset y position for the checkmark
+                        textAnchor="middle"
+                        fill="#005670"
+                        style={{
+                          fontSize: spot.labelStyle.fontSize,
+                          fontWeight: 'bold',
+                          fontFamily: spot.labelStyle.fontFamily
+                        }}
+                      >
+                        ✓
+                      </text>
+                      <text
+                        x={spot.labelPosition.x}
+                        y={spot.labelPosition.y + 10} // Offset y position for "Occupied" text
+                        textAnchor="middle"
+                        fill="#64748b"
+                        style={{
+                          fontSize: '12px',
+                          fontFamily: spot.labelStyle.fontFamily
+                        }}
+                      >
+                      </text>
+                    </>
                   ) : (
                     <text
-                      x={spot.center.x}
-                      y={spot.center.y}
-                      textAnchor="middle"
+                      x={spot.labelPosition.x}
+                      y={spot.labelPosition.y}
+                      textAnchor={spot.labelStyle.alignment === 'left' ? 'start' : 
+                                spot.labelStyle.alignment === 'right' ? 'end' : 'middle'}
                       fill="#666"
-                      className="text-xs"
+                      style={{
+                        fontSize: spot.labelStyle.fontSize,
+                        fontWeight: spot.labelStyle.fontWeight,
+                        fontFamily: spot.labelStyle.fontFamily
+                      }}
+                      transform={spot.labelStyle.orientation === 'vertical' 
+                        ? `rotate(-90, ${spot.labelPosition.x}, ${spot.labelPosition.y})`
+                        : undefined}
+                      dominantBaseline={spot.labelStyle.orientation === 'vertical' ? 'text-before-edge' : 'central'}
                     >
                       {spot.label}
                     </text>
@@ -482,7 +568,12 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           {/* Available Products */}
           <div className="col-span-2 bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold mb-6">Available Products</h3>
-            {selectedTab && availableProducts.length > 0 ? (
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-6">
+                <ProductSkeleton />
+                <ProductSkeleton />
+              </div>
+            ) : selectedTab && availableProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-6">
                 {availableProducts.map(product => (
                   <div
@@ -490,15 +581,17 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                     className="bg-white rounded-lg shadow-sm overflow-hidden border"
                   >
                     {product.variants[0]?.image?.url ? (
-                      <img
-                        src={product.variants[0].image.url}
-                        alt={product.name}
-                        className="w-full h-48 object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = '/placeholder-image.png'; // Add a fallback image
-                        }}
-                      />
+                      <div className="relative w-full h-48">
+                        <img
+                          src={product.variants[0].image.url}
+                          alt={product.name}
+                          className="absolute inset-0 w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-image.png';
+                          }}
+                        />
+                      </div>
                     ) : (
                       <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
                         <span className="text-gray-400">No image</span>
@@ -525,10 +618,10 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                 ))}
               </div>
             ) : (
-            <div className="text-center py-12 text-gray-500">
-              {selectedTab ? 'No products available for this location' : 'Click on a furniture spot in the floor plan to view available products'}
-            </div>
-          )}
+              <div className="text-center py-12 text-gray-500">
+                {selectedTab ? 'No products available for this location' : 'Click on a furniture spot in the floor plan to view available products'}
+              </div>
+            )}
           </div>
 
           {/* Selected Products */}
