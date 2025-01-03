@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Image as ImageIcon, Upload } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
+import BulkProductImport from '../pages/BulkProductImport'
+import BulkDeleteProducts from './BulkDeleteProduct';
 
 const ProductConfiguration = () => {
   // Predefined attribute options
@@ -33,6 +35,8 @@ const ProductConfiguration = () => {
     finish: false,
     fabric: false
   });
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   // Initialize a new variant
   const initializeVariant = () => ({
@@ -443,17 +447,35 @@ const handleCloseModal = () => {
         <h2 className="text-2xl font-light" style={{ color: '#005670' }}>
           Product Configuration
         </h2>
-        <button
-          onClick={() => {
-            setModalMode('create');
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-          style={{ backgroundColor: '#005670' }}
-        >
-          <Plus className="w-4 h-4" />
-          Add Product
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowBulkDelete(true)}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
+            style={{ backgroundColor: '#dc2626' }}  // Red color for delete
+          >
+            <Trash2 className="w-4 h-4" />
+            Bulk Delete
+          </button>
+          <button
+            onClick={() => setShowBulkImport(true)}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
+            style={{ backgroundColor: '#005670' }}
+          >
+            <Upload className="w-4 h-4" />
+            Bulk Import
+          </button>
+          <button
+            onClick={() => {
+              setModalMode('create');
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
+            style={{ backgroundColor: '#005670' }}
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -839,6 +861,51 @@ const handleCloseModal = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import Modal */}
+      {showBulkImport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
+                Bulk Import Products
+              </h3>
+              <button onClick={() => setShowBulkImport(false)}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <BulkProductImport 
+              onComplete={() => {
+                setShowBulkImport(false);
+                fetchProducts();
+              }} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {showBulkDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-xl font-light text-red-600">
+                Bulk Delete Products
+              </h3>
+              <button onClick={() => setShowBulkDelete(false)}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <BulkDeleteProducts 
+              onComplete={() => {
+                setShowBulkDelete(false);
+                fetchProducts();
+              }}
+              backendServer={backendServer}
+            />
           </div>
         </div>
       )}

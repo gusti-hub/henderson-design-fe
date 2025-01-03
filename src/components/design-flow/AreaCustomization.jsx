@@ -3,7 +3,7 @@ import { X, Trash2, AlertCircle, Loader } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import { backendServer } from '../../utils/info';
 
-const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
+const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingOrder: initialOrder, currentStep }) => {
   const [selectedTab, setSelectedTab] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [currentProduct, setCurrentProduct] = useState(null);
@@ -12,6 +12,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
   const [availableProducts, setAvailableProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [existingOrder, setExistingOrder] = useState(initialOrder);
 
   useEffect(() => {
     const restoreState = async () => {
@@ -25,23 +26,35 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
           setOccupiedSpots(JSON.parse(savedSpots));
         }
         
-        // Then try to get data from the server
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${backendServer}/api/orders/user-order`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        // If we have an initial order, use it
+        if (initialOrder) {
+          setExistingOrder(initialOrder);
+          if (initialOrder.selectedProducts?.length > 0) {
+            setSelectedProducts(initialOrder.selectedProducts);
+            setOccupiedSpots(initialOrder.occupiedSpots || {});
           }
-        });
-        
-        if (response.ok) {
-          const order = await response.json();
-          if (order?.selectedProducts?.length > 0) {
-            setSelectedProducts(order.selectedProducts);
-            setOccupiedSpots(order.occupiedSpots || {});
-            
-            // Update localStorage with server data
-            localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
-            localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
+        } else {
+          // Try to get data from the server if no initial order
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${backendServer}/api/orders/user-order`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const order = await response.json();
+            if (order) {
+              setExistingOrder(order);
+              if (order.selectedProducts?.length > 0) {
+                setSelectedProducts(order.selectedProducts);
+                setOccupiedSpots(order.occupiedSpots || {});
+                
+                // Update localStorage with server data
+                localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
+                localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
+              }
+            }
           }
         }
       } catch (error) {
@@ -50,7 +63,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
     };
   
     restoreState();
-  }, []);
+  }, [initialOrder]);
 
   useEffect(() => {
     const previousPlanId = localStorage.getItem('currentPlanId');
@@ -206,75 +219,213 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
         }
       });
       const fullProductData = await response.json();
-      console.log('Full product data:', fullProductData); // Debug log
+      console.log('Full product data with variants:', fullProductData); // Debug log
+      
+      // Ensure variants are properly included
+      if (!fullProductData.variants || fullProductData.variants.length === 0) {
+        console.warn('No variants found for product:', fullProductData);
+        // Use original product variants if API response doesn't include them
+        fullProductData.variants = product.variants;
+      }
+      
       setCurrentProduct(fullProductData);
     } catch (error) {
       console.error('Error fetching complete product data:', error);
+      // Fallback to original product data if API fails
       setCurrentProduct(product);
     }
   };
 
-  const handleAddProduct = (productWithOptions) => {
+  const handleAddProduct = async (productWithOptions) => {
     if (selectedTab && !occupiedSpots[selectedTab]) {
       const currentSpot = Object.values(furnitureSpots).find(spot => 
         spot.id === selectedTab || spot.label === selectedTab
       );
   
+      // Find the selected variant based on options
+      const selectedVariant = productWithOptions.variants.find(variant => 
+        variant.fabric === productWithOptions.selectedOptions?.fabric && 
+        variant.finish === productWithOptions.selectedOptions?.finish
+      );
+
+      const unitPrice = productWithOptions.finalPrice || productWithOptions.basePrice;
+      const quantity = productWithOptions.selectedOptions?.quantity || 1;
+
+      // Create streamlined product object
       const newProduct = {
-        ...productWithOptions,
+        _id: productWithOptions._id,
+        name: productWithOptions.name,
+        product_id: productWithOptions.product_id,
         spotId: selectedTab,
         spotName: currentSpot?.area || 'Unknown Area',
-        coordinates: currentSpot?.dimensions || {},
-        selectedOptions: productWithOptions.selectedOptions || {},
-        finalPrice: productWithOptions.finalPrice || productWithOptions.basePrice
+        finalPrice: unitPrice * quantity,
+        quantity: quantity,
+        unitPrice: unitPrice, 
+        selectedOptions: {
+          finish: productWithOptions.selectedOptions?.finish || '',
+          fabric: productWithOptions.selectedOptions?.fabric || '',
+          image: selectedVariant?.image?.url || productWithOptions.variants[0]?.image?.url || ''
+        }
       };
   
       const updatedOccupiedSpots = {
         ...occupiedSpots,
-        [selectedTab]: productWithOptions._id // Use _id instead of id
+        [selectedTab]: productWithOptions._id
       };
   
       const updatedProducts = [...selectedProducts, newProduct];
   
-      // Update all states at once
+      // Update all states
       setOccupiedSpots(updatedOccupiedSpots);
       setSelectedProducts(updatedProducts);
       setCurrentProduct(null);
       setSelectedTab(null);
       setActiveSpot(null);
-      setAvailableProducts([]); // Clear available products
+      setAvailableProducts([]);
   
       // Update localStorage
       localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
       localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
+      
+      // Save to server immediately
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn('No authentication token found');
+          return;
+        }
+  
+        // First, try to get existing order if we don't have it yet
+        if (!existingOrder) {
+          const orderResponse = await fetch(`${backendServer}/api/orders/user-order`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (orderResponse.ok) {
+            const order = await orderResponse.json();
+            if (order) {
+              setExistingOrder(order);
+            }
+          }
+        }
+  
+        // Always use PUT to update the existing order or create a new one
+        const endpoint = `${backendServer}/api/orders${existingOrder ? `/${existingOrder._id}` : ''}`;
+        
+        const orderData = {
+          selectedPlan,
+          selectedProducts: updatedProducts,
+          occupiedSpots: updatedOccupiedSpots,
+          status: 'ongoing',
+          step: 2
+        };
+  
+        const response = await fetch(endpoint, {
+          method: existingOrder ? 'PUT' : 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(orderData)
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to save product selection');
+        }
+  
+        const savedOrder = await response.json();
+        setExistingOrder(savedOrder); // Update existingOrder reference
+  
+      } catch (error) {
+        console.error('Error saving product selection:', error);
+        alert('There was an error saving your selection. Please try again.');
+      }
     }
   };
 
   // In AreaCustomization.jsx, modify handleRemoveProduct:
   const handleRemoveProduct = async (index) => {
-    const productToRemove = selectedProducts[index];
-    const updatedOccupiedSpots = {
-      ...occupiedSpots,
-      [productToRemove.spotId]: null
-    };
-    
-    const updatedProducts = selectedProducts.filter((_, i) => i !== index);
-    
-    // Update local state
-    setOccupiedSpots(updatedOccupiedSpots);
-    setSelectedProducts(updatedProducts);
-    
-    // Update localStorage
-    localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
-    localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
-    
-    // Call onComplete with updated data
-    onComplete({
-      selectedProducts: updatedProducts,
-      totalPrice: updatedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
-      spotSelections: updatedOccupiedSpots,
-      floorPlanId: selectedPlan.id
-    });
+    try {
+      const productToRemove = selectedProducts[index];
+      const updatedOccupiedSpots = {
+        ...occupiedSpots,
+        [productToRemove.spotId]: null
+      };
+      
+      const updatedProducts = selectedProducts.filter((_, i) => i !== index);
+      
+      // Update local state
+      setOccupiedSpots(updatedOccupiedSpots);
+      setSelectedProducts(updatedProducts);
+      
+      // Update localStorage
+      localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
+      localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
+      
+      // Update server
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No authentication token found');
+        return;
+      }
+  
+      // Make sure we have the existing order
+      if (!existingOrder) {
+        const orderResponse = await fetch(`${backendServer}/api/orders/user-order`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (orderResponse.ok) {
+          const order = await orderResponse.json();
+          if (order) {
+            setExistingOrder(order);
+          }
+        }
+      }
+  
+      const endpoint = existingOrder 
+        ? `${backendServer}/api/orders/${existingOrder._id}`
+        : `${backendServer}/api/orders`;
+  
+      const orderData = {
+        selectedPlan,
+        selectedProducts: updatedProducts,
+        occupiedSpots: updatedOccupiedSpots,
+        status: 'ongoing',
+        step: 2
+      };
+  
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to update order');
+      }
+  
+      const updatedOrder = await response.json();
+      setExistingOrder(updatedOrder);
+      
+      // Call onComplete with updated data
+      onComplete({
+        selectedProducts: updatedProducts,
+        totalPrice: updatedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
+        spotSelections: updatedOccupiedSpots,
+        floorPlanId: selectedPlan.id
+      });
+    } catch (error) {
+      console.error('Error removing product:', error);
+      alert('There was an error removing the product. Please try again.');
+    }
   };
 
   // Add cleanup effect
@@ -288,12 +439,33 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
     };
   }, [selectedProducts, occupiedSpots]);
 
-  const CustomizationModal = ({ product, onClose, onAdd }) => {
+  const CustomizationModal = ({ product, onClose, onAdd, currentSpot  }) => {
     const [selectedOptions, setSelectedOptions] = useState({
       finish: '',
-      fabric: ''
+      fabric: '',
+      quantity: currentSpot?.quantity?.enabled ? currentSpot.quantity.min : 1
     });
     const [modalImageLoading, setModalImageLoading] = useState(true);
+
+    const getSelectedVariant = () => {
+      return product.variants.find(variant => 
+        variant.fabric === selectedOptions.fabric && 
+        variant.finish === selectedOptions.finish
+      );
+    };
+
+    const handleAdd = () => {
+      const selectedVariant = getSelectedVariant();
+  
+      onAdd({
+        ...product,
+        selectedOptions: {
+          ...selectedOptions,
+          image: selectedVariant?.image?.url || product.variants[0]?.image?.url || ''
+        },
+        finalPrice: getVariantPrice(),
+      });
+    };
   
     // Helper function to get variant image
     const getVariantImage = () => {
@@ -440,19 +612,66 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
               </div>
             )}
     
-            <div className="text-xl font-bold">
-              Total Price: ${getVariantPrice()}
+          {/* Quantity field - only show if enabled */}
+          {currentSpot?.quantity?.enabled && (
+            <div>
+              <h4 className="font-semibold mb-2">Quantity</h4>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border rounded-lg">
+                  <button
+                    onClick={() => setSelectedOptions(prev => ({
+                      ...prev,
+                      quantity: Math.max(currentSpot.quantity.min, prev.quantity - 1)
+                    }))}
+                    className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                    disabled={selectedOptions.quantity <= currentSpot.quantity.min}
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    value={selectedOptions.quantity}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (!isNaN(value)) {
+                        setSelectedOptions(prev => ({
+                          ...prev,
+                          quantity: Math.min(
+                            Math.max(currentSpot.quantity.min, value),
+                            currentSpot.quantity.max
+                          )
+                        }));
+                      }
+                    }}
+                    className="w-16 text-center border-x"
+                    min={currentSpot.quantity.min}
+                    max={currentSpot.quantity.max}
+                  />
+                  <button
+                    onClick={() => setSelectedOptions(prev => ({
+                      ...prev,
+                      quantity: Math.min(currentSpot.quantity.max, prev.quantity + 1)
+                    }))}
+                    className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                    disabled={selectedOptions.quantity >= currentSpot.quantity.max}
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="text-sm text-gray-500">
+                  Min: {currentSpot.quantity.min}, Max: {currentSpot.quantity.max}
+                </span>
+              </div>
             </div>
+          )}
+
+          <div className="text-xl font-bold">
+            Total Price: ${(getVariantPrice() * (selectedOptions.quantity || 1)).toFixed(2)}
+          </div>
           </div>
     
           <button
-            onClick={() => {
-              onAdd({
-                ...product,
-                selectedOptions,
-                finalPrice: getVariantPrice(),
-              });
-            }}
+            onClick={handleAdd}
             disabled={!isValid()}
             className={`w-full py-2 rounded-lg ${
               !isValid()
@@ -660,14 +879,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                 {selectedProducts.map((product, index) => (
                   <div key={index} className="flex justify-between items-center border-b pb-4">
                     <div className="flex gap-4">
-                      <img
+                    <img
                         src={
-                          product.variants.find(v => 
-                            v.fabric === product.selectedOptions.fabric && 
-                            v.finish === product.selectedOptions.finish
-                          )?.image?.url || 
-                          product.variants[0]?.image?.url ||
-                          '/placeholder-image.png'
+                          product.selectedOptions?.image || '/placeholder-image.png'  // Just use the saved image URL
                         }
                         alt={product.name}
                         className="w-20 h-20 object-cover rounded"
@@ -677,7 +891,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                         }}
                       />
                       <div>
-                        <h4 className="font-semibold">{product.name}</h4>
+                        <h4 className="font-semibold">
+                          {product.name} 
+                          {product.quantity > 1 && (
+                            <span className="ml-2 text-sm text-gray-600">
+                              (x{product.quantity})
+                            </span>
+                          )}
+                        </h4>
                         <p className="text-xs text-gray-500">{product.spotName}</p>
                         {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && (
                           <p className="text-sm text-gray-600">
@@ -686,7 +907,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
                             {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
                           </p>
                         )}
-                        <p className="text-gray-600">${product.finalPrice}</p>
+                      <p className="text-gray-600">
+                        ${product.unitPrice} each × {product.quantity} = ${product.finalPrice}
+                      </p>
                       </div>
                     </div>
                     <button
@@ -714,6 +937,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
       {currentProduct && (
         <CustomizationModal
           product={currentProduct}
+          currentSpot={Object.values(furnitureSpots).find(spot => 
+            spot.id === selectedTab || spot.label === selectedTab
+          )}
           onClose={() => {
             setCurrentProduct(null);
             setSelectedTab(null);

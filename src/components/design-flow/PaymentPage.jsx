@@ -306,12 +306,7 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
             <div key={index} className="flex items-start gap-4 border-b pb-4 mb-4 last:border-b-0">
               <img
                 src={
-                  product.variants.find(v => 
-                    v.fabric === product.selectedOptions.fabric && 
-                    v.finish === product.selectedOptions.finish
-                  )?.image?.url || 
-                  product.variants[0]?.image?.url ||
-                  '/placeholder-image.png'
+                  product.selectedOptions?.image || '/placeholder-image.png'  // Just use the saved image URL
                 }
                 alt={product.name}
                 className="w-20 h-20 object-cover rounded"

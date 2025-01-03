@@ -22,6 +22,7 @@ import AdminOrderDetail from './AdminOrderDetail';
 import ClientManagement from './ClientManagement';
 import ProductConfiguration from './ProductConfiguration';
 import ProductMapping from './ProductMapping';
+import Dashboard from './Dashboard';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 
@@ -81,6 +82,8 @@ const AdminPanel = () => {
     }
   
     switch (activeMenu) {
+      case '/dashboard':
+        return <Dashboard />;
       case '/user-management':
         return <UserManagement />;
       case '/client-management':

@@ -453,6 +453,11 @@ export const floorPlanConfig = {
           fontFamily: 'Arial',
           alignment: 'center',
           orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          min: 1,
+          max: 2  // Allow up to 2 dining tables
         }
       },
       kitchenSpot2: {
@@ -507,7 +512,7 @@ export const generateFurnitureAreas = (planId) => {
   }
 
   return Object.entries(planConfig.furniture).reduce((acc, [key, furniture]) => {
-    const { coordinates, labelStyle } = furniture;
+    const { coordinates, labelStyle, quantity = { enabled: false, min: 1, max: 1 } } = furniture;
     const center = calculateCenter(
       coordinates.x,
       coordinates.y,
@@ -515,7 +520,6 @@ export const generateFurnitureAreas = (planId) => {
       coordinates.height
     );
 
-    // Calculate label position based on offset and alignment
     const labelPosition = {
       x: center.x + (labelStyle?.offset?.x || 0),
       y: center.y + (labelStyle?.offset?.y || 0)
@@ -524,7 +528,7 @@ export const generateFurnitureAreas = (planId) => {
     acc[key] = {
       id: furniture.id,
       label: furniture.label,
-      area: furniture.area || 'Unspecified Area', // Added default value
+      area: furniture.area || 'Unspecified Area',
       path: createRectPath(
         coordinates.x,
         coordinates.y,
@@ -541,7 +545,12 @@ export const generateFurnitureAreas = (planId) => {
         orientation: 'horizontal',
         ...labelStyle
       },
-      dimensions: coordinates
+      dimensions: coordinates,
+      quantity: {
+        enabled: quantity?.enabled || false,
+        min: quantity?.min || 1,
+        max: quantity?.max || 1
+      }
     };
     return acc;
   }, {});

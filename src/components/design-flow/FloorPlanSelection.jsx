@@ -283,7 +283,7 @@ const FloorPlanSelection = ({ onNext }) => {
   return (
     <div className="max-w-7xl mx-auto p-6">
       <h2 className="text-2xl font-light mb-6" style={{ color: '#005670' }}>
-        Choose Your Floor Plan
+        Choose Your Package
       </h2>
 
       {/* Client Information Display */}

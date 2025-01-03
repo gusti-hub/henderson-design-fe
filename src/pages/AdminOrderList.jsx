@@ -55,10 +55,21 @@ const AdminOrderList = ({ onOrderClick }) => {
       }
   
       const blob = await response.blob();
+      const contentType = response.headers.get('content-type');
+      
+      // Determine file extension based on content type
+      let fileExtension = 'pdf';
+      if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        fileExtension = 'xlsx';
+      } else if (contentType === 'application/pdf') {
+        fileExtension = 'pdf';
+      }
+  
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `order-${type}-${orderId}.pdf`;
+      a.download = `order-${type}-${orderId}.${fileExtension}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -109,12 +120,11 @@ const AdminOrderList = ({ onOrderClick }) => {
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-4 py-2 border rounded-lg"
         >
-          <option value="all">All Status</option>
-          <option value="completed">Completed</option>
-          <option value="pending">Floor Plan Selection</option>
-          <option value="designing">Space Design</option>
-          <option value="reviewing">Order Review</option>
-          <option value="payment">Payment Schedule</option>
+          <option value="all">all status</option>
+          <option value="completed">completed</option>
+          <option value="ongoing">ongoing</option>
+          <option value="confirmed">confirmed</option>
+          <option value="cancelled">cancelled</option>
         </select>
       </div>
 
@@ -145,33 +155,37 @@ const AdminOrderList = ({ onOrderClick }) => {
               ) : (
                 orders.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">{order.clientInfo?.name}</td>
+                    <td className="px-6 py-4">{order.selectedPlan?.clientInfo?.name}</td>
                     <td className="px-6 py-4">{order.selectedPlan?.title}</td>
                     <td className="px-6 py-4">{getOrderStatus(order)}</td>
                     <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => onOrderClick(order._id)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="View Details"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDownload(order._id, 'summary')}
-                        className="text-gray-600 hover:text-gray-800"
-                        title="Download Summary"
-                      >
-                        <Download className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDownload(order._id, 'proposal')}
-                        className="text-gray-600 hover:text-gray-800"
-                        title="Download Proposal"
-                      >
-                        <FileText className="w-5 h-5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onOrderClick(order._id)}
+                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      title="View Details"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDownload(order._id, 'summary')}
+                      className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                      title="Download Summary (Excel)"
+                    >
+                      <Download className="w-5 h-5" />
+                      {/* Optional: Add text */}
+                      <span className="text-sm">Excel</span>
+                    </button>
+                    <button
+                      onClick={() => handleDownload(order._id, 'proposal')}
+                      className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                      title="Download Proposal (PDF)"
+                    >
+                      <FileText className="w-5 h-5" />
+                      {/* Optional: Add text */}
+                      <span className="text-sm">PDF</span>
+                    </button>
+                  </div>
                   </td>
                   </tr>
                 ))

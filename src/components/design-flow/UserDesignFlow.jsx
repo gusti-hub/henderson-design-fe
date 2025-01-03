@@ -177,7 +177,7 @@ const UserDesignFlow = () => {
       // Update status to 'confirmed' when moving from review to payment
       const orderStatus = currentStep === 3 ? 'confirmed' : 
                          currentStep === 4 ? 'confirmed' : 
-                         'in_progress';
+                         'ongoing';
   
       const orderData = {
         selectedPlan,
@@ -410,7 +410,7 @@ const UserDesignFlow = () => {
             occupiedSpots: {},
             designSelections: null,
             step: 2,
-            status: 'in_progress'
+            status: 'ongoing'
           })
         });
   
@@ -494,6 +494,8 @@ const UserDesignFlow = () => {
             selectedPlan={selectedPlan}
             floorPlanImage={selectedPlan?.image}
             onComplete={handleDesignComplete}
+            existingOrder={existingOrder}
+            currentStep={currentStep}
           />
         );
       case 3:

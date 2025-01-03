@@ -68,14 +68,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
             <div key={index} className="border-b pb-4 last:border-b-0">
               <div className="flex items-start gap-4">
                 <img
-                  src={
-                    product.variants.find(v => 
-                      v.fabric === product.selectedOptions.fabric && 
-                      v.finish === product.selectedOptions.finish
-                    )?.image?.url || 
-                    product.variants[0]?.image?.url ||
-                    '/placeholder-image.png'
-                  }
+                  src={product.selectedOptions?.image || '/placeholder-image.png'}
                   alt={product.name}
                   className="w-24 h-24 object-cover rounded"
                   onError={(e) => {
@@ -84,10 +77,17 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                   }}
                 />
                 <div className="flex-1">
-                  <h4 className="font-medium text-lg">{product.name}</h4>
+                  <h4 className="font-medium text-lg">
+                    {product.name}
+                    {product.quantity > 1 && (
+                      <span className="text-sm text-gray-600 ml-2">
+                        (Qty: {product.quantity})
+                      </span>
+                    )}
+                  </h4>
                   <p className="text-sm text-gray-500 mb-2">Location: {product.spotName}</p>
                   
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm text-gray-600">Finish</label>
                       <p>{product.selectedOptions.finish || 'N/A'}</p>
@@ -97,24 +97,18 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                       <p>{product.selectedOptions.fabric || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-600">Price</label>
-                      <p className="font-medium">${product.finalPrice}</p>
+                      <label className="block text-sm text-gray-600">Unit Price</label>
+                      <p>${product.unitPrice}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">Total Price</label>
+                      <p className="font-medium">${product.unitPrice * product.quantity}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Total Price */}
-        <div className="mt-6 pt-4 border-t">
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-medium">Total Price</span>
-            <span className="text-2xl font-bold text-[#005670]">
-              ${designSelections.totalPrice}
-            </span>
-          </div>
         </div>
       </div>
 

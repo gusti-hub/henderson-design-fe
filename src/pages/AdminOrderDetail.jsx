@@ -132,40 +132,61 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
 
       {/* Order Details */}
       <div className="bg-white rounded-lg shadow mb-6 p-6">
-        <h3 className="text-lg font-medium mb-4">Order Details</h3>
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <p className="text-sm text-gray-600">Floor Plan</p>
-            <p className="font-medium">{order.selectedPlan?.title}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Status</p>
-            <p className="font-medium">{order.status}</p>
-          </div>
+      <h3 className="text-lg font-medium mb-4">Order Details</h3>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <p className="text-sm text-gray-600">Floor Plan</p>
+          <p className="font-medium">{order.selectedPlan?.title}</p>
         </div>
+        <div>
+          <p className="text-sm text-gray-600">Status</p>
+          <p className="font-medium">{order.status}</p>
+        </div>
+      </div>
 
-        <h4 className="font-medium mb-4">Selected Products</h4>
-        <div className="space-y-4">
-          {order.designSelections?.selectedProducts?.map((product, index) => (
-            <div key={index} className="flex items-start gap-4 border-b pb-4 last:border-b-0">
-              {product.variants?.length > 0 && (
-                <img
-                  src={product.variants[0]?.image?.url || '/placeholder.png'}
-                  alt={product.name}
-                  className="w-20 h-20 object-cover rounded"
-                />
+      <h4 className="font-medium mb-4">Selected Products</h4>
+      <div className="space-y-4">
+        {order.selectedProducts?.map((product, index) => (
+          <div key={index} className="flex items-start gap-4 border-b pb-4 last:border-b-0">
+            <img
+              src={product.selectedOptions?.image || '/placeholder.png'}
+              alt={product.name}
+              className="w-20 h-20 object-cover rounded"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/placeholder.png';
+              }}
+            />
+            <div>
+              <p className="font-medium">
+                {product.name}
+                {product.quantity > 1 && (
+                  <span className="text-sm text-gray-600 ml-2">
+                    (Qty: {product.quantity})
+                  </span>
+                )}
+              </p>
+              <p className="text-sm text-gray-600">Product ID: {product._id}</p>
+              <p className="text-sm text-gray-600">Location: {product.spotName}</p>
+              {product.selectedOptions && (
+                <p className="text-sm text-gray-600">
+                  {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
+                  {product.selectedOptions.finish && product.selectedOptions.fabric && ' - '}
+                  {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
+                </p>
               )}
-              <div>
-                <p className="font-medium">{product.name}</p>
-                <p className="text-sm text-gray-600">Product ID: {product._id}</p>
-                <p className="text-sm text-gray-600">Location: {product.spotName}</p>
-                <p className="text-[#005670] font-medium mt-1">
-                  ${product.finalPrice?.toFixed(2)}
+              <div className="mt-1 space-y-1">
+                <p className="text-sm text-gray-600">
+                  Unit Price: ${product.unitPrice?.toFixed(2)}
+                </p>
+                <p className="text-[#005670] font-medium">
+                  Total Price: ${(product.unitPrice * product.quantity)?.toFixed(2)}
                 </p>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
       </div>
 
       {/* Payment Details */}
