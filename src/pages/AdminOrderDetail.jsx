@@ -166,7 +166,7 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
                   </span>
                 )}
               </p>
-              <p className="text-sm text-gray-600">Product ID: {product._id}</p>
+              <p className="text-sm text-gray-600">Product ID: {product.product_id}</p>
               <p className="text-sm text-gray-600">Location: {product.spotName}</p>
               {product.selectedOptions && (
                 <p className="text-sm text-gray-600">

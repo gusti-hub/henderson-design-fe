@@ -30,80 +30,63 @@ const UserDesignFlow = () => {
     ]
   });
 
-  useEffect(() => {
-
-    // const restoreSessionFromLocalStorage = () => {
-    //   // Get saved data from localStorage
-    //   const savedPlan = localStorage.getItem('selectedPlan');
-    //   const savedClientInfo = localStorage.getItem('clientInfo');
-    //   const savedStep = localStorage.getItem('currentStep');
-
-    //   if (savedPlan) {
-    //     setSelectedPlan(JSON.parse(savedPlan));
-    //   }
-    //   if (savedClientInfo) {
-    //     setClientInfo(JSON.parse(savedClientInfo));
-    //   }
-    //   if (savedStep) {
-    //     setCurrentStep(parseInt(savedStep));
-    //   }
-    // };
-
-    const checkExistingOrder = async () => {
-      setIsLoading(true);  // Set loading at start
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-  
-        const response = await fetch(`${backendServer}/api/orders/user-order`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-  
-        if (response.ok) {
-          const order = await response.json();
-          if (order) {
-            setExistingOrder(order);
-            setSelectedPlan(order.selectedPlan);
-            setClientInfo(order.clientInfo);
-            
-            if (order.selectedProducts?.length > 0) {
-              const restoredSelections = {
-                selectedProducts: order.selectedProducts,
-                spotSelections: order.occupiedSpots || {},
-                totalPrice: order.selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
-                floorPlanId: order.selectedPlan.id
-              };
-              setDesignSelections(restoredSelections);
-              
-              localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
-              localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
-              localStorage.setItem('designSelections', JSON.stringify(restoredSelections));
-            }
-            
-            setPaymentDetails(order.paymentDetails || paymentDetails);
-            
-            // Set step after all data is loaded
-            const newStep = order.status === 'confirmed' ? 4 : order.step || 1;
-            setCurrentStep(newStep);
-            localStorage.setItem('currentStep', newStep.toString());
-            
-            setIsViewOnly(order.status === 'confirmed');
-            
-            localStorage.setItem('selectedPlan', JSON.stringify(order.selectedPlan));
-            localStorage.setItem('clientInfo', JSON.stringify(order.clientInfo));
-          }
-        }
-      } catch (error) {
-        console.error('Error checking existing order:', error);
-      } finally {
-        setIsLoading(false);  // Always remove loading state
+  const checkExistingOrder = async () => {
+    setIsLoading(true);  // Set loading at start
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-    };
+
+      const response = await fetch(`${backendServer}/api/orders/user-order`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const order = await response.json();
+        if (order) {
+          setExistingOrder(order);
+          setSelectedPlan(order.selectedPlan);
+          setClientInfo(order.clientInfo);
+          
+          if (order.selectedProducts?.length > 0) {
+            const restoredSelections = {
+              selectedProducts: order.selectedProducts,
+              spotSelections: order.occupiedSpots || {},
+              totalPrice: order.selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
+              floorPlanId: order.selectedPlan.id
+            };
+            setDesignSelections(restoredSelections);
+            
+            localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
+            localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
+            localStorage.setItem('designSelections', JSON.stringify(restoredSelections));
+          }
+          
+          setPaymentDetails(order.paymentDetails || paymentDetails);
+          
+          // Set step after all data is loaded
+          const newStep = order.status === 'confirmed' ? 4 : order.step || 1;
+          setCurrentStep(newStep);
+          localStorage.setItem('currentStep', newStep.toString());
+          
+          setIsViewOnly(order.status === 'confirmed');
+          
+          localStorage.setItem('selectedPlan', JSON.stringify(order.selectedPlan));
+          localStorage.setItem('clientInfo', JSON.stringify(order.clientInfo));
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing order:', error);
+    } finally {
+      setIsLoading(false);  // Always remove loading state
+    }
+  };
+
+  useEffect(() => {
   
     // Check for token and run
     const token = localStorage.getItem('token');
@@ -114,30 +97,6 @@ const UserDesignFlow = () => {
     }
   }, []);
 
-  // const checkExistingOrder = async () => {
-  //   try {
-  //     const token = localStorage.getItem('token');
-  //     const response = await fetch('${backendServer}/api/orders/user-order', {
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`
-  //       }
-  //     });
-
-  //     if (response.ok) {
-  //       const order = await response.json();
-  //       if (order) {
-  //         setExistingOrder(order);
-  //         setSelectedPlan(order.selectedPlan);
-  //         setClientInfo(order.clientInfo);
-  //         setDesignSelections(order.designSelections);
-  //         setPaymentDetails(order.paymentDetails || paymentDetails);
-  //         setIsViewOnly(order.status === 'completed');
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('Error checking existing order:', error);
-  //   }
-  // };
 
   const calculatePaymentSchedule = (totalAmount) => {
     const today = new Date();
@@ -377,6 +336,8 @@ const UserDesignFlow = () => {
       const token = localStorage.getItem('token');
       
       // Check if there's an existing order with selected products
+      console.log(existingOrder);
+      console.log(planDetails);
       if (existingOrder && 
           existingOrder.selectedPlan?.id !== planDetails.id && 
           existingOrder.selectedProducts?.length > 0) {
@@ -391,7 +352,6 @@ const UserDesignFlow = () => {
           return;
         }
       }
-  
       // Proceed with floor plan change
       if (existingOrder && existingOrder.selectedPlan?.id !== planDetails.id) {
         const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
@@ -410,13 +370,15 @@ const UserDesignFlow = () => {
             occupiedSpots: {},
             designSelections: null,
             step: 2,
-            status: 'ongoing'
+            status: 'ongoing',
+            package: (data.package == 'investor') ? 'Investor Package' : 'Owner Package'
           })
         });
+        
   
         if (!response.ok) {
           throw new Error('Failed to update order');
-        }
+        }      
       }
   
       // Clear localStorage
@@ -440,9 +402,11 @@ const UserDesignFlow = () => {
       }));
       localStorage.setItem('clientInfo', JSON.stringify(data.clientInfo));
       localStorage.setItem('currentStep', '2');
+      
   
       // Move to next step
       setCurrentStep(2);
+      checkExistingOrder();
   
     } catch (error) {
       console.error('Error in floor plan selection:', error);
@@ -486,6 +450,7 @@ const UserDesignFlow = () => {
           <FloorPlanSelection 
             onNext={handleFloorPlanSelection} 
             showNavigationButtons={false}
+            checkExistingOrder={checkExistingOrder}
           />
         );
       case 2:

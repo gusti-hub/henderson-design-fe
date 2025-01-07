@@ -11,11 +11,11 @@ import {
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
-import { Checkbox } from '../components/ui/checkbox';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloadLoading, setDownloadLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
 
   const handleOrderSelect = (orderId) => {
@@ -44,6 +44,7 @@ const Dashboard = () => {
     }
 
     try {
+      setDownloadLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(`${backendServer}/api/dashboard/purchase-order`, {
         method: 'POST',
@@ -68,6 +69,8 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error downloading PO:', error);
       alert('Error generating Purchase Order');
+    } finally {
+      setDownloadLoading(false);
     }
   };
 
@@ -85,7 +88,6 @@ const Dashboard = () => {
         }
       });
       const data = await response.json();
-      console.log('Dashboard data received:', data); // Debug log
       setStats(data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -112,7 +114,7 @@ const Dashboard = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6 text-[#005670]">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6 text-[#005670] text-center">Dashboard</h1>
       
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -138,7 +140,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Order Status Chart */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-medium mb-4">Order Distribution</h3>
+          <h3 className="text-lg font-medium mb-4 text-center">Order Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
               data={[
@@ -159,7 +161,7 @@ const Dashboard = () => {
 
         {/* Top Products Chart */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-medium mb-4">Top Products</h3>
+          <h3 className="text-lg font-medium mb-4 text-center">Top Products</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stats.topProducts || []}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -173,70 +175,73 @@ const Dashboard = () => {
         </div>
       </div>
 
-    {/* Recent Orders with Selection */}
-    <div className="bg-white rounded-lg shadow-sm">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h3 className="text-lg font-medium">Recent Orders</h3>
+      {/* Recent Orders with Selection */}
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6 border-b flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="w-full text-center">
+            <h3 className="text-lg font-medium">Recent Orders</h3>
+          </div>
           <button
             onClick={handleDownloadPO}
-            disabled={selectedOrders.length === 0}
-            className={`px-4 py-2 rounded-lg ${
-              selectedOrders.length === 0 
-                ? 'bg-gray-300 cursor-not-allowed' 
+            disabled={selectedOrders.length === 0 || downloadLoading}
+            className={`px-6 py-2 rounded-lg flex items-center space-x-2 min-w-[250px] justify-center whitespace-nowrap ${
+              selectedOrders.length === 0 || downloadLoading
+                ? 'bg-gray-300 cursor-not-allowed'
                 : 'bg-[#005670] text-white hover:bg-opacity-90'
             }`}
           >
-            Download Selected PO
+            {downloadLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>Download Selected PO</span>
           </button>
         </div>
         <div className="overflow-x-auto">
-        <table className="w-full">
+          <table className="w-full">
             <thead className="bg-gray-50">
-            <tr>
-                <th className="px-6 py-3 text-left">
-                <input
+              <tr>
+                <th className="px-6 py-3 text-center">
+                  <input
                     type="checkbox"
                     className="rounded border-gray-300 text-[#005670] focus:ring-[#005670]"
                     checked={selectedOrders.length === stats?.recentOrders?.length}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                />
+                  />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-            </tr>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Order ID</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Client</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-            {stats?.recentOrders?.map((order) => (
+              {stats?.recentOrders?.map((order) => (
                 <tr key={order._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-center">
                     <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-[#005670] focus:ring-[#005670]"
-                    checked={selectedOrders.includes(order._id)}
-                    onChange={() => handleOrderSelect(order._id)}
+                      type="checkbox"
+                      className="rounded border-gray-300 text-[#005670] focus:ring-[#005670]"
+                      checked={selectedOrders.includes(order._id)}
+                      onChange={() => handleOrderSelect(order._id)}
                     />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">{order._id}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.clientName}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                  </td>
+                  <td className="px-6 py-4 text-center whitespace-nowrap">{order._id}</td>
+                  <td className="px-6 py-4 text-center whitespace-nowrap">{order.clientName}</td>
+                  <td className="px-6 py-4 text-center whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                    order.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
+                      order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                  </td>
+                  <td className="px-6 py-4 text-center whitespace-nowrap">
                     {new Date(order.createdAt).toLocaleDateString()}
-                </td>
+                  </td>
                 </tr>
-            ))}
+              ))}
             </tbody>
-        </table>
+          </table>
         </div>
       </div>
     </div>

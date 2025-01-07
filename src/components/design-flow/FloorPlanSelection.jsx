@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { backendServer } from '../../utils/info';
 
-const FloorPlanSelection = ({ onNext }) => {
+const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
   const [selectedPlanType, setSelectedPlanType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -38,7 +38,7 @@ const FloorPlanSelection = ({ onNext }) => {
         },
         {
           id: 'investor-b',
-          title: 'Residence 01B',
+          title: 'Residence 03B',
           description: '2 Bedroom + 2.5 Bath, Level: 7-33 (Odd)',
           image: '/images/investor_plan/Alia_01B.svg',
           details: [
@@ -94,7 +94,7 @@ const FloorPlanSelection = ({ onNext }) => {
     },
     custom: {
       id: 'custom',
-      title: 'Owner package',
+      title: 'Owner Package',
       description: 'Standard layout optimized for Owner',
       availablePlans: '10 floor plans available',
       images: [
@@ -267,11 +267,14 @@ const FloorPlanSelection = ({ onNext }) => {
       );
   
       // Debug log
+      //console.log('Selected Plan Type:', selectedPlanType);
       console.log('Selected plan data:', selectedPlanData);
-  
+
+      checkExistingOrder();
       onNext({ 
         selectedPlan: selectedPlanData,
-        clientInfo
+        clientInfo,
+        package: selectedPlanType
       });
     }
   };
