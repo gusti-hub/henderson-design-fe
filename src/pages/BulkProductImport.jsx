@@ -27,8 +27,8 @@ const BulkProductImport = ({ onComplete }) => {
     if (!row.name) errors.push('Name is required');
     if (!row.description) errors.push('Description is required');
     if (!row.base_price || isNaN(row.base_price)) errors.push('Valid base price is required');
-    if (!row.finish) errors.push('Finish is required');
-    if (!row.fabric) errors.push('Fabric is required');
+    //if (!row.finish) errors.push('Finish is required');
+    //if (!row.fabric) errors.push('Fabric is required');
     if (!row.variant_price || isNaN(row.variant_price)) errors.push('Valid variant price is required');
     if (row.image && !isValidUrl(row.image)) errors.push('Invalid image URL format');
     return errors;

@@ -4,7 +4,6 @@ import { backendServer } from '../../utils/info';
 const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
   const [selectedPlanType, setSelectedPlanType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
   const [clientInfo, setClientInfo] = useState({
     name: '',
     unitNumber: '',
@@ -19,11 +18,7 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
       title: 'Investor Package',
       description: 'Fully customizable layout for personal preferences',
       availablePlans: '6 floor plans available',
-      images: [
-        '/images/investor_plan/investor_1.png',
-        '/images/investor_plan/investor_2.png',
-        '/images/investor_plan/investor_3.png'
-      ],
+      image: '/images/investor_plan/investor_1.png',
       plans: [
         {
           id: 'investor-a',
@@ -97,11 +92,7 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
       title: 'Owner Package',
       description: 'Standard layout optimized for Owner',
       availablePlans: '10 floor plans available',
-      images: [
-        '/images/custom_plan/custom_1.png',
-        '/images/custom_plan/custom_2.png',
-        '/images/custom_plan/custom_3.png'
-      ],
+      image: '/images/custom_plan/custom_1.png',
       plans: [
         {
           id: 'custom-a',
@@ -212,7 +203,7 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
             'Lanai A: 90 Sq. Ft.',
             'Lanai B: 52 Sq. Ft.'
           ]
-        },
+        }
       ]
     }
   };
@@ -245,11 +236,6 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
 
   useEffect(() => {
     fetchClientInfo();
-    const timer = setInterval(() => {
-      setCurrentSlide(prev => prev === 2 ? 0 : prev + 1);
-    }, 3000);
-
-    return () => clearInterval(timer);
   }, []);
 
   const validateForm = () => {
@@ -261,15 +247,9 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
 
   const handleNext = () => {
     if (validateForm()) {
-      // Find the complete plan data
       const selectedPlanData = floorPlanTypes[selectedPlanType].plans.find(
         plan => plan.id === selectedPlan
       );
-  
-      // Debug log
-      //console.log('Selected Plan Type:', selectedPlanType);
-      console.log('Selected plan data:', selectedPlanData);
-
       checkExistingOrder();
       onNext({ 
         selectedPlan: selectedPlanData,
@@ -289,7 +269,6 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
         Choose Your Package
       </h2>
 
-      {/* Client Information Display */}
       <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
         <h3 className="text-lg font-medium mb-4">Client Information</h3>
         <div className="grid grid-cols-2 gap-6">
@@ -305,7 +284,6 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
       </div>
 
       {selectedPlanType ? (
-        // Detailed Floor Plan Options
         <>
           <button
             onClick={() => setSelectedPlanType(null)}
@@ -317,7 +295,7 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
           <div className="space-y-8">
             {floorPlanTypes[selectedPlanType].plans.filter(plan => 
               plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
-              ).map(plan => (
+            ).map(plan => (
               <div
                 key={plan.id}
                 onClick={() => setSelectedPlan(plan.id)}
@@ -325,7 +303,6 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
                   ${selectedPlan === plan.id ? 'ring-2 ring-[#005670]' : 'hover:shadow-md'}`}
               >
                 <div className="grid grid-cols-12 gap-6">
-                  {/* Large Image */}
                   <div className="col-span-8">
                     <img
                       src={plan.image}
@@ -334,7 +311,6 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
                     />
                   </div>
                   
-                  {/* Details */}
                   <div className="col-span-4 p-6">
                     <h3 className="text-xl font-medium mb-3" style={{ color: '#005670' }}>
                       {plan.title}
@@ -357,7 +333,6 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
           </div>
         </>
       ) : (
-        // Initial Plan Type Selection with Image Slides
         <div className="grid grid-cols-2 gap-6">
           {Object.values(floorPlanTypes).map(type => (
             <div
@@ -365,31 +340,11 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
               onClick={() => setSelectedPlanType(type.id)}
               className="bg-white rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all"
             >
-              {/* Image Slider */}
-              <div className="relative h-64 rounded-t-lg overflow-hidden">
-                {type.images.map((image, index) => (
-                  <div
-                    key={index}
-                    className={`absolute inset-0 transition-opacity duration-1000 
-                      ${currentSlide === index ? 'opacity-100' : 'opacity-0'}`}
-                  >
-                    <div
-                      className="h-full w-full bg-cover bg-center"
-                      style={{ backgroundImage: `url(${image})` }}
-                    />
-                  </div>
-                ))}
-
-                {/* Slide Indicators */}
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
-                  {[0, 1, 2].map(index => (
-                    <button
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all
-                        ${currentSlide === index ? 'w-8 bg-white' : 'bg-white/50'}`}
-                    />
-                  ))}
-                </div>
+              <div className="h-64 rounded-t-lg overflow-hidden">
+                <div
+                  className="h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${type.image})` }}
+                />
               </div>
 
               <div className="p-6">

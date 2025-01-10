@@ -440,11 +440,21 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   }, [selectedProducts, occupiedSpots]);
 
   const CustomizationModal = ({ product, onClose, onAdd, currentSpot  }) => {
+    // Get unique finishes and fabrics
+    const uniqueFinishes = [...new Set(product.variants.map(v => v.finish).filter(Boolean))];
+    const uniqueFabrics = [...new Set(product.variants.map(v => v.fabric).filter(Boolean))];
+  
+    // Initialize state with fixed quantity if specified
     const [selectedOptions, setSelectedOptions] = useState({
-      finish: '',
-      fabric: '',
-      quantity: currentSpot?.quantity?.enabled ? currentSpot.quantity.min : 1
+      finish: uniqueFinishes.length === 1 ? uniqueFinishes[0] : '',
+      fabric: uniqueFabrics.length === 1 ? uniqueFabrics[0] : '',
+      quantity: currentSpot?.quantity?.fixed ?? (currentSpot?.quantity?.enabled ? currentSpot.quantity.min : 1),
+      useAdditional: false,
+      additionalQuantity: 0
     });
+
+    console.log(currentSpot)
+  
     const [modalImageLoading, setModalImageLoading] = useState(true);
 
     const getSelectedVariant = () => {
@@ -461,7 +471,8 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         ...product,
         selectedOptions: {
           ...selectedOptions,
-          image: selectedVariant?.image?.url || product.variants[0]?.image?.url || ''
+          image: selectedVariant?.image?.url || product.variants[0]?.image?.url || '',
+          quantity: selectedOptions.quantity + ((selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))
         },
         finalPrice: getVariantPrice(),
       });
@@ -569,11 +580,11 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     
           <div className="space-y-6 mb-6">
             {/* Finish options */}
-            {hasFinishOptions && (
+            {uniqueFinishes.length > 1 && (
               <div>
-                <h4 className="font-semibold mb-2">Finish</h4>
+                <h4 className="font-semibold mb-2">Wood Finish</h4>
                 <div className="flex gap-2">
-                  {[...new Set(product.variants.map(v => v.finish).filter(Boolean))].map(finish => (
+                  {uniqueFinishes.map(finish => (
                     <button
                       key={finish}
                       onClick={() => setSelectedOptions(prev => ({ ...prev, finish }))}
@@ -591,11 +602,11 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             )}
     
             {/* Fabric options */}
-            {hasFabricOptions && (
+            {uniqueFabrics.length > 1 && (
               <div>
                 <h4 className="font-semibold mb-2">Fabric</h4>
                 <div className="flex gap-2">
-                  {[...new Set(product.variants.map(v => v.fabric).filter(Boolean))].map(fabric => (
+                  {uniqueFabrics.map(fabric => (
                     <button
                       key={fabric}
                       onClick={() => setSelectedOptions(prev => ({ ...prev, fabric }))}
@@ -614,59 +625,124 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     
           {/* Quantity field - only show if enabled */}
           {currentSpot?.quantity?.enabled && (
-            <div>
-              <h4 className="font-semibold mb-2">Quantity</h4>
+          <div>
+            <div className="space-y-4">
+              {/* Fixed Quantity Section */}
+              {currentSpot.quantity.fixed ? (
+                <div className="flex items-center gap-4">
+                  <h4 className="font-semibold">Quantity</h4>
+                  <div className="w-24 text-center bg-gray-50 rounded-lg py-2 border text-gray-600">
+                    {currentSpot.quantity.fixed}
+                  </div>
+                  <span className="text-sm text-gray-500">Fixed quantity</span>
+                </div>
+              ) : (
+                <>
+                  {/* Regular Quantity Section */}
+                  <div>
+                    <h4 className="font-semibold mb-2">Quantity</h4>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center border rounded-lg bg-white">
+                        <button
+                          onClick={() => setSelectedOptions(prev => ({
+                            ...prev,
+                            quantity: Math.max(currentSpot.quantity.min, prev.quantity - 1)
+                          }))}
+                          className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                          disabled={selectedOptions.quantity <= currentSpot.quantity.min}
+                        >
+                          -
+                        </button>
+                        <span className="w-24 text-center border-x py-2">{selectedOptions.quantity}</span>
+                        <button
+                          onClick={() => setSelectedOptions(prev => ({
+                            ...prev,
+                            quantity: Math.min(currentSpot.quantity.max, prev.quantity + 1)
+                          }))}
+                          className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                          disabled={selectedOptions.quantity >= currentSpot.quantity.max}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span className="text-sm text-gray-500">
+                        Min: {currentSpot.quantity.min}, Max: {currentSpot.quantity.max}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          )}
+
+          {/* Additional Quantity Section */}
+          {currentSpot.quantity.additional?.enabled && (
+          <div className="mt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <h4 className="font-semibold">Additional Quantity</h4>
+              <button
+                onClick={() => {
+                  setSelectedOptions(prev => ({
+                    ...prev,
+                    useAdditional: !prev.useAdditional,
+                    additionalQuantity: !prev.useAdditional ? currentSpot.quantity.additional.min : 0
+                  }))
+                }}
+                className={`px-3 py-1 rounded-lg border transition-colors ${
+                  selectedOptions.useAdditional ? 
+                    'border-[#005670] bg-[#005670]/10 text-[#005670]' : 
+                    'border-gray-200 text-gray-400 hover:border-[#005670]'
+                }`}
+              >
+                ✓
+              </button>
+            </div>
+
+            {selectedOptions.useAdditional && (
               <div className="flex items-center gap-4">
-                <div className="flex items-center border rounded-lg">
+                <div className="flex items-center border rounded-lg bg-white">
                   <button
                     onClick={() => setSelectedOptions(prev => ({
                       ...prev,
-                      quantity: Math.max(currentSpot.quantity.min, prev.quantity - 1)
+                      additionalQuantity: Math.max(
+                        currentSpot.quantity.additional.min,
+                        prev.additionalQuantity - 1
+                      )
                     }))}
                     className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
-                    disabled={selectedOptions.quantity <= currentSpot.quantity.min}
+                    disabled={selectedOptions.additionalQuantity <= currentSpot.quantity.additional.min}
                   >
                     -
                   </button>
-                  <input
-                    type="number"
-                    value={selectedOptions.quantity}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (!isNaN(value)) {
-                        setSelectedOptions(prev => ({
-                          ...prev,
-                          quantity: Math.min(
-                            Math.max(currentSpot.quantity.min, value),
-                            currentSpot.quantity.max
-                          )
-                        }));
-                      }
-                    }}
-                    className="w-16 text-center border-x"
-                    min={currentSpot.quantity.min}
-                    max={currentSpot.quantity.max}
-                  />
+                  <span className="w-24 text-center border-x py-2">
+                    {selectedOptions.additionalQuantity}
+                  </span>
                   <button
                     onClick={() => setSelectedOptions(prev => ({
                       ...prev,
-                      quantity: Math.min(currentSpot.quantity.max, prev.quantity + 1)
+                      additionalQuantity: Math.min(
+                        currentSpot.quantity.additional.max,
+                        prev.additionalQuantity + 1
+                      )
                     }))}
                     className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
-                    disabled={selectedOptions.quantity >= currentSpot.quantity.max}
+                    disabled={selectedOptions.additionalQuantity >= currentSpot.quantity.additional.max}
                   >
                     +
                   </button>
                 </div>
                 <span className="text-sm text-gray-500">
-                  Min: {currentSpot.quantity.min}, Max: {currentSpot.quantity.max}
+                  Min: {currentSpot.quantity.additional.min}, 
+                  Max: {currentSpot.quantity.additional.max}
                 </span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
           <div className="text-xl font-bold">
-            Total Price: ${(getVariantPrice() * (selectedOptions.quantity || 1)).toFixed(2)}
+            Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))).toFixed(2)}
           </div>
           </div>
     
@@ -784,7 +860,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                         : undefined}
                       dominantBaseline={spot.labelStyle.orientation === 'vertical' ? 'text-before-edge' : 'central'}
                     >
-                      {spot.label}
+                      {/* {spot.label} */}
                     </text>
                   )}
                 </g>
