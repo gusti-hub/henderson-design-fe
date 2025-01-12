@@ -3,7 +3,7 @@ import { X, Trash2, AlertCircle, Loader } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import { backendServer } from '../../utils/info';
 
-const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingOrder: initialOrder, currentStep }) => {
+const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingOrder: initialOrder, currentStep, clientInfo, checkExistingOrder }) => {
   const [selectedTab, setSelectedTab] = useState(null);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [currentProduct, setCurrentProduct] = useState(null);
@@ -14,47 +14,86 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   const [imageLoading, setImageLoading] = useState(true);
   const [existingOrder, setExistingOrder] = useState(initialOrder);
 
+  if (!selectedPlan || !selectedPlan.id) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+          <h2 className="text-xl text-gray-600">Please select a floor plan first</h2>
+          <p className="text-gray-500 mt-2">Return to the floor plan selection step to continue.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const attributeOptions = {
+    finish: {
+      'Light': { previewUrl: '/images/woods/Light Wood.jpg' },
+      'Dark': { previewUrl: '/images/woods/Dark Wood.png' }
+    },
+    fabric: {
+      'Cream - Lounge Chair': { type: 'Cream', previewUrl: '/images/fabrics/Cream Lounge Chair.png' },
+      'Cream - Modular Sofa': { type: 'Cream', previewUrl: '/images/fabrics/Cream Modular Sofa.png' },
+      'Tan - Lounge Chair': { type: 'Tan', previewUrl: '/images/fabrics/Tan Lounge Chair.png' },
+      'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
+      'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
+      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' }
+    }
+  };
+
   useEffect(() => {
     const restoreState = async () => {
       try {
-        // First try to get data from localStorage for immediate display
-        const savedProducts = localStorage.getItem('selectedProducts');
-        const savedSpots = localStorage.getItem('occupiedSpots');
-        
-        if (savedProducts && savedSpots) {
-          setSelectedProducts(JSON.parse(savedProducts));
-          setOccupiedSpots(JSON.parse(savedSpots));
-        }
-        
-        // If we have an initial order, use it
         if (initialOrder) {
           setExistingOrder(initialOrder);
           if (initialOrder.selectedProducts?.length > 0) {
             setSelectedProducts(initialOrder.selectedProducts);
             setOccupiedSpots(initialOrder.occupiedSpots || {});
+          } else {
+            // Clear localStorage if no products in order
+            localStorage.removeItem('selectedProducts');
+            localStorage.removeItem('occupiedSpots');
+            localStorage.removeItem('designSelections');
+            setSelectedProducts([]);
+            setOccupiedSpots({});
           }
         } else {
-          // Try to get data from the server if no initial order
-          const token = localStorage.getItem('token');
-          const response = await fetch(`${backendServer}/api/orders/user-order`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          const savedProducts = localStorage.getItem('selectedProducts');
+          const savedSpots = localStorage.getItem('occupiedSpots');
           
-          if (response.ok) {
-            const order = await response.json();
-            if (order) {
-              setExistingOrder(order);
-              if (order.selectedProducts?.length > 0) {
-                setSelectedProducts(order.selectedProducts);
-                setOccupiedSpots(order.occupiedSpots || {});
-                
-                // Update localStorage with server data
-                localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
-                localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
-              }
+          if (!savedProducts || !savedSpots) {
+            // Clear all if any is missing
+            localStorage.removeItem('selectedProducts');
+            localStorage.removeItem('occupiedSpots');
+            localStorage.removeItem('designSelections');
+            setSelectedProducts([]);
+            setOccupiedSpots({});
+            return;
+          }
+          
+          try {
+            const parsedProducts = JSON.parse(savedProducts);
+            const parsedSpots = JSON.parse(savedSpots);
+            
+            if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
+              console.log(parsedProducts);
+              setSelectedProducts(parsedProducts);
+              setOccupiedSpots(parsedSpots);
+            } else {
+              // Clear all if products array is empty
+              localStorage.removeItem('selectedProducts');
+              localStorage.removeItem('occupiedSpots');
+              localStorage.removeItem('designSelections');
+              setSelectedProducts([]);
+              setOccupiedSpots({});
             }
+          } catch (parseError) {
+            console.error('Error parsing saved data:', parseError);
+            // Clear invalid data
+            localStorage.removeItem('selectedProducts');
+            localStorage.removeItem('occupiedSpots');
+            localStorage.removeItem('designSelections');
+            setSelectedProducts([]);
+            setOccupiedSpots({});
           }
         }
       } catch (error) {
@@ -87,9 +126,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   }, [selectedPlan.id]);
 
   // Get dimensions and furniture spots for the selected plan
-  const planDimensions = useMemo(() => 
-    getPlanDimensions(selectedPlan.id), [selectedPlan]
-  );
+  const planDimensions = useMemo(() => {
+    try {
+      return getPlanDimensions(selectedPlan.id);
+    } catch (error) {
+      console.error('Error getting plan dimensions:', error);
+      return { width: 1000, height: 800 }; // Fallback dimensions
+    }
+  }, [selectedPlan.id]);
 
   // const arrayBufferToBase64 = (buffer) => {
   //   let binary = '';
@@ -100,9 +144,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   //   return window.btoa(binary);
   // };
   
-  const furnitureSpots = useMemo(() => 
-    generateFurnitureAreas(selectedPlan.id), [selectedPlan]
-  );
+  const furnitureSpots = useMemo(() => {
+    try {
+      return generateFurnitureAreas(selectedPlan.id);
+    } catch (error) {
+      console.error('Error generating furniture areas:', error);
+      return {}; // Return empty object if there's an error
+    }
+  }, [selectedPlan.id]);
 
   // Update parent component when products change
   useEffect(() => {
@@ -123,6 +172,37 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   }, [selectedProducts, occupiedSpots]);
 
   const handleSpotClick = async (spotId) => {
+
+     // Check if order exists
+     if (!existingOrder) {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Create initial order
+      const orderData = {
+        selectedPlan,
+        clientInfo: clientInfo, // Use the passed clientInfo
+        selectedProducts: [],
+        occupiedSpots: {},
+        step: 2,
+        status: 'ongoing'
+      };
+
+      const response = await fetch(`${backendServer}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) throw new Error('Failed to create order');
+      
+      const newOrder = await response.json();
+      setExistingOrder(newOrder);
+    }
+
     // First check if spot exists in occupiedSpots and has a value
     if (Object.keys(occupiedSpots).includes(spotId) && occupiedSpots[spotId] !== null) {
       const occupyingProduct = selectedProducts.find(p => p.spotId === spotId);
@@ -237,6 +317,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   };
 
   const handleAddProduct = async (productWithOptions) => {
+    
     if (selectedTab && !occupiedSpots[selectedTab]) {
       const currentSpot = Object.values(furnitureSpots).find(spot => 
         spot.id === selectedTab || spot.label === selectedTab
@@ -337,6 +418,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   
         const savedOrder = await response.json();
         setExistingOrder(savedOrder); // Update existingOrder reference
+        checkExistingOrder();
   
       } catch (error) {
         console.error('Error saving product selection:', error);
@@ -361,9 +443,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       setSelectedProducts(updatedProducts);
       
       // Update localStorage
-      localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
-      localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
+      localStorage.removeItem('selectedProducts');
+      localStorage.removeItem('occupiedSpots');
       
+      if (updatedProducts.length > 0) {
+        localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
+        localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
+      }
+  
       // Update server
       const token = localStorage.getItem('token');
       if (!token) {
@@ -371,28 +458,16 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         return;
       }
   
-      // Make sure we have the existing order
       if (!existingOrder) {
-        const orderResponse = await fetch(`${backendServer}/api/orders/user-order`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (orderResponse.ok) {
-          const order = await orderResponse.json();
-          if (order) {
-            setExistingOrder(order);
-          }
-        }
+        console.warn('No existing order found');
+        return;
       }
   
-      const endpoint = existingOrder 
-        ? `${backendServer}/api/orders/${existingOrder._id}`
-        : `${backendServer}/api/orders`;
+      const endpoint = `${backendServer}/api/orders/${existingOrder._id}`;
   
       const orderData = {
         selectedPlan,
+        clientInfo,
         selectedProducts: updatedProducts,
         occupiedSpots: updatedOccupiedSpots,
         status: 'ongoing',
@@ -422,6 +497,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         spotSelections: updatedOccupiedSpots,
         floorPlanId: selectedPlan.id
       });
+  
+      // Clear designSelections in localStorage if no products remain
+      if (updatedProducts.length === 0) {
+        localStorage.removeItem('designSelections');
+      }
+
+      checkExistingOrder();
+  
     } catch (error) {
       console.error('Error removing product:', error);
       alert('There was an error removing the product. Please try again.');
@@ -452,8 +535,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       useAdditional: false,
       additionalQuantity: 0
     });
-
-    console.log(currentSpot)
   
     const [modalImageLoading, setModalImageLoading] = useState(true);
 
@@ -583,42 +664,76 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             {uniqueFinishes.length > 1 && (
               <div>
                 <h4 className="font-semibold mb-2">Wood Finish</h4>
-                <div className="flex gap-2">
-                  {uniqueFinishes.map(finish => (
-                    <button
-                      key={finish}
-                      onClick={() => setSelectedOptions(prev => ({ ...prev, finish }))}
-                      className={`px-4 py-2 rounded-lg border ${
-                        selectedOptions.finish === finish
-                          ? 'border-[#005670] bg-[#005670]/10'
-                          : 'border-gray-200 hover:border-[#005670]'
-                      }`}
-                    >
-                      {finish}
-                    </button>
-                  ))}
+                <div className="flex gap-4">
+                  {uniqueFinishes.map(finish => {
+                    if (!finish || !attributeOptions.finish?.[finish]) return null;
+                    
+                    return (
+                      <button
+                        key={finish}
+                        onClick={() => setSelectedOptions(prev => ({ ...prev, finish }))}
+                        className={`relative w-32 h-32 rounded-lg overflow-hidden transition-all ${
+                          selectedOptions.finish === finish
+                            ? 'border-4 border-[#005670] ring-2 ring-[#005670] shadow-lg'
+                            : 'border border-gray-200 hover:border-[#005670]/50'
+                        }`}
+                      >
+                        {attributeOptions.finish[finish].previewUrl ? (
+                          <img
+                            src={attributeOptions.finish[finish].previewUrl}
+                            alt={finish}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+                            No preview
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-sm text-center">
+                          {finish}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
     
             {/* Fabric options */}
             {uniqueFabrics.length > 1 && (
-              <div>
+              <div className="mt-6">
                 <h4 className="font-semibold mb-2">Fabric</h4>
-                <div className="flex gap-2">
-                  {uniqueFabrics.map(fabric => (
-                    <button
-                      key={fabric}
-                      onClick={() => setSelectedOptions(prev => ({ ...prev, fabric }))}
-                      className={`px-4 py-2 rounded-lg border ${
-                        selectedOptions.fabric === fabric
-                          ? 'border-[#005670] bg-[#005670]/10'
-                          : 'border-gray-200 hover:border-[#005670]'
-                      }`}
-                    >
-                      {fabric}
-                    </button>
-                  ))}
+                <div className="flex gap-4 flex-nowrap overflow-x-auto pb-2">
+                  {uniqueFabrics.map(fabric => {
+                    if (!fabric || !attributeOptions.fabric?.[fabric]) return null;
+                    
+                    return (
+                      <button
+                        key={fabric}
+                        onClick={() => setSelectedOptions(prev => ({ ...prev, fabric }))}
+                        className={`relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden transition-all ${
+                          selectedOptions.fabric === fabric
+                            ? 'border-4 border-[#005670] ring-2 ring-[#005670] shadow-lg'
+                            : 'border border-gray-200 hover:border-[#005670]/50'
+                        }`}
+                      >
+                        {attributeOptions.fabric[fabric].previewUrl ? (
+                          <img
+                            src={attributeOptions.fabric[fabric].previewUrl}
+                            alt={fabric}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+                            No preview
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-sm text-center">
+                          {attributeOptions.fabric[fabric].type || fabric}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -790,16 +905,17 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 <g key={spot.id}>
                   <path
                     d={spot.path}
+                    transform={spot.transform}  // Added this line
                     fill={
                       occupiedSpots[spot.id] 
-                        ? "rgba(203, 213, 225, 0.3)" // Light gray fill for occupied spots
+                        ? "rgba(203, 213, 225, 0.3)" 
                         : activeSpot === spot.id 
                           ? "rgba(0,86,112,0.2)" 
                           : "transparent"
                     }
                     stroke={
                       occupiedSpots[spot.id]
-                        ? "#94a3b8" // Gray border for occupied spots
+                        ? "#94a3b8" 
                         : activeSpot === spot.id 
                           ? "#005670" 
                           : "transparent"
@@ -808,7 +924,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                     cursor={occupiedSpots[spot.id] ? "not-allowed" : "pointer"}
                     onClick={() => {
                       if (occupiedSpots[spot.id]) {
-                        // Show tooltip or message that spot is occupied
                         const productName = selectedProducts.find(p => p.spotId === spot.id)?.name;
                         alert(`This spot is occupied by: ${productName}. Remove the current item to select a new one.`);
                         return;

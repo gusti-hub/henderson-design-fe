@@ -24,74 +24,219 @@ const UserDesignFlow = () => {
   const [paymentDetails, setPaymentDetails] = useState({
     method: '', // 'cheque' or 'bank_transfer'
     installments: [
-      { percent: 25, dueDate: null, status: 'pending', amount: 0 },
       { percent: 50, dueDate: null, status: 'pending', amount: 0 },
+      { percent: 25, dueDate: null, status: 'pending', amount: 0 },
       { percent: 25, dueDate: null, status: 'pending', amount: 0 }
     ]
   });
 
   const checkExistingOrder = async () => {
-    setIsLoading(true);  // Set loading at start
+    setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         setIsLoading(false);
         return;
       }
-
+  
+      console.log('Checking for existing order...');
+      console.log('Using backend server:', backendServer);
+  
       const response = await fetch(`${backendServer}/api/orders/user-order`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
-      if (response.ok) {
-        const order = await response.json();
-        if (order) {
-          setExistingOrder(order);
-          setSelectedPlan(order.selectedPlan);
-          setClientInfo(order.clientInfo);
-          
-          if (order.selectedProducts?.length > 0) {
-            const restoredSelections = {
-              selectedProducts: order.selectedProducts,
-              spotSelections: order.occupiedSpots || {},
-              totalPrice: order.selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
-              floorPlanId: order.selectedPlan.id
-            };
-            setDesignSelections(restoredSelections);
-            
-            localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
-            localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
-            localStorage.setItem('designSelections', JSON.stringify(restoredSelections));
-          }
-          
-          setPaymentDetails(order.paymentDetails || paymentDetails);
-          
-          // Set step after all data is loaded
-          const newStep = order.status === 'confirmed' ? 4 : order.step || 1;
-          setCurrentStep(newStep);
-          localStorage.setItem('currentStep', newStep.toString());
-          
-          setIsViewOnly(order.status === 'confirmed');
-          
-          localStorage.setItem('selectedPlan', JSON.stringify(order.selectedPlan));
-          localStorage.setItem('clientInfo', JSON.stringify(order.clientInfo));
+  
+      console.log('Response status:', response.status);
+  
+      if (!response.ok) {
+        if (response.status === 404) {
+          // No existing order - this is a valid state
+          console.log('No existing order found');
+          setCurrentStep(1); // Reset to first step if no order exists
+          setIsLoading(false);
+          return;
         }
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+  
+      const order = await response.json();
+      console.log('Received order:', order);
+  
+      if (order) {
+        setExistingOrder(order);
+        setSelectedPlan(order.selectedPlan);
+        setClientInfo(order.clientInfo);
+        
+        if (order.selectedProducts?.length > 0) {
+          const restoredSelections = {
+            selectedProducts: order.selectedProducts,
+            spotSelections: order.occupiedSpots || {},
+            totalPrice: order.selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
+            floorPlanId: order.selectedPlan.id
+          };
+          setDesignSelections(restoredSelections);
+          
+          // Save to localStorage
+          localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
+          localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
+          localStorage.setItem('designSelections', JSON.stringify(restoredSelections));
+        }
+        
+        // Set payment details with new schedule
+        setPaymentDetails(order.paymentDetails || {
+          method: '',
+          installments: [
+            { 
+              percent: 50, 
+              dueDate: new Date().toISOString(), 
+              status: 'pending', 
+              amount: 0 
+            },
+            { 
+              percent: 25, 
+              dueDate: new Date('2026-07-01').toISOString(), 
+              status: 'pending', 
+              amount: 0 
+            },
+            { 
+              percent: 25, 
+              dueDate: new Date('2026-10-01').toISOString(), 
+              status: 'pending', 
+              amount: 0 
+            }
+          ]
+        });
+        
+        // Set the correct step based on order status
+        const newStep = order.status === 'confirmed' ? 4 : order.step || 1;
+        setCurrentStep(newStep);
+        localStorage.setItem('currentStep', newStep.toString());
+        
+        setIsViewOnly(order.status === 'confirmed');
+        
+        // Update localStorage
+        localStorage.setItem('selectedPlan', JSON.stringify(order.selectedPlan));
+        localStorage.setItem('clientInfo', JSON.stringify(order.clientInfo));
       }
     } catch (error) {
       console.error('Error checking existing order:', error);
+      // Handle network errors
+      if (error.message.includes('Failed to fetch')) {
+        console.error('Network error - check if backend server is running');
+      }
     } finally {
-      setIsLoading(false);  // Always remove loading state
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
+  const checkExistingOrderAreaCustomization = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
   
-    // Check for token and run
+      console.log('Checking for existing order...');
+      console.log('Using backend server:', backendServer);
+  
+      const response = await fetch(`${backendServer}/api/orders/user-order`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+  
+      console.log('Response status:', response.status);
+  
+      if (!response.ok) {
+        if (response.status === 404) {
+          // No existing order - this is a valid state
+          console.log('No existing order found');
+          setCurrentStep(1); // Reset to first step if no order exists
+          setIsLoading(false);
+          return;
+        }
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+  
+      const order = await response.json();
+      console.log('Received order:', order);
+  
+      if (order) {
+        setExistingOrder(order);
+        setSelectedPlan(order.selectedPlan);
+        setClientInfo(order.clientInfo);
+        
+        if (order.selectedProducts?.length > 0) {
+          const restoredSelections = {
+            selectedProducts: order.selectedProducts,
+            spotSelections: order.occupiedSpots || {},
+            totalPrice: order.selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
+            floorPlanId: order.selectedPlan.id
+          };
+          setDesignSelections(restoredSelections);
+          
+          // Save to localStorage
+          localStorage.setItem('selectedProducts', JSON.stringify(order.selectedProducts));
+          localStorage.setItem('occupiedSpots', JSON.stringify(order.occupiedSpots || {}));
+          localStorage.setItem('designSelections', JSON.stringify(restoredSelections));
+        }
+        
+        // Set payment details with new schedule
+        setPaymentDetails(order.paymentDetails || {
+          method: '',
+          installments: [
+            { 
+              percent: 50, 
+              dueDate: new Date().toISOString(), 
+              status: 'pending', 
+              amount: 0 
+            },
+            { 
+              percent: 25, 
+              dueDate: new Date('2026-07-01').toISOString(), 
+              status: 'pending', 
+              amount: 0 
+            },
+            { 
+              percent: 25, 
+              dueDate: new Date('2026-10-01').toISOString(), 
+              status: 'pending', 
+              amount: 0 
+            }
+          ]
+        });
+        
+        // Set the correct step based on order status
+        const newStep = order.status === 'confirmed' ? 4 : order.step || 1;
+        setCurrentStep(newStep);
+        localStorage.setItem('currentStep', newStep.toString());
+        
+        setIsViewOnly(order.status === 'confirmed');
+        
+        // Update localStorage
+        localStorage.setItem('selectedPlan', JSON.stringify(order.selectedPlan));
+        localStorage.setItem('clientInfo', JSON.stringify(order.clientInfo));
+      }
+    } catch (error) {
+      console.error('Error checking existing order:', error);
+      // Handle network errors
+      if (error.message.includes('Failed to fetch')) {
+        console.error('Network error - check if backend server is running');
+      }
+    }
+  };
+  
+
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      checkExistingOrder();
+      checkExistingOrder().catch(error => {
+        console.error('Error in useEffect:', error);
+        setIsLoading(false);
+      });
     } else {
       setIsLoading(false);
     }
@@ -99,28 +244,49 @@ const UserDesignFlow = () => {
 
 
   const calculatePaymentSchedule = (totalAmount) => {
-    const today = new Date();
-    return paymentDetails.installments.map((installment, index) => {
-      const dueDate = new Date(today);
-      dueDate.setMonth(today.getMonth() + (index * 3)); // 3 months between payments
-      return {
-        ...installment,
-        dueDate: dueDate.toISOString(),
-        amount: (totalAmount * (installment.percent / 100))
-      };
-    });
+    const firstPaymentDate = new Date(); // Today for first payment
+    const secondPaymentDate = new Date('2026-07-01'); // July 2026
+    const finalPaymentDate = new Date('2026-10-01'); // October 2026
+  
+    return [
+      {
+        percent: 50,
+        dueDate: firstPaymentDate.toISOString(),
+        status: 'pending',
+        amount: (totalAmount * 0.50)
+      },
+      {
+        percent: 25,
+        dueDate: secondPaymentDate.toISOString(),
+        status: 'pending',
+        amount: (totalAmount * 0.25)
+      },
+      {
+        percent: 25,
+        dueDate: finalPaymentDate.toISOString(),
+        status: 'pending',
+        amount: (totalAmount * 0.25)
+      }
+    ];
   };
 
   const saveProgress = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+  
       const method = existingOrder ? 'PUT' : 'POST';
       const endpoint = existingOrder 
         ? `${backendServer}/api/orders/${existingOrder._id}`
         : `${backendServer}/api/orders`;
   
+      console.log('Saving progress to:', endpoint);
+      console.log('Method:', method);
+  
       let updatedPaymentDetails = {
-        method: paymentDetails?.method?.method || paymentDetails?.method || '',
+        method: paymentDetails?.method || '',
         installments: paymentDetails?.installments?.map(installment => ({
           percent: installment.percent,
           dueDate: installment.dueDate || null,
@@ -133,7 +299,6 @@ const UserDesignFlow = () => {
         updatedPaymentDetails.installments = calculatePaymentSchedule(designSelections.totalPrice);
       }
   
-      // Update status to 'confirmed' when moving from review to payment
       const orderStatus = currentStep === 3 ? 'confirmed' : 
                          currentStep === 4 ? 'confirmed' : 
                          'ongoing';
@@ -158,16 +323,20 @@ const UserDesignFlow = () => {
         body: JSON.stringify(orderData)
       });
   
-      if (!response.ok) throw new Error('Failed to save progress');
+      if (!response.ok) {
+        throw new Error(`Failed to save progress: ${response.status}`);
+      }
+  
       const data = await response.json();
+      console.log('Save progress response:', data);
+      
       setExistingOrder(data);
       setPaymentDetails(updatedPaymentDetails);
   
-      // Update localStorage
       localStorage.setItem('selectedPlan', JSON.stringify(selectedPlan));
       localStorage.setItem('clientInfo', JSON.stringify(clientInfo));
       localStorage.setItem('currentStep', currentStep.toString());
-      localStorage.setItem('orderStatus', orderStatus); // Store order status
+      localStorage.setItem('orderStatus', orderStatus);
     } catch (error) {
       console.error('Error saving progress:', error);
       throw error;
@@ -240,55 +409,30 @@ const UserDesignFlow = () => {
     }
   
     // Handle order confirmation at step 3 (review)
+
     if (currentStep === 3) {
       const confirmed = window.confirm(
         "Please review your order carefully. Once confirmed:\n\n" +
         "• You won't be able to modify your selections\n" +
-        "• First payment (25%) must be completed within 1 week\n" +
-        "• Second payment (50%) will be due 3 months after first payment\n" +
-        "• Final payment (25%) will be due 3 months after second payment\n\n" +
+        "• First Payment (50%) is due immediately\n" +
+        "• Second Payment (25%) will be due July 2026\n" +
+        "• Final Payment (25%) will be due October 2026\n\n" +
         "Do you want to proceed?"
       );
-  
+    
       if (!confirmed) {
         return;
       }
-  
-      // Calculate payment schedule
-      const today = new Date();
-      const firstPaymentDue = new Date(today.getTime() + (7 * 24 * 60 * 60 * 1000));
-      const secondPaymentDue = new Date(firstPaymentDue.getTime() + (3 * 30 * 24 * 60 * 60 * 1000));
-      const thirdPaymentDue = new Date(secondPaymentDue.getTime() + (3 * 30 * 24 * 60 * 60 * 1000));
-  
+    
       const paymentSchedule = {
         method: '',
-        installments: [
-          {
-            percent: 25,
-            dueDate: firstPaymentDue.toISOString(),
-            status: 'pending',
-            amount: (designSelections.totalPrice * 0.25)
-          },
-          {
-            percent: 50,
-            dueDate: secondPaymentDue.toISOString(),
-            status: 'pending',
-            amount: (designSelections.totalPrice * 0.5)
-          },
-          {
-            percent: 25,
-            dueDate: thirdPaymentDue.toISOString(),
-            status: 'pending',
-            amount: (designSelections.totalPrice * 0.25)
-          }
-        ]
+        installments: calculatePaymentSchedule(designSelections.totalPrice)
       };
-  
+    
       setPaymentDetails(paymentSchedule);
-      setIsViewOnly(true); // Set view only when confirmed
-  
+      setIsViewOnly(true);
+    
       try {
-        // Update order status to confirmed
         const token = localStorage.getItem('token');
         const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
           method: 'PUT',
@@ -303,7 +447,7 @@ const UserDesignFlow = () => {
             step: 4
           })
         });
-  
+    
         if (!response.ok) {
           throw new Error('Failed to confirm order');
         }
@@ -330,84 +474,19 @@ const UserDesignFlow = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleFloorPlanSelection = async (data) => {
+  const handleFloorPlanSelection = (data) => {
     try {
-      const planDetails = data.selectedPlan;
-      const token = localStorage.getItem('token');
-      
-      // Check if there's an existing order with selected products
-      console.log(existingOrder);
-      console.log(planDetails);
-      if (existingOrder && 
-          existingOrder.selectedPlan?.id !== planDetails.id && 
-          existingOrder.selectedProducts?.length > 0) {
-        
-        // Show confirmation dialog
-        const confirmed = window.confirm(
-          "Changing floor plan will reset all your furniture selections. Do you want to continue?"
-        );
-  
-        // If user cancels, exit the function
-        if (!confirmed) {
-          return;
-        }
-      }
-      // Proceed with floor plan change
-      if (existingOrder && existingOrder.selectedPlan?.id !== planDetails.id) {
-        const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            selectedPlan: {
-              ...planDetails,
-              clientInfo: data.clientInfo
-            },
-            clientInfo: data.clientInfo,
-            selectedProducts: [],
-            occupiedSpots: {},
-            designSelections: null,
-            step: 2,
-            status: 'ongoing',
-            package: (data.package == 'investor') ? 'Investor Package' : 'Owner Package'
-          })
-        });
-        
-  
-        if (!response.ok) {
-          throw new Error('Failed to update order');
-        }      
-      }
-  
-      // Clear localStorage
-      localStorage.removeItem('selectedProducts');
-      localStorage.removeItem('occupiedSpots');
-      localStorage.removeItem('designSelections');
-      localStorage.removeItem('currentPlanId');
-  
-      // Reset states
-      setDesignSelections(null);
-      setSelectedPlan({
-        ...planDetails,
-        clientInfo: data.clientInfo
-      });
+      // Just handle the state updates without any API calls
+      setSelectedPlan(data.selectedPlan);
       setClientInfo(data.clientInfo);
-  
-      // Save new plan info to localStorage
-      localStorage.setItem('selectedPlan', JSON.stringify({
-        ...planDetails,
-        clientInfo: data.clientInfo
-      }));
+      
+      // Save to localStorage
+      localStorage.setItem('selectedPlan', JSON.stringify(data.selectedPlan));
       localStorage.setItem('clientInfo', JSON.stringify(data.clientInfo));
       localStorage.setItem('currentStep', '2');
       
-  
-      // Move to next step
+      // Move to step 2
       setCurrentStep(2);
-      checkExistingOrder();
-  
     } catch (error) {
       console.error('Error in floor plan selection:', error);
     }
@@ -450,7 +529,6 @@ const UserDesignFlow = () => {
           <FloorPlanSelection 
             onNext={handleFloorPlanSelection} 
             showNavigationButtons={false}
-            checkExistingOrder={checkExistingOrder}
           />
         );
       case 2:
@@ -461,6 +539,8 @@ const UserDesignFlow = () => {
             onComplete={handleDesignComplete}
             existingOrder={existingOrder}
             currentStep={currentStep}
+            clientInfo={clientInfo}
+            checkExistingOrder={checkExistingOrderAreaCustomization}
           />
         );
       case 3:

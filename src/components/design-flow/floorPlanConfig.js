@@ -3,12 +3,74 @@ const createRectPath = (x, y, width, height) => {
   return `M${x},${y} L${x + width},${y} L${x + width},${y + height} L${x},${y + height} Z`;
 };
 
-const calculateCenter = (x, y, width, height) => {
-  return {
-    x: x + width / 2,
-    y: y + height / 2
-  };
+const calculateCenter = (coordinates) => {
+  if (Array.isArray(coordinates)) {
+    // For polygons, calculate centroid
+    const points = coordinates;
+    let xSum = 0, ySum = 0;
+    points.forEach(point => {
+      xSum += point.x;
+      ySum += point.y;
+    });
+    return {
+      x: xSum / points.length,
+      y: ySum / points.length
+    };
+  } else if (coordinates.curve) {
+    // For curves, use midpoint of control points
+    const { start, end } = coordinates.curve;
+    return {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2
+    };
+  } else {
+    // For rectangles, use center
+    return {
+      x: coordinates.x + coordinates.width / 2,
+      y: coordinates.y + coordinates.height / 2
+    };
+  }
 };
+
+const createPath = (coordinates) => {
+  if (Array.isArray(coordinates)) {
+    // For polygon paths
+    return {
+      path: `M ${coordinates.map(point => `${point.x},${point.y}`).join(' L ')} Z`,
+      transform: ''
+    };
+  } else if (coordinates.curve) {
+    // For curved paths
+    const { start, end, control1, control2 } = coordinates.curve;
+    return {
+      path: `M ${start.x},${start.y} C ${control1.x},${control1.y} ${control2.x},${control2.y} ${end.x},${end.y}`,
+      transform: ''
+    };
+  } else if (coordinates.arc) {
+    // For curved corners
+    const { start, radius, sweep, end } = coordinates.arc;
+    return {
+      path: `M ${start.x},${start.y} A ${radius},${radius} 0 0,${sweep} ${end.x},${end.y}`,
+      transform: ''
+    };
+  } else {
+    // Handle rectangle with potential rotation
+    const centerX = coordinates.x + coordinates.width / 2;
+    const centerY = coordinates.y + coordinates.height / 2;
+    
+    const path = `M${coordinates.x},${coordinates.y} 
+                  L${coordinates.x + coordinates.width},${coordinates.y} 
+                  L${coordinates.x + coordinates.width},${coordinates.y + coordinates.height} 
+                  L${coordinates.x},${coordinates.y + coordinates.height} Z`;
+    
+    const transform = coordinates.rotation 
+      ? `rotate(${coordinates.rotation}, ${centerX}, ${centerY})`
+      : '';
+    
+    return { path, transform };
+  }
+};
+
 
 export const floorPlanConfig = {
   'investor-a': {
@@ -306,12 +368,15 @@ export const floorPlanConfig = {
         id: 'LIV-ST-01',
         label: 'LIV-ST-01',
         area: 'Living Room',
-        coordinates: {
-          x: 408,
-          y: 359,
-          width: 80,
-          height: 115
-        },
+        coordinates: [
+          { x: 412, y: 359 },
+          { x: 454, y: 359 },
+          { x: 454, y: 430 },
+          { x: 491, y: 442 },
+          { x: 488, y: 480 },
+          { x: 412, y: 460 },
+          { x: 412, y: 359 }
+        ],
         labelStyle: {
           offset: { x: -10, y: -5 },
           fontSize: '8px',
@@ -326,10 +391,11 @@ export const floorPlanConfig = {
         label: 'LIV-ST-02',
         area: 'Living Room',
         coordinates: {
-          x: 505,
+          x: 510,
           y: 347,
-          width: 40,
-          height: 39
+          width: 31,
+          height: 33,
+          rotation: 45
         },
         labelStyle: {
           offset: { x: 0, y: -5 },
@@ -345,10 +411,11 @@ export const floorPlanConfig = {
         label: 'LIV-TB-02',
         area: 'Living Room',
         coordinates: {
-          x: 496,
-          y: 344,
-          width: 17,
-          height: 15
+          x: 500,
+          y: 342,
+          width: 11,
+          height: 16,
+          rotation: 45
         },
         labelStyle: {
           offset: { x: 0, y: -5 },
@@ -535,10 +602,11 @@ export const floorPlanConfig = {
         label: 'BD1-ST-01',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 603,
-          y: 435,
-          width: 28,
-          height: 27
+          x: 605,
+          y: 438,
+          width: 23,
+          height: 22,
+          rotation: 160
         },
         labelStyle: {
           offset: { x: 0, y: -5 },
@@ -630,10 +698,11 @@ export const floorPlanConfig = {
         label: 'BD2-ST-01',
         area: 'Bedroom 2',
         coordinates: {
-          x: 190,
-          y: 436,
-          width: 27,
-          height: 27
+          x: 193,
+          y: 438,
+          width: 20,
+          height: 22,
+          rotation: 110
         },
         labelStyle: {
           offset: { x: 0, y: -5 },
@@ -668,8 +737,8 @@ export const floorPlanConfig = {
         label: 'OF-TB-01',
         area: 'Office/Den',
         coordinates: {
-          x: 235,
-          y: 109,
+          x: 233,
+          y: 106,
           width: 30,
           height: 57
         },
@@ -688,7 +757,7 @@ export const floorPlanConfig = {
         area: 'Office/Den',
         coordinates: {
           x: 250,
-          y: 124,
+          y: 121,
           width: 22,
           height: 20
         },
@@ -815,10 +884,11 @@ export const floorPlanConfig = {
         label: 'LAN-ST-01',
         area: 'Lanai',
         coordinates: {
-          x: 683,
+          x: 687,
           y: 483,
-          width: 38,
-          height: 36
+          width: 32,
+          height: 35,
+          rotation: 53
         },
         labelStyle: {
           offset: { x: -3, y: 0 },
@@ -842,8 +912,9 @@ export const floorPlanConfig = {
         coordinates: {
           x: 630,
           y: 483,
-          width: 38,
-          height: 36
+          width: 34,
+          height: 32,
+          rotation: 37
         },
         labelStyle: {
           offset: { x: -3, y: 0 },
@@ -865,10 +936,10 @@ export const floorPlanConfig = {
         label: 'LAN-TB-01',
         area: 'Lanai',
         coordinates: {
-          x: 662,
-          y: 505,
-          width: 26,
-          height: 26
+          x: 664,
+          y: 507,
+          width: 24,
+          height: 24
         },
         labelStyle: {
           offset: { x: -3, y: 0 },
@@ -884,6 +955,20 @@ export const floorPlanConfig = {
           min: 1,
           max: 1,
         }
+      },
+      // Example of a curved path
+      curvedCounter: {
+        id: 'KIT-CT-01',
+        label: 'Kitchen Counter',
+        area: 'Kitchen',
+        coordinates: {
+          curve: {
+            start: { x: 400, y: 200 },
+            control1: { x: 450, y: 200 },
+            control2: { x: 500, y: 250 },
+            end: { x: 500, y: 300 }
+          }
+        }
       }
     }
   }
@@ -898,12 +983,8 @@ export const generateFurnitureAreas = (planId) => {
 
   return Object.entries(planConfig.furniture).reduce((acc, [key, furniture]) => {
     const { coordinates, labelStyle, quantity = { enabled: false, min: 1, max: 1 } } = furniture;
-    const center = calculateCenter(
-      coordinates.x,
-      coordinates.y,
-      coordinates.width,
-      coordinates.height
-    );
+    const center = calculateCenter(coordinates);
+    const pathData = createPath(coordinates);
 
     const labelPosition = {
       x: center.x + (labelStyle?.offset?.x || 0),
@@ -914,12 +995,8 @@ export const generateFurnitureAreas = (planId) => {
       id: furniture.id,
       label: furniture.label,
       area: furniture.area || 'Unspecified Area',
-      path: createRectPath(
-        coordinates.x,
-        coordinates.y,
-        coordinates.width,
-        coordinates.height
-      ),
+      path: pathData.path,
+      transform: pathData.transform,
       center,
       labelPosition,
       labelStyle: {
@@ -931,21 +1008,12 @@ export const generateFurnitureAreas = (planId) => {
         ...labelStyle
       },
       dimensions: coordinates,
-      quantity: {
-        enabled: quantity?.enabled || false,
-        min: quantity?.min || 1,
-        max: quantity?.max || 1,
-        fixed: quantity?.fixed || null,
-        additional: quantity?.additional ? {
-          enabled: quantity.additional.enabled,
-          min: quantity.additional.min || quantity.min,
-          max: quantity.additional.max || quantity.max
-        } : null
-      }
+      quantity
     };
     return acc;
   }, {});
 };
+
 
 export const getPlanDimensions = (planId) => {
   return floorPlanConfig[planId]?.dimensions || { width: 800, height: 600 };

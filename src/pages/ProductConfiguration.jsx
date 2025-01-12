@@ -9,8 +9,19 @@ import BulkDeleteProducts from './BulkDeleteProduct';
 const ProductConfiguration = () => {
   // Predefined attribute options
   const attributeOptions = {
-    finish: ['Light', 'Dark'],
-    fabric: ['Cream', 'Tan', 'Beige', 'Blue']
+    finish: {
+      'Light': { previewUrl: '/images/woods/Light Wood.jpg' },
+      'Dark': { previewUrl: '/images/woods/Dark Wood.png' }
+    },
+    fabric: {
+      'Cream - Lounge Chair': { type: 'Cream', previewUrl: '/images/fabrics/Cream Lounge Chair.png' },
+      'Cream - Modular Sofa': { type: 'Cream', previewUrl: '/images/fabrics/Cream Modular Sofa.png' },
+      'Tan - Lounge Chair': { type: 'Tan', previewUrl: '/images/fabrics/Tan Lounge Chair.png' },
+      'Tan - Modular Sofa': { type: 'Tan', previewUrl: '/images/fabrics/Tan Modular sofa.png' },
+      'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
+      'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
+      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' }
+    }
   };
 
   const [products, setProducts] = useState([]);
@@ -37,6 +48,12 @@ const ProductConfiguration = () => {
   });
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+  const previewContainerStyles = "flex flex-col items-center";
+  const previewImageContainerStyles = "w-[180px] h-[180px] relative rounded-lg overflow-hidden";
+  const previewImageStyles = "w-full h-full object-cover";
+  const previewLabelStyles = "absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-center";
+  const previewTitleStyles = "block text-sm font-medium text-gray-600 mb-2";
 
   // Initialize a new variant
   const initializeVariant = () => ({
@@ -67,6 +84,55 @@ const ProductConfiguration = () => {
       ...formData,
       variants: newVariants
     });
+  };
+
+  const FabricPreview = ({ fabricKey }) => {
+    const fabricInfo = attributeOptions.fabric[fabricKey];
+    
+    if (!fabricInfo) return null;
+    
+    return (
+      <div className={previewContainerStyles}>
+        <label className={previewTitleStyles}>
+          Fabric Preview
+        </label>
+        <div className={previewImageContainerStyles}>
+          <img
+            src={fabricInfo.previewUrl}
+            alt={fabricKey}
+            className={previewImageStyles}
+          />
+          <div className={previewLabelStyles}>
+            {fabricInfo.type}
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // Update FinishPreview component
+  const FinishPreview = ({ finishValue }) => {
+    const finishInfo = attributeOptions.finish[finishValue];
+    
+    if (!finishInfo) return null;
+    
+    return (
+      <div className={previewContainerStyles}>
+        <label className={previewTitleStyles}>
+          Finish Preview
+        </label>
+        <div className={previewImageContainerStyles}>
+          <img
+            src={finishInfo.previewUrl}
+            alt={finishValue}
+            className={previewImageStyles}
+          />
+          <div className={previewLabelStyles}>
+            {finishValue}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -728,15 +794,18 @@ const handleCloseModal = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Finish
                         </label>
-                        <select
-                          value={variant.finish}
-                          onChange={(e) => handleVariantChange(index, 'finish', e.target.value)}
-                          className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                        >
-                          <option value="">Select Finish</option>
-                          <option value="Light">Light</option>
-                          <option value="Dark">Dark</option>
-                        </select>
+                        <div className="space-y-2">
+                          <select
+                            value={variant.finish}
+                            onChange={(e) => handleVariantChange(index, 'finish', e.target.value)}
+                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                          >
+                            <option value="">Select Finish</option>
+                            <option value="Light">Light</option>
+                            <option value="Dark">Dark</option>
+                          </select>
+                          {variant.finish && <FinishPreview finishValue={variant.finish} />}
+                        </div>
                         {errors[`variant_${index}_finish`] && (
                           <p className="text-red-500 text-sm mt-1">
                             {errors[`variant_${index}_finish`]}
@@ -751,17 +820,21 @@ const handleCloseModal = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Fabric
                         </label>
-                        <select
-                          value={variant.fabric}
-                          onChange={(e) => handleVariantChange(index, 'fabric', e.target.value)}
-                          className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                        >
-                          <option value="">Select Fabric</option>
-                          <option value="Cream">Cream</option>
-                          <option value="Tan">Tan</option>
-                          <option value="Beige">Beige</option>
-                          <option value="Blue">Blue</option>
-                        </select>
+                        <div className="space-y-2">
+                          <select
+                            value={variant.fabric}
+                            onChange={(e) => handleVariantChange(index, 'fabric', e.target.value)}
+                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                          >
+                            <option value="">Select Fabric</option>
+                            {Object.keys(attributeOptions.fabric).map((fabricKey) => (
+                              <option key={fabricKey} value={fabricKey}>
+                                {fabricKey}
+                              </option>
+                            ))}
+                          </select>
+                          {variant.fabric && <FabricPreview fabricKey={variant.fabric} />}
+                        </div>
                         {errors[`variant_${index}_fabric`] && (
                           <p className="text-red-500 text-sm mt-1">
                             {errors[`variant_${index}_fabric`]}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { backendServer } from '../../utils/info';
 
-const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
+const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   const [selectedPlanType, setSelectedPlanType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [clientInfo, setClientInfo] = useState({
@@ -12,6 +12,169 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
 
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [pendingPackageType, setPendingPackageType] = useState(null);
+
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [occupiedSpots, setOccupiedSpots] = useState({});
+  const [designSelections, setDesignSelections] = useState(null);
+
+  const handlePackageSelect = (packageType) => {
+    // Get current package from localStorage instead of state
+    const currentPackage = localStorage.getItem('selectedPackage');
+    
+    // Get existing products from localStorage
+    const existingProducts = localStorage.getItem('selectedProducts');
+    const hasProducts = existingProducts && JSON.parse(existingProducts).length > 0;
+    
+    // If it's the same package, just update the state and proceed
+    if (packageType === currentPackage) {
+      setSelectedPlanType(packageType);
+      localStorage.setItem('selectedPackage', packageType);
+      return;
+    }
+  
+    // Show warning if has products and changing packages
+    if (hasProducts) {
+      setPendingPackageType(packageType);
+      setShowWarningModal(true);
+    } else {
+      setSelectedPlanType(packageType);
+      localStorage.setItem('selectedPackage', packageType);
+      setSelectedPlan(null);
+    }
+  };
+  
+  const confirmPackageChange = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Get the new floor plan data based on pendingPackageType
+      const newFloorPlan = floorPlanTypes[pendingPackageType].plans.find(plan =>
+        plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
+      );
+  
+      // Clear existing order and update selectedPlan in database
+      const response = await fetch(`${backendServer}/api/orders/user-order`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+  
+      if (response.ok) {
+        const existingOrder = await response.json();
+        if (existingOrder) {
+          await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              ...existingOrder,
+              selectedPlan: newFloorPlan, // Update the selectedPlan
+              selectedProducts: [], // Clear products
+              occupiedSpots: {},
+              status: 'ongoing',
+              step: 2
+            })
+          });
+        }
+      }
+  
+      // Clear local storage
+      localStorage.removeItem('selectedProducts');
+      localStorage.removeItem('occupiedSpots');
+      localStorage.removeItem('designSelections');
+      
+      // Update local state
+      setSelectedPlanType(pendingPackageType);
+      localStorage.setItem('selectedPackage', pendingPackageType);
+      setSelectedPlan(newFloorPlan); // Update selectedPlan in state
+      setDesignSelections(null); // Clear design selections if you have this state
+      setSelectedProducts([]); // Clear selected products if you have this state
+      setOccupiedSpots({}); // Clear occupied spots if you have this state
+      
+      setShowWarningModal(false);
+      setPendingPackageType(null);
+  
+      // Force clean state in UI
+      window.location.reload();
+  
+    } catch (error) {
+      console.error('Error handling package change:', error);
+      alert('There was an error changing packages. Please try again.');
+    }
+  };
+
+  const renderPackages = () => {
+    return (
+      <div className="grid grid-cols-2 gap-6">
+        {Object.values(floorPlanTypes).map(type => {
+          // Get matching plan for client's unit
+          const clientPlan = type.plans.find(plan =>
+            plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
+          );
+  
+          // Get budget based on the plan
+          const budget = clientPlan ? 
+            type.budgets[clientPlan.id] || type.budgets.default : 
+            type.budgets.default;
+  
+          return (
+            <div
+              key={type.id}
+              onClick={() => handlePackageSelect(type.id)}
+              className="bg-white rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all"
+            >
+              <div className="h-64 rounded-t-lg overflow-hidden">
+                <div
+                  className="h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${type.image})` }}
+                />
+              </div>
+  
+              <div className="p-6">
+                <h3 className="text-xl font-medium mb-2 text-[#005670]">
+                  {type.title}
+                </h3>
+                <p className="text-gray-600 mb-2">{type.description}</p>
+                <p className="text-[#005670] font-medium text-lg">
+                  Budget up to ${budget.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const WarningModal = () => showWarningModal && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-xl font-bold mb-4">Change Package?</h3>
+        <p className="mb-6 text-gray-600">
+          Changing packages will remove all your current furniture selections. Would you like to proceed?
+        </p>
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={() => setShowWarningModal(false)}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmPackageChange}
+            className="px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+          >
+            Confirm Change
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const floorPlanTypes = {
     investor: {
       id: 'investor',
@@ -19,6 +182,15 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
       description: 'Fully customizable layout for personal preferences',
       availablePlans: '6 floor plans available',
       image: '/images/investor_plan/investor_1.png',
+      budgets: {
+        'investor-a': 75000,  // 2 Bedroom
+        'investor-b': 115000,  // 2 Bedroom + 2.5 Bath
+        'investor-c': 115000,  // 2 Bedroom + Den
+        'investor-d': 65000,  // 1 Bedroom
+        'investor-e': 70000,  // 2 Bedroom
+        'investor-f': 120000, // 3 Bedroom + Den
+        default: 80000       // Default if not specified
+      },
       plans: [
         {
           id: 'investor-a',
@@ -93,6 +265,15 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
       description: 'Standard layout optimized for Owner',
       availablePlans: '10 floor plans available',
       image: '/images/custom_plan/custom_1.png',
+      budgets: {
+        'custom-a': 95000,   // 2 Bedroom
+        'custom-b': 105000,  // 2 Bedroom + 2.5 Bath
+        'custom-c': 147000,  // 2 Bedroom + Den
+        'custom-d': 85000,   // 1 Bedroom
+        'custom-e': 90000,   // 2 Bedroom
+        'custom-f': 140000,  // 3 Bedroom + Den
+        default: 100000     // Default if not specified
+      },
       plans: [
         {
           id: 'custom-a',
@@ -250,7 +431,7 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
       const selectedPlanData = floorPlanTypes[selectedPlanType].plans.find(
         plan => plan.id === selectedPlan
       );
-      checkExistingOrder();
+      // Remove checkExistingOrder() call and just pass the data
       onNext({ 
         selectedPlan: selectedPlanData,
         clientInfo,
@@ -333,30 +514,7 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
           </div>
         </>
       ) : (
-        <div className="grid grid-cols-2 gap-6">
-          {Object.values(floorPlanTypes).map(type => (
-            <div
-              key={type.id}
-              onClick={() => setSelectedPlanType(type.id)}
-              className="bg-white rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all"
-            >
-              <div className="h-64 rounded-t-lg overflow-hidden">
-                <div
-                  className="h-full w-full bg-cover bg-center"
-                  style={{ backgroundImage: `url(${type.image})` }}
-                />
-              </div>
-
-              <div className="p-6">
-                <h3 className="text-xl font-medium mb-2" style={{ color: '#005670' }}>
-                  {type.title}
-                </h3>
-                <p className="text-gray-600 mb-2">{type.description}</p>
-                <p className="text-gray-500 text-sm">{type.availablePlans}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        renderPackages()
       )}
 
       {errors.plan && (
@@ -374,6 +532,8 @@ const FloorPlanSelection = ({ onNext, checkExistingOrder }) => {
           </button>
         </div>
       )}
+
+      <WarningModal />
     </div>
   );
 };

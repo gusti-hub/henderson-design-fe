@@ -198,8 +198,8 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="font-medium">
-                    {index === 0 ? 'First Payment (25%)' :
-                     index === 1 ? 'Second Payment (50%)' :
+                    {index === 0 ? 'First Payment (50%)' :
+                     index === 1 ? 'Second Payment (25%)' :
                      'Final Payment (25%)'}
                   </p>
                   <p className="text-sm text-gray-500">
