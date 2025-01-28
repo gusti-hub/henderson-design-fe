@@ -26,7 +26,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     // Get existing products from localStorage
     const existingProducts = localStorage.getItem('selectedProducts');
     const hasProducts = existingProducts && JSON.parse(existingProducts).length > 0;
-
+    
     // If it's the same package, just update the state and proceed
     if (packageType === currentPackage) {
       setSelectedPlanType(packageType);
@@ -35,7 +35,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     }
   
     // Show warning if has products and changing packages
-    if (hasProducts || (currentPackage !== packageType)) {
+    if (hasProducts) {
       setPendingPackageType(packageType);
       setShowWarningModal(true);
     } else {
@@ -60,7 +60,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
           'Authorization': `Bearer ${token}`
         }
       });
-
+  
       if (response.ok) {
         const existingOrder = await response.json();
         if (existingOrder) {
@@ -109,14 +109,14 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
 
   const renderPackages = () => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-6">
         {Object.values(floorPlanTypes).map(type => {
+          // Get matching plan for client's unit
           const clientPlan = type.plans.find(plan =>
             plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
           );
   
-          const image_link = clientPlan.image;
-          
+          // Get budget based on the plan
           const budget = clientPlan ? 
             type.budgets[clientPlan.id] || type.budgets.default : 
             type.budgets.default;
@@ -127,11 +127,10 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
               onClick={() => handlePackageSelect(type.id)}
               className="bg-white rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all"
             >
-              <div className="relative w-full pt-[75%] rounded-t-lg overflow-hidden">
-                <img
-                  src={image_link}
-                  alt={`${type.title} floor plan`}
-                  className="absolute top-0 left-0 w-full h-full object-cover object-center"
+              <div className="h-64 rounded-t-lg overflow-hidden">
+                <div
+                  className="h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${type.image})` }}
                 />
               </div>
   
@@ -195,24 +194,67 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       plans: [
         {
           id: 'investor-a',
-          title: 'Residence 05A',
-          description: '1 Bedroom / 1.5 Bath, Level: 7-37 (Odd)',
-          image: '/images/investor_plan/Alia_05A.png',
+          title: 'Residence 00A',
+          description: '2 Bedroom + 2 Bath, Level: 7-33 (All)',
+          image: '/images/investor_plan/Alia_00A.png',
           details: [
-            'Total: 819 Sq. Ft.',
-            'Interior: 761 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
+            'Total: 1,419 Sq. Ft.',
+            'Interior: 1,235 Sq. Ft.',
+            'Lanai: 184 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'investor-b',
+          title: 'Residence 01B',
+          description: '2 Bedroom / 2.5 Bath, Level: 7-33 (Odd)',
+          image: '/images/custom_plan/Alia_01B.png',
+          details: [
+            'Total: 1,275 Sq. Ft.',
+            'Interior: 1,148 Sq. Ft.',
+            'Lanai A: 58 Sq. Ft.',
+            'Lanai B: 69 Sq. Ft.'
           ]
         },
         {
           id: 'investor-c',
-          title: 'Residence 03B',
-          description: '2 Bedroom / 2.5 Bath + Den, Level: 7-37 (Odd)',
-          image: '/images/investor_plan/Alia_03B.png',
+          title: 'Residence 03A',
+          description: '2 Bedroom / 2.5 Bath + Den, Level: 8-38 (Even), 39',
+          image: '/images/investor_plan/Alia_03A.svg',
           details: [
-            'Total: 1,493 Sq. Ft.',
+            'Total: 1,525 Sq. Ft.',
             'Interior: 1,435 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
+            'Lanai: 90 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'investor-d',
+          title: 'Residence 05A',
+          description: '1 Bedroom / 1.5 Bath, Level: 8-38 (Even), 39',
+          image: '/images/investor_plan/Alia_05A.png',
+          details: [
+            'Total: 825 Sq. Ft.',
+            'Interior: 761 Sq. Ft.',
+            'Lanai: 64 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'investor-e',
+          title: 'Residence 08',
+          description: '2 Bedroom / 2 Bath, Level: 7-39 (All)',
+          image: '/images/investor_plan/Alia_08.svg',
+          details: [
+            'Total: 970 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'investor-f',
+          title: 'Residence 10A/12A',
+          description: '3 Bedroom / 3 Bath + Den, Level: 39',
+          image: '/images/investor_plan/Alia_10A-12A-L39.svg',
+          details: [
+            'Total: 1,670 Sq. Ft.',
+            'Interior: 1,581 Sq. Ft.',
+            'Lanai: 89 Sq. Ft.'
           ]
         }
       ]
@@ -235,13 +277,25 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       plans: [
         {
           id: 'custom-a',
-          title: 'Residence 05A',
-          description: '1 Bedroom / 1.5 Bath, Level: 7-37 (Odd)',
-          image: '/images/custom_plan/Alia_05A.png',
+          title: 'Residence 00A',
+          description: '2 Bedroom / 2 Bath, Level: 7-33 (All)',
+          image: '/images/custom_plan/Alia_00A.svg',
           details: [
-            'Total: 819 Sq. Ft.',
-            'Interior: 761 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
+            'Total: 1,419 Sq. Ft.',
+            'Interior: 1,235 Sq. Ft.',
+            'Lanai: 184 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-b',
+          title: 'Residence 01B',
+          description: '2 Bedroom / 2.5 Bath, Level: 7-33 (Odd)',
+          image: '/images/custom_plan/Alia_01B.png',
+          details: [
+            'Total: 1,275 Sq. Ft.',
+            'Interior: 1,148 Sq. Ft.',
+            'Lanai A: 58 Sq. Ft.',
+            'Lanai B: 69 Sq. Ft.'
           ]
         },
         {
@@ -253,6 +307,82 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
             'Total: 1,493 Sq. Ft.',
             'Interior: 1,435 Sq. Ft.',
             'Lanai: 58 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-d',
+          title: 'Residence 05B',
+          description: '1 Bedroom / 1.5 Bath, Level: 7-37 (Odd)',
+          image: '/images/custom_plan/Alia_05B.svg',
+          details: [
+            'Total: 819 Sq. Ft.',
+            'Interior: 761 Sq. Ft.',
+            'Lanai: 58 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-e',
+          title: 'Residence 07B',
+          description: '2 Bedroom / 2.5 Bath, Level: 7-37 (Odd)',
+          image: '/images/custom_plan/Alia_07B.svg',
+          details: [
+            'Total: 1,206 Sq. Ft.',
+            'Interior: 1,148 Sq. Ft.',
+            'Lanai: 58 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-f',
+          title: 'Residence 08',
+          description: '2 Bedroom / 2 Bath, Level: 7-39 (All)',
+          image: '/images/custom_plan/Alia_08.svg',
+          details: [
+            'Total: 970 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-g',
+          title: 'Residence 09B',
+          description: '2 Bedroom / 2 Bath + Den, Level: 7-37 (ODD)',
+          image: '/images/custom_plan/Alia_09B.svg',
+          details: [
+            'Total: 1,205 Sq. Ft.',
+            'Interior: 1,147 Sq. Ft.',
+            'Lanai: 58 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-h',
+          title: 'Residence 10/12',
+          description: '3 Bedroom / 3.5 Bath + Den, Level: 7-23',
+          image: '/images/custom_plan/Alia_10A-12A.svg',
+          details: [
+            'Total: 1,670 Sq. Ft.',
+            'Interior: 1,581 Sq. Ft.',
+            'Lanai: 89 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-i',
+          title: 'Residence 11B',
+          description: '1 Bedroom / 1.5 Bath, Level: 7-37 (Odd)',
+          image: '/images/custom_plan/Alia_11B.svg',
+          details: [
+            'Total: 822 Sq. Ft.',
+            'Interior: 764 Sq. Ft.',
+            'Lanai: 58 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-j',
+          title: 'Residence 13A',
+          description: '2 Bedroom / 2 Bath, Level: 8-38 (Even), 39',
+          image: '/images/custom_plan/Alia_13A.svg',
+          details: [
+            'Total: 1,101 Sq. Ft.',
+            'Interior: 959 Sq. Ft.',
+            'Lanai A: 90 Sq. Ft.',
+            'Lanai B: 52 Sq. Ft.'
           ]
         }
       ]

@@ -222,7 +222,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       
       // Fetch products for this location from mapping
       const mappingResponse = await fetch(
-        `${backendServer}/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.id}`,
+        `${backendServer}/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.title}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`

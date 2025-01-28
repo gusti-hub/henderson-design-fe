@@ -6,6 +6,20 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
   const [paymentMethod, setPaymentMethod] = useState('');
   const [uploadingIndex, setUploadingIndex] = useState(null);
 
+  // Calculate all fees and totals
+  const subtotal = designSelections?.selectedProducts?.reduce(
+    (sum, product) => sum + (product.unitPrice * product.quantity),
+    0
+  ) || 0;
+
+  // Calculate additional fees
+  const designFee = subtotal * 0.10; // 10% Design and project management fee
+  const otherTradesFee = subtotal * 0.05; // 5% Other trades
+  const deliveryFee = subtotal * 0.25; // 25% Freight delivery and installation
+  const preTaxTotal = subtotal + designFee + otherTradesFee + deliveryFee;
+  const tax = preTaxTotal * 0.048; // 4.8% Tax
+  const grandTotal = preTaxTotal + tax;
+
   const handleMethodSelect = (method) => {
     setPaymentMethod(method);
   };
@@ -302,12 +316,11 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
       <div className="mt-8">
         <h3 className="text-xl mb-6 text-[#005670]">Order Summary</h3>
         <div className="bg-white p-6 rounded-lg shadow-sm">
+          {/* Products List */}
           {designSelections?.selectedProducts?.map((product, index) => (
             <div key={index} className="flex items-start gap-4 border-b pb-4 mb-4 last:border-b-0">
               <img
-                src={
-                  product.selectedOptions?.image || '/placeholder-image.png'  // Just use the saved image URL
-                }
+                src={product.selectedOptions?.image || '/placeholder-image.png'}
                 alt={product.name}
                 className="w-20 h-20 object-cover rounded"
               />
@@ -322,117 +335,134 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
                   </p>
                 )}
                 <p className="font-medium mt-1 text-[#005670]">
-                  ${product.finalPrice.toFixed(2)}
+                  ${(product.unitPrice * product.quantity).toFixed(2)}
                 </p>
               </div>
             </div>
           ))}
 
-          {/* Total */}
-          <div className="pt-4 mt-4 border-t">
+          {/* Price Breakdown */}
+          <div className="pt-4 mt-4 border-t space-y-3">
             <div className="flex justify-between">
-              <span className="font-medium">Total Amount</span>
-              <span className="font-bold text-[#005670]">
-                ${totalAmount.toFixed(2)}
-              </span>
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium">${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Design and Project Management Fee (10%)</span>
+              <span className="font-medium">${designFee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Other Trades (5%)</span>
+              <span className="font-medium">${otherTradesFee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Delivery and Installation (25%)</span>
+              <span className="font-medium">${deliveryFee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tax (4.8%)</span>
+              <span className="font-medium">${tax.toFixed(2)}</span>
+            </div>
+            <div className="border-t pt-3 mt-3">
+              <div className="flex justify-between text-lg font-semibold">
+                <span>Grand Total</span>
+                <span className="text-[#005670]">${grandTotal.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Payment Schedule */}
+      {/* Payment Schedule - Updated with calculated amounts */}
       <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
-      <h3 className="text-lg font-medium mb-4 text-[#005670]">Payment Schedule</h3>
-      {paymentDetails?.installments?.map((installment, index) => (
-        <div key={index} className="mb-6 last:mb-0 border rounded-lg p-4">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <p className="font-medium">
-                {index === 0 ? 'First Payment (50%)' :
-                index === 1 ? 'Second Payment (25%)' :
-                'Final Payment (25%)'}
-              </p>
-              <p className="text-sm text-gray-500">
-                Due: {new Date(installment.dueDate).toLocaleDateString()}
-              </p>
-              <p className="text-[#005670] font-medium">
-                ${installment.amount.toFixed(2)}
-              </p>
-            </div>
-            <PaymentStatusBadge status={installment.status} />
-          </div>
-
-          {/* Current proof of payment if exists */}
-          {installment.proofOfPayment && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
-                Upload Date: {new Date(installment.proofOfPayment.uploadDate).toLocaleDateString()}
-              </p>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">
-                  File: {installment.proofOfPayment.filename}
+        <h3 className="text-lg font-medium mb-4 text-[#005670]">Payment Schedule</h3>
+        {paymentDetails?.installments?.map((installment, index) => (
+          <div key={index} className="mb-6 last:mb-0 border rounded-lg p-4">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="font-medium">
+                  {index === 0 ? `First Payment (50%) - $${(grandTotal * 0.5).toFixed(2)}` :
+                   index === 1 ? `Second Payment (25%) - $${(grandTotal * 0.25).toFixed(2)}` :
+                   `Final Payment (25%) - $${(grandTotal * 0.25).toFixed(2)}`}
                 </p>
-                {installment.proofOfPayment.url && (
-                  <a 
-                    href={installment.proofOfPayment.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#005670] hover:underline text-sm flex items-center"
-                  >
-                    Download
-                  </a>
-                )}
+                <p className="text-sm text-gray-500">
+                  Due: {new Date(installment.dueDate).toLocaleDateString()}
+                </p>
               </div>
+              <PaymentStatusBadge status={installment.status} />
             </div>
-          )}
 
-          {/* Upload section */}
-          {(installment.status === 'pending' || installment.status === 'rejected') && (
-            <div className="mt-4">
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                id={`payment-proof-${index}`}
-                onChange={(e) => {
-                  if (e.target.files[0]) {
-                    handleFileUpload(e.target.files[0], index);
-                  }
-                }}
-              />
-              <label
-                htmlFor={`payment-proof-${index}`}
-                className="cursor-pointer inline-flex items-center px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {uploadingIndex === index ? 'Uploading...' : 
-                installment.status === 'rejected' ? 'Upload New Proof' : 
-                'Upload Payment Proof'}
-              </label>
-            </div>
-          )}
+            {/* File upload and status sections */}
+            {installment.proofOfPayment && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  Upload Date: {new Date(installment.proofOfPayment.uploadDate).toLocaleDateString()}
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">
+                    File: {installment.proofOfPayment.filename}
+                  </p>
+                  {installment.proofOfPayment.url && (
+                    <a 
+                      href={installment.proofOfPayment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#005670] hover:underline text-sm"
+                    >
+                      Download
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
-          {/* Status message */}
-          {installment.status === 'uploaded' && (
-            <p className="text-sm text-blue-600 mt-2">
-              Payment proof is under review. We'll update the status once verified.
-            </p>
-          )}
-          {installment.status === 'verified' && (
-            <p className="text-sm text-green-600 mt-2">
-              Payment has been verified. Thank you!
-            </p>
-          )}
-          {installment.status === 'rejected' && (
-            <p className="text-sm text-red-600 mt-2">
-              Payment proof was rejected. Please upload a new one.
-            </p>
-          )}
-        </div>
-      ))}
-    </div>
+            {(installment.status === 'pending' || installment.status === 'rejected') && (
+              <div className="mt-4">
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  id={`payment-proof-${index}`}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleFileUpload(e.target.files[0], index);
+                    }
+                  }}
+                />
+                <label
+                  htmlFor={`payment-proof-${index}`}
+                  className="cursor-pointer inline-flex items-center px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploadingIndex === index ? 'Uploading...' : 
+                   installment.status === 'rejected' ? 'Upload New Proof' : 
+                   'Upload Payment Proof'}
+                </label>
+              </div>
+            )}
+
+            {/* Status messages */}
+            {installment.status === 'uploaded' && (
+              <p className="text-sm text-blue-600 mt-2">
+                Payment proof is under review. We'll update the status once verified.
+              </p>
+            )}
+            {installment.status === 'verified' && (
+              <p className="text-sm text-green-600 mt-2">
+                Payment has been verified. Thank you!
+              </p>
+            )}
+            {installment.status === 'rejected' && (
+              <p className="text-sm text-red-600 mt-2">
+                Payment proof was rejected. Please upload a new one.
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
+
 
 export default PaymentPage;

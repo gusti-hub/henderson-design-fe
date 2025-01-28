@@ -155,7 +155,7 @@ const AdminOrderList = ({ onOrderClick }) => {
               ) : (
                 orders.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">{order.selectedPlan?.clientInfo?.name}</td>
+                    <td className="px-6 py-4">{order.clientInfo?.name}</td>
                     <td className="px-6 py-4">{order.selectedPlan?.title}</td>
                     <td className="px-6 py-4">{getOrderStatus(order)}</td>
                     <td className="px-6 py-4">

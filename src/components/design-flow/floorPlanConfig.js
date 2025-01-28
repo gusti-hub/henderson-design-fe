@@ -77,51 +77,949 @@ export const floorPlanConfig = {
     id: 'investor-a',
     dimensions: { width: 800, height: 600 },
     furniture: {
-      sofa: {
-        id: 'Test 1',
-        label: 'Dining Table 1',
-        area: 'Dining Room',
+      kitchenSpot1: {
+        id: 'KIT-ST-01-I',
+        label: 'KIT-ST-01-I',
+        area: 'Kitchen',
         coordinates: {
-          x: 380,
-          y: 245,
-          width: 140,
-          height: 40
+          x: 285,
+          y: 280,
+          width: 23,
+          height: 27
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 1,
+          max: 5,
+          additional: {
+            enabled: true,
+            min: 0,
+            max: 2
+          }
         }
       },
-      diningTable: {
-        id: 'Test 2',
-        label: 'Dining Table 2',
-        area: 'Dining Room', // Added area property
+      kitchenSpot2: {
+        id: 'KIT-ST-01-I',
+        label: 'KIT-ST-01-I',
+        area: 'Kitchen',
         coordinates: {
-          x: 270,
-          y: 335,
-          width: 45,
-          height: 95
+          x: 320,
+          y: 280,
+          width: 23,
+          height: 27
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 1,
+          max: 5,
+          additional: {
+            enabled: true,
+            min: 0,
+            max: 2
+          }
         }
-      }
+      },
+      diningSpot1: {
+        id: 'DIN-ST-01-I',
+        label: 'DIN-ST-01-I',
+        area: 'Dining Room',
+        coordinates: {
+          x: 240,
+          y: 405,
+          width: 24,
+          height: 22
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+          additional: {
+            enabled: true,
+            min: 1,
+            max: 2
+          }
+        }
+      },
+      diningSpot2: {
+        id: 'DIN-ST-01-I',
+        label: 'DIN-ST-01-I',
+        area: 'Dining Room',
+        coordinates: {
+          x: 240,
+          y: 376,
+          width: 24,
+          height: 22
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+          additional: {
+            enabled: true,
+            min: 1,
+            max: 2
+          }
+        }
+      },
+      diningTable1: {
+        id: 'DIN-TB-01-I',
+        label: 'DIN-TB-01-I',
+        area: 'Dining Room',
+        coordinates: {
+          x: 250,
+          y: 365,
+          width: 33,
+          height: 70
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      diningTable2: {
+        id: 'DIN-CG-01-I',
+        label: 'DIN-CG-01-I',
+        area: 'Dining Room',
+        coordinates: {
+          x: 394,
+          y: 365,
+          width: 20,
+          height: 78
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot1: {
+        id: 'LIV-ST-01-I',
+        label: 'LIV-ST-01-I',
+        area: 'Living Room',
+        coordinates: {
+          x: 285,
+          y: 357,
+          width: 45,
+          height: 88
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot2: {
+        id: 'LIV-TB-02-I',
+        label: 'LIV-TB-02-I',
+        area: 'Living Room',
+        coordinates: {
+          x: 285,
+          y: 345,
+          width: 40,
+          height: 10
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot3: {
+        id: 'LIV-TB-03-I',
+        label: 'LIV-TB-03-I',
+        area: 'Living Room',
+        coordinates: {
+          x: 285,
+          y: 448,
+          width: 40,
+          height: 10
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot4: {
+        id: 'LIV-TB-01-I',
+        label: 'LIV-TB-01-I',
+        area: 'Living Room',
+        coordinates: {
+          x: 350,
+          y: 380,
+          width: 30,
+          height: 45
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '7px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot5: {
+        id: 'LIV-ST-02-I',
+        label: 'LIV-ST-02-I',
+        area: 'Living Room',
+        coordinates: {
+          x: 339,
+          y: 450,
+          width: 32,
+          height: 35,
+          rotation: 12
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '8px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot1: {
+        id: 'BD1-BD-01-I',
+        label: 'BD1-BD-01-I',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 469,
+          y: 335,
+          width: 100,
+          height: 90
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot2: {
+        id: 'BD1-CG-01-I',
+        label: 'BD1-CG-01-I',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 547,
+          y: 295,
+          width: 25,
+          height: 40
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot3: {
+        id: 'BD1-CG-02-I',
+        label: 'BD1-CG-02-I',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 547,
+          y: 428,
+          width: 25,
+          height: 40
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      LanaiSpot1: {
+        id: 'LAN-ST-01-I',
+        label: 'LAN-ST-01-I',
+        area: 'Lanai',
+        coordinates: {
+          x: 212,
+          y: 503,
+          width: 34,
+          height: 30,
+          rotation: 37
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+        }
+      },
+      LanaiSpot2: {
+        id: 'LAN-ST-02-I',
+        label: 'LAN-ST-02-I',
+        area: 'Lanai',
+        coordinates: {
+          x: 271,
+          y: 503,
+          width: 30,
+          height: 34,
+          rotation: 52
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+        }
+      },
+      LanaiSpot3: {
+        id: 'LAN-TB-01-I',
+        label: 'LAN-TB-01-I',
+        area: 'Lanai',
+        coordinates: {
+          x: 245,
+          y: 527,
+          width: 25,
+          height: 23,
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: false,
+          fixed: 1,
+          min: 1,
+          max: 1,
+        }
+      },
     }
   },
-  'investor-b': {
-    id: 'investor-b',
+  'custom-a': {
+    id: 'custom-a',
     dimensions: { width: 800, height: 600 },
     furniture: {
-      sofa: {
-        id: 'sofa',
-        label: 'Modern Sofa',
-        area: 'Living Room', // Added area property
+      kitchenSpot1: {
+        id: 'KIT-ST-01-O',
+        label: 'KIT-ST-01-O',
+        area: 'Kitchen',
         coordinates: {
-          x: 300,
-          y: 200,
-          width: 150,
-          height: 80
+          x: 273,
+          y: 283,
+          width: 22,
+          height: 27
         },
-        product: {
-          // Product details specific to this floor plan
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 1,
+          max: 5,
+          additional: {
+            enabled: true,
+            min: 0,
+            max: 2
+          }
         }
-      }
+      },
+      kitchenSpot2: {
+        id: 'KIT-ST-01-O',
+        label: 'KIT-ST-01-O',
+        area: 'Kitchen',
+        coordinates: {
+          x: 305,
+          y: 283,
+          width: 22,
+          height: 27
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 1,
+          max: 5,
+          additional: {
+            enabled: true,
+            min: 0,
+            max: 2
+          }
+        }
+      },
+      kitchenSpot3: {
+        id: 'KIT-ST-01-O',
+        label: 'KIT-ST-01-O',
+        area: 'Kitchen',
+        coordinates: {
+          x: 337,
+          y: 283,
+          width: 22,
+          height: 27
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 1,
+          max: 5,
+          additional: {
+            enabled: true,
+            min: 0,
+            max: 2
+          }
+        }
+      },
+      diningSpot1: {
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 242,
+          y: 415,
+          width: 24,
+          height: 20
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 4,
+          min: 4,
+          max: 4,
+          additional: {
+            enabled: true,
+            min: 1,
+            max: 2
+          }
+        }
+      },
+      diningSpot2: {
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 242,
+          y: 393,
+          width: 24,
+          height: 20
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+          additional: {
+            enabled: true,
+            min: 1,
+            max: 2
+          }
+        }
+      },
+      diningSpot3: {
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 260,
+          y: 370,
+          width: 21,
+          height: 22
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+          additional: {
+            enabled: true,
+            min: 1,
+            max: 2
+          }
+        }
+      },
+      diningSpot4: {
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 260,
+          y: 437,
+          width: 21,
+          height: 24
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+          additional: {
+            enabled: true,
+            min: 1,
+            max: 2
+          }
+        }
+      },
+      diningTable1: {
+        id: 'DIN-TB-01-O',
+        label: 'DIN-TB-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 251,
+          y: 380,
+          width: 33,
+          height: 70
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot1: {
+        id: 'LIV-ST-01-O',
+        label: 'LIV-ST-01-O',
+        area: 'Living Room',
+        coordinates: [
+          { x: 284, y: 363 }, //{ x: 380, y: 392 },96 29
+          { x: 329, y: 363 },
+          { x: 329, y: 442 },
+          { x: 363, y: 452 },
+          { x: 360, y: 483 },
+          { x: 284, y: 463 },
+          { x: 284, y: 362 }
+        ],
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot2: {
+        id: 'LIV-TB-02-O',
+        label: 'LIV-TB-02-O',
+        area: 'Living Room',
+        coordinates: {
+          x: 295,
+          y: 353,
+          width: 30,
+          height: 10
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot4: {
+        id: 'LIV-TB-01-O',
+        label: 'LIV-TB-01-O',
+        area: 'Living Room',
+        coordinates: {
+          x: 343,
+          y: 389,
+          width: 30,
+          height: 45
+        },
+        labelStyle: {
+          offset: { x: 0, y: 0 },
+          fontSize: '7px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      livingSpot5: {
+        id: 'LIV-ST-02-O',
+        label: 'LIV-ST-02-O',
+        area: 'Living Room',
+        coordinates: {
+          x: 350,
+          y: 335,
+          width: 32,
+          height: 35,
+          rotation: 7
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '8px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      livingSpot6: {
+        id: 'LIV-CG-01-O',
+        label: 'LIV-CG-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 397,
+          y: 360,
+          width: 20,
+          height: 110
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      bedroom1Spot1: {
+        id: 'BD1-BD-01-O',
+        label: 'BD1-BD-01-O',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 469,
+          y: 345,
+          width: 100,
+          height: 90
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot2: {
+        id: 'BD1-CG-01-O',
+        label: 'BD1-CG-01-O',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 542,
+          y: 305,
+          width: 25,
+          height: 40
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot3: {
+        id: 'BD1-CG-02-O',
+        label: 'BD1-CG-02-O',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 542,
+          y: 437,
+          width: 25,
+          height: 28
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot4: {
+        id: 'BD1-CG-03-O',
+        label: 'BD1-CG-03-O',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 425,
+          y: 350,
+          width: 8,
+          height: 82
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot5: {
+        id: 'BD1-TB-01-O',
+        label: 'BD1-TB-01-O',
+        area: 'Primary Bedroom',
+        coordinates: [
+          { x: 422, y: 433 }, //92 32
+          { x: 426, y: 433 },
+          { x: 450, y: 453 },
+          { x: 450, y: 465 },
+          { x: 422, y: 465 },
+        ],
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      bedroom1Spot6: {
+        id: 'BD1-ST-01-O',
+        label: 'BD1-ST-01-O',
+        area: 'Primary Bedroom',
+        coordinates: {
+          x: 431,
+          y: 441,
+          width: 20,
+          height: 20,
+          rotation: 30
+        },
+        labelStyle: {
+          offset: { x: 0, y: -5 },
+          fontSize: '10px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'horizontal'
+        }
+      },
+      LanaiSpot1: {
+        id: 'LAN-ST-01-O',
+        label: 'LAN-ST-01-O',
+        area: 'Lanai',
+        coordinates: {
+          x: 215,
+          y: 503,
+          width: 34,
+          height: 30,
+          rotation: 37
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+        }
+      },
+      LanaiSpot2: {
+        id: 'LAN-ST-02-O',
+        label: 'LAN-ST-02-O',
+        area: 'Lanai',
+        coordinates: {
+          x: 271,
+          y: 503,
+          width: 30,
+          height: 34,
+          rotation: 52
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
+        }
+      },
+      LanaiSpot3: {
+        id: 'LAN-TB-01-O',
+        label: 'LAN-TB-01-O',
+        area: 'Lanai',
+        coordinates: {
+          x: 247,
+          y: 527,
+          width: 25,
+          height: 23,
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: false,
+          fixed: 1,
+          min: 1,
+          max: 1,
+        }
+      },
+      EnterenceSpot1: {
+        id: 'ENT-CG-01-O',
+        label: 'ENT-CG-01-O',
+        area: 'Enterence',
+        coordinates: {
+          x: 210,
+          y: 197,
+          width: 15,
+          height: 55,
+        },
+        labelStyle: {
+          offset: { x: -3, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        },
+        quantity: {
+          enabled: false,
+          fixed: 1,
+          min: 1,
+          max: 1,
+        }
+      },
     }
   },
-'custom-c': {
+  'custom-c': {
     id: 'custom-c',
     dimensions: { width: 800, height: 600 },
     furniture: {
