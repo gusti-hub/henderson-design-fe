@@ -34,7 +34,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       'Cream - Lounge Chair': { type: 'Cream', previewUrl: '/images/fabrics/Cream Lounge Chair.png' },
       'Cream - Modular Sofa': { type: 'Cream', previewUrl: '/images/fabrics/Cream Modular Sofa.png' },
       'Tan - Lounge Chair': { type: 'Tan', previewUrl: '/images/fabrics/Tan Lounge Chair.png' },
-      'Tan - Modular Sofa': { type: 'Tan', previewUrl: '/images/fabrics/Tan Modular Chair.png' },
+      'Tan - Modular Sofa': { type: 'Tan', previewUrl: '/images/fabrics/Tan Modular Sofa.png' },
       'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
       'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
       'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' }
