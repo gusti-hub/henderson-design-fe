@@ -920,8 +920,8 @@ export const floorPlanConfig = {
         label: 'LAN-ST-01-O',
         area: 'Lanai',
         coordinates: {
-          x: 214,
-          y: 497,
+          x: 212,
+          y: 503,
           width: 34,
           height: 30,
           rotation: 37
@@ -946,8 +946,8 @@ export const floorPlanConfig = {
         label: 'LAN-ST-02-O',
         area: 'Lanai',
         coordinates: {
-          x: 270,
-          y: 497,
+          x: 268,
+          y: 501,
           width: 30,
           height: 34,
           rotation: 52
@@ -972,8 +972,8 @@ export const floorPlanConfig = {
         label: 'LAN-TB-01-O',
         area: 'Lanai',
         coordinates: {
-          x: 247,
-          y: 527,
+          x: 244,
+          y: 526,
           width: 25,
           height: 23,
         },
