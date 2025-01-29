@@ -73,7 +73,7 @@ const createPath = (coordinates) => {
 
 
 export const floorPlanConfig = {
-  'investor-a': {
+'investor-a': {
     id: 'investor-a',
     dimensions: { width: 800, height: 600 },
     furniture: {
@@ -82,8 +82,8 @@ export const floorPlanConfig = {
         label: 'KIT-ST-01-I',
         area: 'Kitchen',
         coordinates: {
-          x: 285,
-          y: 280,
+          x: 282,
+          y: 276,
           width: 23,
           height: 27
         },
@@ -112,8 +112,8 @@ export const floorPlanConfig = {
         label: 'KIT-ST-01-I',
         area: 'Kitchen',
         coordinates: {
-          x: 320,
-          y: 280,
+          x: 317,
+          y: 276,
           width: 23,
           height: 27
         },
@@ -142,8 +142,8 @@ export const floorPlanConfig = {
         label: 'DIN-ST-01-I',
         area: 'Dining Room',
         coordinates: {
-          x: 240,
-          y: 405,
+          x: 237,
+          y: 401,
           width: 24,
           height: 22
         },
@@ -172,8 +172,8 @@ export const floorPlanConfig = {
         label: 'DIN-ST-01-I',
         area: 'Dining Room',
         coordinates: {
-          x: 240,
-          y: 376,
+          x: 237,
+          y: 372,
           width: 24,
           height: 22
         },
@@ -202,29 +202,10 @@ export const floorPlanConfig = {
         label: 'DIN-TB-01-I',
         area: 'Dining Room',
         coordinates: {
-          x: 250,
-          y: 365,
+          x: 247,
+          y: 361,
           width: 33,
           height: 70
-        },
-        labelStyle: {
-          offset: { x: -5, y: 0 },
-          fontSize: '6px',
-          fontWeight: '400',
-          fontFamily: 'Arial',
-          alignment: 'center',
-          orientation: 'vertical'
-        }
-      },
-      diningTable2: {
-        id: 'DIN-CG-01-I',
-        label: 'DIN-CG-01-I',
-        area: 'Dining Room',
-        coordinates: {
-          x: 394,
-          y: 365,
-          width: 20,
-          height: 78
         },
         labelStyle: {
           offset: { x: -5, y: 0 },
@@ -240,8 +221,8 @@ export const floorPlanConfig = {
         label: 'LIV-ST-01-I',
         area: 'Living Room',
         coordinates: {
-          x: 285,
-          y: 357,
+          x: 282,
+          y: 353,
           width: 45,
           height: 88
         },
@@ -259,8 +240,8 @@ export const floorPlanConfig = {
         label: 'LIV-TB-02-I',
         area: 'Living Room',
         coordinates: {
-          x: 285,
-          y: 345,
+          x: 282,
+          y: 341,
           width: 40,
           height: 10
         },
@@ -278,8 +259,8 @@ export const floorPlanConfig = {
         label: 'LIV-TB-03-I',
         area: 'Living Room',
         coordinates: {
-          x: 285,
-          y: 448,
+          x: 282,
+          y: 444,
           width: 40,
           height: 10
         },
@@ -297,8 +278,8 @@ export const floorPlanConfig = {
         label: 'LIV-TB-01-I',
         area: 'Living Room',
         coordinates: {
-          x: 350,
-          y: 380,
+          x: 347,
+          y: 376,
           width: 30,
           height: 45
         },
@@ -316,8 +297,8 @@ export const floorPlanConfig = {
         label: 'LIV-ST-02-I',
         area: 'Living Room',
         coordinates: {
-          x: 339,
-          y: 450,
+          x: 336,
+          y: 446,
           width: 32,
           height: 35,
           rotation: 12
@@ -331,13 +312,32 @@ export const floorPlanConfig = {
           orientation: 'horizontal'
         }
       },
+      livingSpot6: {
+        id: 'LIV-CG-01-I',
+        label: 'LIV-CG-01-I',
+        area: 'Dining Room',
+        coordinates: {
+          x: 391,
+          y: 361,
+          width: 20,
+          height: 78
+        },
+        labelStyle: {
+          offset: { x: -5, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
       bedroom1Spot1: {
         id: 'BD1-BD-01-I',
         label: 'BD1-BD-01-I',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 469,
-          y: 335,
+          x: 466,
+          y: 331,
           width: 100,
           height: 90
         },
@@ -355,8 +355,8 @@ export const floorPlanConfig = {
         label: 'BD1-CG-01-I',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 547,
-          y: 295,
+          x: 544,
+          y: 291,
           width: 25,
           height: 40
         },
@@ -374,8 +374,8 @@ export const floorPlanConfig = {
         label: 'BD1-CG-02-I',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 547,
-          y: 428,
+          x: 544,
+          y: 424,
           width: 25,
           height: 40
         },
@@ -393,8 +393,8 @@ export const floorPlanConfig = {
         label: 'LAN-ST-01-I',
         area: 'Lanai',
         coordinates: {
-          x: 212,
-          y: 503,
+          x: 209,
+          y: 499,
           width: 34,
           height: 30,
           rotation: 37
@@ -419,8 +419,8 @@ export const floorPlanConfig = {
         label: 'LAN-ST-02-I',
         area: 'Lanai',
         coordinates: {
-          x: 271,
-          y: 503,
+          x: 268,
+          y: 499,
           width: 30,
           height: 34,
           rotation: 52
@@ -445,8 +445,8 @@ export const floorPlanConfig = {
         label: 'LAN-TB-01-I',
         area: 'Lanai',
         coordinates: {
-          x: 245,
-          y: 527,
+          x: 242,
+          y: 523,
           width: 25,
           height: 23,
         },
@@ -467,7 +467,7 @@ export const floorPlanConfig = {
       },
     }
   },
-  'custom-a': {
+'custom-a': {
     id: 'custom-a',
     dimensions: { width: 800, height: 600 },
     furniture: {
@@ -476,8 +476,8 @@ export const floorPlanConfig = {
         label: 'KIT-ST-01-O',
         area: 'Kitchen',
         coordinates: {
-          x: 273,
-          y: 283,
+          x: 272,
+          y: 277,
           width: 22,
           height: 27
         },
@@ -506,8 +506,8 @@ export const floorPlanConfig = {
         label: 'KIT-ST-01-O',
         area: 'Kitchen',
         coordinates: {
-          x: 305,
-          y: 283,
+          x: 304,
+          y: 277,
           width: 22,
           height: 27
         },
@@ -536,8 +536,8 @@ export const floorPlanConfig = {
         label: 'KIT-ST-01-O',
         area: 'Kitchen',
         coordinates: {
-          x: 337,
-          y: 283,
+          x: 336,
+          y: 277,
           width: 22,
           height: 27
         },
@@ -566,8 +566,8 @@ export const floorPlanConfig = {
         label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 242,
-          y: 415,
+          x: 239,
+          y: 410,
           width: 24,
           height: 20
         },
@@ -596,8 +596,8 @@ export const floorPlanConfig = {
         label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 242,
-          y: 393,
+          x: 239,
+          y: 388,
           width: 24,
           height: 20
         },
@@ -626,8 +626,8 @@ export const floorPlanConfig = {
         label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 260,
-          y: 370,
+          x: 257,
+          y: 364,
           width: 21,
           height: 22
         },
@@ -656,8 +656,8 @@ export const floorPlanConfig = {
         label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 260,
-          y: 437,
+          x: 257,
+          y: 433,
           width: 21,
           height: 24
         },
@@ -686,8 +686,8 @@ export const floorPlanConfig = {
         label: 'DIN-TB-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 251,
-          y: 380,
+          x: 248,
+          y: 375,
           width: 33,
           height: 70
         },
@@ -705,13 +705,13 @@ export const floorPlanConfig = {
         label: 'LIV-ST-01-O',
         area: 'Living Room',
         coordinates: [
-          { x: 284, y: 363 }, //{ x: 380, y: 392 },96 29
-          { x: 329, y: 363 },
-          { x: 329, y: 442 },
-          { x: 363, y: 452 },
-          { x: 360, y: 483 },
-          { x: 284, y: 463 },
-          { x: 284, y: 362 }
+          { x: 283, y: 357 },
+          { x: 328, y: 357 },
+          { x: 328, y: 436 },
+          { x: 362, y: 446 },
+          { x: 359, y: 477 },
+          { x: 283, y: 457 },
+          { x: 283, y: 356 }
         ],
         labelStyle: {
           offset: { x: -5, y: 0 },
@@ -727,8 +727,8 @@ export const floorPlanConfig = {
         label: 'LIV-TB-02-O',
         area: 'Living Room',
         coordinates: {
-          x: 295,
-          y: 353,
+          x: 294,
+          y: 347,
           width: 30,
           height: 10
         },
@@ -746,8 +746,8 @@ export const floorPlanConfig = {
         label: 'LIV-TB-01-O',
         area: 'Living Room',
         coordinates: {
-          x: 343,
-          y: 389,
+          x: 342,
+          y: 383,
           width: 30,
           height: 45
         },
@@ -765,8 +765,8 @@ export const floorPlanConfig = {
         label: 'LIV-ST-02-O',
         area: 'Living Room',
         coordinates: {
-          x: 350,
-          y: 335,
+          x: 349,
+          y: 329,
           width: 32,
           height: 35,
           rotation: 7
@@ -785,10 +785,10 @@ export const floorPlanConfig = {
         label: 'LIV-CG-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 397,
-          y: 360,
+          x: 396,
+          y: 354,
           width: 20,
-          height: 110
+          height: 112
         },
         labelStyle: {
           offset: { x: -5, y: 0 },
@@ -804,8 +804,8 @@ export const floorPlanConfig = {
         label: 'BD1-BD-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 469,
-          y: 345,
+          x: 471,
+          y: 341,
           width: 100,
           height: 90
         },
@@ -823,8 +823,8 @@ export const floorPlanConfig = {
         label: 'BD1-CG-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 542,
-          y: 305,
+          x: 543,
+          y: 299,
           width: 25,
           height: 40
         },
@@ -842,8 +842,8 @@ export const floorPlanConfig = {
         label: 'BD1-CG-02-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 542,
-          y: 437,
+          x: 543,
+          y: 432,
           width: 25,
           height: 28
         },
@@ -861,8 +861,8 @@ export const floorPlanConfig = {
         label: 'BD1-CG-03-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 425,
-          y: 350,
+          x: 424,
+          y: 344,
           width: 8,
           height: 82
         },
@@ -880,11 +880,11 @@ export const floorPlanConfig = {
         label: 'BD1-TB-01-O',
         area: 'Primary Bedroom',
         coordinates: [
-          { x: 422, y: 433 }, //92 32
-          { x: 426, y: 433 },
-          { x: 450, y: 453 },
-          { x: 450, y: 465 },
-          { x: 422, y: 465 },
+          { x: 421, y: 428 },
+          { x: 425, y: 428 },
+          { x: 449, y: 448 },
+          { x: 449, y: 463 },
+          { x: 421, y: 463 }
         ],
         labelStyle: {
           offset: { x: 0, y: -5 },
@@ -900,8 +900,8 @@ export const floorPlanConfig = {
         label: 'BD1-ST-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 431,
-          y: 441,
+          x: 432,
+          y: 437,
           width: 20,
           height: 20,
           rotation: 30
@@ -920,8 +920,8 @@ export const floorPlanConfig = {
         label: 'LAN-ST-01-O',
         area: 'Lanai',
         coordinates: {
-          x: 215,
-          y: 503,
+          x: 214,
+          y: 497,
           width: 34,
           height: 30,
           rotation: 37
@@ -946,8 +946,8 @@ export const floorPlanConfig = {
         label: 'LAN-ST-02-O',
         area: 'Lanai',
         coordinates: {
-          x: 271,
-          y: 503,
+          x: 270,
+          y: 497,
           width: 30,
           height: 34,
           rotation: 52
@@ -997,8 +997,8 @@ export const floorPlanConfig = {
         label: 'ENT-CG-01-O',
         area: 'Enterence',
         coordinates: {
-          x: 210,
-          y: 197,
+          x: 206,
+          y: 189,
           width: 15,
           height: 55,
         },
