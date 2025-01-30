@@ -99,7 +99,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       setPendingPackageType(null);
   
       // Force clean state in UI
-      window.location.reload();
+      //window.location.reload();
   
     } catch (error) {
       console.error('Error handling package change:', error);
@@ -141,7 +141,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
                 </h3>
                 <p className="text-gray-600 mb-2">{type.description}</p>
                 <p className="text-[#005670] font-medium text-lg">
-                  Budget up to ${budget.toLocaleString()}
+                  Price up to ${budget.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -179,12 +179,12 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   const floorPlanTypes = {
     investor: {
       id: 'investor',
-      title: 'Investor Package',
+      title: 'Mauka Package',
       description: 'Fully customizable layout for personal preferences',
       availablePlans: '6 floor plans available',
       image: '/images/investor_plan/investor_1.png',
       budgets: {
-        'investor-a': 75000,  // 2 Bedroom
+        'investor-a': 80835,  // 2 Bedroom
         'investor-b': 115000,  // 2 Bedroom + 2.5 Bath
         'investor-c': 115000,  // 2 Bedroom + Den
         'investor-d': 65000,  // 1 Bedroom
@@ -219,12 +219,12 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     },
     custom: {
       id: 'custom',
-      title: 'Owner Package',
+      title: 'Makai Package',
       description: 'Standard layout optimized for Owner',
       availablePlans: '10 floor plans available',
       image: '/images/custom_plan/custom_1.png',
       budgets: {
-        'custom-a': 95000,   // 2 Bedroom
+        'custom-a': 133414,   // 2 Bedroom
         'custom-b': 105000,  // 2 Bedroom + 2.5 Bath
         'custom-c': 147000,  // 2 Bedroom + Den
         'custom-d': 85000,   // 1 Bedroom
