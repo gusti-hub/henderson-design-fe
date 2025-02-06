@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { backendServer } from '../../utils/info';
+import { FLOOR_PLAN_TYPES } from '../../config/floorPlans';
 
 const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   const [selectedPlanType, setSelectedPlanType] = useState(null);
@@ -33,9 +34,10 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       localStorage.setItem('selectedPackage', packageType);
       return;
     }
+
   
     // Show warning if has products and changing packages
-    if (hasProducts || (currentPackage !== packageType)) {
+    if (hasProducts || (currentPackage != null && currentPackage !== packageType)) {
       setPendingPackageType(packageType);
       setShowWarningModal(true);
     } else {
@@ -141,7 +143,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
                 </h3>
                 <p className="text-gray-600 mb-2">{type.description}</p>
                 <p className="text-[#005670] font-medium text-lg">
-                  Price up to ${budget.toLocaleString()}
+                  Price ${budget.toLocaleString()} (Not Including Tax)
                 </p>
               </div>
             </div>
@@ -176,88 +178,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     </div>
   );
 
-  const floorPlanTypes = {
-    investor: {
-      id: 'investor',
-      title: 'Mauka Package',
-      description: 'Fully customizable layout for personal preferences',
-      availablePlans: '6 floor plans available',
-      image: '/images/investor_plan/investor_1.png',
-      budgets: {
-        'investor-a': 80835,  // 2 Bedroom
-        'investor-b': 115000,  // 2 Bedroom + 2.5 Bath
-        'investor-c': 115000,  // 2 Bedroom + Den
-        'investor-d': 65000,  // 1 Bedroom
-        'investor-e': 70000,  // 2 Bedroom
-        'investor-f': 120000, // 3 Bedroom + Den
-        default: 80000       // Default if not specified
-      },
-      plans: [
-        {
-          id: 'investor-a',
-          title: 'Residence 05A',
-          description: '1 Bedroom / 1.5 Bath, Level: 7-37 (Odd)',
-          image: '/images/investor_plan/Alia_05A.png',
-          details: [
-            'Total: 819 Sq. Ft.',
-            'Interior: 761 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
-          ]
-        },
-        {
-          id: 'investor-c',
-          title: 'Residence 03B',
-          description: '2 Bedroom / 2.5 Bath + Den, Level: 7-37 (Odd)',
-          image: '/images/investor_plan/Alia_03B.png',
-          details: [
-            'Total: 1,493 Sq. Ft.',
-            'Interior: 1,435 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
-          ]
-        }
-      ]
-    },
-    custom: {
-      id: 'custom',
-      title: 'Makai Package',
-      description: 'Standard layout optimized for Owner',
-      availablePlans: '10 floor plans available',
-      image: '/images/custom_plan/custom_1.png',
-      budgets: {
-        'custom-a': 133414,   // 2 Bedroom
-        'custom-b': 105000,  // 2 Bedroom + 2.5 Bath
-        'custom-c': 147000,  // 2 Bedroom + Den
-        'custom-d': 85000,   // 1 Bedroom
-        'custom-e': 90000,   // 2 Bedroom
-        'custom-f': 140000,  // 3 Bedroom + Den
-        default: 100000     // Default if not specified
-      },
-      plans: [
-        {
-          id: 'custom-a',
-          title: 'Residence 05A',
-          description: '1 Bedroom / 1.5 Bath, Level: 7-37 (Odd)',
-          image: '/images/custom_plan/Alia_05A.png',
-          details: [
-            'Total: 819 Sq. Ft.',
-            'Interior: 761 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
-          ]
-        },
-        {
-          id: 'custom-c',
-          title: 'Residence 03B',
-          description: '2 Bedroom / 2.5 Bath + Den, Level: 7-37 (Odd)',
-          image: '/images/custom_plan/Alia_03B.png',
-          details: [
-            'Total: 1,493 Sq. Ft.',
-            'Interior: 1,435 Sq. Ft.',
-            'Lanai: 58 Sq. Ft.'
-          ]
-        }
-      ]
-    }
-  };
+  const floorPlanTypes = FLOOR_PLAN_TYPES;
 
   const fetchClientInfo = async () => {
     try {

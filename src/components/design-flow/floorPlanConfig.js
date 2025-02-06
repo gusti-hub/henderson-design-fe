@@ -252,11 +252,17 @@ export const floorPlanConfig = {
           fontFamily: 'Arial',
           alignment: 'center',
           orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
         }
       },
       livingSpot3: {
-        id: 'LIV-TB-03-I',
-        label: 'LIV-TB-03-I',
+        id: 'LIV-TB-02-I',
+        label: 'LIV-TB-02-I',
         area: 'Living Room',
         coordinates: {
           x: 282,
@@ -271,6 +277,12 @@ export const floorPlanConfig = {
           fontFamily: 'Arial',
           alignment: 'center',
           orientation: 'vertical'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
         }
       },
       livingSpot4: {
@@ -367,11 +379,17 @@ export const floorPlanConfig = {
           fontFamily: 'Arial',
           alignment: 'center',
           orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
         }
       },
       bedroom1Spot3: {
-        id: 'BD1-CG-02-I',
-        label: 'BD1-CG-02-I',
+        id: 'BD1-CG-01-I',
+        label: 'BD1-CG-01-I',
         area: 'Primary Bedroom',
         coordinates: {
           x: 544,
@@ -386,6 +404,12 @@ export const floorPlanConfig = {
           fontFamily: 'Arial',
           alignment: 'center',
           orientation: 'horizontal'
+        },
+        quantity: {
+          enabled: true,
+          fixed: 2,
+          min: 2,
+          max: 2,
         }
       },
       LanaiSpot1: {
@@ -415,8 +439,8 @@ export const floorPlanConfig = {
         }
       },
       LanaiSpot2: {
-        id: 'LAN-ST-02-I',
-        label: 'LAN-ST-02-I',
+        id: 'LAN-ST-01-I',
+        label: 'LAN-ST-01-I',
         area: 'Lanai',
         coordinates: {
           x: 268,

@@ -276,17 +276,38 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete }) => {
               Floor Plan View
             </h2>
             <div className="relative w-full h-[400px] border border-gray-200 rounded-lg">
-              <svg width="100%" height="100%" viewBox="0 0 800 600">
-                {floorPlanImage && (
-                  <image
-                    href={floorPlanImage}
-                    width="800"
-                    height="600"
-                    //opacity="0.3"
-                    preserveAspectRatio="xMidYMid meet"
-                  />
-                )}
-                {/* <rect x="50" y="50" width="700" height="500" fill="none" stroke="#005670" strokeWidth="2" /> */}
+            <svg width="100%" height="100%" viewBox={`0 0 ${planDimensions.width} ${planDimensions.height}`}>
+                <image
+                  href={floorPlanImage}
+                  width={planDimensions.width}
+                  height={planDimensions.height}
+                  preserveAspectRatio="xMidYMid meet"
+                />
+                
+                {Object.values(furnitureSpots).map((spot) => (
+                  <g key={spot.id}>
+                    <path
+                      d={spot.path}
+                      transform={spot.transform}
+                      className={`
+                        transition-colors duration-200
+                        ${occupiedSpots[spot.id] ? "fill-green-100 stroke-green-600" : 
+                          activeSpot === spot.id ? "fill-blue-100 stroke-blue-600" :
+                          "fill-yellow-50 stroke-yellow-400 hover:fill-yellow-100"}
+                      `}
+                      cursor="pointer"
+                      onClick={() => handleSpotClick(spot.id)}
+                    />
+                    <text
+                      x={spot.labelPosition.x}
+                      y={spot.labelPosition.y - 15}
+                      textAnchor="middle"
+                      className="text-sm fill-gray-600"
+                    >
+                      {occupiedSpots[spot.id] ? "✓" : spot.label}
+                    </text>
+                  </g>
+                ))}
               </svg>
             </div>
           </div>

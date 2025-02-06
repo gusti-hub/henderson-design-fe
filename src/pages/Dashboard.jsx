@@ -9,14 +9,39 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Users, Clock, Activity } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [activityData, setActivityData] = useState({
+    activeUsers: 0,
+    todayVisits: 0,
+    recentActivity: []
+  });
   const [loading, setLoading] = useState(true);
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
+
+  useEffect(() => {
+    const fetchActivityData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${backendServer}/api/activity`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setActivityData(data);
+      } catch (error) {
+        console.error('Error fetching activity:', error);
+      }
+    };
+
+    fetchActivityData();
+    const interval = setInterval(fetchActivityData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
 
   const handleOrderSelect = (orderId) => {
     setSelectedOrders(prev => {
@@ -104,6 +129,42 @@ const Dashboard = () => {
     );
   }
 
+  const ActivitySection = () => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-[#005670]" />
+          <h3 className="text-gray-500 text-sm">Active Users</h3>
+        </div>
+        <p className="text-2xl font-semibold mt-2">{activityData.activeUsers}</p>
+      </div>
+      
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="flex items-center gap-2">
+          <Clock className="w-5 h-5 text-[#005670]" />
+          <h3 className="text-gray-500 text-sm">Today's Visits</h3>
+        </div>
+        <p className="text-2xl font-semibold mt-2">{activityData.todayVisits}</p>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="flex items-center gap-2">
+          <Activity className="w-5 h-5 text-[#005670]" />
+          <h3 className="text-gray-500 text-sm">Recent Activity</h3>
+        </div>
+        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+          {activityData.recentActivity.map((activity, index) => (
+            <div key={index} className="text-sm flex justify-between items-center py-1 border-b">
+              <span>{activity.action}</span>
+              <span className="text-xs text-gray-500">{activity.time}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+
   if (!stats) {
     return (
       <div className="p-6">
@@ -135,6 +196,9 @@ const Dashboard = () => {
           <p className="text-2xl font-semibold mt-2">${stats.overview?.totalRevenue?.toFixed(2) || '0.00'}</p>
         </div>
       </div>
+
+      {/* Activity Section */}
+      <ActivitySection />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

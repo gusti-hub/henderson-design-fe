@@ -3,9 +3,20 @@ import { Eye, Loader2, Download, FileText } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import Pagination from '../components/common/Pagination';
 
+const LoadingOverlay = () => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="bg-white p-4 rounded-lg flex items-center gap-3">
+      <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+      <span>Downloading...</span>
+    </div>
+  </div>
+);
+
+
 const AdminOrderList = ({ onOrderClick }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,10 +50,11 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   const handleDownload = async (orderId, type) => {
+    setDownloading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${backendServer}/api/orders/${orderId}/${type}`, 
+        `${backendServer}/api/orders/${orderId}/${type}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -57,15 +69,10 @@ const AdminOrderList = ({ onOrderClick }) => {
       const blob = await response.blob();
       const contentType = response.headers.get('content-type');
       
-      // Determine file extension based on content type
-      let fileExtension = 'pdf';
-      if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-        fileExtension = 'xlsx';
-      } else if (contentType === 'application/pdf') {
-        fileExtension = 'pdf';
-      }
+      let fileExtension = contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        ? 'xlsx' 
+        : 'pdf';
   
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -77,6 +84,8 @@ const AdminOrderList = ({ onOrderClick }) => {
     } catch (error) {
       console.error(`Error downloading ${type}:`, error);
       alert(`Failed to download ${type}. Please try again.`);
+    } finally {
+      setDownloading(false);
     }
   };
   
@@ -105,6 +114,7 @@ const AdminOrderList = ({ onOrderClick }) => {
 
   return (
     <div className="p-6">
+      {downloading && <LoadingOverlay />}
       <h2 className="text-2xl font-medium mb-6 text-[#005670]">Order Management</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

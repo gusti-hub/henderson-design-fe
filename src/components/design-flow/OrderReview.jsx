@@ -1,8 +1,8 @@
 import React from 'react';
-import { Check, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, AlertCircle } from 'lucide-react';
+import { FLOOR_PLAN_TYPES } from '../../config/floorPlans';
 
 const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrder }) => {
-  // Early return if no selections are available
   if (!designSelections?.selectedProducts || !selectedPlan) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -16,25 +16,36 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
     );
   }
 
-  // Calculate subtotal from all products
-  const subtotal = designSelections.selectedProducts.reduce(
-    (sum, product) => sum + (product.unitPrice * product.quantity),
-    0
-  );
+  const packageType = selectedPlan?.id?.split('-')[0]; // 'investor' or 'custom'
+  const totalInvestment = FLOOR_PLAN_TYPES[packageType]?.budgets[selectedPlan?.id] || 
+                         FLOOR_PLAN_TYPES[packageType]?.budgets.default;
 
-  // Calculate additional fees
-  const designFee = subtotal * 0.10; // 10% Design and project management fee
-  const otherTradesFee = subtotal * 0.05; // 5% Other trades
-  const deliveryFee = subtotal * 0.25; // 25% Freight delivery and installation
-  const preTaxTotal = subtotal + designFee + otherTradesFee + deliveryFee;
-  const tax = preTaxTotal * 0.048; // 4.8% Tax
-  const grandTotal = preTaxTotal + tax;
 
   return (
     <div className="max-w-4xl mx-auto">
       <h2 className="text-2xl font-light mb-6 text-[#005670]">
         Order Review
       </h2>
+
+      {/* Design Team Review Notice */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-800 mt-0.5" />
+          <div>
+            <h4 className="font-medium text-amber-800">Design Team Review Process</h4>
+            <p className="mt-2 text-sm text-amber-700">
+              Before finalizing your order:
+              <ul className="list-disc ml-4 mt-2 space-y-1">
+                <li>A Henderson Group design team will schedule a review meeting</li>
+                <li>They will discuss all your selections in detail</li>
+                <li>Ensure everything meets your expectations and requirements</li>
+                <li>After the review and confirmation, modifications will not be possible</li>
+                <li>Payment process begins after the design review meeting</li>
+              </ul>
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Client Information */}
       <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
@@ -91,15 +102,10 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                 <div className="flex-1">
                   <h4 className="font-medium text-lg">
                     {product.name}
-                    {product.quantity > 1 && (
-                      <span className="text-sm text-gray-600 ml-2">
-                        (Qty: {product.quantity})
-                      </span>
-                    )}
                   </h4>
                   <p className="text-sm text-gray-500 mb-2">Location: {product.spotName}</p>
                   
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm text-gray-600">Finish</label>
                       <p>{product.selectedOptions.finish || 'N/A'}</p>
@@ -109,12 +115,8 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                       <p>{product.selectedOptions.fabric || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-600">Unit Price</label>
-                      <p>${product.unitPrice.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600">Total Price</label>
-                      <p className="font-medium">${(product.unitPrice * product.quantity).toFixed(2)}</p>
+                      <label className="block text-sm text-gray-600">Quantity</label>
+                      <p className="font-medium">{product.quantity}</p>
                     </div>
                   </div>
                 </div>
@@ -124,50 +126,21 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
         </div>
       </div>
 
-      {/* Price Breakdown */}
       <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-        <h3 className="text-lg font-medium mb-4 text-[#005670]">
-          Price Breakdown
-        </h3>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium">${subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Design and Project Management Fee (10%)</span>
-            <span className="font-medium">${designFee.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Other Trades - Electrician, Paper Hanger, etc. (5%)</span>
-            <span className="font-medium">${otherTradesFee.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Freight Delivery and Installation (25%)</span>
-            <span className="font-medium">${deliveryFee.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Tax (4.8%)</span>
-            <span className="font-medium">${tax.toFixed(2)}</span>
-          </div>
-          <div className="border-t pt-3 mt-3">
-            <div className="flex justify-between text-lg font-semibold">
-              <span>Grand Total</span>
-              <span>${grandTotal.toFixed(2)}</span>
-            </div>
-          </div>
+        <div className="flex justify-between text-lg font-semibold">
+          <span>Total Price</span>
+          <span className="text-[#005670]">${totalInvestment.toLocaleString()} (Not Including Tax)</span>
         </div>
       </div>
 
-      {/* Warning and Confirmation */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-2 text-amber-800">
+      {/* Final Warning */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-2 text-red-800">
           <AlertTriangle className="w-5 h-5" />
-          <p className="font-medium">Important Notice</p>
+          <p className="font-medium">Please Note</p>
         </div>
-        <p className="mt-2 text-sm text-amber-700">
-          Once you confirm this order, you won't be able to modify your selections. 
-          Please review all details carefully before proceeding.
+        <p className="mt-2 text-sm text-red-700">
+          By proceeding, you acknowledge that you'll need to complete the design review meeting with Henderson Group before final confirmation. After confirmation, modifications to the order will not be possible.
         </p>
       </div>
     </div>

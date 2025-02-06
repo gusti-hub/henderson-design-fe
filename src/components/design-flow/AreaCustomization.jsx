@@ -154,6 +154,10 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     }
   }, [selectedPlan.id]);
 
+  const unselectedSpots = Object.values(furnitureSpots).filter(
+    spot => !occupiedSpots[spot.id]
+  );
+
   // Update parent component when products change
   useEffect(() => {
     if (selectedProducts.length > 0) {
@@ -858,7 +862,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         )}
 
           <div className="text-xl font-bold">
-            Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))).toFixed(2)}
+            {/* Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))).toFixed(2)} */}
           </div>
           </div>
     
@@ -888,6 +892,19 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           <h2 className="text-2xl font-light mb-4 text-[#005670]">
             Design Your Space - {selectedPlan.title}
           </h2>
+
+          {unselectedSpots.length > 0 && (
+            <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+              <p className="text-sm text-yellow-700">
+                {unselectedSpots.length} items left to select
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                Please select all furniture spots to proceed
+              </p>
+            </div>
+          )}
+
+
           <div className="relative w-full h-[900px] border border-gray-200 rounded-lg">
             <svg 
               width="100%" 
@@ -907,6 +924,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                   <path
                     d={spot.path}
                     transform={spot.transform}  // Added this line
+                    data-spot-id={spot.id}
                     fill={
                       occupiedSpots[spot.id] 
                         ? "rgba(203, 213, 225, 0.3)" 
@@ -983,6 +1001,29 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               ))}
             </svg>
           </div>
+          <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between flex-wrap gap-6">
+              <h4 className="text-lg font-semibold text-gray-700">Floor Plan Guide</h4>
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded border-2 border-[#005670] bg-[rgba(0,86,112,0.1)]"></div>
+                  <span className="text-sm text-gray-600">Selected Item</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded border-2 border-red-500 bg-[rgba(239,68,68,0.2)]"></div>
+                  <span className="text-sm text-gray-600">Requires Selection</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded border-2 border-[#94a3b8] bg-transparent"></div>
+                  <span className="text-sm text-gray-600">Available for Selection</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-5 h-5 bg-[#005670] text-white rounded-full text-xs">✓</div>
+                  <span className="text-sm text-gray-600">Click any highlighted area to view available products</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Product Selection and Cart */}
@@ -1036,7 +1077,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                         {product.product_id}
                       </p>
                       <p className="text-gray-600">
-                        Starting at ${product.basePrice}
+                        {/* Starting at ${product.basePrice} */}
                       </p>
                       <button
                         onClick={() => handleCustomize(product)}
@@ -1063,7 +1104,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                   <p className="text-gray-500 mb-2">No products selected yet</p>
                   <p className="text-sm text-amber-600 flex items-center justify-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
-                    Please select at least one product to proceed
+                    Please select product to proceed
                   </p>
                 </div>
               ) : (
@@ -1100,7 +1141,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                           </p>
                         )}
                       <p className="text-gray-600">
-                        ${product.unitPrice} each × {product.quantity} = ${product.finalPrice}
+                        {/* ${product.unitPrice} each × {product.quantity} = ${product.finalPrice} */}
                       </p>
                       </div>
                     </div>
@@ -1112,14 +1153,14 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                     </button>
                   </div>
                 ))}
-                <div className="pt-4 border-t">
+                {/* <div className="pt-4 border-t">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span>
-                      ${selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0)}
+                      {/* ${selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0)} *
                     </span>
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
           </div>

@@ -1,24 +1,15 @@
 import React, { useState } from 'react';
-import { Building2, CreditCard, Check, Upload } from 'lucide-react';
+import { Building2, Truck, CreditCard, Check, Upload , Wrench} from 'lucide-react';
 import { backendServer } from '../../utils/info';
+import { FLOOR_PLAN_TYPES } from '../../config/floorPlans';
 
 const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelections, selectedPlan, clientInfo,  orderId }) => {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [uploadingIndex, setUploadingIndex] = useState(null);
 
-  // Calculate all fees and totals
-  const subtotal = designSelections?.selectedProducts?.reduce(
-    (sum, product) => sum + (product.unitPrice * product.quantity),
-    0
-  ) || 0;
-
-  // Calculate additional fees
-  const designFee = subtotal * 0.10; // 10% Design and project management fee
-  const otherTradesFee = subtotal * 0.05; // 5% Other trades
-  const deliveryFee = subtotal * 0.25; // 25% Freight delivery and installation
-  const preTaxTotal = subtotal + designFee + otherTradesFee + deliveryFee;
-  const tax = preTaxTotal * 0.048; // 4.8% Tax
-  const grandTotal = preTaxTotal + tax;
+  const packageType = selectedPlan?.id?.split('-')[0]; // 'investor' or 'custom'
+  const baseBudget = FLOOR_PLAN_TYPES[packageType]?.budgets[selectedPlan?.id] || 
+                    FLOOR_PLAN_TYPES[packageType]?.budgets.default;
 
   const handleMethodSelect = (method) => {
     setPaymentMethod(method);
@@ -328,45 +319,83 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
                 <h4 className="font-medium">{product.name}</h4>
                 <p className="text-sm text-gray-600">Location: {product.spotName}</p>
                 {product.selectedOptions && (
-                  <p className="text-sm text-gray-600">
-                    {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
-                    {product.selectedOptions.finish && product.selectedOptions.fabric && ' - '}
-                    {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">
+                      {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Quantity: {product.quantity}
+                    </p>
+                  </div>
                 )}
-                <p className="font-medium mt-1 text-[#005670]">
-                  ${(product.unitPrice * product.quantity).toFixed(2)}
-                </p>
               </div>
             </div>
           ))}
 
           {/* Price Breakdown */}
-          <div className="pt-4 mt-4 border-t space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">${subtotal.toFixed(2)}</span>
+          <div className="pt-4 mt-4">
+            <div className="flex justify-between text-lg font-semibold">
+              <span>Total Price</span>
+              <span className="text-[#005670]">${baseBudget.toLocaleString()} (Not Including Tax)</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Design and Project Management Fee (10%)</span>
-              <span className="font-medium">${designFee.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+        <h3 className="text-lg font-medium mb-6 text-[#005670]">Project Status</h3>
+        <div className="relative">
+          {/* Progress line */}
+          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
+          
+          {/* Status items */}
+          <div className="space-y-8 relative">
+            <div className="flex items-start">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#005670] text-white">
+                <Check className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <h4 className="font-medium">Order Confirmed</h4>
+                <p className="text-sm text-gray-600">Your furniture selections have been finalized</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date().toLocaleDateString()}
+                </p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Other Trades (5%)</span>
-              <span className="font-medium">${otherTradesFee.toFixed(2)}</span>
+
+            <div className="flex items-start">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <h4 className="font-medium">Production</h4>
+                <p className="text-sm text-gray-600">Estimated production time: 12-16 weeks</p>
+                <p className="text-xs text-gray-500 mt-1">Expected start: Q2 2026</p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Delivery and Installation (25%)</span>
-              <span className="font-medium">${deliveryFee.toFixed(2)}</span>
+
+            <div className="flex items-start">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <h4 className="font-medium">Delivery</h4>
+                <p className="text-sm text-gray-600">Estimated delivery: Q3 2026</p>
+                <p className="text-xs text-blue-600 mt-1">To be scheduled</p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Tax (4.8%)</span>
-              <span className="font-medium">${tax.toFixed(2)}</span>
-            </div>
-            <div className="border-t pt-3 mt-3">
-              <div className="flex justify-between text-lg font-semibold">
-                <span>Grand Total</span>
-                <span className="text-[#005670]">${grandTotal.toFixed(2)}</span>
+
+            <div className="flex items-start">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400">
+                <Wrench className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <h4 className="font-medium">Installation</h4>
+                <p className="text-sm text-gray-600">Estimated installation: Q3 2026</p>
+                <p className="text-xs text-blue-600 mt-1">To be scheduled</p>
               </div>
             </div>
           </div>
@@ -381,9 +410,9 @@ const PaymentPage = ({ totalAmount, paymentDetails, onPaymentSetup, designSelect
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="font-medium">
-                  {index === 0 ? `First Payment (50%) - $${(grandTotal * 0.5).toFixed(2)}` :
-                   index === 1 ? `Second Payment (25%) - $${(grandTotal * 0.25).toFixed(2)}` :
-                   `Final Payment (25%) - $${(grandTotal * 0.25).toFixed(2)}`}
+                  {index === 0 ? `First Payment (50%) - $${(baseBudget * 0.5).toLocaleString()} (Not Including Tax)` :
+                   index === 1 ? `Second Payment (25%) - $${(baseBudget * 0.25).toLocaleString()} (Not Including Tax)` :
+                   `Final Payment (25%) - $${(baseBudget * 0.25).toLocaleString()} (Not Including Tax)`}
                 </p>
                 <p className="text-sm text-gray-500">
                   Due: {new Date(installment.dueDate).toLocaleDateString()}

@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
+import ChangePasswordModal from './ChangePasswordModal';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '' });
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+
 
   const navigate = useNavigate();
 
@@ -253,9 +256,22 @@ const validateForm = () => {
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{loading ? 'Signing in...' : 'Sign In'}</span>
             </button>
+
+            <div className="flex items-center justify-center text-sm mt-4">
+              <button
+                type="button"
+                onClick={() => setShowChangePasswordModal(true)}
+                className="text-[#005670] hover:underline"
+              >
+                Change Password
+              </button>
+            </div>
           </form>
         </div>
       </div>
+      {showChangePasswordModal && (
+        <ChangePasswordModal onClose={() => setShowChangePasswordModal(false)} />
+      )}
     </div>
   );
 };

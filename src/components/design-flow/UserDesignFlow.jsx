@@ -5,6 +5,125 @@ import OrderReview from './OrderReview';
 import PaymentPage from './PaymentPage';
 import AreaCustomization from './AreaCustomization';
 import { backendServer } from '../../utils/info';
+import { generateFurnitureAreas } from './floorPlanConfig';
+import { AlertCircle } from 'lucide-react';
+
+// Add this right after your imports in UserDesignFlow.jsx
+const UnselectedSpotsModal = ({ isOpen, onClose, unselectedSpots }) => {
+  if (!isOpen) return null;
+
+  // Remove duplicates from unselected areas
+  const uniqueAreas = [...new Set(unselectedSpots.map(spot => spot.area))];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Please select all required furniture spots before proceeding.
+          </h3>
+          <div className="text-gray-600 mb-4">
+            Unselected areas:
+            <div className="mt-2 space-y-1">
+              {uniqueAreas.map((area, index) => (
+                <div key={index} className="flex items-center">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                  <span>{area}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-50 px-6 py-4 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90 transition-colors"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DesignReviewModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg max-w-lg w-full mx-4 overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertCircle className="w-6 h-6 text-[#005670] mt-1" />
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Design Review Process</h3>
+              <p className="text-gray-600 mt-1">Before proceeding to the order review:</p>
+            </div>
+          </div>
+          <div className="space-y-3 text-gray-600 ml-9">
+            <p>• A Henderson Group design team will schedule a meeting with you</p>
+            <p>• They will review all your furniture selections in detail</p>
+            <p>• Product specifications and placement will be discussed</p>
+            <p>• Any questions or concerns will be addressed</p>
+            <p>• Once confirmed after review, modifications won't be possible</p>
+          </div>
+        </div>
+        <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+          >
+            Proceed to Review
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OrderConfirmationModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg max-w-lg w-full mx-4 overflow-hidden">
+        <div className="p-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">
+            Please review your order carefully
+          </h3>
+          <p className="text-gray-600 mb-4">Once confirmed:</p>
+          <div className="space-y-2 text-gray-600">
+            <p>• You won't be able to modify your selections</p>
+            <p>• First Payment (50%) is due immediately</p>
+            <p>• Second Payment (25%) will be due July 2026</p>
+            <p>• Final Payment (25%) will be due October 2026</p>
+          </div>
+        </div>
+        <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-[#005670] text-white rounded-lg hover:bg-opacity-90"
+          >
+            Proceed
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const UserDesignFlow = () => {
   const [currentStep, setCurrentStep] = useState(() => {
@@ -29,6 +148,18 @@ const UserDesignFlow = () => {
       { percent: 25, dueDate: null, status: 'pending', amount: 0 }
     ]
   });
+  const [furnitureSpots, setFurnitureSpots] = useState({});
+  const [showUnselectedModal, setShowUnselectedModal] = useState(false);
+  const [unselectedSpotsList, setUnselectedSpotsList] = useState([]);
+  const [showDesignReviewModal, setShowDesignReviewModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+
+  useEffect(() => {
+    if (selectedPlan?.id) {
+      const spots = generateFurnitureAreas(selectedPlan.id);
+      setFurnitureSpots(spots);
+    }
+  }, [selectedPlan]);
 
   const checkExistingOrder = async () => {
     setIsLoading(true);
@@ -395,66 +526,42 @@ const UserDesignFlow = () => {
     { number: 1, title: 'Choose Floor Plan' },
     { number: 2, title: 'Design Your Space' },
     { number: 3, title: 'Review Order' },
-    { number: 4, title: 'Payment Schedule' }
+    { number: 4, title: 'Project Details & Payment' }
   ];
 
   const handleNext = async () => {
     // Validate step 2 (design selections)
     if (currentStep === 2) {
-      const hasProducts = designSelections?.selectedProducts?.length > 0;
-      if (!hasProducts) {
-        alert('Please select at least one product before proceeding');
+      // Check if all spots have been selected
+      const existingSpots = Object.values(furnitureSpots || {});
+      const selectedSpots = Object.keys(designSelections?.spotSelections || {});
+      const unselectedSpots = existingSpots.filter(spot => !selectedSpots.includes(spot.id));
+      
+      console.log(unselectedSpots)
+      if (unselectedSpots.length > 0) {
+        // Use querySelectorAll to find all elements with the same ID
+        unselectedSpots.forEach(spot => {
+          const elements = document.querySelectorAll(`[data-spot-id^="${spot.id.split('-')[0]}"]`);
+          elements.forEach(element => {
+            element.classList.add('animate-pulse');
+            element.setAttribute('fill', 'rgba(239, 68, 68, 0.2)');
+            element.setAttribute('stroke', 'rgb(239, 68, 68)');
+          });
+        });
+        
+        setUnselectedSpotsList(unselectedSpots);
+        setShowUnselectedModal(true);
         return;
       }
+
+      setShowDesignReviewModal(true);
+      return;
     }
   
     // Handle order confirmation at step 3 (review)
-
     if (currentStep === 3) {
-      const confirmed = window.confirm(
-        "Please review your order carefully. Once confirmed:\n\n" +
-        "• You won't be able to modify your selections\n" +
-        "• First Payment (50%) is due immediately\n" +
-        "• Second Payment (25%) will be due July 2026\n" +
-        "• Final Payment (25%) will be due October 2026\n\n" +
-        "Do you want to proceed?"
-      );
-    
-      if (!confirmed) {
-        return;
-      }
-    
-      const paymentSchedule = {
-        method: '',
-        installments: calculatePaymentSchedule(designSelections.totalPrice)
-      };
-    
-      setPaymentDetails(paymentSchedule);
-      setIsViewOnly(true);
-    
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            ...existingOrder,
-            status: 'confirmed',
-            paymentDetails: paymentSchedule,
-            step: 4
-          })
-        });
-    
-        if (!response.ok) {
-          throw new Error('Failed to confirm order');
-        }
-      } catch (error) {
-        console.error('Error confirming order:', error);
-        return;
-      }
+      setShowConfirmationModal(true);
+      return;
     }
   
     try {
@@ -465,6 +572,44 @@ const UserDesignFlow = () => {
     }
   };
   
+  const handleConfirmOrder = async () => {
+    setShowConfirmationModal(false);
+  
+    const paymentSchedule = {
+      method: '',
+      installments: calculatePaymentSchedule(designSelections.totalPrice)
+    };
+  
+    setPaymentDetails(paymentSchedule);
+    setIsViewOnly(true);
+  
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${backendServer}/api/orders/${existingOrder._id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...existingOrder,
+          status: 'confirmed',
+          paymentDetails: paymentSchedule,
+          step: 4
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to confirm order');
+      }
+  
+      await saveProgress();
+      setCurrentStep(prev => Math.min(prev + 1, 4));
+    } catch (error) {
+      console.error('Error confirming order:', error);
+    }
+  };
+
   // Add handleBack function to prevent navigation when confirmed
   const handleBack = () => {
     if (existingOrder?.status === 'confirmed') {
@@ -472,6 +617,16 @@ const UserDesignFlow = () => {
       return;
     }
     setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleDesignReviewConfirm = async () => {
+    setShowDesignReviewModal(false);
+    try {
+      await saveProgress();
+      setCurrentStep(prev => Math.min(prev + 1, 4));
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    }
   };
 
   const handleFloorPlanSelection = (data) => {
@@ -655,6 +810,21 @@ const UserDesignFlow = () => {
           </div>
         )}
       </div>
+      <UnselectedSpotsModal
+          isOpen={showUnselectedModal}
+          onClose={() => setShowUnselectedModal(false)}
+          unselectedSpots={unselectedSpotsList}
+      />
+      <DesignReviewModal 
+        isOpen={showDesignReviewModal}
+        onClose={() => setShowDesignReviewModal(false)}
+        onConfirm={handleDesignReviewConfirm}
+      />
+      <OrderConfirmationModal
+        isOpen={showConfirmationModal}
+        onClose={() => setShowConfirmationModal(false)}
+        onConfirm={handleConfirmOrder}
+      />
     </div>
   );
 };
