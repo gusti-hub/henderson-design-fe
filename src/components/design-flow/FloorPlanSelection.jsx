@@ -35,9 +35,8 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       return;
     }
 
-  
     // Show warning if has products and changing packages
-    if (hasProducts || (currentPackage != null && currentPackage !== packageType)) {
+    if ((currentPackage != null && currentPackage !== packageType)) {
       setPendingPackageType(packageType);
       setShowWarningModal(true);
     } else {
@@ -210,9 +209,33 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     fetchClientInfo();
   }, []);
 
+  useEffect(() => {
+    if (selectedPlanType && clientInfo.floorPlan) {
+      const availablePlans = floorPlanTypes[selectedPlanType].plans.filter(plan => 
+        plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
+      );
+      
+      // If there's exactly one plan, automatically select it
+      if (availablePlans.length === 1) {
+        setSelectedPlan(availablePlans[0].id);
+      }
+    }
+  }, [selectedPlanType, clientInfo.floorPlan]);
+
   const validateForm = () => {
     const newErrors = {};
-    if (!selectedPlan) newErrors.plan = 'Please select a floor plan';
+    const availablePlans = selectedPlanType ? 
+      floorPlanTypes[selectedPlanType].plans.filter(plan => 
+        plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
+      ) : [];
+      
+    if (availablePlans.length === 1) {
+      // Automatically use the only available plan
+      setSelectedPlan(availablePlans[0].id);
+    } else if (!selectedPlan) {
+      newErrors.plan = 'Please select a floor plan';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

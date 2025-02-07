@@ -135,6 +135,7 @@ const AdminOrderList = ({ onOrderClick }) => {
           <option value="ongoing">ongoing</option>
           <option value="confirmed">confirmed</option>
           <option value="cancelled">cancelled</option>
+          <option value="review">review</option>
         </select>
       </div>
 

@@ -436,10 +436,8 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   const handleRemoveProduct = async (index) => {
     try {
       const productToRemove = selectedProducts[index];
-      const updatedOccupiedSpots = {
-        ...occupiedSpots,
-        [productToRemove.spotId]: null
-      };
+      const updatedOccupiedSpots = { ...occupiedSpots };
+      delete updatedOccupiedSpots[productToRemove.spotId];
       
       const updatedProducts = selectedProducts.filter((_, i) => i !== index);
       
