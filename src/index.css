@@ -7,6 +7,16 @@ html {
     scrollbar-width: thin;
 }
 
+@layer base {
+    html {
+        font-family: 'Freight Sans Book', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    * {
+        font-family: 'Freight Sans Book', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+  }
+
 .textured-bg {
     background-color: #ffffff;
     background-image: url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
