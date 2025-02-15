@@ -121,8 +121,13 @@ const AdminPanel = () => {
         >
           {/* Logo Area */}
           <div className="p-4 border-b border-white/10">
-            <h1 className="text-xl font-light">HENDERSON</h1>
-            <p className="text-sm opacity-80">DESIGN GROUP</p>
+            <div className="bg-[#005670] p-2 rounded">
+              <img 
+                src="/images/HDG-Logo.png" 
+                alt="Henderson Design Group" 
+                className="h-8 w-auto"
+              />
+            </div>
           </div>
 
           {/* Navigation Area - Now with flex-grow */}
