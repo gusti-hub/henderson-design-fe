@@ -8,10 +8,11 @@ const UserDashboard = () => {
       {/* Header */}
       <div className="bg-[#005670] text-white">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-light">HENDERSON</h1>
-            <p className="text-sm opacity-80">DESIGN GROUP</p>
-          </div>
+          <img 
+            src="/images/HDG-Logo.png" 
+            alt="Henderson Design Group" 
+            className="h-12"
+          />
           <div className="flex items-center gap-4">
             <span>{localStorage.getItem('name')}</span>
             <button 

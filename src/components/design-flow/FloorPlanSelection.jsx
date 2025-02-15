@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  Building2, 
+  Phone,
+  Mail,
+  Shield,
+  Check 
+} from 'lucide-react';
 import { backendServer } from '../../utils/info';
 import { FLOOR_PLAN_TYPES } from '../../config/floorPlans';
 
@@ -21,21 +28,16 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   const [designSelections, setDesignSelections] = useState(null);
 
   const handlePackageSelect = (packageType) => {
-    // Get current package from localStorage instead of state
     const currentPackage = localStorage.getItem('selectedPackage');
-    
-    // Get existing products from localStorage
     const existingProducts = localStorage.getItem('selectedProducts');
     const hasProducts = existingProducts && JSON.parse(existingProducts).length > 0;
 
-    // If it's the same package, just update the state and proceed
     if (packageType === currentPackage) {
       setSelectedPlanType(packageType);
       localStorage.setItem('selectedPackage', packageType);
       return;
     }
 
-    // Show warning if has products and changing packages
     if ((currentPackage != null && currentPackage !== packageType)) {
       setPendingPackageType(packageType);
       setShowWarningModal(true);
@@ -50,12 +52,10 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     try {
       const token = localStorage.getItem('token');
       
-      // Get the new floor plan data based on pendingPackageType
       const newFloorPlan = floorPlanTypes[pendingPackageType].plans.find(plan =>
         plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
       );
   
-      // Clear existing order and update selectedPlan in database
       const response = await fetch(`${backendServer}/api/orders/user-order`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -73,8 +73,8 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
             },
             body: JSON.stringify({
               ...existingOrder,
-              selectedPlan: newFloorPlan, // Update the selectedPlan
-              selectedProducts: [], // Clear products
+              selectedPlan: newFloorPlan,
+              selectedProducts: [],
               occupiedSpots: {},
               status: 'ongoing',
               step: 2
@@ -83,24 +83,19 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
         }
       }
   
-      // Clear local storage
       localStorage.removeItem('selectedProducts');
       localStorage.removeItem('occupiedSpots');
       localStorage.removeItem('designSelections');
       
-      // Update local state
       setSelectedPlanType(pendingPackageType);
       localStorage.setItem('selectedPackage', pendingPackageType);
-      setSelectedPlan(newFloorPlan); // Update selectedPlan in state
-      setDesignSelections(null); // Clear design selections if you have this state
-      setSelectedProducts([]); // Clear selected products if you have this state
-      setOccupiedSpots({}); // Clear occupied spots if you have this state
+      setSelectedPlan(newFloorPlan);
+      setDesignSelections(null);
+      setSelectedProducts([]);
+      setOccupiedSpots({});
       
       setShowWarningModal(false);
       setPendingPackageType(null);
-  
-      // Force clean state in UI
-      //window.location.reload();
   
     } catch (error) {
       console.error('Error handling package change:', error);
@@ -215,7 +210,6 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
         plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
       );
       
-      // If there's exactly one plan, automatically select it
       if (availablePlans.length === 1) {
         setSelectedPlan(availablePlans[0].id);
       }
@@ -230,7 +224,6 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       ) : [];
       
     if (availablePlans.length === 1) {
-      // Automatically use the only available plan
       setSelectedPlan(availablePlans[0].id);
     } else if (!selectedPlan) {
       newErrors.plan = 'Please select a floor plan';
@@ -245,7 +238,6 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       const selectedPlanData = floorPlanTypes[selectedPlanType].plans.find(
         plan => plan.id === selectedPlan
       );
-      // Remove checkExistingOrder() call and just pass the data
       onNext({ 
         selectedPlan: selectedPlanData,
         clientInfo,
@@ -264,20 +256,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
         Choose Your Package
       </h2>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
-        <h3 className="text-lg font-medium mb-4">Client Information</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm text-gray-600">Name</label>
-            <p className="font-medium">{clientInfo.name}</p>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600">Unit Number</label>
-            <p className="font-medium">{clientInfo.unitNumber}</p>
-          </div>
-        </div>
-      </div>
-
+      {/* Package Selection Section */}
       {selectedPlanType ? (
         <>
           <button
@@ -346,6 +325,173 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
           </button>
         </div>
       )}
+
+        {/* Two Column Layout for Key Information */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-light mb-6" style={{ color: '#005670' }}>
+            Additional Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* HDG Concierge Contact Card */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-[#005670] p-4">
+              <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Henderson Design Group Concierge
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="mb-4">
+                  <h4 className="font-medium text-lg text-[#005670]">Mark Henderson</h4>
+                  <p className="text-gray-600">Director of Business Development</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center">
+                    <Phone className="h-5 w-5 text-[#005670]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Contact Number</p>
+                    <p className="font-medium">(808) 747-7127</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center">
+                    <Mail className="h-5 w-5 text-[#005670]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="font-medium">mark@henderson.house</p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-gray-600">
+                    Available Monday through Friday
+                    <br />8:00 AM - 6:00 PM HST
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Client Information Card */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-[#005670] p-4">
+              <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Client Information
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm text-gray-600">Name</label>
+                  <p className="font-medium">{clientInfo.name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600">Unit Number</label>
+                  <p className="font-medium">{clientInfo.unitNumber}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Warranty Information Card - Full Width */}
+        <div className="bg-white rounded-lg shadow-sm mb-8 overflow-hidden">
+          <div className="bg-[#005670] p-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Henderson Design Group Warranty Terms and Conditions
+            </h3>
+          </div>
+          <div className="p-6">
+            {/* Coverage Period */}
+            <div className="mb-8">
+              <h4 className="font-medium text-lg mb-2">Coverage Period</h4>
+              <p className="text-gray-600">
+                Furniture is warranted to be free from defects in workmanship, materials, and functionality for a period of 30 days from the date of installation.
+              </p>
+            </div>
+
+            {/* Scope of Warranty */}
+            <div className="mb-8">
+              <h4 className="font-medium text-lg mb-2">Scope of Warranty</h4>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-[#005670]"></div>
+                  <p className="text-gray-600">Workmanship, Materials, and Functionality: The warranty covers defects in workmanship, materials, and functionality under normal wear and tear conditions.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-[#005670]"></div>
+                  <p className="text-gray-600">Repair or Replacement: If a defect is identified within the 30-day period, Henderson Design Group will, at its discretion, either repair or replace the defective item.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Returns and Exchanges */}
+            <div className="mb-8">
+              <h4 className="font-medium text-lg mb-2">Returns and Exchanges</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h5 className="font-medium mb-2">No Returns</h5>
+                  <p className="text-sm text-gray-600">Items are not eligible for returns.</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h5 className="font-medium mb-2">No Exchanges</h5>
+                  <p className="text-sm text-gray-600">Exchanges are not permitted except in cases of defects.</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h5 className="font-medium mb-2">Custom Items</h5>
+                  <p className="text-sm text-gray-600">Custom items, including upholstery, are not eligible for returns or exchanges.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Exclusions */}
+            <div>
+              <h4 className="font-medium text-lg mb-3">Warranty Exclusions</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                    <p className="text-gray-600">Negligence, misuse, or accidents after installation</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                    <p className="text-gray-600">Incorrect or inadequate maintenance</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                    <p className="text-gray-600">Non-residential use or commercial conditions</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                    <p className="text-gray-600">Natural variations in color, grain, or texture of materials</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                    <p className="text-gray-600">Damage from extensive sun exposure</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                    <p className="text-gray-600">Use of fabric protectants may void warranty</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Important Note */}
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                This warranty applies to normal household use only. Please refer to your Care and Maintenance guide for proper furniture care instructions.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <WarningModal />
     </div>

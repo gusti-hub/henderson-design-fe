@@ -31,6 +31,7 @@ const PaymentPage = ({
   const packageType = selectedPlan?.id?.split('-')[0];
   const baseBudget = FLOOR_PLAN_TYPES[packageType]?.budgets[selectedPlan?.id] || 
                     FLOOR_PLAN_TYPES[packageType]?.budgets.default;
+  const packageSelected = FLOOR_PLAN_TYPES[packageType]?.title || '';
 
   const handleMethodSelect = (method) => {
     setPaymentMethod(method);
@@ -222,34 +223,38 @@ const PaymentPage = ({
               HDG Concierge
             </h3>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center">
-                  <Phone className="h-5 w-5 text-[#005670]" />
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="mb-4">
+                  <h4 className="font-medium text-lg text-[#005670]">Mark Henderson</h4>
+                  <p className="text-gray-600">Director of Business Development</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Contact Number</p>
-                  <p className="font-medium">1-800-HDG-HELP</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center">
+                    <Phone className="h-5 w-5 text-[#005670]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Contact Number</p>
+                    <p className="font-medium">(808) 747-7127</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-[#005670]" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center">
+                    <Mail className="h-5 w-5 text-[#005670]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="font-medium">mark@henderson.house</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="font-medium">concierge@hdg.com</p>
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-gray-600">
+                    Available Monday through Friday
+                    <br />8:00 AM - 6:00 PM HST
+                  </p>
                 </div>
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-gray-600">
-                  Available Monday through Friday
-                  <br />8:00 AM - 6:00 PM EST
-                </p>
               </div>
             </div>
-          </div>
         </div>
 
         {/* Client Information Card */}
@@ -274,6 +279,10 @@ const PaymentPage = ({
                 <p className="text-sm text-gray-600">Floor Plan</p>
                 <p className="font-medium">{selectedPlan?.title}</p>
               </div>
+              <div>
+                <p className="text-sm text-gray-600">Package</p>
+                <p className="font-medium">{packageSelected}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -284,7 +293,7 @@ const PaymentPage = ({
         <div className="bg-[#005670] p-4">
           <h3 className="text-lg font-medium text-white flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Henderson's Warranty Terms and Conditions
+            Henderson Design Group Warranty Terms and Conditions
           </h3>
         </div>
         <div className="p-6">
