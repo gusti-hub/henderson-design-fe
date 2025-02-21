@@ -36,7 +36,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
             <p className="mt-2 text-sm text-amber-700">
               Before finalizing your order:
               <ul className="list-disc ml-4 mt-2 space-y-1">
-                <li>A Henderson Group design team will schedule a review meeting</li>
+                <li>A Henderson Design Group Concierge team member will schedule a review meeting</li>
                 <li>They will discuss all your selections in detail</li>
                 <li>Ensure everything meets your expectations and requirements</li>
                 <li>After the review and confirmation, modifications will not be possible</li>

@@ -1055,23 +1055,42 @@ export const floorPlanConfig = {
       },
     }
   },
-  'custom-c': {
+'custom-c': {
     id: 'custom-c',
     dimensions: { width: 800, height: 600 },
     furniture: {
       // Original dining table
       diningTable1: {
-        id: 'DIN-TB-11',
-        label: 'DIN-TB-11',
+        id: 'DIN-TB-01-O',
+        label: 'DIN-TB-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 280,
+          x: 276,
           y: 334,
           width: 45,
           height: 95
         },
         labelStyle: {
-          offset: { x: -5, y: 0 },
+          offset: { x: -9, y: 0 },
+          fontSize: '6px',
+          fontWeight: '400',
+          fontFamily: 'Arial',
+          alignment: 'center',
+          orientation: 'vertical'
+        }
+      },
+      dininglv1: {
+        id: 'DIN-LV-01-O',
+        label: 'DIN-LV-01-O',
+        area: 'Dining Room',
+        coordinates: {
+          x: 288,
+          y: 354,
+          width: 17,
+          height: 54
+        },
+        labelStyle: {
+          offset: { x: -9, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1081,17 +1100,17 @@ export const floorPlanConfig = {
       },
       // Top row dining spots
       diningSpot1: {
-        id: 'DIN-ST-01',
-        label: 'DIN-ST-01',
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 269,
+          x: 260,
           y: 399,
           width: 24,
           height: 24
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1111,17 +1130,17 @@ export const floorPlanConfig = {
         }
       },
       diningSpot2: {
-        id: 'DIN-ST-01',
-        label: 'DIN-ST-01',
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 269,
-          y: 368,
+          x: 260,
+          y: 370,
           width: 24,
           height: 24
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1141,17 +1160,17 @@ export const floorPlanConfig = {
         }
       },
       diningSpot3: {
-        id: 'DIN-ST-01',
-        label: 'DIN-ST-01',
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 269,
-          y: 337,
+          x: 260,
+          y: 340,
           width: 24,
           height: 24
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1171,17 +1190,17 @@ export const floorPlanConfig = {
         }
       },
       diningSpot4: {
-        id: 'DIN-ST-01',
-        label: 'DIN-ST-01',
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 315,
-          y: 337,
+          x: 311,
+          y: 340,
           width: 24,
           height: 24
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1201,17 +1220,17 @@ export const floorPlanConfig = {
         }
       },
       diningSpot5: {
-        id: 'DIN-ST-01',
-        label: 'DIN-ST-01',
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 315,
-          y: 368,
+          x: 311,
+          y: 370,
           width: 24,
           height: 24
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1231,17 +1250,17 @@ export const floorPlanConfig = {
         }
       },
       diningSpot6: {
-        id: 'DIN-ST-01',
-        label: 'DIN-ST-01',
+        id: 'DIN-ST-01-O',
+        label: 'DIN-ST-01-O',
         area: 'Dining Room',
         coordinates: {
-          x: 315,
+          x: 311,
           y: 399,
           width: 24,
           height: 24
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1261,17 +1280,17 @@ export const floorPlanConfig = {
         }
       },
       floatingShoe1: {
-        id: 'ENT-CG-01',
-        label: 'ENT-CG-01',
+        id: 'ENT-CG-01-O',
+        label: 'ENT-CG-01-O',
         area: 'Entry Room',
         coordinates: {
-          x: 275,
+          x: 271,
           y: 234,
           width: 55,
           height: 15
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '8px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1280,17 +1299,17 @@ export const floorPlanConfig = {
         }
       },
       livingSpot1: {
-        id: 'LIV-TB-01',
-        label: 'LIV-TB-01',
+        id: 'LIV-TB-01-O',
+        label: 'LIV-TB-01-O',
         area: 'Living Room',
         coordinates: {
-          x: 467,
+          x: 463,
           y: 381,
-          width: 33,
+          width: 30,
           height: 45
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '7px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1299,20 +1318,20 @@ export const floorPlanConfig = {
         }
       },
       livingSpot2: {
-        id: 'LIV-ST-01',
-        label: 'LIV-ST-01',
+        id: 'LIV-ST-01-O',
+        label: 'LIV-ST-01-O',
         area: 'Living Room',
         coordinates: [
-          { x: 412, y: 359 },
-          { x: 454, y: 359 },
-          { x: 454, y: 430 },
-          { x: 491, y: 442 },
-          { x: 488, y: 480 },
-          { x: 412, y: 460 },
-          { x: 412, y: 359 }
+          { x: 408, y: 359 },
+          { x: 450, y: 359 },
+          { x: 450, y: 430 },
+          { x: 487, y: 442 },
+          { x: 484, y: 480 },
+          { x: 408, y: 460 },
+          { x: 408, y: 359 }
         ],
         labelStyle: {
-          offset: { x: -10, y: -5 },
+          offset: { x: -14, y: -5 },
           fontSize: '8px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1321,18 +1340,18 @@ export const floorPlanConfig = {
         }
       },
       livingSpot3: {
-        id: 'LIV-ST-02',
-        label: 'LIV-ST-02',
+        id: 'LIV-ST-02-O',
+        label: 'LIV-ST-02-O',
         area: 'Living Room',
         coordinates: {
-          x: 510,
-          y: 347,
+          x: 503,
+          y: 348,
           width: 31,
           height: 33,
           rotation: 45
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '8px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1341,18 +1360,18 @@ export const floorPlanConfig = {
         }
       },
       livingSpot4: {
-        id: 'LIV-TB-02',
-        label: 'LIV-TB-02',
+        id: 'LIV-TB-02-O',
+        label: 'LIV-TB-02-O',
         area: 'Living Room',
         coordinates: {
-          x: 500,
-          y: 342,
+          x: 492,
+          y: 345,
           width: 11,
-          height: 16,
+          height: 14,
           rotation: 45
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '5px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1361,17 +1380,17 @@ export const floorPlanConfig = {
         }
       },
       livingSpot5: {
-        id: 'LIV-TB-03',
-        label: 'LIV-TB-03',
+        id: 'LIV-TB-03-O',
+        label: 'LIV-TB-03-O',
         area: 'Living Room',
         coordinates: {
-          x: 420,
+          x: 416,
           y: 341,
           width: 32,
           height: 17
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1380,17 +1399,17 @@ export const floorPlanConfig = {
         }
       },
       livingSpot6: {
-        id: 'LIV-TB-04',
-        label: 'LIV-TB-04',
+        id: 'LIV-TB-04-O',
+        label: 'LIV-TB-04-O',
         area: 'Living Room',
         coordinates: {
-          x: 392,
+          x: 388,
           y: 370,
-          width: 20,
-          height: 75
+          width: 18,
+          height: 80
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1399,17 +1418,17 @@ export const floorPlanConfig = {
         }
       },
       livingSpot7: {
-        id: 'LIV-CG-01',
-        label: 'LIV-CG-01',
+        id: 'LIV-CG-01-O',
+        label: 'LIV-CG-01-O',
         area: 'Living Room',
         coordinates: {
-          x: 565,
+          x: 561,
           y: 346,
           width: 25,
           height: 110
         },
         labelStyle: {
-          offset: { x: 0, y: 0 },
+          offset: { x: -4, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1418,17 +1437,17 @@ export const floorPlanConfig = {
         }
       },
       kitchenSpot1: {
-        id: 'KIT-ST-04',
-        label: 'KIT-ST-04',
+        id: 'KIT-ST-04-O',
+        label: 'KIT-ST-04-O',
         area: 'Kitchen',
         coordinates: {
-          x: 375,
+          x: 371,
           y: 179,
           width: 40,
           height: 40
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '8px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1437,17 +1456,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom1Spot1: {
-        id: 'BD1-BD-01',
-        label: 'BD1-BD-01',
+        id: 'BD1-BD-01-O',
+        label: 'BD1-BD-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 645,
-          y: 344,
+          x: 641,
+          y: 335,
           width: 100,
           height: 90
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1456,17 +1475,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom1Spot2: {
-        id: 'BD1-CG-01',
-        label: 'BD1-CG-01',
+        id: 'BD1-CG-01-O',
+        label: 'BD1-CG-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 718,
-          y: 303,
-          width: 30,
-          height: 42
+          x: 714,
+          y: 295,
+          width: 26,
+          height: 40
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1475,17 +1494,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom1Spot3: {
-        id: 'BD1-CG-02',
-        label: 'BD1-CG-02',
+        id: 'BD1-CG-02-O',
+        label: 'BD1-CG-02-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 718,
-          y: 435,
-          width: 30,
-          height: 25
+          x: 714,
+          y: 426,
+          width: 26,
+          height: 40
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1494,17 +1513,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom1Spot4: {
-        id: 'BD1-CG-03',
-        label: 'BD1-CG-03',
+        id: 'BD1-CG-03-O',
+        label: 'BD1-CG-03-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 590,
+          x: 586,
           y: 348,
           width: 25,
           height: 85
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1513,17 +1532,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom1Spot5: {
-        id: 'BD1-TB-01',
-        label: 'BD1-TB-01',
+        id: 'BD1-TB-01-O',
+        label: 'BD1-TB-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 596,
-          y: 430,
+          x: 590,
+          y: 435,
           width: 23,
           height: 35
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1532,18 +1551,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom1Spot6: {
-        id: 'BD1-ST-01',
-        label: 'BD1-ST-01',
+        id: 'BD1-ST-01-O',
+        label: 'BD1-ST-01-O',
         area: 'Primary Bedroom',
         coordinates: {
-          x: 605,
-          y: 438,
+          x: 603,
+          y: 442,
           width: 23,
-          height: 22,
-          rotation: 160
+          height: 22
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1552,17 +1570,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom2Spot1: {
-        id: 'BD2-BD-01',
-        label: 'BD2-BD-01',
+        id: 'BD2-BD-01-O',
+        label: 'BD2-BD-01-O',
         area: 'Bedroom 2',
         coordinates: {
-          x: 77,
-          y: 345,
+          x: 73,
+          y: 335,
           width: 100,
           height: 90
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1571,17 +1589,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom2Spot2: {
-        id: 'BD2-CG-01',
-        label: 'BD2-CG-01',
+        id: 'BD2-CG-01-O',
+        label: 'BD2-CG-01-O',
         area: 'Bedroom 2',
         coordinates: {
-          x: 77,
-          y: 302,
-          width: 30,
-          height: 42
+          x: 73,
+          y: 295,
+          width: 25,
+          height: 39
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1590,17 +1608,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom2Spot3: {
-        id: 'BD2-CG-02',
-        label: 'BD2-CG-02',
+        id: 'BD2-CG-02-O',
+        label: 'BD2-CG-02-O',
         area: 'Bedroom 2',
         coordinates: {
-          x: 77,
-          y: 433,
-          width: 30,
-          height: 30
+          x: 73,
+          y: 425,
+          width: 25,
+          height: 35
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1609,17 +1627,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom2Spot4: {
-        id: 'BD2-TB-01',
-        label: 'BD2-TB-01',
+        id: 'BD2-TB-01-O',
+        label: 'BD2-TB-01-O',
         area: 'Bedroom 2',
         coordinates: {
-          x: 201,
+          x: 197,
           y: 440,
           width: 25,
           height: 30
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1628,18 +1646,18 @@ export const floorPlanConfig = {
         }
       },
       bedroom2Spot5: {
-        id: 'BD2-ST-01',
-        label: 'BD2-ST-01',
+        id: 'BD2-ST-01-O',
+        label: 'BD2-ST-01-O',
         area: 'Bedroom 2',
         coordinates: {
-          x: 193,
-          y: 438,
+          x: 185,
+          y: 442,
           width: 20,
           height: 22,
           rotation: 110
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1648,17 +1666,17 @@ export const floorPlanConfig = {
         }
       },
       bedroom2Spot6: {
-        id: 'BD2-CG-03',
-        label: 'BD2-CG-03',
+        id: 'BD2-CG-03-O',
+        label: 'BD2-CG-03-O',
         area: 'Bedroom 2',
         coordinates: {
-          x: 205,
+          x: 201,
           y: 340,
           width: 22,
           height: 100
         },
         labelStyle: {
-          offset: { x: 0, y: -5 },
+          offset: { x: -4, y: -5 },
           fontSize: '10px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1667,17 +1685,19 @@ export const floorPlanConfig = {
         }
       },
       officeSpot1: {
-        id: 'OF-TB-01',
-        label: 'OF-TB-01',
+        id: 'OF-TB-01-O',
+        label: 'OF-TB-01-O',
         area: 'Office/Den',
-        coordinates: {
-          x: 233,
-          y: 106,
-          width: 30,
-          height: 57
-        },
+        coordinates: [
+          { x: 229, y: 90 },
+          { x: 229, y: 180 }, 
+          { x: 255, y: 180 },  
+          { x: 255, y: 117 },
+          { x: 306, y: 117 }, 
+          { x: 306, y: 90 }      
+        ],
         labelStyle: {
-          offset: { x: -10, y: 0 },
+          offset: { x: -14, y: 0 },
           fontSize: '7px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1686,17 +1706,18 @@ export const floorPlanConfig = {
         }
       },
       officeSpot2: {
-        id: 'OF-ST-01',
-        label: 'OF-ST-01',
+        id: 'OF-ST-01-O',
+        label: 'OF-ST-01-O',
         area: 'Office/Den',
         coordinates: {
-          x: 250,
-          y: 121,
-          width: 22,
-          height: 20
+          x: 270,
+          y: 105,
+          width: 21,
+          height: 25,
+          rotation: -10
         },
         labelStyle: {
-          offset: { x: 10, y: 0 },
+          offset: { x: 6, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1704,37 +1725,18 @@ export const floorPlanConfig = {
           orientation: 'horizontal'
         }
       },
-      officeSpot3: {
-        id: 'OF-CG-01',
-        label: 'OF-CG-01',
-        area: 'Office/Den',
-        coordinates: {
-          x: 272,
-          y: 92,
-          width: 43,
-          height: 20
-        },
-        labelStyle: {
-          offset: { x: 0, y: 0 },
-          fontSize: '8px',
-          fontWeight: '400',
-          fontFamily: 'Arial',
-          alignment: 'center',
-          orientation: 'horizontal'
-        }
-      },
       kitchenSpot1: {
-        id: 'KIT-ST-01',
-        label: 'KIT-ST-01',
+        id: 'KIT-ST-01-O',
+        label: 'KIT-ST-01-O',
         area: 'Kitchen',
         coordinates: {
-          x: 417,
+          x: 401,
           y: 274,
-          width: 23,
+          width: 27,
           height: 27
         },
         labelStyle: {
-          offset: { x: -3, y: 0 },
+          offset: { x: -7, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1754,17 +1756,17 @@ export const floorPlanConfig = {
         }
       },
       kitchenSpot2: {
-        id: 'KIT-ST-01',
-        label: 'KIT-ST-01',
+        id: 'KIT-ST-01-O',
+        label: 'KIT-ST-01-O',
         area: 'Kitchen',
         coordinates: {
-          x: 448,
+          x: 440,
           y: 274,
-          width: 23,
+          width: 27,
           height: 27
         },
         labelStyle: {
-          offset: { x: -3, y: 0 },
+          offset: { x: -7, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1784,17 +1786,17 @@ export const floorPlanConfig = {
         }
       },
       kitchenSpot3: {
-        id: 'KIT-ST-01',
-        label: 'KIT-ST-01',
+        id: 'KIT-ST-01-O',
+        label: 'KIT-ST-01-O',
         area: 'Kitchen',
         coordinates: {
-          x: 479,
+          x: 478,
           y: 274,
-          width: 23,
+          width: 27,
           height: 27
         },
         labelStyle: {
-          offset: { x: -3, y: 0 },
+          offset: { x: -7, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1814,18 +1816,18 @@ export const floorPlanConfig = {
         }
       },
       LanaiSpot1: {
-        id: 'LAN-ST-01',
-        label: 'LAN-ST-01',
+        id: 'LAN-ST-01-O',
+        label: 'LAN-ST-01-O',
         area: 'Lanai',
         coordinates: {
-          x: 687,
+          x: 690,
           y: 483,
-          width: 32,
+          width: 27,
           height: 35,
-          rotation: 53
+          rotation: 30
         },
         labelStyle: {
-          offset: { x: -3, y: 0 },
+          offset: { x: -7, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1840,18 +1842,18 @@ export const floorPlanConfig = {
         }
       },
       LanaiSpot2: {
-        id: 'LAN-ST-01',
-        label: 'LAN-ST-01',
+        id: 'LAN-ST-01-O',
+        label: 'LAN-ST-01-O',
         area: 'Lanai',
         coordinates: {
           x: 630,
           y: 483,
-          width: 34,
-          height: 32,
-          rotation: 37
+          width: 27,
+          height: 35,
+          rotation: -31
         },
         labelStyle: {
-          offset: { x: -3, y: 0 },
+          offset: { x: -7, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1866,17 +1868,17 @@ export const floorPlanConfig = {
         }
       },
       LanaiSpot3: {
-        id: 'LAN-TB-01',
-        label: 'LAN-TB-01',
+        id: 'LAN-TB-01-O',
+        label: 'LAN-TB-01-O',
         area: 'Lanai',
         coordinates: {
-          x: 664,
-          y: 507,
-          width: 24,
-          height: 24
+          x: 662,
+          y: 485,
+          width: 22,
+          height: 22
         },
         labelStyle: {
-          offset: { x: -3, y: 0 },
+          offset: { x: -7, y: 0 },
           fontSize: '6px',
           fontWeight: '400',
           fontFamily: 'Arial',
@@ -1891,19 +1893,19 @@ export const floorPlanConfig = {
         }
       },
       // Example of a curved path
-      curvedCounter: {
-        id: 'KIT-CT-01',
-        label: 'Kitchen Counter',
-        area: 'Kitchen',
-        coordinates: {
-          curve: {
-            start: { x: 400, y: 200 },
-            control1: { x: 450, y: 200 },
-            control2: { x: 500, y: 250 },
-            end: { x: 500, y: 300 }
-          }
-        }
-      }
+      // curvedCounter: {
+      //   id: 'KIT-CT-01-O',
+      //   label: 'Kitchen Counter-O',
+      //   area: 'Kitchen',
+      //   coordinates: {
+      //     curve: {
+      //       start: { x: 396, y: 200 },
+      //       control1: { x: 446, y: 200 },
+      //       control2: { x: 496, y: 250 },
+      //       end: { x: 496, y: 300 }
+      //     }
+      //   }
+      // }
     }
   }
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Upload } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
@@ -18,6 +18,10 @@ const ProductMapping = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [floorPlans, setFloorPlans] = useState([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkErrors, setBulkErrors] = useState([]);
+  const [bulkSubmitLoading, setBulkSubmitLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     locationId: '',
@@ -33,6 +37,69 @@ const ProductMapping = () => {
     fetchProducts();
     fetchFloorPlans();
   }, [currentPage]);
+
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+    if (!bulkFile) {
+      setBulkErrors(['Please select a file']);
+      return;
+    }
+
+    setBulkSubmitLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkFile);
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${backendServer}/api/location-mappings/bulk`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to process bulk upload');
+      }
+
+      await fetchMappings();
+      handleCloseBulkModal();
+    } catch (error) {
+      setBulkErrors([error.message]);
+    } finally {
+      setBulkSubmitLoading(false);
+    }
+  };
+
+  const handleCloseBulkModal = () => {
+    setIsBulkModalOpen(false);
+    setBulkFile(null);
+    setBulkErrors([]);
+  };
+
+  const validateCSV = (file) => {
+    Papa.parse(file, {
+      header: true,
+      complete: (results) => {
+        const requiredHeaders = ['locationId', 'locationName', 'floorPlanId', 'allowedProductIds'];
+        const headers = results.meta.fields;
+        
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        if (missingHeaders.length > 0) {
+          setBulkErrors([`Missing required columns: ${missingHeaders.join(', ')}`]);
+          return;
+        }
+        
+        setBulkErrors([]);
+      },
+      error: (error) => {
+        setBulkErrors([`Error parsing CSV: ${error.message}`]);
+      }
+    });
+  };
+
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => 
@@ -165,18 +232,28 @@ const ProductMapping = () => {
         <h2 className="text-2xl font-light" style={{ color: '#005670' }}>
           Location Product Mapping
         </h2>
-        <button
-          onClick={() => {
-            setModalMode('create');
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-          style={{ backgroundColor: '#005670' }}
-        >
-          <Plus className="w-4 h-4" />
-          Add Mapping
-        </button>
-      </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
+            style={{ backgroundColor: '#005670' }}
+          >
+            <Upload className="w-4 h-4" />
+            Bulk Create
+          </button>
+          <button
+            onClick={() => {
+              setModalMode('create');
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
+            style={{ backgroundColor: '#005670' }}
+          >
+            <Plus className="w-4 h-4" />
+            Add Mapping
+          </button>
+        </div>
+        </div>
 
       <div className="mb-6">
         <SearchFilter
@@ -257,6 +334,68 @@ const ProductMapping = () => {
           onPageChange={(page) => setCurrentPage(page)}
         />
       </div>
+
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
+                Bulk Create Mappings
+              </h3>
+              <button onClick={handleCloseBulkModal}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {bulkErrors.length > 0 && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {bulkErrors.map((error, index) => (
+                  <div key={index}>{error}</div>
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={handleBulkUpload} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Upload CSV File
+                </label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    setBulkFile(file);
+                    if (file) validateCSV(file);
+                  }}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  CSV should contain: locationId, locationName, floorPlanId, allowedProductIds (comma-separated)
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  type="submit"
+                  disabled={bulkSubmitLoading || bulkErrors.length > 0}
+                  className="px-4 py-2 text-white rounded-lg flex items-center gap-2"
+                  style={{ backgroundColor: '#005670' }}
+                >
+                  {bulkSubmitLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Upload'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">

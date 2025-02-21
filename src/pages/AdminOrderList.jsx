@@ -631,7 +631,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                           title="Download Summary (Excel)"
                         >
                           <Download className="w-5 h-5" />
-                          <span className="text-sm">Excel</span>
+                          {/* <span className="text-sm">Excel</span> */}
                         </button>
                         <button
                           onClick={() => {
@@ -642,9 +642,9 @@ const AdminOrderList = ({ onOrderClick }) => {
                           title="Generate New Proposal"
                         >
                           <FileText className="w-5 h-5" />
-                          <span className="text-sm">Generate Proposal</span>
+                          {/* <span className="text-sm">Generate Proposal</span> */}
                         </button>
-                        <button
+                        {/* <button
                           onClick={() => {
                             setSelectedOrderId(order._id);
                             setShowVersions(true);
@@ -655,7 +655,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                         >
                           <FileText className="w-5 h-5" />
                           <span className="text-sm">View Proposal Versions</span>
-                        </button>
+                        </button> */}
                       </div>
                     </td>
                   </tr>

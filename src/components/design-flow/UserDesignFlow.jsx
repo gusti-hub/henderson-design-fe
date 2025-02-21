@@ -8,7 +8,7 @@ import { backendServer } from '../../utils/info';
 import { generateFurnitureAreas } from './floorPlanConfig';
 import { AlertCircle } from 'lucide-react';
 
-// Add this right after your imports in UserDesignFlow.jsx
+// Modal components
 const UnselectedSpotsModal = ({ isOpen, onClose, unselectedSpots }) => {
   if (!isOpen) return null;
 
@@ -523,10 +523,17 @@ const UserDesignFlow = () => {
   }, []);
 
   const steps = [
-    { number: 1, title: 'Choose Floor Plan' },
-    { number: 2, title: 'Design Your Space' },
-    { number: 3, title: 'Review Order' },
+    { number: 1, title: 'Select Package' },
+    { number: 2, title: 'Customize Design' },
+    { number: 3, title: 'Review & Finalize' },
     { number: 4, title: 'Project Details & Payment' }
+  ];
+  
+  const stepDescriptions = [
+    'Choose the design style and budget that matches your vision',
+    'Personalize your selections with our virtual designer',
+    'Confirm your choices and submit your design preferences',
+    'We handle everything from ordering to white-glove installation'
   ];
 
   const handleNext = async () => {
@@ -746,37 +753,42 @@ const UserDesignFlow = () => {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            {steps.map((step, index) => (
-              <div key={step.number} className="flex items-center">
-                <div 
-                  className={`flex items-center justify-center w-8 h-8 rounded-full
-                    ${currentStep >= step.number ? 'bg-[#005670] text-white' : 'bg-gray-200'}`}
-                >
-                  {currentStep > step.number ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    step.number
-                  )}
-                </div>
-                <span className={`ml-2 text-sm ${currentStep >= step.number ? 'text-[#005670]' : 'text-gray-500'}`}>
-                  {step.title}
-                </span>
-                {index < steps.length - 1 && (
-                  <ChevronRight className="w-5 h-5 mx-4 text-gray-300" />
+      {/* Removed the top navigation bar as requested */}
+      
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Visual Design Journey */}
+        <h2 className="text-xl font-medium text-[#005670] mb-6">Your Design Journey</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {steps.map((step, index) => (
+            <div key={step.number} className="relative">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                currentStep > step.number
+                  ? 'bg-[#005670] text-white'
+                  : currentStep === step.number
+                    ? 'bg-[#005670] text-white'
+                    : 'bg-gray-200 text-gray-500'
+              }`}>
+                {currentStep > step.number ? (
+                  <Check className="w-6 h-6" />
+                ) : (
+                  <span className="text-lg font-medium">{step.number}</span>
                 )}
               </div>
-            ))}
-          </div>
+              {currentStep === step.number && (
+                <div className="absolute -top-2 -right-2">
+                  <div className="bg-amber-100 text-amber-800 px-3 py-1 text-xs font-medium rounded-full">
+                    You are here
+                  </div>
+                </div>
+              )}
+              <h3 className="mt-4 text-lg font-medium">{step.title}</h3>
+              <p className="mt-2 text-sm text-gray-600">{stepDescriptions[index]}</p>
+            </div>
+          ))}
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
+        
         {renderStepContent()}
 
         {!isViewOnly && currentStep > 1 && (
