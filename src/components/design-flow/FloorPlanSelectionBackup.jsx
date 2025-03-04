@@ -184,7 +184,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       image: '/images/investor_plan/investor_1.png',
       budgets: {
         'investor-a': 75000,  // 2 Bedroom
-        'investor-b': 115000,  // 2 Bedroom + 2.5 Bath
+        'investor-b': 124467,  // 2 Bedroom + 2.5 Bath
         'investor-c': 115000,  // 2 Bedroom + Den
         'investor-d': 65000,  // 1 Bedroom
         'investor-e': 70000,  // 2 Bedroom
@@ -267,7 +267,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       image: '/images/custom_plan/custom_1.png',
       budgets: {
         'custom-a': 95000,   // 2 Bedroom
-        'custom-b': 105000,  // 2 Bedroom + 2.5 Bath
+        'custom-b': 189542,  // 2 Bedroom + 2.5 Bath
         'custom-c': 147000,  // 2 Bedroom + Den
         'custom-d': 85000,   // 1 Bedroom
         'custom-e': 90000,   // 2 Bedroom
