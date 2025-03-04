@@ -729,7 +729,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       </div>
 
       {/* Design Process Steps - Visual guide */}
-      {activeTab === 'packages' && !selectedPlanType && (
+      {/* {activeTab === 'packages' && !selectedPlanType && (
         <div className="mb-10">
           <h2 className="text-xl font-medium mb-6 text-[#005670]">Your Design Journey</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -759,7 +759,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Main Content Area */}
       <div className="min-h-[400px]">

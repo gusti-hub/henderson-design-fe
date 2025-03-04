@@ -29,6 +29,17 @@ export const FLOOR_PLAN_TYPES = {
           ]
         },
         {
+          id: 'investor-b',
+          title: 'Residence 03A',
+          description: '2 Bedroom / 2.5 Bath + Den, Level: 8-38 (Even), 39',
+          image: '/images/investor_plan/Alia_03A.png',
+          details: [
+            'Total: 1,525 Sq. Ft.',
+            'Interior: 1,435 Sq. Ft.',
+            'Lanai: 90 Sq. Ft.'
+          ]
+        },
+        {
           id: 'investor-c',  
           title: 'Residence 03B',
           description: '2 Bedroom / 2.5 Bath + Den, Level: 7-37 (Odd)',
@@ -66,6 +77,17 @@ export const FLOOR_PLAN_TYPES = {
             'Total: 819 Sq. Ft.',
             'Interior: 761 Sq. Ft.',
             'Lanai: 58 Sq. Ft.'
+          ]
+        },
+        {
+          id: 'custom-b',
+          title: 'Residence 03A',
+          description: '2 Bedroom / 2.5 Bath + Den, Level: 8-38 (Even), 39',
+          image: '/images/custom_plan/Alia_03A.png',
+          details: [
+            'Total: 1,525 Sq. Ft.',
+            'Interior: 1,435 Sq. Ft.',
+            'Lanai: 90 Sq. Ft.'
           ]
         },
         {
