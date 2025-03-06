@@ -543,19 +543,25 @@ const UserDesignFlow = () => {
       const existingSpots = Object.values(furnitureSpots || {});
       const selectedSpots = Object.keys(designSelections?.spotSelections || {});
       const unselectedSpots = existingSpots.filter(spot => !selectedSpots.includes(spot.id));
-      if (unselectedSpots.length > 0) {
-        // Use querySelectorAll to find all elements with the same ID
-        unselectedSpots.forEach(spot => {
-          const elements = document.querySelectorAll(`[data-spot-id^="${spot.id}"]`);
+      // if (unselectedSpots.length > 0) {
+      //   // Use querySelectorAll to find all elements with the same ID
+      //   unselectedSpots.forEach(spot => {
+      //     const elements = document.querySelectorAll(`[data-spot-id^="${spot.id}"]`);
           
-          console.log(elements);
-          elements.forEach(element => {
-            element.classList.add('animate-pulse');
-            element.setAttribute('fill', 'rgba(239, 68, 68, 0.2)');
-            element.setAttribute('stroke', 'rgb(239, 68, 68)');
-          });
-        });
+      //     console.log(elements);
+      //     elements.forEach(element => {
+      //       element.classList.add('animate-pulse');
+      //       element.setAttribute('fill', 'rgba(239, 68, 68, 0.2)');
+      //       element.setAttribute('stroke', 'rgb(239, 68, 68)');
+      //     });
+      //   });
         
+      //   setUnselectedSpotsList(unselectedSpots);
+      //   setShowUnselectedModal(true);
+      //   return;
+      // }
+
+      if (selectedSpots.length == 0) {
         setUnselectedSpotsList(unselectedSpots);
         setShowUnselectedModal(true);
         return;
