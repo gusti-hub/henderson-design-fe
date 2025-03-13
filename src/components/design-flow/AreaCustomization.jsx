@@ -37,7 +37,19 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       'Tan - Modular Sofa': { type: 'Tan', previewUrl: '/images/fabrics/Tan Modular sofa.png' },
       'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
       'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
-      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' }
+      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' },
+
+      // New fabric options
+      'Shell': { type: 'Shell', previewUrl: '/images/fabrics/pearl.png' },
+      'Leather': { type: 'Leather', previewUrl: '/images/fabrics/leather.png' },
+      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' }
+    },
+    // New inset panel attribute
+    insetPanel: {
+      'Wood': { previewUrl: '/images/insetpanels/Wood.jpg' },
+      'Shell': { previewUrl: '/images/insetpanels/pearl.png' },
+      'Faux Linen': { previewUrl: '/images/insetpanels/Faux Linen.png' },
+      'Woven Material': { previewUrl: '/images/insetpanels/LIGHT WOOD.png' }
     }
   };
 
@@ -322,7 +334,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   };
 
   const handleAddProduct = async (productWithOptions) => {
-    
     if (selectedTab && !occupiedSpots[selectedTab]) {
       const currentSpot = Object.values(furnitureSpots).find(spot => 
         spot.id === selectedTab || spot.label === selectedTab
@@ -330,13 +341,15 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   
       // Find the selected variant based on options
       const selectedVariant = productWithOptions.variants.find(variant => 
-        variant.fabric === productWithOptions.selectedOptions?.fabric && 
-        variant.finish === productWithOptions.selectedOptions?.finish
+        (!productWithOptions.selectedOptions.fabric || variant.fabric === productWithOptions.selectedOptions?.fabric) && 
+        (!productWithOptions.selectedOptions.finish || variant.finish === productWithOptions.selectedOptions?.finish) &&
+        (!productWithOptions.selectedOptions.size || variant.size === productWithOptions.selectedOptions?.size) &&
+        (!productWithOptions.selectedOptions.insetPanel || variant.insetPanel === productWithOptions.selectedOptions?.insetPanel)
       );
-
+  
       const unitPrice = productWithOptions.finalPrice || productWithOptions.basePrice;
       const quantity = productWithOptions.selectedOptions?.quantity || 1;
-
+  
       // Create streamlined product object
       const newProduct = {
         _id: productWithOptions._id,
@@ -350,6 +363,8 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         selectedOptions: {
           finish: productWithOptions.selectedOptions?.finish || '',
           fabric: productWithOptions.selectedOptions?.fabric || '',
+          size: productWithOptions.selectedOptions?.size || '',
+          insetPanel: productWithOptions.selectedOptions?.insetPanel || '',
           image: selectedVariant?.image?.url || productWithOptions.variants[0]?.image?.url || ''
         }
       };
@@ -526,28 +541,34 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   }, [selectedProducts, occupiedSpots]);
 
   const CustomizationModal = ({ product, onClose, onAdd, currentSpot  }) => {
-    // Get unique finishes and fabrics
+    // Get unique attributes
     const uniqueFinishes = [...new Set(product.variants.map(v => v.finish).filter(Boolean))];
     const uniqueFabrics = [...new Set(product.variants.map(v => v.fabric).filter(Boolean))];
+    const uniqueSizes = [...new Set(product.variants.map(v => v.size).filter(Boolean))];
+    const uniqueInsetPanels = [...new Set(product.variants.map(v => v.insetPanel).filter(Boolean))];
   
     // Initialize state with fixed quantity if specified
     const [selectedOptions, setSelectedOptions] = useState({
       finish: uniqueFinishes.length === 1 ? uniqueFinishes[0] : '',
       fabric: uniqueFabrics.length === 1 ? uniqueFabrics[0] : '',
+      size: uniqueSizes.length === 1 ? uniqueSizes[0] : '',
+      insetPanel: uniqueInsetPanels.length === 1 ? uniqueInsetPanels[0] : '',
       quantity: currentSpot?.quantity?.fixed ?? (currentSpot?.quantity?.enabled ? currentSpot.quantity.min : 1),
       useAdditional: false,
       additionalQuantity: 0
     });
   
     const [modalImageLoading, setModalImageLoading] = useState(true);
-
+  
     const getSelectedVariant = () => {
       return product.variants.find(variant => 
-        variant.fabric === selectedOptions.fabric && 
-        variant.finish === selectedOptions.finish
+        (!selectedOptions.fabric || variant.fabric === selectedOptions.fabric) && 
+        (!selectedOptions.finish || variant.finish === selectedOptions.finish) &&
+        (!selectedOptions.size || variant.size === selectedOptions.size) &&
+        (!selectedOptions.insetPanel || variant.insetPanel === selectedOptions.insetPanel)
       );
     };
-
+  
     const handleAdd = () => {
       const selectedVariant = getSelectedVariant();
   
@@ -565,10 +586,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     // Helper function to get variant image
     const getVariantImage = () => {
       // Get the selected variant based on options
-      const selectedVariant = product.variants.find(variant => 
-        variant.fabric === selectedOptions.fabric && 
-        variant.finish === selectedOptions.finish
-      );
+      const selectedVariant = getSelectedVariant();
     
       // Return image URL from selected variant if it exists
       if (selectedVariant?.image?.url) {
@@ -584,32 +602,48 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     };
   
     const getVariantPrice = () => {
-      const selectedVariant = product.variants.find(variant => 
-        variant.fabric === selectedOptions.fabric && 
-        variant.finish === selectedOptions.finish
-      );
+      const selectedVariant = getSelectedVariant();
       return selectedVariant ? selectedVariant.price : product.basePrice;
     };
   
     const image = getVariantImage();
-
-    const hasFinishOptions = product.variants.some(v => v.finish);
-    const hasFabricOptions = product.variants.some(v => v.fabric);
+  
+    const hasFinishOptions = uniqueFinishes.length > 0;
+    const hasFabricOptions = uniqueFabrics.length > 0;
+    const hasSizeOptions = uniqueSizes.length > 0;
+    const hasInsetPanelOptions = uniqueInsetPanels.length > 0;
   
     // Modified validation check
     const isValid = () => {
-      if (hasFinishOptions && hasFabricOptions) {
-        // Both attributes are available, require both
-        return selectedOptions.finish && selectedOptions.fabric;
-      } else if (hasFinishOptions) {
-        // Only finish is available
-        return selectedOptions.finish;
-      } else if (hasFabricOptions) {
-        // Only fabric is available
-        return selectedOptions.fabric;
-      }
-      // No attributes required
-      return true;
+      // Check if each attribute with options is selected
+      const finishValid = !hasFinishOptions || selectedOptions.finish;
+      const fabricValid = !hasFabricOptions || selectedOptions.fabric;
+      const sizeValid = !hasSizeOptions || selectedOptions.size;
+      const insetPanelValid = !hasInsetPanelOptions || selectedOptions.insetPanel;
+      
+      return finishValid && fabricValid && sizeValid && insetPanelValid;
+    };
+  
+    // Create a preview for inset panel
+    const InsetPanelPreview = ({ insetPanelValue }) => {
+      const insetPanelInfo = attributeOptions.insetPanel[insetPanelValue];
+      
+      if (!insetPanelInfo) return null;
+      
+      return (
+        <div className="flex flex-col items-center">
+          <div className="w-32 h-32 relative rounded-lg overflow-hidden">
+            <img
+              src={insetPanelInfo.previewUrl}
+              alt={insetPanelValue}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-center">
+              {insetPanelValue}
+            </div>
+          </div>
+        </div>
+      );
     };
   
     return (
@@ -664,7 +698,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     
           <div className="space-y-6 mb-6">
             {/* Finish options */}
-            {uniqueFinishes.length > 1 && (
+            {uniqueFinishes.length > 0 && (
               <div>
                 <h4 className="font-semibold mb-2">Wood Finish</h4>
                 <div className="flex gap-4">
@@ -703,7 +737,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             )}
     
             {/* Fabric options */}
-            {uniqueFabrics.length > 1 && (
+            {uniqueFabrics.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-semibold mb-2">Fabric</h4>
                 <div className="flex gap-4 flex-nowrap overflow-x-auto pb-2">
@@ -740,7 +774,66 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 </div>
               </div>
             )}
-    
+  
+            {/* Size options */}
+            {uniqueSizes.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-semibold mb-2">Size</h4>
+                <div className="flex flex-wrap gap-3">
+                  {uniqueSizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedOptions(prev => ({ ...prev, size }))}
+                      className={`py-2 px-4 border rounded-md text-center transition-all ${
+                        selectedOptions.size === size
+                          ? 'border-2 border-[#005670] bg-[#005670]/5 text-[#005670] font-medium'
+                          : 'border-gray-200 hover:border-[#005670]/50 text-gray-700'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+  
+            {/* Inset Panel options */}
+            {uniqueInsetPanels.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-semibold mb-2">Inset Panel</h4>
+                <div className="flex gap-4 flex-nowrap overflow-x-auto pb-2">
+                  {uniqueInsetPanels.map(insetPanel => {
+                    return (
+                      <button
+                        key={insetPanel}
+                        onClick={() => setSelectedOptions(prev => ({ ...prev, insetPanel }))}
+                        className={`relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden transition-all ${
+                          selectedOptions.insetPanel === insetPanel
+                            ? 'border-4 border-[#005670] ring-2 ring-[#005670] shadow-lg'
+                            : 'border border-gray-200 hover:border-[#005670]/50'
+                        }`}
+                      >
+                        {attributeOptions.insetPanel?.[insetPanel]?.previewUrl ? (
+                          <img
+                            src={attributeOptions.insetPanel[insetPanel].previewUrl}
+                            alt={insetPanel}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                            {insetPanel}
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-sm text-center">
+                          {insetPanel}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+  
           {/* Quantity field - only show if enabled */}
           {currentSpot?.quantity?.enabled && (
           <div>
@@ -793,9 +886,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             </div>
           </div>
           )}
-
+  
           {/* Additional Quantity Section */}
-          {currentSpot.quantity.additional?.enabled && (
+          {currentSpot?.quantity?.additional?.enabled && (
           <div className="mt-4">
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-semibold">Additional Quantity</h4>
@@ -816,7 +909,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 ✓
               </button>
             </div>
-
+  
             {selectedOptions.useAdditional && (
               <div className="flex items-center gap-4">
                 <div className="flex items-center border rounded-lg bg-white">
@@ -858,7 +951,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             )}
           </div>
         )}
-
+  
           <div className="text-xl font-bold">
             {/* Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))).toFixed(2)} */}
           </div>
@@ -878,8 +971,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         </div>
       </div>
     );
-    
-    
   };
   
 
@@ -1131,16 +1222,31 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                           )}
                         </h4>
                         <p className="text-xs text-gray-500">{product.spotName}</p>
-                        {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && (
-                          <p className="text-sm text-gray-600">
-                            {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
-                            {product.selectedOptions.finish && product.selectedOptions.fabric && ' - '}
-                            {product.selectedOptions.fabric && `Fabric: ${product.selectedOptions.fabric}`}
-                          </p>
-                        )}
-                      <p className="text-gray-600">
-                        {/* ${product.unitPrice} each × {product.quantity} = ${product.finalPrice} */}
-                      </p>
+                        {/* Display all selected attributes */}
+                        <div className="text-sm text-gray-600">
+                          {product.selectedOptions?.finish && <span>Finish: {product.selectedOptions.finish}</span>}
+                          {product.selectedOptions?.fabric && (
+                            <span>
+                              {product.selectedOptions?.finish && ' | '}
+                              Fabric: {product.selectedOptions.fabric}
+                            </span>
+                          )}
+                          {product.selectedOptions?.size && (
+                            <span>
+                              {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && ' | '}
+                              Size: {product.selectedOptions.size}
+                            </span>
+                          )}
+                          {product.selectedOptions?.insetPanel && (
+                            <span>
+                              {(product.selectedOptions?.finish || product.selectedOptions?.fabric || product.selectedOptions?.size) && ' | '}
+                              Panel: {product.selectedOptions.insetPanel}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600">
+                          {/* ${product.unitPrice} each × {product.quantity} = ${product.finalPrice} */}
+                        </p>
                       </div>
                     </div>
                     <button

@@ -105,7 +105,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                   </h4>
                   <p className="text-sm text-gray-500 mb-2">Location: {product.spotName}</p>
                   
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm text-gray-600">Finish</label>
                       <p>{product.selectedOptions.finish || 'N/A'}</p>
@@ -114,6 +114,18 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                       <label className="block text-sm text-gray-600">Fabric</label>
                       <p>{product.selectedOptions.fabric || 'N/A'}</p>
                     </div>
+                    {product.selectedOptions.size && (
+                      <div>
+                        <label className="block text-sm text-gray-600">Size</label>
+                        <p>{product.selectedOptions.size}</p>
+                      </div>
+                    )}
+                    {product.selectedOptions.insetPanel && (
+                      <div>
+                        <label className="block text-sm text-gray-600">Inset Panel</label>
+                        <p>{product.selectedOptions.insetPanel}</p>
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm text-gray-600">Quantity</label>
                       <p className="font-medium">{product.quantity}</p>

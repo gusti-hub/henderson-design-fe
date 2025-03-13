@@ -20,7 +20,19 @@ const ProductConfiguration = () => {
       'Tan - Modular Sofa': { type: 'Tan', previewUrl: '/images/fabrics/Tan Modular sofa.png' },
       'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
       'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
-      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' }
+      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' },
+
+      // New fabric options
+      'Shell': { type: 'Shell', previewUrl: '/images/fabrics/pearl.png' },
+      'Leather': { type: 'Leather', previewUrl: '/images/fabrics/leather.png' },
+      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' }
+    },
+    // New inset panel attribute
+    insetPanel: {
+      'Wood': { previewUrl: '/images/insetpanels/Wood.jpg' },
+      'Shell': { previewUrl: '/images/insetpanels/pearl.png' },
+      'Faux Linen': { previewUrl: '/images/insetpanels/Faux Linen.png' },
+      'Woven Material': { previewUrl: '/images/insetpanels/LIGHT WOOD.png' }
     }
   };
 
@@ -59,6 +71,8 @@ const ProductConfiguration = () => {
   const initializeVariant = () => ({
     finish: '',
     fabric: '',
+    size: '',
+    insetPanel: '',
     price: '',
     image: null,
     imagePreview: null
@@ -135,6 +149,31 @@ const ProductConfiguration = () => {
     );
   };
 
+  // InsetPanel Preview component
+  const InsetPanelPreview = ({ insetPanelValue }) => {
+    const insetPanelInfo = attributeOptions.insetPanel[insetPanelValue];
+    
+    if (!insetPanelInfo) return null;
+    
+    return (
+      <div className={previewContainerStyles}>
+        <label className={previewTitleStyles}>
+          Inset Panel Preview
+        </label>
+        <div className={previewImageContainerStyles}>
+          <img
+            src={insetPanelInfo.previewUrl}
+            alt={insetPanelValue}
+            className={previewImageStyles}
+          />
+          <div className={previewLabelStyles}>
+            {insetPanelValue}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     fetchProducts();
   }, [currentPage]);
@@ -155,7 +194,9 @@ const ProductConfiguration = () => {
       const updatedVariants = formData.variants.map(variant => ({
         ...variant,
         finish: selectedAttributes.finish ? variant.finish : '',
-        fabric: selectedAttributes.fabric ? variant.fabric : ''
+        fabric: selectedAttributes.fabric ? variant.fabric : '',
+        size: selectedAttributes.size ? variant.size : '',
+        insetPanel: selectedAttributes.insetPanel ? variant.insetPanel : ''
       }));
       setFormData(prev => ({ ...prev, variants: updatedVariants }));
     }
@@ -199,10 +240,14 @@ const ProductConfiguration = () => {
     // First check which attributes are used in variants
     const hasFinish = product.variants.some(v => v.finish);
     const hasFabric = product.variants.some(v => v.fabric);
+    const hasSize = product.variants.some(v => v.size);
+    const hasInsetPanel = product.variants.some(v => v.insetPanel);
   
     setSelectedAttributes({
       finish: hasFinish,
-      fabric: hasFabric
+      fabric: hasFabric,
+      size: hasSize,
+      insetPanel: hasInsetPanel
     });
   
     setFormData({
@@ -214,6 +259,8 @@ const ProductConfiguration = () => {
         ...v,
         finish: v.finish || '',
         fabric: v.fabric || '',
+        size: v.size || '',
+        insetPanel: v.insetPanel || '',
         price: v.price,
         image: v.image,
         imagePreview: v.image ? getImageUrl(v.image) : null
@@ -318,7 +365,9 @@ const handleCloseModal = () => {
     });
     setSelectedAttributes({
       finish: false,
-      fabric: false
+      fabric: false,
+      size: false,
+      insetPanel: false
     });
     setErrors({});
   };
@@ -367,6 +416,12 @@ const handleCloseModal = () => {
       if (selectedAttributes.fabric && !variant.fabric) {
         newErrors[`variant_${index}_fabric`] = 'Fabric is required';
       }
+      if (selectedAttributes.size && !variant.size) {
+        newErrors[`variant_${index}_size`] = 'Size is required';
+      }
+      if (selectedAttributes.insetPanel && !variant.insetPanel) {
+        newErrors[`variant_${index}_insetPanel`] = 'Inset Panel is required';
+      }
       if (!variant.price || isNaN(variant.price)) {
         newErrors[`variant_${index}_price`] = 'Valid price is required';
       }
@@ -411,6 +466,83 @@ const handleCloseModal = () => {
     }
   };
 
+  // Custom pagination component to handle many pages
+  const CompactPagination = ({ currentPage, totalPages, onPageChange }) => {
+    // Calculate visible page range
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    // Adjust start if end is maxed out
+    if (endPage === totalPages) {
+      startPage = Math.max(1, endPage - 4);
+    }
+    
+    const pages = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return (
+      <div className="flex justify-center items-center p-4 space-x-1">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
+        >
+          &laquo;
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
+        >
+          &lt;
+        </button>
+        
+        {startPage > 1 && (
+          <button onClick={() => onPageChange(1)} className="px-2 py-1 rounded border hover:bg-gray-100">
+            1
+          </button>
+        )}
+        {startPage > 2 && <span className="px-1">...</span>}
+        
+        {pages.map(page => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`px-2 py-1 rounded border ${
+              currentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        
+        {endPage < totalPages - 1 && <span className="px-1">...</span>}
+        {endPage < totalPages && (
+          <button onClick={() => onPageChange(totalPages)} className="px-2 py-1 rounded border hover:bg-gray-100">
+            {totalPages}
+          </button>
+        )}
+        
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
+        >
+          &gt;
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
+        >
+          &raquo;
+        </button>
+      </div>
+    );
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -438,6 +570,8 @@ const handleCloseModal = () => {
           return {
             finish: variant.finish || '',
             fabric: variant.fabric || '',
+            size: variant.size || '',
+            insetPanel: variant.insetPanel || '',
             price: parseFloat(variant.price),
             imageIndex: fileCount - 1 // Track which uploaded file corresponds to this variant
           };
@@ -447,6 +581,8 @@ const handleCloseModal = () => {
           return {
             finish: variant.finish || '',
             fabric: variant.fabric || '',
+            size: variant.size || '',
+            insetPanel: variant.insetPanel || '',
             price: parseFloat(variant.price),
             image: variant.image // Keep existing image data
           };
@@ -456,6 +592,8 @@ const handleCloseModal = () => {
           return {
             finish: variant.finish || '',
             fabric: variant.fabric || '',
+            size: variant.size || '',
+            insetPanel: variant.insetPanel || '', 
             price: parseFloat(variant.price),
             image: null
           };
@@ -588,34 +726,15 @@ const handleCloseModal = () => {
                   {product.variants?.map((variant, index) => (
                     <div key={index} className="flex items-center">
                       <div className="text-sm text-gray-600">
-                        {variant.finish && variant.fabric ? (
-                          <>
-                            <span className="font-medium">
-                              Finish: {variant.finish} | Fabric: {variant.fabric}
-                            </span>
-                            <div className="text-sm font-medium text-gray-900">
-                              ${Number(variant.price).toFixed(2)}
-                            </div>
-                          </>
-                        ) : variant.finish ? (
-                          <>
-                            <span className="font-medium">Finish: {variant.finish}</span>
-                            <div className="text-sm font-medium text-gray-900">
-                              ${Number(variant.price).toFixed(2)}
-                            </div>
-                          </>
-                        ) : variant.fabric ? (
-                          <>
-                            <span className="font-medium">Fabric: {variant.fabric}</span>
-                            <div className="text-sm font-medium text-gray-900">
-                              ${Number(variant.price).toFixed(2)}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-sm font-medium text-gray-900">
-                            ${Number(variant.price).toFixed(2)}
-                          </div>
-                        )}
+                        {[
+                          variant.finish && `Finish: ${variant.finish}`,
+                          variant.fabric && `Fabric: ${variant.fabric}`,
+                          variant.size && `Size: ${variant.size}`,
+                          variant.insetPanel && `Inset Panel: ${variant.insetPanel}`
+                        ].filter(Boolean).join(' | ')}
+                        <div className="text-sm font-medium text-gray-900">
+                          ${Number(variant.price).toFixed(2)}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -641,10 +760,10 @@ const handleCloseModal = () => {
           ))}
         </tbody>
         </table>
-        <Pagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(page) => setCurrentPage(page)}
+        <CompactPagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
         />
       </div>
 
@@ -727,10 +846,9 @@ const handleCloseModal = () => {
                 </div>
               </div>
 
-              {/* Attribute Selection */}
               <div className="space-y-4">
                 <h4 className="font-medium text-gray-700">Available Attributes</h4>
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-wrap">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -754,6 +872,30 @@ const handleCloseModal = () => {
                       className="rounded text-[#005670]"
                     />
                     <span>Fabric</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedAttributes.size}
+                      onChange={(e) => setSelectedAttributes({
+                        ...selectedAttributes,
+                        size: e.target.checked
+                      })}
+                      className="rounded text-[#005670]"
+                    />
+                    <span>Size</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedAttributes.insetPanel}
+                      onChange={(e) => setSelectedAttributes({
+                        ...selectedAttributes,
+                        insetPanel: e.target.checked
+                      })}
+                      className="rounded text-[#005670]"
+                    />
+                    <span>Inset Panel</span>
                   </label>
                 </div>
               </div>
@@ -838,6 +980,55 @@ const handleCloseModal = () => {
                         {errors[`variant_${index}_fabric`] && (
                           <p className="text-red-500 text-sm mt-1">
                             {errors[`variant_${index}_fabric`]}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Size input - free text */}
+                    {selectedAttributes.size && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Size
+                        </label>
+                        <input
+                          type="text"
+                          value={variant.size}
+                          onChange={(e) => handleVariantChange(index, 'size', e.target.value)}
+                          placeholder="e.g. 60x30x18 in"
+                          className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                        />
+                        {errors[`variant_${index}_size`] && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors[`variant_${index}_size`]}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Inset Panel dropdown */}
+                    {selectedAttributes.insetPanel && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Inset Panel
+                        </label>
+                        <div className="space-y-2">
+                          <select
+                            value={variant.insetPanel}
+                            onChange={(e) => handleVariantChange(index, 'insetPanel', e.target.value)}
+                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                          >
+                            <option value="">Select Inset Panel</option>
+                            <option value="Wood">Wood</option>
+                            <option value="Shell">Shell</option>
+                            <option value="Faux Linen">Faux Linen</option>
+                            <option value="Woven Material">Woven Material</option>
+                          </select>
+                          {variant.insetPanel && <InsetPanelPreview insetPanelValue={variant.insetPanel} />}
+                        </div>
+                        {errors[`variant_${index}_insetPanel`] && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors[`variant_${index}_insetPanel`]}
                           </p>
                         )}
                       </div>

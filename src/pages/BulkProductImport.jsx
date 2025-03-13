@@ -77,14 +77,16 @@ const BulkProductImport = ({ onComplete }) => {
             variants: []
           };
         }
-      
+
         acc[productKey].variants.push({
           finish: row.finish,
           fabric: row.fabric,
+          size: row.size,         // Add size attribute
+          insetPanel: row.insetPanel, // Add insetPanel attribute
           price: parseFloat(row.variant_price),
           image: row.image ? { url: row.image } : null
         });
-      
+
         return acc;
       }, {});
 
@@ -145,7 +147,7 @@ const BulkProductImport = ({ onComplete }) => {
           <Upload className="w-12 h-12 text-gray-400" />
           <div className="text-lg font-medium">Drop Excel file or click to upload</div>
           <div className="text-sm text-gray-500">
-            Excel files must include: product_id, name, description, base_price, finish, fabric, variant_price, image
+            Excel files must include: product_id, name, description, base_price, finish, fabric, size, insetPanel, variant_price, image
           </div>
         </label>
       </div>

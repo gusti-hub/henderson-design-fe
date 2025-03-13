@@ -605,6 +605,13 @@ const PaymentPage = ({
                     {product.selectedOptions.finish && `Finish: ${product.selectedOptions.finish}`}
                     {product.selectedOptions.fabric && `, Fabric: ${product.selectedOptions.fabric}`}
                   </p>
+                  {(product.selectedOptions.size || product.selectedOptions.insetPanel) && (
+                    <p className="text-xs text-gray-600">
+                      {product.selectedOptions.size && `Size: ${product.selectedOptions.size}`}
+                      {product.selectedOptions.size && product.selectedOptions.insetPanel && ', '}
+                      {product.selectedOptions.insetPanel && `Panel: ${product.selectedOptions.insetPanel}`}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-600">
                     Quantity: {product.quantity}
                   </p>
@@ -614,7 +621,7 @@ const PaymentPage = ({
           </div>
         ))}
       </div>
-
+  
       {/* Total Price */}
       <div className="mt-4 pt-3 border-t">
         <div className="flex justify-between font-semibold">
@@ -623,7 +630,7 @@ const PaymentPage = ({
         </div>
       </div>
     </div>
-  );
+  )
 
   const renderWarrantyTab = () => (
     <div className="bg-white rounded-lg shadow-sm p-4">
