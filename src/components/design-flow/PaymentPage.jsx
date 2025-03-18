@@ -591,11 +591,29 @@ const PaymentPage = ({
       <div className="space-y-3">
         {designSelections?.selectedProducts?.map((product, index) => (
           <div key={index} className="flex items-start gap-3 border-b pb-3 last:border-b-0">
+          {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
+            <video
+              src={product.selectedOptions.image}
+              className="w-16 h-16 object-cover rounded"
+              autoPlay
+              loop
+              muted
+              onError={(e) => {
+                console.error(`Error loading video for ${product.name}`);
+                // Create fallback image
+                const img = document.createElement('img');
+                img.src = '/placeholder-image.png';
+                img.className = 'w-16 h-16 object-cover rounded';
+                e.target.parentNode.replaceChild(img, e.target);
+              }}
+            />
+          ) : (
             <img
               src={product.selectedOptions?.image || '/placeholder-image.png'}
               alt={product.name}
               className="w-16 h-16 object-cover rounded"
             />
+          )}
             <div className="flex-1">
               <h4 className="font-medium text-sm">{product.name}</h4>
               <p className="text-xs text-gray-600">Location: {product.spotName}</p>

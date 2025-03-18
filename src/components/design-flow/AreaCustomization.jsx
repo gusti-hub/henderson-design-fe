@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Trash2, AlertCircle, Loader } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import { backendServer } from '../../utils/info';
+import Furniture360Viewer from './Furniture360Viewer';
+import ProductCard from './ProductCard';
 
 const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingOrder: initialOrder, currentStep, clientInfo, checkExistingOrder }) => {
   const [selectedTab, setSelectedTab] = useState(null);
@@ -561,12 +563,13 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     const [modalImageLoading, setModalImageLoading] = useState(true);
   
     const getSelectedVariant = () => {
-      return product.variants.find(variant => 
+      const variant = product.variants.find(variant => 
         (!selectedOptions.fabric || variant.fabric === selectedOptions.fabric) && 
         (!selectedOptions.finish || variant.finish === selectedOptions.finish) &&
         (!selectedOptions.size || variant.size === selectedOptions.size) &&
         (!selectedOptions.insetPanel || variant.insetPanel === selectedOptions.insetPanel)
       );
+      return variant;
     };
   
     const handleAdd = () => {
@@ -577,28 +580,39 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         selectedOptions: {
           ...selectedOptions,
           image: selectedVariant?.image?.url || product.variants[0]?.image?.url || '',
+          video: selectedVariant?.video?.url || product.variants[0]?.video?.url || '',
           quantity: selectedOptions.quantity + ((selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))
         },
         finalPrice: getVariantPrice(),
       });
     };
   
-    // Helper function to get variant image
-    const getVariantImage = () => {
-      // Get the selected variant based on options
+    // Helper function to get variant image or video
+    const getMediaType = (url) => {
+      if (!url) return 'none';
+      const lowercasedUrl = url.toLowerCase();
+      if (lowercasedUrl.endsWith('.mp4') || lowercasedUrl.endsWith('.webm') || lowercasedUrl.endsWith('.mov')) {
+        return 'video';
+      }
+      return 'image';
+    };
+    
+    const getVariantMedia = () => {
       const selectedVariant = getSelectedVariant();
-    
-      // Return image URL from selected variant if it exists
+      
       if (selectedVariant?.image?.url) {
-        return selectedVariant.image.url;
+        const url = selectedVariant.image.url;
+        const type = getMediaType(url);
+        return { type, url };
       }
-    
-      // If no selected variant image, try first variant
+      
       if (product.variants[0]?.image?.url) {
-        return product.variants[0].image.url;
+        const url = product.variants[0].image.url;
+        const type = getMediaType(url);
+        return { type, url };
       }
-    
-      return null;
+      
+      return { type: 'none', url: null };
     };
   
     const getVariantPrice = () => {
@@ -606,7 +620,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       return selectedVariant ? selectedVariant.price : product.basePrice;
     };
   
-    const image = getVariantImage();
+    const media = getVariantMedia();
   
     const hasFinishOptions = uniqueFinishes.length > 0;
     const hasFabricOptions = uniqueFabrics.length > 0;
@@ -624,22 +638,20 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       return finishValid && fabricValid && sizeValid && insetPanelValid;
     };
   
-    // Create a preview for inset panel
-    const InsetPanelPreview = ({ insetPanelValue }) => {
-      const insetPanelInfo = attributeOptions.insetPanel[insetPanelValue];
-      
-      if (!insetPanelInfo) return null;
+    // Function for fabric previews with attributeOptions
+    const FabricPreview = ({ fabricValue, attributeOptions }) => {
+      if (!fabricValue || !attributeOptions.fabric?.[fabricValue]) return null;
       
       return (
         <div className="flex flex-col items-center">
           <div className="w-32 h-32 relative rounded-lg overflow-hidden">
             <img
-              src={insetPanelInfo.previewUrl}
-              alt={insetPanelValue}
+              src={attributeOptions.fabric[fabricValue].previewUrl}
+              alt={fabricValue}
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-center">
-              {insetPanelValue}
+              {attributeOptions.fabric[fabricValue].type || fabricValue}
             </div>
           </div>
         </div>
@@ -656,33 +668,56 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             </button>
           </div>
     
-          {/* Display image */}
-          {modalImageLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-              <Loader className="w-12 h-12 text-[#005670] animate-spin" />
-            </div>
-          )}
-          {image ? (
-            <div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white">
-              <img
-                src={image}
-                alt={product.name}
-                className={`max-w-full max-h-full h-auto w-auto object-contain rounded-lg transition-opacity duration-300 ${
-                  modalImageLoading ? 'opacity-0' : 'opacity-100'
-                }`}
-                onLoad={() => setModalImageLoading(false)}
-                onError={(e) => {
-                  setModalImageLoading(false);
-                  e.target.onerror = null;
-                  e.target.src = '/placeholder-image.png';
-                }}
-              />
-            </div>
-          ) : (
-            <div className="w-full h-[500px] bg-gray-200 flex items-center justify-center rounded-lg mb-6">
-              <span className="text-gray-400">No image available</span>
-            </div>
-          )}
+          {/* Display 360 viewer instead of static image */}
+{/* Simplified product image display for debugging */}
+<div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white border border-gray-200 rounded-lg">
+  {modalImageLoading && (
+    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+      <Loader className="w-12 h-12 text-[#005670] animate-spin" />
+    </div>
+  )}
+  
+{/* Direct image display - no 360 viewer */}
+{getSelectedVariant()?.image?.url ? (
+  <>
+    {getSelectedVariant().image.url.toLowerCase().endsWith('.mp4') ? (
+      // Video display for mp4 files
+      <video
+        src={getSelectedVariant().image.url}
+        controls
+        autoPlay
+        loop
+        muted
+        className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+        onLoadedData={() => setModalImageLoading(false)}
+        onError={(e) => {
+          setModalImageLoading(false);
+        }}
+      />
+    ) : (
+      // Regular image display
+      <img
+        src={getSelectedVariant().image.url}
+        alt={product.name}
+        className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+        onLoad={() => setModalImageLoading(false)}
+        onError={(e) => {
+          setModalImageLoading(false);
+          // Use a local placeholder instead of external service
+          e.target.src = "/images/placeholder.png";
+        }}
+      />
+    )}
+  </>
+) : (
+  // No image available
+  <div className="flex items-center justify-center flex-col">
+    <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+      <span className="text-gray-500">No product image available</span>
+    </div>
+  </div>
+)}
+</div>
     
           <div className="space-y-6 mb-6">
             <div>
@@ -691,7 +726,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 readOnly
                 value={product.description || 'No description available.'}
                 className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#005670]/20 resize-none overflow-y-auto max-h-56 bg-gray-50 text-gray-600"
-                rows={6} // Adjust the number of rows to show the desired default height
+                rows={6}
               />
             </div>
           </div>
@@ -834,127 +869,129 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
   
-          {/* Quantity field - only show if enabled */}
-          {currentSpot?.quantity?.enabled && (
-          <div>
-            <div className="space-y-4">
-              {/* Fixed Quantity Section */}
-              {currentSpot.quantity.fixed ? (
-                <div className="flex items-center gap-4">
-                  <h4 className="font-semibold">Quantity</h4>
-                  <div className="w-24 text-center bg-gray-50 rounded-lg py-2 border text-gray-600">
-                    {currentSpot.quantity.fixed}
-                  </div>
-                  <span className="text-sm text-gray-500">Fixed quantity</span>
-                </div>
-              ) : (
-                <>
-                  {/* Regular Quantity Section */}
-                  <div>
-                    <h4 className="font-semibold mb-2">Quantity</h4>
+            {/* Quantity field - only show if enabled */}
+            {currentSpot?.quantity?.enabled && (
+              <div>
+                <div className="space-y-4">
+                  {/* Fixed Quantity Section */}
+                  {currentSpot.quantity.fixed ? (
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center border rounded-lg bg-white">
-                        <button
-                          onClick={() => setSelectedOptions(prev => ({
-                            ...prev,
-                            quantity: Math.max(currentSpot.quantity.min, prev.quantity - 1)
-                          }))}
-                          className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
-                          disabled={selectedOptions.quantity <= currentSpot.quantity.min}
-                        >
-                          -
-                        </button>
-                        <span className="w-24 text-center border-x py-2">{selectedOptions.quantity}</span>
-                        <button
-                          onClick={() => setSelectedOptions(prev => ({
-                            ...prev,
-                            quantity: Math.min(currentSpot.quantity.max, prev.quantity + 1)
-                          }))}
-                          className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
-                          disabled={selectedOptions.quantity >= currentSpot.quantity.max}
-                        >
-                          +
-                        </button>
+                      <h4 className="font-semibold">Quantity</h4>
+                      <div className="w-24 text-center bg-gray-50 rounded-lg py-2 border text-gray-600">
+                        {currentSpot.quantity.fixed}
                       </div>
-                      <span className="text-sm text-gray-500">
-                        Min: {currentSpot.quantity.min}, Max: {currentSpot.quantity.max}
-                      </span>
+                      <span className="text-sm text-gray-500">Fixed quantity</span>
                     </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          )}
-  
-          {/* Additional Quantity Section */}
-          {currentSpot?.quantity?.additional?.enabled && (
-          <div className="mt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-semibold">Additional Quantity</h4>
-              <button
-                onClick={() => {
-                  setSelectedOptions(prev => ({
-                    ...prev,
-                    useAdditional: !prev.useAdditional,
-                    additionalQuantity: !prev.useAdditional ? currentSpot.quantity.additional.min : 0
-                  }))
-                }}
-                className={`px-3 py-1 rounded-lg border transition-colors ${
-                  selectedOptions.useAdditional ? 
-                    'border-[#005670] bg-[#005670]/10 text-[#005670]' : 
-                    'border-gray-200 text-gray-400 hover:border-[#005670]'
-                }`}
-              >
-                ✓
-              </button>
-            </div>
-  
-            {selectedOptions.useAdditional && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center border rounded-lg bg-white">
-                  <button
-                    onClick={() => setSelectedOptions(prev => ({
-                      ...prev,
-                      additionalQuantity: Math.max(
-                        currentSpot.quantity.additional.min,
-                        prev.additionalQuantity - 1
-                      )
-                    }))}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
-                    disabled={selectedOptions.additionalQuantity <= currentSpot.quantity.additional.min}
-                  >
-                    -
-                  </button>
-                  <span className="w-24 text-center border-x py-2">
-                    {selectedOptions.additionalQuantity}
-                  </span>
-                  <button
-                    onClick={() => setSelectedOptions(prev => ({
-                      ...prev,
-                      additionalQuantity: Math.min(
-                        currentSpot.quantity.additional.max,
-                        prev.additionalQuantity + 1
-                      )
-                    }))}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
-                    disabled={selectedOptions.additionalQuantity >= currentSpot.quantity.additional.max}
-                  >
-                    +
-                  </button>
+                  ) : (
+                    <>
+                      {/* Regular Quantity Section */}
+                      <div>
+                        <h4 className="font-semibold mb-2">Quantity</h4>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center border rounded-lg bg-white">
+                            <button
+                              onClick={() => setSelectedOptions(prev => ({
+                                ...prev,
+                                quantity: Math.max(currentSpot.quantity.min, prev.quantity - 1)
+                              }))}
+                              className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                              disabled={selectedOptions.quantity <= currentSpot.quantity.min}
+                            >
+                              -
+                            </button>
+                            <span className="w-24 text-center border-x py-2">{selectedOptions.quantity}</span>
+                            <button
+                              onClick={() => setSelectedOptions(prev => ({
+                                ...prev,
+                                quantity: Math.min(currentSpot.quantity.max, prev.quantity + 1)
+                              }))}
+                              className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                              disabled={selectedOptions.quantity >= currentSpot.quantity.max}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            Min: {currentSpot.quantity.min}, Max: {currentSpot.quantity.max}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <span className="text-sm text-gray-500">
-                  Min: {currentSpot.quantity.additional.min}, 
-                  Max: {currentSpot.quantity.additional.max}
-                </span>
               </div>
             )}
-          </div>
-        )}
   
-          <div className="text-xl font-bold">
-            {/* Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0 ))).toFixed(2)} */}
-          </div>
+            {/* Additional Quantity Section */}
+            {currentSpot?.quantity?.additional?.enabled && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="font-semibold">Additional Quantity</h4>
+                  <button
+                    onClick={() => {
+                      setSelectedOptions(prev => ({
+                        ...prev,
+                        useAdditional: !prev.useAdditional,
+                        additionalQuantity: !prev.useAdditional ? currentSpot.quantity.additional.min : 0
+                      }))
+                    }}
+                    className={`px-3 py-1 rounded-lg border transition-colors ${
+                      selectedOptions.useAdditional ? 
+                        'border-[#005670] bg-[#005670]/10 text-[#005670]' : 
+                        'border-gray-200 text-gray-400 hover:border-[#005670]'
+                    }`}
+                  >
+                    ✓
+                  </button>
+                </div>
+  
+                {selectedOptions.useAdditional && (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center border rounded-lg bg-white">
+                      <button
+                        onClick={() => setSelectedOptions(prev => ({
+                          ...prev,
+                          additionalQuantity: Math.max(
+                            currentSpot.quantity.additional.min,
+                            prev.additionalQuantity - 1
+                          )
+                        }))}
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                        disabled={selectedOptions.additionalQuantity <= currentSpot.quantity.additional.min}
+                      >
+                        -
+                      </button>
+                      <span className="w-24 text-center border-x py-2">
+                        {selectedOptions.additionalQuantity}
+                      </span>
+                      <button
+                        onClick={() => setSelectedOptions(prev => ({
+                          ...prev,
+                          additionalQuantity: Math.min(
+                            currentSpot.quantity.additional.max,
+                            prev.additionalQuantity + 1
+                          )
+                        }))}
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-300"
+                        disabled={selectedOptions.additionalQuantity >= currentSpot.quantity.additional.max}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      Min: {currentSpot.quantity.additional.min}, 
+                      Max: {currentSpot.quantity.additional.max}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+  
+            {/* Price information */}
+            <div className="mt-8 text-xl font-bold">
+              {/* Uncomment this if you want to show price */}
+              {/* Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0))).toFixed(2)} */}
+            </div>
           </div>
     
           <button
@@ -1128,54 +1165,11 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             ) : selectedTab && availableProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-6">
                 {availableProducts.map(product => (
-                  <div
+                  <ProductCard
                     key={product._id}
-                    className="bg-white rounded-lg shadow-sm overflow-hidden border"
-                  >
-                    {imageLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                        <Loader className="w-8 h-8 text-[#005670] animate-spin" />
-                      </div>
-                    )}
-                    {product.variants[0]?.image?.url ? (
-                      <div className="relative w-full h-48">
-                        <img
-                          src={product.variants[0].image.url}
-                          alt={product.name}
-                          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${
-                            imageLoading ? 'opacity-0' : 'opacity-100'
-                          }`}
-                          onLoad={() => setImageLoading(false)}
-                          onError={(e) => {
-                            setImageLoading(false);
-                            e.target.onerror = null;
-                            e.target.src = '/placeholder-image.png';
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-400">No image</span>
-                      </div>
-                    )}
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold">
-                        {product.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {product.product_id}
-                      </p>
-                      <p className="text-gray-600">
-                        {/* Starting at ${product.basePrice} */}
-                      </p>
-                      <button
-                        onClick={() => handleCustomize(product)}
-                        className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"
-                      >
-                        Customize
-                      </button>
-                    </div>
-                  </div>
+                    product={product}
+                    onCustomize={handleCustomize}
+                  />
                 ))}
               </div>
             ) : (
@@ -1198,65 +1192,81 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 </div>
               ) : (
               <div className="space-y-4">
-                {selectedProducts.map((product, index) => (
-                  <div key={index} className="flex justify-between items-center border-b pb-4">
-                    <div className="flex gap-4">
-                    <img
-                        src={
-                          product.selectedOptions?.image || '/placeholder-image.png'  // Just use the saved image URL
-                        }
+              {selectedProducts.map((product, index) => (
+                <div key={index} className="flex justify-between items-center border-b pb-4">
+                  <div className="flex gap-4">
+                    {/* Check if image URL is a video */}
+                    {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
+                      <video
+                        src={product.selectedOptions.image}
+                        className="w-20 h-20 object-cover rounded"
+                        muted
+                        autoPlay
+                        loop
+                        onError={(e) => {
+                          console.error(`Error loading video for ${product.name}:`, e);
+                          // Replace with static placeholder
+                          e.target.style.display = 'none';
+                          const img = document.createElement('img');
+                          img.src = '/images/placeholder.png';
+                          img.className = 'w-20 h-20 object-cover rounded';
+                          img.alt = product.name;
+                          e.target.parentNode.insertBefore(img, e.target);
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={product.selectedOptions?.image || '/images/placeholder.png'}
                         alt={product.name}
                         className="w-20 h-20 object-cover rounded"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.src = '/placeholder-image.png';
+                          e.target.src = '/images/placeholder.png';
                         }}
                       />
-                      <div>
-                        <h4 className="font-semibold">
-                          {product.name} 
-                          {product.quantity > 1 && (
-                            <span className="ml-2 text-sm text-gray-600">
-                              (x{product.quantity})
-                            </span>
-                          )}
-                        </h4>
-                        <p className="text-xs text-gray-500">{product.spotName}</p>
-                        {/* Display all selected attributes */}
-                        <div className="text-sm text-gray-600">
-                          {product.selectedOptions?.finish && <span>Finish: {product.selectedOptions.finish}</span>}
-                          {product.selectedOptions?.fabric && (
-                            <span>
-                              {product.selectedOptions?.finish && ' | '}
-                              Fabric: {product.selectedOptions.fabric}
-                            </span>
-                          )}
-                          {product.selectedOptions?.size && (
-                            <span>
-                              {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && ' | '}
-                              Size: {product.selectedOptions.size}
-                            </span>
-                          )}
-                          {product.selectedOptions?.insetPanel && (
-                            <span>
-                              {(product.selectedOptions?.finish || product.selectedOptions?.fabric || product.selectedOptions?.size) && ' | '}
-                              Panel: {product.selectedOptions.insetPanel}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-600">
-                          {/* ${product.unitPrice} each × {product.quantity} = ${product.finalPrice} */}
-                        </p>
+                    )}
+                    <div>
+                      <h4 className="font-semibold">
+                        {product.name} 
+                        {product.quantity > 1 && (
+                          <span className="ml-2 text-sm text-gray-600">
+                            (x{product.quantity})
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs text-gray-500">{product.spotName}</p>
+                      {/* Display all selected attributes */}
+                      <div className="text-sm text-gray-600">
+                        {product.selectedOptions?.finish && <span>Finish: {product.selectedOptions.finish}</span>}
+                        {product.selectedOptions?.fabric && (
+                          <span>
+                            {product.selectedOptions?.finish && ' | '}
+                            Fabric: {product.selectedOptions.fabric}
+                          </span>
+                        )}
+                        {product.selectedOptions?.size && (
+                          <span>
+                            {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && ' | '}
+                            Size: {product.selectedOptions.size}
+                          </span>
+                        )}
+                        {product.selectedOptions?.insetPanel && (
+                          <span>
+                            {(product.selectedOptions?.finish || product.selectedOptions?.fabric || product.selectedOptions?.size) && ' | '}
+                            Panel: {product.selectedOptions.insetPanel}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleRemoveProduct(index)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={20} />
-                    </button>
                   </div>
-                ))}
+                  <button
+                    onClick={() => handleRemoveProduct(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              ))}
                 {/* <div className="pt-4 border-t">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>

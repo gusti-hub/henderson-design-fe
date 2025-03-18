@@ -90,6 +90,23 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
           {designSelections.selectedProducts.map((product, index) => (
             <div key={index} className="border-b pb-4 last:border-b-0">
               <div className="flex items-start gap-4">
+              {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
+                <video
+                  src={product.selectedOptions.image}
+                  className="w-24 h-24 object-cover rounded"
+                  autoPlay
+                  loop
+                  muted
+                  onError={(e) => {
+                    console.error(`Error loading video for ${product.name}`);
+                    // Create fallback image
+                    const img = document.createElement('img');
+                    img.src = '/placeholder-image.png';
+                    img.className = 'w-24 h-24 object-cover rounded';
+                    e.target.parentNode.replaceChild(img, e.target);
+                  }}
+                />
+              ) : (
                 <img
                   src={product.selectedOptions?.image || '/placeholder-image.png'}
                   alt={product.name}
@@ -99,6 +116,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                     e.target.src = '/placeholder-image.png';
                   }}
                 />
+              )}
                 <div className="flex-1">
                   <h4 className="font-medium text-lg">
                     {product.name}
