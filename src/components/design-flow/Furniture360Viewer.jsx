@@ -1,295 +1,229 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Loader, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { Loader } from 'lucide-react';
 
-// This component will replace the static image display in your CustomizationModal and product listings
 const Furniture360Viewer = ({ 
-  videoUrl, 
-  imageUrl, 
-  alt, 
-  className = "",
-  onLoad = () => {},
-  onError = () => {}
+  objUrl, 
+  mtlUrl, // Add this new prop for the MTL file path
+  onLoad,
+  initialRotation = { x: 0, y: 0, z: 0 },
+  autoRotate = false
 }) => {
-  const [isVideoLoading, setIsVideoLoading] = useState(true);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isVideoSupported, setIsVideoSupported] = useState(true);
-  const [isManualRotate, setIsManualRotate] = useState(false);
-  const [rotationDegree, setRotationDegree] = useState(0);
-  const [zoom, setZoom] = useState(1);
-  
-  const videoRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [renderComplete, setRenderComplete] = useState(false);
   const containerRef = useRef(null);
-  const startXRef = useRef(null);
-  const lastRotationRef = useRef(0);
-
-  // Load video and handle fallback to image
-  useEffect(() => {
-    if (!videoUrl) {
-      setIsVideoSupported(false);
-      return;
-    }
-
-    setIsVideoLoading(true);
-    
-    // Reset states when video source changes
-    setIsVideoPlaying(false);
-    setRotationDegree(0);
-    setZoom(1);
-    
-    // Handle video loading errors
-    const handleVideoError = () => {
-      console.error("Error loading video");
-      setIsVideoSupported(false);
-      setIsVideoLoading(false);
-      onError();
-    };
-
-    // Set up video element
-    if (videoRef.current) {
-      videoRef.current.addEventListener('error', handleVideoError);
-      
-      videoRef.current.addEventListener('loadeddata', () => {
-        setIsVideoLoading(false);
-        onLoad();
-      });
-
-      // Clean up
-      return () => {
-        if (videoRef.current) {
-          videoRef.current.removeEventListener('error', handleVideoError);
-        }
-      };
-    }
-  }, [videoUrl, onLoad, onError]);
-
-  // Handle manual rotation
-  useEffect(() => {
-    if (!isManualRotate || !containerRef.current) return;
-
-    const handleMouseDown = (e) => {
-      startXRef.current = e.clientX;
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    };
-
-    const handleMouseMove = (e) => {
-      if (startXRef.current === null) return;
-      
-      const deltaX = e.clientX - startXRef.current;
-      const newRotation = lastRotationRef.current + deltaX / 3;
-      
-      setRotationDegree(newRotation);
-    };
-
-    const handleMouseUp = () => {
-      lastRotationRef.current = rotationDegree;
-      startXRef.current = null;
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    // Touch events for mobile
-    const handleTouchStart = (e) => {
-      startXRef.current = e.touches[0].clientX;
-      document.addEventListener('touchmove', handleTouchMove);
-      document.addEventListener('touchend', handleTouchEnd);
-    };
-
-    const handleTouchMove = (e) => {
-      if (startXRef.current === null) return;
-      
-      const deltaX = e.touches[0].clientX - startXRef.current;
-      const newRotation = lastRotationRef.current + deltaX / 3;
-      
-      setRotationDegree(newRotation);
-    };
-
-    const handleTouchEnd = () => {
-      lastRotationRef.current = rotationDegree;
-      startXRef.current = null;
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-
-    // Add event listeners
-    containerRef.current.addEventListener('mousedown', handleMouseDown);
-    containerRef.current.addEventListener('touchstart', handleTouchStart);
-
-    // Clean up
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('mousedown', handleMouseDown);
-        containerRef.current.removeEventListener('touchstart', handleTouchStart);
-      }
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isManualRotate, rotationDegree]);
-
-  // Handle zoom with mouse wheel
+  
+  console.log("Component rendering with loading:", loading, "renderComplete:", renderComplete);
+  
   useEffect(() => {
     if (!containerRef.current) return;
-
-    const handleWheel = (e) => {
-      e.preventDefault();
+    
+    console.log("Setting up THREE.js scene");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    
+    const width = containerRef.current.clientWidth;
+    const height = containerRef.current.clientHeight;
+    
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+    camera.position.z = 5;
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    containerRef.current.appendChild(renderer.domElement);
+    
+    // Add light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    
+    // Add directional light for better material rendering
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+    
+    // Add a reference object to verify rendering
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
+    
+    // Force an initial render
+    renderer.render(scene, camera);
+    
+    // Set up controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = autoRotate;
+    
+    // Load the OBJ with MTL
+    console.log("Starting to load OBJ from:", objUrl);
+    
+    const loadModel = () => {
+      const objLoader = new OBJLoader();
       
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(prevZoom => {
-        const newZoom = prevZoom * zoomFactor;
-        return Math.min(Math.max(newZoom, 0.5), 3);
-      });
-    };
-
-    const container = containerRef.current;
-    container.addEventListener('wheel', handleWheel);
-    
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, []);
-
-  const handleZoomIn = () => {
-    setZoom(prevZoom => Math.min(prevZoom + 0.2, 3));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(prevZoom => Math.max(prevZoom - 0.2, 0.5));
-  };
-
-  const togglePlayPause = () => {
-    if (!videoRef.current) return;
-    
-    if (isManualRotate) {
-      // Exit manual rotation mode and resume video
-      setIsManualRotate(false);
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsVideoPlaying(true);
-      }
-    } else {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsVideoPlaying(true);
+      if (mtlUrl) {
+        console.log("Loading MTL from:", mtlUrl);
+        const mtlLoader = new MTLLoader();
+        
+        mtlLoader.load(
+          mtlUrl,
+          (materials) => {
+            console.log("MTL loaded successfully");
+            materials.preload();
+            objLoader.setMaterials(materials);
+            
+            // Now load OBJ with the materials
+            loadOBJ(objLoader);
+          },
+          (xhr) => {
+            console.log((xhr.loaded / xhr.total * 100) + '% of MTL loaded');
+          },
+          (error) => {
+            console.error("Error loading MTL:", error);
+            // If MTL fails, still try to load OBJ without materials
+            loadOBJ(objLoader);
+          }
+        );
       } else {
-        videoRef.current.pause();
-        setIsVideoPlaying(false);
+        // No MTL file provided, just load the OBJ
+        loadOBJ(objLoader);
       }
+    };
+    
+    const loadOBJ = (objLoader) => {
+      objLoader.load(
+        objUrl,
+        // onLoad callback
+        function(object) {
+          console.log("OBJ loaded successfully");
+          
+          // Remove reference cube
+          scene.remove(cube);
+          
+          // If no materials were loaded, add a default material
+          if (!mtlUrl) {
+            object.traverse((child) => {
+              if (child.isMesh) {
+                // Apply a default material with a wooden texture
+                child.material = new THREE.MeshStandardMaterial({
+                  color: 0x8B4513, // Brown color for wood
+                  roughness: 0.7,
+                  metalness: 0.2
+                });
+              }
+            });
+          }
+          
+          // Apply initial rotation
+          object.rotation.x = THREE.MathUtils.degToRad(initialRotation.x);
+          object.rotation.y = THREE.MathUtils.degToRad(initialRotation.y);
+          object.rotation.z = THREE.MathUtils.degToRad(initialRotation.z);
+          
+          // Add the loaded model to the scene
+          scene.add(object);
+          
+          // Update the camera position
+          const box = new THREE.Box3().setFromObject(object);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          
+          // Center the object
+          object.position.x = -center.x;
+          object.position.y = -center.y;
+          object.position.z = -center.z;
+          
+          const maxDim = Math.max(size.x, size.y, size.z);
+          camera.position.z = maxDim * 2;
+          
+          // Update loading state
+          setLoading(false);
+          setRenderComplete(true);
+          console.log("States updated: loading=false, renderComplete=true");
+          
+          // Call onLoad callback if provided
+          if (onLoad) {
+            onLoad();
+          }
+          
+          // Force a render
+          renderer.render(scene, camera);
+        },
+        // onProgress callback
+        function(xhr) {
+          console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        // onError callback
+        function(err) {
+          console.error("Error loading OBJ:", err);
+          setLoading(false);
+          if (onLoad) {
+            onLoad(); // Still call onLoad to remove parent loading spinner
+          }
+        }
+      );
+    };
+    
+    // Start loading process
+    loadModel();
+    
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // Update controls
+      controls.update();
+      
+      // Render the scene
+      renderer.render(scene, camera);
     }
-  };
+    animate();
+    
+    // Handle window resize
+    function handleResize() {
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+      
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      console.log("Cleaning up");
+      window.removeEventListener('resize', handleResize);
+      
+      if (containerRef.current && renderer.domElement) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+      
+      renderer.dispose();
+    };
+  }, [objUrl, mtlUrl, initialRotation, autoRotate, onLoad]);
   
-  const toggleManualRotate = () => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-      setIsVideoPlaying(false);
-    }
-    setIsManualRotate(prev => !prev);
-  };
-
-  // Render loading state
-  if (isVideoLoading && videoUrl) {
-    return (
-      <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
-        <Loader className="w-12 h-12 text-[#005670] animate-spin" />
-      </div>
-    );
-  }
-
-  // Render fallback image if video not supported or no video URL
-  if (!isVideoSupported || !videoUrl) {
-    return (
-      <div className={`relative ${className}`}>
-        <img
-          src={imageUrl || '/placeholder-image.png'}
-          alt={alt}
-          className="w-full h-full object-contain rounded-lg"
-          onLoad={onLoad}
-          onError={e => {
-            e.target.onerror = null;
-            e.target.src = '/placeholder-image.png';
-            onError();
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className={`relative ${className}`}>
-      <div 
-        ref={containerRef}
-        className="relative w-full h-full overflow-hidden cursor-grab active:cursor-grabbing"
-        style={{ 
-          perspective: '1000px',
-          touchAction: 'none' // Prevents default touch behaviors like scrolling
-        }}
-      >
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="w-full h-full" />
+      
+      {loading && (
         <div 
-          className="w-full h-full transition-transform"
-          style={{ 
-            transform: `scale(${zoom}) rotateY(${rotationDegree}deg)`,
-            transformStyle: 'preserve-3d'
-          }}
+          className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80"
+          style={{ zIndex: 10 }}
         >
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            alt={alt}
-            className="w-full h-full object-contain rounded-lg"
-            loop
-            playsInline
-            muted
-            onClick={togglePlayPause}
-          />
+          <Loader className="w-12 h-12 text-blue-600 animate-spin" />
+          <span className="ml-2 text-blue-600 font-medium">Loading 3D Model...</span>
         </div>
-      </div>
-
-      {/* Controls overlay */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-        <button 
-          onClick={togglePlayPause}
-          className="p-2 bg-white/80 rounded-full shadow-md hover:bg-white transition-colors"
-          aria-label={isVideoPlaying ? "Pause" : "Play"}
-        >
-          {isVideoPlaying ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="6" y="4" width="4" height="16" />
-              <rect x="14" y="4" width="4" height="16" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-          )}
-        </button>
-        
-        <button 
-          onClick={toggleManualRotate}
-          className={`p-2 rounded-full shadow-md transition-colors ${
-            isManualRotate ? 'bg-[#005670] text-white' : 'bg-white/80 hover:bg-white'
-          }`}
-          aria-label="Manual Rotate"
-        >
-          <RotateCcw size={24} />
-        </button>
-        
-        <button 
-          onClick={handleZoomIn}
-          className="p-2 bg-white/80 rounded-full shadow-md hover:bg-white transition-colors"
-          aria-label="Zoom In"
-        >
-          <ZoomIn size={24} />
-        </button>
-        
-        <button 
-          onClick={handleZoomOut}
-          className="p-2 bg-white/80 rounded-full shadow-md hover:bg-white transition-colors"
-          aria-label="Zoom Out"
-        >
-          <ZoomOut size={24} />
-        </button>
-      </div>
+      )}
+      
+      {/* {!loading && renderComplete && (
+        <div className="absolute bottom-4 right-4 bg-white bg-opacity-70 px-3 py-1 rounded-lg text-sm">
+          3D Model Loaded Successfully
+        </div>
+      )} */}
     </div>
   );
 };

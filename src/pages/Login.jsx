@@ -11,24 +11,28 @@ const Login = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
-
   const navigate = useNavigate();
 
   const slides = [
     {
-      image: "/images/pict_1.jpg", // Using placeholder as required
-      title: "LUXURY LIVING",
-      description: "Creating spaces that inspire and elevate your lifestyle"
+      image: "/images/SAS00201.jpg",
+      title: "",
+      description: ""
     },
     {
-      image: "/images/pict_2.jpg",
-      title: "THOUGHTFUL DESIGN",
-      description: "Every detail carefully curated for your perfect home"
+      image: "/images/SAS00274.jpg",
+      title: "",
+      description: ""
     },
     {
-      image: "/images/pict_3.png",
-      title: "EXPERT CRAFTSMANSHIP",
-      description: "Bringing luxury and comfort to every corner"
+      image: "/images/SAS00286.jpg",
+      title: "",
+      description: ""
+    },
+    {
+      image: "/images/SAS00319.jpg",
+      title: "",
+      description: ""
     }
   ];
 
@@ -42,8 +46,8 @@ const Login = () => {
     return () => clearInterval(timer);
   }, []);
 
-// Form validation
-const validateForm = () => {
+  // Form validation
+  const validateForm = () => {
     const newErrors = { email: '', password: '' };
     let isValid = true;
 
@@ -116,7 +120,6 @@ const validateForm = () => {
             if (orderData) {
               // Store relevant order data
               localStorage.setItem('currentStep', orderData.status === 'confirmed' ? '4' : orderData.step?.toString() || '1');
-              // You can store other necessary order data here
             }
           }
         } catch (orderError) {
@@ -142,133 +145,159 @@ const validateForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-white">
-      {/* Left Section - Image Carousel */}
-      <div className="hidden lg:block w-1/2 relative overflow-hidden">
-        {slides.map((slide, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              currentSlide === index ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {/* Dark overlay
-            <div className="absolute inset-0 bg-[#005670] opacity-60 z-10"></div> */}
-            
-            {/* Image */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${slide.image})` }}
-            ></div>
-            
-            {/* Content */}
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-12 text-white">
-              <h2 className="text-4xl font-light tracking-wider mb-4">{slide.title}</h2>
-              <p className="text-lg text-center font-light opacity-90">{slide.description}</p>
-            </div>
-          </div>
-        ))}
-
-        {/* Slide indicators */}
-        <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-2">
-          {slides.map((_, index) => (
-            <button
+    <div className="h-screen w-screen overflow-hidden bg-gray-100 flex items-center justify-center">
+      {/* Fixed size container with aspect ratio preservation */}
+      <div 
+        className="bg-white rounded-xl shadow-2xl overflow-hidden flex"
+        style={{ 
+          width: "min(95vw, 1800px)",
+          height: "min(85vh, 120px)",
+          minWidth: "1800px",
+          minHeight: "900px"
+        }}
+      >
+        {/* Left Section - Image Carousel */}
+        <div className="w-3/5 relative overflow-hidden hidden md:block">
+          {slides.map((slide, index) => (
+            <div
               key={index}
-              className={`w-2 h-2 rounded-full transition-all ${
-                currentSlide === index ? 'bg-white w-6' : 'bg-white/50'
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                currentSlide === index ? 'opacity-100' : 'opacity-0'
               }`}
-              onClick={() => setCurrentSlide(index)}
-            ></button>
-          ))}
-        </div>
-      </div>
-
-      {/* Right Section - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-12">
-            <h2 
-              className="text-3xl font-light tracking-wide mb-2"
-              style={{ color: '#005670' }}
             >
-              Welcome Back
-            </h2>
-            <p className="text-neutral-600">Sign in to access your account</p>
+              {/* Image with object-fit */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${slide.image})` }}
+              ></div>
+              
+              {/* Semi-transparent overlay */}
+              <div className="absolute inset-0 bg-black/20"></div>
+              
+              {/* Content */}
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-8 text-white">
+                <h2 className="text-4xl sm:text-5xl font-light tracking-wider mb-4">{slide.title}</h2>
+                <p className="text-xl text-center font-light opacity-90">{slide.description}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Slide indicators */}
+          <div className="absolute bottom-10 left-0 right-0 z-30 flex justify-center gap-3">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  currentSlide === index ? 'bg-white w-8' : 'bg-white/50'
+                }`}
+                onClick={() => setCurrentSlide(index)}
+              ></button>
+            ))}
           </div>
+        </div>
 
-          {errors.form && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-              {errors.form}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white"
-                style={{ focusRing: '#005670' }}
-                placeholder="Email"
-              />
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-            </div>
-
-            <div>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white"
-                style={{ focusRing: '#005670' }}
-                placeholder="Password"
-              />
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-            </div>
-
-            {/* <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  className="w-4 h-4 border-neutral-300 rounded focus:ring-2 focus:ring-opacity-50"
-                  style={{ color: '#005670' }}
-                />
-                <span className="ml-2 text-sm text-neutral-600">Remember Me</span>
-              </label>
-              <button 
-                type="button" 
-                className="text-sm hover:opacity-80 transition-opacity"
+        {/* Right Section - Login Form */}
+        <div className="w-full md:w-2/5 flex flex-col items-center h-full py-10">
+          {/* Top spacer to push content down */}
+          <div className="flex-grow"></div>
+          
+          {/* Main content in the middle */}
+          <div className="w-full max-w-md px-8">
+            {/* Welcome message with enhanced styling */}
+            <div className="text-center mb-12">
+              <h2 
+                className="text-4xl font-light tracking-wide mb-3"
                 style={{ color: '#005670' }}
               >
-                Forgot Password?
-              </button>
-            </div> */}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-              style={{ backgroundColor: '#005670' }}
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>{loading ? 'Signing in...' : 'Sign In'}</span>
-            </button>
-
-            <div className="flex items-center justify-center text-sm mt-4">
-              <button
-                type="button"
-                onClick={() => setShowChangePasswordModal(true)}
-                className="text-[#005670] hover:underline"
-              >
-                Change Password
-              </button>
+                Welcome Back
+              </h2>
+              <p className="text-neutral-600 text-lg">Sign in to access your account</p>
             </div>
-          </form>
+
+            {errors.form && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+                {errors.form}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
+                  style={{ focusRing: '#005670' }}
+                  placeholder="Enter your email"
+                />
+                {errors.email && <p className="mt-1 text-sm text-red-600 ml-1">{errors.email}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
+                  style={{ focusRing: '#005670' }}
+                  placeholder="Enter your password"
+                />
+                {errors.password && <p className="mt-1 text-sm text-red-600 ml-1">{errors.password}</p>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-lg font-medium shadow-md"
+                style={{ backgroundColor: '#005670' }}
+              >
+                {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+                <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+              </button>
+
+              <div className="flex items-center justify-center text-sm mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePasswordModal(true)}
+                  className="text-[#005670] hover:underline font-medium"
+                >
+                  Change Password
+                </button>
+              </div>
+            </form>
+          </div>
+          
+          {/* Bottom spacer to create space before company name */}
+          <div className="flex-grow"></div>
+          
+          {/* Company name styled to match logo but with visible color */}
+          <div className="text-center w-full mt-6">
+            <div className="inline-block text-center">
+              <div className="text-[#005670] text-3xl tracking-widest font-light">
+                HENDERSON
+              </div>
+              <div className="text-[#005670] text-lg tracking-wider font-light mt-1">
+                DESIGN GROUP
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Footer with copyright */}
+      <div className="fixed bottom-0 left-0 right-0 text-center text-sm text-gray-500 py-2">
+        <p>Alia Project by Henderson Design Group</p>
+        <p>&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
+      </div>
+
       {showChangePasswordModal && (
         <ChangePasswordModal onClose={() => setShowChangePasswordModal(false)} />
       )}

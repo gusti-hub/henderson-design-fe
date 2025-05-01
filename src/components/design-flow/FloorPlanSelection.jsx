@@ -6,6 +6,7 @@ import {
   Shield,
   Check,
   ChevronLeft,
+  ChevronRight,
   Star,
   Clock,
   DollarSign,
@@ -38,6 +39,52 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   const [activeGalleryPackage, setActiveGalleryPackage] = useState(null);
   const [currentGalleryImage, setCurrentGalleryImage] = useState(0);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  // Add this to your state declarations at the top of the component
+  const [currentSlideIndices, setCurrentSlideIndices] = useState({});
+
+  // Add this useEffect to handle slideshow rotation
+  useEffect(() => {
+    // Initialize slide indices for each package
+    const indices = {};
+    Object.keys(floorPlanTypes).forEach(typeId => {
+      indices[typeId] = 0;
+    });
+    setCurrentSlideIndices(indices);
+
+    // Set up slideshow timers for each package
+    const timers = {};
+    Object.keys(floorPlanTypes).forEach(typeId => {
+      timers[typeId] = setInterval(() => {
+        setCurrentSlideIndices(prev => ({
+          ...prev,
+          [typeId]: (prev[typeId] + 1) % galleryImages[typeId].length
+        }));
+      }, 5000);
+    });
+
+    return () => {
+      // Clean up all timers
+      Object.values(timers).forEach(timer => clearInterval(timer));
+    };
+  }, []);
+
+  // Add these navigation functions
+  const nextSlide = (packageType, e) => {
+    e.stopPropagation();
+    setCurrentSlideIndices(prev => ({
+      ...prev,
+      [packageType]: (prev[packageType] + 1) % galleryImages[packageType].length
+    }));
+  };
+
+  const prevSlide = (packageType, e) => {
+    e.stopPropagation();
+    setCurrentSlideIndices(prev => ({
+      ...prev,
+      [packageType]: (prev[packageType] - 1 + galleryImages[packageType].length) % galleryImages[packageType].length
+    }));
+  };
+  
 
   const handlePackageSelect = (packageType) => {
     const currentPackage = localStorage.getItem('selectedPackage');
@@ -121,20 +168,61 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
     setShowGalleryModal(true);
   };
 
-  // Mock gallery images for each package
   const galleryImages = {
-    premium: [
-      '/api/placeholder/1200/800', // Living room
-      '/api/placeholder/1200/800', // Bedroom
-      '/api/placeholder/1200/800', // Kitchen
-      '/api/placeholder/1200/800'  // Bathroom
+    investor: [  // For Mauka
+      '/images/investor_a.png',
+      '/images/investor_b.png',
+      '/images/investor_c.png',
+      '/images/investor_d.png',
+      '/images/investor_e.png'
     ],
-    deluxe: [
-      '/api/placeholder/1200/800', // Living room
-      '/api/placeholder/1200/800', // Bedroom
-      '/api/placeholder/1200/800', // Kitchen
-      '/api/placeholder/1200/800'  // Bathroom
-    ],
+    custom: [  // For Makai
+      '/images/owner_a.png',
+      '/images/owner_b.png',
+      '/images/owner_c.png',
+      '/images/owner_d.png',
+      '/images/owner_e.png'
+    ]
+  };
+  
+  const floorPlanTypes = FLOOR_PLAN_TYPES;
+  
+  // Then only add default images for types that don't have defined images
+  Object.keys(floorPlanTypes).forEach(typeId => {
+    console.log(typeId);
+    if (!galleryImages[typeId]) {
+      galleryImages[typeId] = [
+        '/images/SAS00201.jpg',
+        '/images/SAS00274.jpg',
+        '/images/SAS00286.jpg',
+        '/images/SAS00319.jpg'
+      ];
+    }
+  });
+
+  // Add this object with the updated descriptions
+  const packageDescriptions = {
+    investor: {
+      title: "Mauka",
+      features: [
+        "Designed for cost-conscious investors or homeowners looking for a stylish yet budget-friendly solution",
+        "Streamlined selection of furniture styles and finishes for efficiency and value",
+        "Durable, high-performance fabrics to withstand high turnover and guest use",
+        "Thoughtfully curated pieces to maximize functionality and appeal for rental properties",
+        "Quick and efficient procurement process"
+      ]
+    },
+    custom: {
+      title: "Makai",
+      features: [
+        "Expanded selection of furniture styles and finishes for a more personalized look",
+        "Premium materials, including quality woods and high-end finishes",
+        "High-performance fabrics that combine durability with a luxurious feel",
+        "Semi-customization options to better match the owner's aesthetic and lifestyle",
+        "Elevated design details and craftsmanship for a refined, long-lasting interior",
+        "Quick and efficient procurement process"
+      ]
+    }
   };
 
   // Mock testimonials for each package
@@ -168,16 +256,23 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   const renderPackages = () => {
     return (
       <div className="space-y-10">
-        {Object.values(floorPlanTypes).map(type => {
-          const clientPlan = type.plans.find(plan =>
-            plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
-          );
+      {Object.values(floorPlanTypes).map(type => {
+        const clientPlan = type.plans.find(plan =>
+          plan.title.toLowerCase().includes(clientInfo.floorPlan.toLowerCase())
+        );
+
+        const image_link = clientPlan.image;
+        
+        const budget = clientPlan ? 
+          type.budgets[clientPlan.id] || type.budgets.default : 
+          type.budgets.default;
+        
+        // Add this line to define packageInfo
+        const packageInfo = packageDescriptions[type.id] || { 
+          title: type.title, 
+          features: [] 
+        };
   
-          const image_link = clientPlan.image;
-          
-          const budget = clientPlan ? 
-            type.budgets[clientPlan.id] || type.budgets.default : 
-            type.budgets.default;
           
           // Benefits list customized for each package type
           const benefits = type.id === 'premium' ? [
@@ -191,60 +286,105 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
           ];
   
           return (
-            <div key={type.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all">
+            <div key={type.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all">
               <div className="grid md:grid-cols-12 gap-0">
-                {/* Left column - Image */}
-                <div className="md:col-span-5 relative">
-                  <div className="relative w-full h-full min-h-[300px]">
-                    <img
-                      src={image_link}
-                      alt={`${type.title} floor plan`}
-                      className="absolute top-0 left-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute bottom-4 left-4">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openGallery(type.id);
-                        }}
-                        className="px-4 py-2 bg-white/90 hover:bg-white rounded-md text-sm font-medium text-[#005670] flex items-center gap-2"
-                      >
-                        <Home className="h-4 w-4" />
-                        View Gallery
-                      </button>
+              {/* Left column - Image Slideshow */}
+              <div className="md:col-span-5 relative">
+                <div className="relative w-full h-full min-h-[400px]">
+                  {/* Images */}
+                  {galleryImages[type.id].map((img, index) => (
+                    <div
+                      key={index}
+                      className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                        currentSlideIndices[type.id] === index ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      <div 
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${img})` }}
+                      />
                     </div>
-                    <div className="absolute top-4 right-4 bg-[#005670] text-white px-3 py-1 rounded-full text-sm font-medium">
-                      Most Popular
-                    </div>
+                  ))}
+                  
+                  {/* Navigation arrows */}
+                  <button 
+                    onClick={(e) => prevSlide(type.id, e)}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full p-2 transition-all z-10"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  
+                  <button 
+                    onClick={(e) => nextSlide(type.id, e)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white rounded-full p-2 transition-all z-10"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Slide indicators */}
+                  <div className="absolute bottom-16 left-0 right-0 flex justify-center gap-2 z-10">
+                    {galleryImages[type.id].map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentSlideIndices({
+                          ...currentSlideIndices,
+                          [type.id]: index
+                        })}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${
+                          currentSlideIndices[type.id] === index ? 'bg-white scale-110' : 'bg-white/40 hover:bg-white/60'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* <div className="absolute bottom-4 left-4 z-10">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openGallery(type.id);
+                      }}
+                      className="px-4 py-2 bg-white/90 hover:bg-white rounded-md text-sm font-medium text-[#005670] flex items-center gap-2 transition-all shadow-sm"
+                    >
+                      <Home className="h-4 w-4" />
+                      View Gallery
+                    </button>
+                  </div>
+                  
+                  <div className="absolute top-4 right-4 bg-[#005670] text-white px-3 py-1 rounded-full text-sm font-medium z-10">
+                    Most Popular
+                  </div> */}
+                  
+                  {/* Overlay for better text readability */}
+                  <div className="absolute inset-0 bg-black/10"></div>
+                </div>
+              </div>
+                
+                {/* Right column - Content */}
+                <div className="md:col-span-7 p-7 flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-2xl font-semibold text-[#005670]">
+                    {packageInfo.title}
+                  </h3>
+                  <div className="flex items-center">
+                    {/* 5 stars for visual appeal */}
+                    {/* {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    ))} */}
                   </div>
                 </div>
                 
-                {/* Right column - Content */}
-                <div className="md:col-span-7 p-6 flex flex-col">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-2xl font-medium text-[#005670]">
-                      {type.title}
-                    </h3>
-                    <div className="flex items-center">
-                      {/* 5 stars for visual appeal */}
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <p className="text-gray-600 mb-4">{type.description}</p>
-                  
-                  <div className="space-y-3 mb-4">
-                    {benefits.map((benefit, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {benefit.icon}
-                        </div>
-                        <p className="text-gray-700">{benefit.text}</p>
+                <p className="text-gray-600 mb-5">Customizable with curated selection</p>
+                
+                <div className="space-y-3 my-4">
+                  {packageInfo.features.map((feature, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-1 text-[#005670]">
+                        <Check className="w-5 h-5" />
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-gray-700">{feature}</p>
+                    </div>
+                  ))}
+                </div>      
 
                   {/* Testimonial preview */}
                   {testimonials[type.id] && testimonials[type.id][0] && (
@@ -260,14 +400,14 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
                     </div>
                   )}
                   
-                  <div className="flex justify-between items-center">
-                    <p className="text-[#005670] font-medium text-xl">
+                  <div className="flex justify-end items-center mt-auto">
+                    <p className="text-[#005670] font-medium text-xl mr-6">
                       ${budget.toLocaleString()} <span className="text-sm font-normal text-gray-500">(Not Including Tax)</span>
                     </p>
                     
                     <button
                       onClick={() => handlePackageSelect(type.id)}
-                      className="px-5 py-2 bg-[#005670] text-white rounded-md hover:bg-opacity-90 transition-all"
+                      className="px-5 py-2.5 bg-[#005670] text-white rounded-md hover:bg-opacity-90 transition-all font-medium shadow-sm"
                     >
                       Select Package
                     </button>
@@ -400,21 +540,48 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
             alt={`${floorPlanTypes[activeGalleryPackage].title} gallery image`}
             className="w-full h-full object-contain"
           />
+          
+          {/* Navigation arrows */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentGalleryImage((prev) => 
+                (prev - 1 + galleryImages[activeGalleryPackage].length) % galleryImages[activeGalleryPackage].length
+              );
+            }}
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full p-3 transition-all"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentGalleryImage((prev) => 
+                (prev + 1) % galleryImages[activeGalleryPackage].length
+              );
+            }}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full p-3 transition-all"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
         </div>
         
-        <div className="flex justify-center mt-4 gap-2">
+        <div className="flex justify-center mt-6 gap-3">
           {galleryImages[activeGalleryPackage].map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentGalleryImage(index)}
-              className={`w-3 h-3 rounded-full ${
-                currentGalleryImage === index ? 'bg-white' : 'bg-white/30 hover:bg-white/60'
+              className={`w-3 h-3 rounded-full transition-transform duration-300 ${
+                currentGalleryImage === index 
+                ? 'bg-white scale-125' 
+                : 'bg-white/30 hover:bg-white/60'
               }`}
             />
           ))}
         </div>
         
-        <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-1 rounded-md text-sm">
+        <div className="absolute bottom-6 left-6 bg-black/60 text-white px-3 py-1.5 rounded-md text-sm font-medium">
           {currentGalleryImage + 1} / {galleryImages[activeGalleryPackage].length}
         </div>
       </div>
@@ -492,8 +659,6 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       });
     }
   };
-
-  const floorPlanTypes = FLOOR_PLAN_TYPES;
 
   if (loading) {
     return (
@@ -692,10 +857,10 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#003b4d] to-[#005670] rounded-lg p-6 mb-8 text-white">
+      <div className="bg-gradient-to-r from-[#003b4d] to-[#005670] rounded-lg p-8 mb-8 text-white shadow-lg">
         <div className="max-w-3xl">
-          <h1 className="text-3xl font-light mb-3">Welcome, {clientInfo.name}</h1>
-          <p className="text-lg opacity-90 mb-4">Your dream home awaits. Select a design package that resonates with your lifestyle and transforms your space into something truly extraordinary.</p>
+          <h1 className="text-3xl md:text-4xl font-light mb-4">Welcome, <span className="font-medium">{clientInfo.name}</span></h1>
+          <p className="text-lg opacity-90 mb-4 leading-relaxed">Your dream home awaits. Select a design package that resonates with your lifestyle and transforms your space into something truly extraordinary.</p>
           <p className="text-sm opacity-80">Unit {clientInfo.unitNumber} • {clientInfo.floorPlan} Floor Plan</p>
         </div>
       </div>

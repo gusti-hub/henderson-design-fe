@@ -415,11 +415,17 @@ export const customBConfig = {
         fontFamily: 'Arial',
         alignment: 'center',
         orientation: 'horizontal'
+      },
+      quantity: {
+        enabled: true,
+        fixed: 2,
+        min: 2,
+        max: 2
       }
     },
     bedroom1Spot3: {
-      id: 'BD1-CG-02-O',
-      label: 'BD1-CG-02-O',
+      id: 'BD1-CG-01-O',
+      label: 'BD1-CG-01-O',
       area: 'Primary Bedroom',
       coordinates: {
         x: 721,
@@ -434,6 +440,12 @@ export const customBConfig = {
         fontFamily: 'Arial',
         alignment: 'center',
         orientation: 'horizontal'
+      },
+      quantity: {
+        enabled: true,
+        fixed: 2,
+        min: 2,
+        max: 2
       }
     },
     bedroom1Spot4: {

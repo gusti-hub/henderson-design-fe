@@ -569,6 +569,18 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         (!selectedOptions.size || variant.size === selectedOptions.size) &&
         (!selectedOptions.insetPanel || variant.insetPanel === selectedOptions.insetPanel)
       );
+      
+      // Add these properties to the variant dynamically if it has an OBJ file
+      if (variant && variant.image?.url) {
+        if (variant.image.url.toLowerCase().endsWith('.obj')) {
+          // Use the same URL for model3dUrl
+          variant.model3dUrl = variant.image.url;
+          
+          // Create MTL URL by replacing .obj with .mtl
+          variant.materialUrl = variant.image.url.replace(/\.obj$/i, '.mtl');
+        }
+      }
+      
       return variant;
     };
   
@@ -669,55 +681,63 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           </div>
     
           {/* Display 360 viewer instead of static image */}
-{/* Simplified product image display for debugging */}
-<div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white border border-gray-200 rounded-lg">
-  {modalImageLoading && (
-    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-      <Loader className="w-12 h-12 text-[#005670] animate-spin" />
-    </div>
-  )}
-  
-{/* Direct image display - no 360 viewer */}
-{getSelectedVariant()?.image?.url ? (
-  <>
-    {getSelectedVariant().image.url.toLowerCase().endsWith('.mp4') ? (
-      // Video display for mp4 files
-      <video
-        src={getSelectedVariant().image.url}
-        controls
-        autoPlay
-        loop
-        muted
-        className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
-        onLoadedData={() => setModalImageLoading(false)}
-        onError={(e) => {
-          setModalImageLoading(false);
-        }}
-      />
-    ) : (
-      // Regular image display
-      <img
-        src={getSelectedVariant().image.url}
-        alt={product.name}
-        className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
-        onLoad={() => setModalImageLoading(false)}
-        onError={(e) => {
-          setModalImageLoading(false);
-          // Use a local placeholder instead of external service
-          e.target.src = "/images/placeholder.png";
-        }}
-      />
-    )}
-  </>
-) : (
-  // No image available
-  <div className="flex items-center justify-center flex-col">
-    <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-      <span className="text-gray-500">No product image available</span>
-    </div>
-  </div>
-)}
-</div>
+          {/* 3D Model or Image Viewer */}
+          <div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white border border-gray-200 rounded-lg">
+            {modalImageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                <Loader className="w-12 h-12 text-[#005670] animate-spin" />
+              </div>
+            )}
+            
+            {getSelectedVariant()?.model3dUrl ? (
+              // If there's a 3D model URL, display the 3D viewer
+            <Furniture360Viewer 
+              objUrl={getSelectedVariant().model3dUrl}
+              mtlUrl={getSelectedVariant().materialUrl}
+              initialRotation={{ x: 0, y: 30, z: 0 }}
+              autoRotate={true}
+              onLoad={() => setModalImageLoading(false)}
+            />
+            ) : getSelectedVariant()?.image?.url ? (
+              // Fallback to image/video if 3D model is not available
+              <>
+                {getSelectedVariant().image.url.toLowerCase().endsWith('.mp4') ? (
+                  // Video display for mp4 files
+                  <video
+                    src={getSelectedVariant().image.url}
+                    controls
+                    autoPlay
+                    loop
+                    muted
+                    className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                    onLoadedData={() => setModalImageLoading(false)}
+                    onError={(e) => {
+                      setModalImageLoading(false);
+                    }}
+                  />
+                ) : (
+                  // Regular image display
+                  <img
+                    src={getSelectedVariant().image.url}
+                    alt={product.name}
+                    className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                    onLoad={() => setModalImageLoading(false)}
+                    onError={(e) => {
+                      setModalImageLoading(false);
+                      e.target.src = "/images/placeholder.png";
+                    }}
+                  />
+                )}
+              </>
+            ) : (
+              // No image or 3D model available
+              <div className="flex items-center justify-center flex-col">
+                <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                  <span className="text-gray-500">No product image available</span>
+                </div>
+              </div>
+            )}
+          </div>
     
           <div className="space-y-6 mb-6">
             <div>
@@ -1156,7 +1176,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         <div className="grid grid-cols-3 gap-6">
           {/* Available Products */}
           <div className="col-span-2 bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-xl font-bold mb-6">Available Products</h3>
+            <h3 className="text-xl font-bold mb-6">Available Options</h3>
             {isLoading ? (
               <div className="grid grid-cols-2 gap-6">
                 <ProductSkeleton />
