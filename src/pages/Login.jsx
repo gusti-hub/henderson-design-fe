@@ -145,19 +145,11 @@ const Login = () => {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-gray-100 flex items-center justify-center">
-      {/* Fixed size container with aspect ratio preservation */}
-      <div 
-        className="bg-white rounded-xl shadow-2xl overflow-hidden flex"
-        style={{ 
-          width: "min(95vw, 1800px)",
-          height: "min(85vh, 120px)",
-          minWidth: "1800px",
-          minHeight: "900px"
-        }}
-      >
+    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4">
+      {/* Responsive container with better sizing */}
+      <div className="bg-white rounded-xl shadow-2xl overflow-hidden flex max-w-7xl w-full h-auto" style={{ minHeight: "80vh" }}>
         {/* Left Section - Image Carousel */}
-        <div className="w-3/5 relative overflow-hidden hidden md:block">
+        <div className="w-3/5 relative overflow-hidden hidden md:block" style={{ minHeight: "700px" }}>
           {slides.map((slide, index) => (
             <div
               key={index}
@@ -197,21 +189,18 @@ const Login = () => {
         </div>
 
         {/* Right Section - Login Form */}
-        <div className="w-full md:w-2/5 flex flex-col items-center h-full py-10">
-          {/* Top spacer to push content down */}
-          <div className="flex-grow"></div>
-          
+        <div className="w-full md:w-2/5 flex flex-col justify-between py-12 px-6 md:px-12" style={{ minHeight: "700px" }}>
           {/* Main content in the middle */}
-          <div className="w-full max-w-md px-8">
+          <div className="w-full max-w-md mx-auto mb-auto mt-auto">
             {/* Welcome message with enhanced styling */}
-            <div className="text-center mb-12">
+            <div className="text-center mb-10">
               <h2 
-                className="text-4xl font-light tracking-wide mb-3"
+                className="text-4xl md:text-5xl font-light tracking-wide mb-4"
                 style={{ color: '#005670' }}
               >
                 Welcome Back
               </h2>
-              <p className="text-neutral-600 text-lg">Sign in to access your account</p>
+              <p className="text-neutral-600 text-lg md:text-xl">Sign in to access your account</p>
             </div>
 
             {errors.form && (
@@ -222,7 +211,7 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
+                <label className="block text-base font-medium text-gray-700 mb-2 ml-1">
                   Email Address
                 </label>
                 <input
@@ -230,15 +219,15 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
+                  className="w-full px-5 py-4 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm text-lg"
                   style={{ focusRing: '#005670' }}
                   placeholder="Enter your email"
                 />
-                {errors.email && <p className="mt-1 text-sm text-red-600 ml-1">{errors.email}</p>}
+                {errors.email && <p className="mt-2 text-sm text-red-600 ml-1">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
+                <label className="block text-base font-medium text-gray-700 mb-2 ml-1">
                   Password
                 </label>
                 <input
@@ -246,24 +235,24 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
+                  className="w-full px-5 py-4 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm text-lg"
                   style={{ focusRing: '#005670' }}
                   placeholder="Enter your password"
                 />
-                {errors.password && <p className="mt-1 text-sm text-red-600 ml-1">{errors.password}</p>}
+                {errors.password && <p className="mt-2 text-sm text-red-600 ml-1">{errors.password}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-lg font-medium shadow-md"
+                className="w-full py-4 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-lg md:text-xl font-medium shadow-md"
                 style={{ backgroundColor: '#005670' }}
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 <span>{loading ? 'Signing in...' : 'Sign In'}</span>
               </button>
 
-              <div className="flex items-center justify-center text-sm mt-6">
+              <div className="flex items-center justify-center text-base mt-6">
                 <button
                   type="button"
                   onClick={() => setShowChangePasswordModal(true)}
@@ -275,16 +264,13 @@ const Login = () => {
             </form>
           </div>
           
-          {/* Bottom spacer to create space before company name */}
-          <div className="flex-grow"></div>
-          
           {/* Company name styled to match logo but with visible color */}
-          <div className="text-center w-full mt-6">
+          <div className="text-center w-full mt-auto">
             <div className="inline-block text-center">
-              <div className="text-[#005670] text-3xl tracking-widest font-light">
+              <div className="text-[#005670] text-3xl md:text-4xl tracking-widest font-light">
                 HENDERSON
               </div>
-              <div className="text-[#005670] text-lg tracking-wider font-light mt-1">
+              <div className="text-[#005670] text-lg md:text-xl tracking-wider font-light mt-1">
                 DESIGN GROUP
               </div>
             </div>
