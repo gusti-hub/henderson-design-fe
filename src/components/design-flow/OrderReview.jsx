@@ -36,11 +36,11 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
             <p className="mt-2 text-sm text-amber-700">
               Before finalizing your order:
               <ul className="list-disc ml-4 mt-2 space-y-1">
-                <li>A Henderson Design Group Concierge team member will schedule a review meeting</li>
-                <li>They will discuss all your selections in detail</li>
-                <li>Ensure everything meets your expectations and requirements</li>
-                <li>After the review and confirmation, modifications will not be possible</li>
-                <li>Payment process begins after the design review meeting</li>
+                <li>Your dedicated Henderson Design Group Concierge will arrange a personalized review at your convenience</li>
+                <li>We'll walk through your selections together</li>
+                <li>Our team will confirm all details align with your vision and lifestyle needs</li>
+                <li>Once you've given your final approval, we'll prepare your order for production</li>
+                <li>Your payment will be processed after you're completely satisfied</li>
               </ul>
             </p>
           </div>
@@ -170,7 +170,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
           <p className="font-medium">Please Note</p>
         </div>
         <p className="mt-2 text-sm text-red-700">
-          By proceeding, you acknowledge that you'll need to complete the design review meeting with Henderson Group before final confirmation. After confirmation, modifications to the order will not be possible.
+          By continuing, you're scheduling a personalized design review with our team. Once you give your final approval, we'll lock in your selections to start creating your perfect space.
         </p>
       </div>
     </div>

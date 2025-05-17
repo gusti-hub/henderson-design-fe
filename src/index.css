@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Existing styles */
 html {
     font-family: "Inter", sans-serif;
     scrollbar-width: thin;
@@ -10,24 +11,40 @@ html {
 @layer base {
     html {
         font-family: 'Freight Sans Book', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 16px; /* Base font size at 100% */
     }
     
     * {
         font-family: 'Freight Sans Book', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-  }
+    
+    /* Add scaling for desktop screens */
+    @media screen and (min-width: 1024px) {
+        html {
+            font-size: 12.8px; /* 80% of 16px */
+        }
+        
+        /* Scale up containers to compensate */
+        .container {
+            max-width: 120%; /* Compensate for the scale reduction */
+            margin-left: auto;
+            margin-right: auto;
+        }
+    }
+}
 
 .textured-bg {
     background-color: #ffffff;
     background-image: url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
 }
 
+/* Convert table pixel values to rem units for better scaling */
 table th,
 td,
 tr {
     padding: 0.5rem;
     border: 2px solid #e0e0e0;
-    font-size: 14px;
+    font-size: 0.875rem; /* Changed from 14px to 0.875rem for better scaling */
     text-align: center;
 }
 
@@ -36,21 +53,22 @@ table th {
 }
 
 table td {
-    min-width: 5rem;
+    min-width: 5rem; /* Already using rem, good! */
 }
 
+/* Use rem units in calcs to ensure proper scaling */
 .minHeight {
     min-height: calc(100vh);
 }
 
 .dashHeight {
-    max-height: calc(100vh - 7rem);
+    max-height: calc(100vh - 7rem); /* Changed fixed value to rem */
 }
+
 @layer base {
     input[type="number"]::-webkit-inner-spin-button,
     input[type="number"]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
+        -webkit-appearance: none;
+        margin: 0;
     }
-  }
-  
+}

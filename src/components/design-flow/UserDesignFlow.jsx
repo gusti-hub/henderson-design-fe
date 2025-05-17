@@ -52,7 +52,7 @@ const DesignReviewModal = ({ isOpen, onClose, onConfirm }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-lg w-full mx-4 overflow-hidden">
+      <div className="bg-white rounded-lg max-w-3xl w-full mx-4 overflow-hidden">
         <div className="p-6">
           <div className="flex items-start gap-3 mb-4">
             <AlertCircle className="w-6 h-6 text-[#005670] mt-1" />
@@ -62,11 +62,11 @@ const DesignReviewModal = ({ isOpen, onClose, onConfirm }) => {
             </div>
           </div>
           <div className="space-y-3 text-gray-600 ml-9">
-            <p>• A Henderson Group design team will schedule a meeting with you</p>
-            <p>• They will review all your furniture selections in detail</p>
-            <p>• Product specifications and placement will be discussed</p>
-            <p>• Any questions or concerns will be addressed</p>
-            <p>• Once confirmed after review, modifications won't be possible</p>
+            <p>• Our Henderson Group design experts will reach out to schedule a convenient time to meet with you</p>
+            <p>• Together, we'll go through your furniture selections to ensure everything meets your vision</p>
+            <p>• We'll discuss product details and optimal placement to create your perfect space</p>
+            <p>• We'll answer any questions you might have to make sure you're completely comfortable</p>
+            <p>• After your approval, we'll lock in your selections to begin processing your order promptly</p>
           </div>
         </div>
         <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">

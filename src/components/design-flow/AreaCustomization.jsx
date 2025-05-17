@@ -1,9 +1,136 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { X, Trash2, AlertCircle, Loader } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { X, Trash2, AlertCircle, Loader, ZoomIn, ZoomOut, Move } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import { backendServer } from '../../utils/info';
 import Furniture360Viewer from './Furniture360Viewer';
 import ProductCard from './ProductCard';
+
+const ProductImageZoom = ({ imageUrl, altText, onLoad, onError }) => {
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => {
+      const newZoom = Math.max(prev - 0.25, 1);
+      if (newZoom === 1) setPosition({ x: 0, y: 0 });
+      return newZoom;
+    });
+  };
+
+  const handleWheel = (e) => {
+    if (e.deltaY < 0) handleZoomIn();
+    else handleZoomOut();
+    e.preventDefault();
+  };
+
+  const handleMouseDown = (e) => {
+    if (zoomLevel > 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && zoomLevel > 1) {
+      const maxX = (containerRef.current.offsetWidth * (zoomLevel - 1)) / 2;
+      const maxY = (containerRef.current.offsetHeight * (zoomLevel - 1)) / 2;
+      
+      setPosition({
+        x: Math.min(Math.max(e.clientX - dragStart.x, -maxX), maxX),
+        y: Math.min(Math.max(e.clientY - dragStart.y, -maxY), maxY)
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (zoomLevel === 1) {
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [zoomLevel]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+    }
+    
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel);
+      }
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isDragging, dragStart, zoomLevel]);
+
+  return (
+    <div className="relative w-full h-full flex flex-col">
+      <div 
+        ref={containerRef}
+        className="relative flex-1 overflow-hidden cursor-move flex items-center justify-center"
+        onMouseDown={handleMouseDown}
+      >
+        <img
+          src={imageUrl}
+          alt={altText}
+          className="max-w-full max-h-full h-auto w-auto object-contain transition-transform duration-200"
+          style={{ 
+            transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
+            transformOrigin: 'center',
+          }}
+          onLoad={onLoad}
+          onError={onError}
+        />
+      </div>
+      
+      <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-lg">
+        {zoomLevel > 1 && (
+          <div className="text-xs text-gray-600 mr-1">{Math.round(zoomLevel * 100)}%</div>
+        )}
+        <button 
+          onClick={handleZoomOut} 
+          disabled={zoomLevel <= 1}
+          className="p-1.5 rounded-full bg-white text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Zoom out"
+        >
+          <ZoomOut size={18} />
+        </button>
+        <button 
+          onClick={handleZoomIn} 
+          disabled={zoomLevel >= 3}
+          className="p-1.5 rounded-full bg-white text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Zoom in"
+        >
+          <ZoomIn size={18} />
+        </button>
+      </div>
+      
+      {zoomLevel > 1 && (
+        <div className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-lg text-xs text-gray-600 flex items-center gap-1">
+          <Move size={14} />
+          <span>Drag to pan</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingOrder: initialOrder, currentStep, clientInfo, checkExistingOrder }) => {
   const [selectedTab, setSelectedTab] = useState(null);
@@ -717,10 +844,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                   />
                 ) : (
                   // Regular image display
-                  <img
-                    src={getSelectedVariant().image.url}
-                    alt={product.name}
-                    className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                  <ProductImageZoom 
+                    imageUrl={getSelectedVariant().image.url}
+                    altText={product.name}
                     onLoad={() => setModalImageLoading(false)}
                     onError={(e) => {
                       setModalImageLoading(false);
