@@ -146,10 +146,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4">
-      {/* Responsive container with better sizing */}
-      <div className="bg-white rounded-xl shadow-2xl overflow-hidden flex max-w-7xl w-full h-auto" style={{ minHeight: "80vh" }}>
-        {/* Left Section - Image Carousel */}
-        <div className="w-3/5 relative overflow-hidden hidden md:block" style={{ minHeight: "700px" }}>
+      {/* Wider container */}
+      <div className="bg-white rounded-xl shadow-2xl overflow-hidden flex w-full max-w-screen-xl h-auto" style={{ minHeight: "80vh" }}>
+        {/* Left Section - Image Carousel - adjusted width ratio */}
+        <div className="w-2/3 relative overflow-hidden hidden md:block" style={{ minHeight: "700px" }}>
           {slides.map((slide, index) => (
             <div
               key={index}
@@ -188,19 +188,19 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Right Section - Login Form */}
-        <div className="w-full md:w-2/5 flex flex-col justify-between py-12 px-6 md:px-12" style={{ minHeight: "700px" }}>
+        {/* Right Section - Login Form - wider panel */}
+        <div className="w-full md:w-1/3 flex flex-col justify-between py-12 px-8 md:px-10" style={{ minHeight: "700px" }}>
           {/* Main content in the middle */}
           <div className="w-full max-w-md mx-auto mb-auto mt-auto">
             {/* Welcome message with enhanced styling */}
-            <div className="text-center mb-10">
+            <div className="text-center mb-8">
               <h2 
-                className="text-4xl md:text-5xl font-light tracking-wide mb-4"
+                className="text-3xl md:text-4xl font-light tracking-wide mb-3"
                 style={{ color: '#005670' }}
               >
                 Welcome Back
               </h2>
-              <p className="text-neutral-600 text-lg md:text-xl">Sign in to access your account</p>
+              <p className="text-neutral-600 text-base md:text-lg">Sign in to access your account</p>
             </div>
 
             {errors.form && (
@@ -211,7 +211,7 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-base font-medium text-gray-700 mb-2 ml-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
                   Email Address
                 </label>
                 <input
@@ -219,15 +219,15 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-5 py-4 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm text-lg"
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
                   style={{ focusRing: '#005670' }}
                   placeholder="Enter your email"
                 />
-                {errors.email && <p className="mt-2 text-sm text-red-600 ml-1">{errors.email}</p>}
+                {errors.email && <p className="mt-1 text-sm text-red-600 ml-1">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-base font-medium text-gray-700 mb-2 ml-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
                   Password
                 </label>
                 <input
@@ -235,24 +235,24 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-5 py-4 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm text-lg"
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
                   style={{ focusRing: '#005670' }}
                   placeholder="Enter your password"
                 />
-                {errors.password && <p className="mt-2 text-sm text-red-600 ml-1">{errors.password}</p>}
+                {errors.password && <p className="mt-1 text-sm text-red-600 ml-1">{errors.password}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-lg md:text-xl font-medium shadow-md"
+                className="w-full py-3 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-base md:text-lg font-medium shadow-md"
                 style={{ backgroundColor: '#005670' }}
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 <span>{loading ? 'Signing in...' : 'Sign In'}</span>
               </button>
 
-              <div className="flex items-center justify-center text-base mt-6">
+              <div className="flex items-center justify-center text-sm mt-4">
                 <button
                   type="button"
                   onClick={() => setShowChangePasswordModal(true)}
