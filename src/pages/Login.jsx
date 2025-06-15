@@ -42,10 +42,18 @@ const Login = () => {
       setCurrentSlide((prevSlide) => 
         prevSlide === slides.length - 1 ? 0 : prevSlide + 1
       );
-    }, 4000);
+    }, 5000); // Increased to 5 seconds for smoother experience
 
     return () => clearInterval(timer);
   }, [slides.length]);
+
+  // Preload images for smoother transitions
+  useEffect(() => {
+    slides.forEach((slide) => {
+      const img = new Image();
+      img.src = slide.image;
+    });
+  }, [slides]);
 
   // Form validation
   const validateForm = () => {
@@ -143,18 +151,23 @@ const Login = () => {
     <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex w-full max-w-7xl h-auto" style={{ minHeight: "700px" }}>
         
-        {/* Left Section - Image Carousel - Much wider */}
+        {/* Left Section - Image Carousel - Much wider with optimized performance */}
         <div className="w-2/3 relative overflow-hidden hidden lg:block">
           {slides.map((slide, index) => (
             <div
               key={index}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                currentSlide === index ? 'opacity-100' : 'opacity-0'
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                currentSlide === index ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
             >
               <div 
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${slide.image})` }}
+                className="absolute inset-0 bg-cover bg-center transform scale-105"
+                style={{ 
+                  backgroundImage: `url(${slide.image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  willChange: 'opacity'
+                }}
               ></div>
               <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
               
@@ -165,13 +178,15 @@ const Login = () => {
             </div>
           ))}
 
-          {/* Slide indicators */}
+          {/* Slide indicators with better visual feedback */}
           <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
             {slides.map((_, index) => (
               <button
                 key={index}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  currentSlide === index ? 'bg-white w-8' : 'bg-white/50'
+                className={`h-3 rounded-full transition-all duration-300 ${
+                  currentSlide === index 
+                    ? 'bg-white w-8 shadow-lg' 
+                    : 'bg-white/50 w-3 hover:bg-white/70'
                 }`}
                 onClick={() => setCurrentSlide(index)}
               ></button>
