@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff, UserPlus, Key, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
-import ChangePasswordModal from './ChangePasswordModal';
+import ChangePasswordModal from '../pages/ChangePasswordModal';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -10,6 +10,7 @@ const Login = () => {
   const [errors, setErrors] = useState({ email: '', password: '' });
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
 
@@ -41,17 +42,16 @@ const Login = () => {
       setCurrentSlide((prevSlide) => 
         prevSlide === slides.length - 1 ? 0 : prevSlide + 1
       );
-    }, 3000);
+    }, 4000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   // Form validation
   const validateForm = () => {
     const newErrors = { email: '', password: '' };
     let isValid = true;
 
-    // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
       isValid = false;
@@ -60,7 +60,6 @@ const Login = () => {
       isValid = false;
     }
 
-    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
       isValid = false;
@@ -76,7 +75,6 @@ const Login = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    // Clear error when user starts typing
     setErrors({ ...errors, [name]: '', form: '' });
   };
 
@@ -106,7 +104,6 @@ const Login = () => {
       localStorage.setItem('name', data.name);
       localStorage.setItem('role', data.role);
   
-      // Check for existing order before redirecting
       if (data.role === 'user') {
         try {
           const orderResponse = await fetch(`${backendServer}/api/orders/user-order`, {
@@ -118,7 +115,6 @@ const Login = () => {
           if (orderResponse.ok) {
             const orderData = await orderResponse.json();
             if (orderData) {
-              // Store relevant order data
               localStorage.setItem('currentStep', orderData.status === 'confirmed' ? '4' : orderData.step?.toString() || '1');
             }
           }
@@ -127,7 +123,6 @@ const Login = () => {
         }
       }
   
-      // Redirect based on role
       if (data.role === 'user') {
         navigate('/dashboard');
       } else {
@@ -146,10 +141,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4">
-      {/* Wider container */}
-      <div className="bg-white rounded-xl shadow-2xl overflow-hidden flex w-full max-w-screen-xl h-auto" style={{ minHeight: "80vh" }}>
-        {/* Left Section - Image Carousel - adjusted width ratio */}
-        <div className="w-2/3 relative overflow-hidden hidden md:block" style={{ minHeight: "700px" }}>
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex w-full max-w-7xl h-auto" style={{ minHeight: "700px" }}>
+        
+        {/* Left Section - Image Carousel - Much wider */}
+        <div className="w-2/3 relative overflow-hidden hidden lg:block">
           {slides.map((slide, index) => (
             <div
               key={index}
@@ -157,29 +152,25 @@ const Login = () => {
                 currentSlide === index ? 'opacity-100' : 'opacity-0'
               }`}
             >
-              {/* Image with object-fit */}
               <div 
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${slide.image})` }}
               ></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
               
-              {/* Semi-transparent overlay */}
-              <div className="absolute inset-0 bg-black/20"></div>
-              
-              {/* Content */}
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-8 text-white">
-                <h2 className="text-4xl sm:text-5xl font-light tracking-wider mb-4">{slide.title}</h2>
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-12 text-white">
+                <h2 className="text-5xl font-light tracking-wider mb-4">{slide.title}</h2>
                 <p className="text-xl text-center font-light opacity-90">{slide.description}</p>
               </div>
             </div>
           ))}
 
           {/* Slide indicators */}
-          <div className="absolute bottom-10 left-0 right-0 z-30 flex justify-center gap-3">
+          <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
             {slides.map((_, index) => (
               <button
                 key={index}
-                className={`w-3 h-3 rounded-full transition-all ${
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
                   currentSlide === index ? 'bg-white w-8' : 'bg-white/50'
                 }`}
                 onClick={() => setCurrentSlide(index)}
@@ -188,30 +179,31 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Right Section - Login Form - wider panel */}
-        <div className="w-full md:w-1/3 flex flex-col justify-between py-12 px-8 md:px-10" style={{ minHeight: "700px" }}>
-          {/* Main content in the middle */}
-          <div className="w-full max-w-md mx-auto mb-auto mt-auto">
-            {/* Welcome message with enhanced styling */}
+        {/* Right Section - Login Form - Compact */}
+        <div className="w-full lg:w-1/3 flex flex-col justify-between p-8" style={{ minHeight: "700px" }}>
+          <div></div> {/* Spacer */}
+          
+          {/* Main Login Content */}
+          <div className="w-full max-w-sm mx-auto">
+            {/* Welcome Header */}
             <div className="text-center mb-8">
-              <h2 
-                className="text-3xl md:text-4xl font-light tracking-wide mb-3"
-                style={{ color: '#005670' }}
-              >
+              <h2 className="text-2xl font-light tracking-wide mb-3 text-[#005670]">
                 Welcome Back
               </h2>
-              <p className="text-neutral-600 text-base md:text-lg">Sign in to access your account</p>
+              <p className="text-gray-600">Sign in to access your account</p>
             </div>
 
+            {/* Error Message */}
             {errors.form && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-                {errors.form}
+              <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 text-red-700 rounded-r-lg">
+                <p className="text-sm font-medium">{errors.form}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Login Fields */}
+            <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
                 </label>
                 <input
@@ -219,58 +211,98 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
-                  style={{ focusRing: '#005670' }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white shadow-sm"
                   placeholder="Enter your email"
                 />
-                {errors.email && <p className="mt-1 text-sm text-red-600 ml-1">{errors.email}</p>}
+                {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-opacity-50 outline-none transition-all bg-white shadow-sm"
-                  style={{ focusRing: '#005670' }}
-                  placeholder="Enter your password"
-                />
-                {errors.password && <p className="mt-1 text-sm text-red-600 ml-1">{errors.password}</p>}
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white shadow-sm"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
               </div>
 
+              {/* Sign In Button */}
               <button
-                type="submit"
+                onClick={handleSubmit}
                 disabled={loading}
-                className="w-full py-3 rounded-lg text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-base md:text-lg font-medium shadow-md"
-                style={{ backgroundColor: '#005670' }}
+                className="w-full py-3 rounded-lg text-white hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed bg-[#005670]"
               >
-                {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 space-y-3">
+              {/* Create Account Button */}
+              <button
+                onClick={() => navigate('/register')}
+                className="w-full py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Create New Account</span>
               </button>
 
-              <div className="flex items-center justify-center text-sm mt-4">
+              {/* Change Password Button */}
+              <button
+                onClick={() => setShowChangePasswordModal(true)}
+                className="w-full py-2.5 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <Key className="w-4 h-4" />
+                <span>Change Password</span>
+              </button>
+            </div>
+
+            {/* Helper Text */}
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-500">
+                New to Henderson Design Group?{' '}
                 <button
-                  type="button"
-                  onClick={() => setShowChangePasswordModal(true)}
-                  className="text-[#005670] hover:underline font-medium"
+                  onClick={() => navigate('/register')}
+                  className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
                 >
-                  Change Password
+                  Get started here
                 </button>
-              </div>
-            </form>
+              </p>
+            </div>
           </div>
           
-          {/* Company name styled to match logo but with visible color */}
-          <div className="text-center w-full mt-auto">
-            <div className="inline-block text-center">
-              <div className="text-[#005670] text-3xl md:text-4xl tracking-widest font-light">
+          {/* Company Branding */}
+          <div className="text-center">
+            <div className="inline-block">
+              <div className="text-[#005670] text-2xl tracking-widest font-light">
                 HENDERSON
               </div>
-              <div className="text-[#005670] text-lg md:text-xl tracking-wider font-light mt-1">
+              <div className="text-[#005670] text-sm tracking-wider font-light mt-1">
                 DESIGN GROUP
               </div>
             </div>
@@ -278,12 +310,13 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Footer with copyright */}
-      <div className="fixed bottom-0 left-0 right-0 text-center text-sm text-gray-500 py-2">
-        <p>Alia Project by Henderson Design Group</p>
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm text-center text-xs text-gray-500 py-2 border-t border-gray-200">
+        <p>Ālia Project by Henderson Design Group</p>
         <p>&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
       </div>
 
+      {/* Change Password Modal */}
       {showChangePasswordModal && (
         <ChangePasswordModal onClose={() => setShowChangePasswordModal(false)} />
       )}

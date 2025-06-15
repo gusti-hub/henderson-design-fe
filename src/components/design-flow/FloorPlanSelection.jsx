@@ -203,7 +203,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
   // Add this object with the updated descriptions
   const packageDescriptions = {
     investor: {
-      title: "Mauka",
+      title: "Nalu",
       features: [
         "Designed for cost-conscious investors or homeowners looking for a stylish yet budget-friendly solution",
         "Streamlined selection of furniture styles and finishes for efficiency and value",
@@ -213,7 +213,7 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       ]
     },
     custom: {
-      title: "Makai",
+      title: "Lani",
       features: [
         "Expanded selection of furniture styles and finishes for a more personalized look",
         "Premium materials, including quality woods and high-end finishes",

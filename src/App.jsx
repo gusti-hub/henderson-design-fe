@@ -3,6 +3,7 @@ import { Route, Routes, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/CommonContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import ClientRegistration from './pages/ClientRegistration';
 import AdminPanel from './pages/AdminPanel';
 import UserDashboard from './pages/UserDashboard';
 import AutoLogout from './utils/AutoLogout';
@@ -41,6 +42,7 @@ function App() {
             />
           } 
         />
+        <Route path="/register" element={<ClientRegistration />} />
       </Routes>
     </AppProvider>
   );

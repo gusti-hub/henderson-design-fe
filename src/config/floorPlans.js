@@ -3,7 +3,7 @@
 export const FLOOR_PLAN_TYPES = {
     investor: {
       id: 'investor',
-      title: 'Mauka Package',
+      title: 'Nalu Package',
       description: 'Customizable with curated selection', 
       availablePlans: '6 floor plans available',
       image: '/images/investor_plan/investor_1.png',
@@ -54,7 +54,7 @@ export const FLOOR_PLAN_TYPES = {
     },
     custom: {
       id: 'custom',
-      title: 'Makai Package',
+      title: 'Lani Package',
       description: 'Customizable with curated selection',
       availablePlans: '10 floor plans available',
       image: '/images/custom_plan/custom_1.png',
