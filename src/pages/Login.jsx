@@ -11,6 +11,8 @@ const Login = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [loadedImages, setLoadedImages] = useState(new Set());
 
   const navigate = useNavigate();
 
@@ -37,23 +39,46 @@ const Login = () => {
     }
   ];
 
+  // Preload images dengan loading state yang lebih baik
   useEffect(() => {
+    const loadImages = async () => {
+      const imagePromises = slides.map((slide, index) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            setLoadedImages(prev => new Set([...prev, index]));
+            resolve(index);
+          };
+          img.onerror = reject;
+          img.src = slide.image;
+        });
+      });
+
+      try {
+        await Promise.all(imagePromises);
+        setImagesLoaded(true);
+      } catch (error) {
+        console.error('Error loading images:', error);
+        // Tetap set imagesLoaded ke true untuk menghindari loading forever
+        setImagesLoaded(true);
+      }
+    };
+
+    loadImages();
+  }, [slides]);
+
+  // Mulai slide show hanya setelah gambar dimuat
+  useEffect(() => {
+    if (!imagesLoaded) return;
+
     const timer = setInterval(() => {
       setCurrentSlide((prevSlide) => 
         prevSlide === slides.length - 1 ? 0 : prevSlide + 1
       );
-    }, 5000); // Increased to 5 seconds for smoother experience
+    }, 5000);
 
     return () => clearInterval(timer);
-  }, [slides.length]);
-
-  // Preload images for smoother transitions
-  useEffect(() => {
-    slides.forEach((slide) => {
-      const img = new Image();
-      img.src = slide.image;
-    });
-  }, [slides]);
+  }, [slides.length, imagesLoaded]);
 
   // Form validation
   const validateForm = () => {
@@ -148,16 +173,65 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4 pb-16">
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex w-full max-w-7xl h-auto" style={{ minHeight: "700px" }}>
         
-        {/* Left Section - Image Carousel - Much wider with optimized performance */}
+        {/* Left Section - Image Carousel */}
         <div className="w-2/3 relative overflow-hidden hidden lg:block">
+          {/* Elegant loading state dengan gradient background */}
+          {!imagesLoaded && (
+            <div className="absolute inset-0 z-20">
+              {/* Beautiful gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8]"></div>
+              
+              {/* Animated overlay pattern */}
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-transparent animate-pulse"></div>
+              </div>
+              
+              {/* Content overlay */}
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-12 text-white">
+                <div className="text-center">
+                  {/* Company logo/text as placeholder */}
+                  <div className="mb-8">
+                    <div className="text-white text-4xl tracking-widest font-light mb-2">
+                      HENDERSON
+                    </div>
+                    <div className="text-white/80 text-lg tracking-wider font-light">
+                      DESIGN GROUP
+                    </div>
+                  </div>
+                  
+                  {/* Loading animation */}
+                  <div className="mb-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-white mx-auto" />
+                  </div>
+                  
+                  <p className="text-white/90 text-lg mb-2">Preparing your experience</p>
+                  <div className="text-sm text-white/70">
+                    {loadedImages.size}/{slides.length} assets loaded
+                  </div>
+                  
+                  {/* Elegant progress bar */}
+                  <div className="mt-6 w-64 mx-auto">
+                    <div className="bg-white/20 rounded-full h-1 overflow-hidden">
+                      <div 
+                        className="bg-white h-full transition-all duration-500 ease-out rounded-full"
+                        style={{ width: `${(loadedImages.size / slides.length) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Slides */}
           {slides.map((slide, index) => (
             <div
               key={index}
               className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                currentSlide === index ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                currentSlide === index && imagesLoaded ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
             >
               <div 
@@ -178,23 +252,42 @@ const Login = () => {
             </div>
           ))}
 
-          {/* Slide indicators with better visual feedback */}
-          <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                className={`h-3 rounded-full transition-all duration-300 ${
-                  currentSlide === index 
-                    ? 'bg-white w-8 shadow-lg' 
-                    : 'bg-white/50 w-3 hover:bg-white/70'
-                }`}
-                onClick={() => setCurrentSlide(index)}
-              ></button>
-            ))}
-          </div>
+          {/* Slide indicators - hanya muncul setelah gambar dimuat */}
+          {imagesLoaded && (
+            <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  className={`h-3 rounded-full transition-all duration-300 ${
+                    currentSlide === index 
+                      ? 'bg-white w-8 shadow-lg' 
+                      : 'bg-white/50 w-3 hover:bg-white/70'
+                  }`}
+                  onClick={() => setCurrentSlide(index)}
+                ></button>
+              ))}
+            </div>
+          )}
+
+          {/* Fallback gradient jika gambar gagal dimuat */}
+          {imagesLoaded && loadedImages.size === 0 && (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] z-5">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-12 text-white">
+                <div className="text-center">
+                  <div className="text-white text-5xl tracking-widest font-light mb-4">
+                    HENDERSON
+                  </div>
+                  <div className="text-white/90 text-xl tracking-wider font-light">
+                    DESIGN GROUP
+                  </div>
+                  <p className="text-white/80 text-lg mt-8">Crafting Exceptional Experiences</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Section - Login Form - Compact */}
+        {/* Right Section - Login Form */}
         <div className="w-full lg:w-1/3 flex flex-col justify-between p-8" style={{ minHeight: "700px" }}>
           <div></div> {/* Spacer */}
           
@@ -325,10 +418,10 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm text-center text-xs text-gray-500 py-2 border-t border-gray-200">
-        <p>Ālia Project by Henderson Design Group</p>
-        <p>&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
+      {/* Footer - seamless dengan background */}
+      <div className="absolute bottom-0 left-0 right-0 text-center text-xs text-gray-700 py-3 pointer-events-none">
+        <p className="font-medium">Ālia Project by Henderson Design Group</p>
+        <p className="text-gray-600">&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
       </div>
 
       {/* Change Password Modal */}
