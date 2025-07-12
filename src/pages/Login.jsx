@@ -11,6 +11,8 @@ const Login = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [loadedImages, setLoadedImages] = useState(new Set());
 
   const navigate = useNavigate();
 
@@ -37,23 +39,46 @@ const Login = () => {
     }
   ];
 
+  // Preload images dengan loading state yang lebih baik
   useEffect(() => {
+    const loadImages = async () => {
+      const imagePromises = slides.map((slide, index) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            setLoadedImages(prev => new Set([...prev, index]));
+            resolve(index);
+          };
+          img.onerror = reject;
+          img.src = slide.image;
+        });
+      });
+
+      try {
+        await Promise.all(imagePromises);
+        setImagesLoaded(true);
+      } catch (error) {
+        console.error('Error loading images:', error);
+        // Tetap set imagesLoaded ke true untuk menghindari loading forever
+        setImagesLoaded(true);
+      }
+    };
+
+    loadImages();
+  }, [slides]);
+
+  // Mulai slide show hanya setelah gambar dimuat
+  useEffect(() => {
+    if (!imagesLoaded) return;
+
     const timer = setInterval(() => {
       setCurrentSlide((prevSlide) => 
         prevSlide === slides.length - 1 ? 0 : prevSlide + 1
       );
-    }, 5000); // Increased to 5 seconds for smoother experience
+    }, 5000);
 
     return () => clearInterval(timer);
-  }, [slides.length]);
-
-  // Preload images for smoother transitions
-  useEffect(() => {
-    slides.forEach((slide) => {
-      const img = new Image();
-      img.src = slide.image;
-    });
-  }, [slides]);
+  }, [slides.length, imagesLoaded]);
 
   // Form validation
   const validateForm = () => {
@@ -151,13 +176,27 @@ const Login = () => {
     <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex w-full max-w-7xl h-auto" style={{ minHeight: "700px" }}>
         
-        {/* Left Section - Image Carousel - Much wider with optimized performance */}
+        {/* Left Section - Image Carousel */}
         <div className="w-2/3 relative overflow-hidden hidden lg:block">
+          {/* Loading state untuk gambar */}
+          {!imagesLoaded && (
+            <div className="absolute inset-0 bg-gray-200 flex items-center justify-center z-20">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 animate-spin text-[#005670] mx-auto mb-4" />
+                <p className="text-gray-600 text-lg">Loading images...</p>
+                <div className="mt-2 text-sm text-gray-500">
+                  {loadedImages.size}/{slides.length} images loaded
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Slides */}
           {slides.map((slide, index) => (
             <div
               key={index}
               className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                currentSlide === index ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                currentSlide === index && imagesLoaded ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
             >
               <div 
@@ -178,23 +217,37 @@ const Login = () => {
             </div>
           ))}
 
-          {/* Slide indicators with better visual feedback */}
-          <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                className={`h-3 rounded-full transition-all duration-300 ${
-                  currentSlide === index 
-                    ? 'bg-white w-8 shadow-lg' 
-                    : 'bg-white/50 w-3 hover:bg-white/70'
-                }`}
-                onClick={() => setCurrentSlide(index)}
-              ></button>
-            ))}
-          </div>
+          {/* Slide indicators - hanya muncul setelah gambar dimuat */}
+          {imagesLoaded && (
+            <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center gap-3">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  className={`h-3 rounded-full transition-all duration-300 ${
+                    currentSlide === index 
+                      ? 'bg-white w-8 shadow-lg' 
+                      : 'bg-white/50 w-3 hover:bg-white/70'
+                  }`}
+                  onClick={() => setCurrentSlide(index)}
+                ></button>
+              ))}
+            </div>
+          )}
+
+          {/* Progress bar untuk loading */}
+          {!imagesLoaded && (
+            <div className="absolute bottom-8 left-8 right-8 z-30">
+              <div className="bg-white/20 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-white h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${(loadedImages.size / slides.length) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Section - Login Form - Compact */}
+        {/* Right Section - Login Form */}
         <div className="w-full lg:w-1/3 flex flex-col justify-between p-8" style={{ minHeight: "700px" }}>
           <div></div> {/* Spacer */}
           
