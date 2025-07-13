@@ -401,78 +401,81 @@ const UserDesignFlow = () => {
     ];
   };
 
-  const saveProgress = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-  
-      const method = existingOrder ? 'PUT' : 'POST';
-      const endpoint = existingOrder 
-        ? `${backendServer}/api/orders/${existingOrder._id}`
-        : `${backendServer}/api/orders`;
-  
-      console.log('Saving progress to:', endpoint);
-      console.log('Method:', method);
-  
-      let updatedPaymentDetails = {
-        method: paymentDetails?.method || '',
-        installments: paymentDetails?.installments?.map(installment => ({
-          percent: installment.percent,
-          dueDate: installment.dueDate || null,
-          status: installment.status || 'pending',
-          amount: installment.amount || 0
-        })) || []
-      };
-  
-      if (designSelections?.totalPrice) {
-        updatedPaymentDetails.installments = calculatePaymentSchedule(designSelections.totalPrice);
-      }
-  
-      const orderStatus = currentStep === 3 ? 'confirmed' : 
-                         currentStep === 4 ? 'confirmed' : 
-                         'ongoing';
-  
-      const orderData = {
-        selectedPlan,
-        clientInfo,
-        selectedProducts: designSelections?.selectedProducts || [],
-        occupiedSpots: designSelections?.spotSelections || {},
-        designSelections,
-        paymentDetails: updatedPaymentDetails,
-        status: orderStatus,
-        step: currentStep
-      };
-  
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(orderData)
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Failed to save progress: ${response.status}`);
-      }
-  
-      const data = await response.json();
-      console.log('Save progress response:', data);
-      
-      setExistingOrder(data);
-      setPaymentDetails(updatedPaymentDetails);
-  
-      localStorage.setItem('selectedPlan', JSON.stringify(selectedPlan));
-      localStorage.setItem('clientInfo', JSON.stringify(clientInfo));
-      localStorage.setItem('currentStep', currentStep.toString());
-      localStorage.setItem('orderStatus', orderStatus);
-    } catch (error) {
-      console.error('Error saving progress:', error);
-      throw error;
+const saveProgress = async (step) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
     }
-  };
+
+    const method = existingOrder ? 'PUT' : 'POST';
+    const endpoint = existingOrder 
+      ? `${backendServer}/api/orders/${existingOrder._id}`
+      : `${backendServer}/api/orders`;
+
+    console.log('Saving progress to:', endpoint);
+    console.log('Method:', method);
+
+    let updatedPaymentDetails = {
+      method: paymentDetails?.method || '',
+      installments: paymentDetails?.installments?.map(installment => ({
+        percent: installment.percent,
+        dueDate: installment.dueDate || null,
+        status: installment.status || 'pending',
+        amount: installment.amount || 0
+      })) || []
+    };
+
+    if (designSelections?.totalPrice) {
+      updatedPaymentDetails.installments = calculatePaymentSchedule(designSelections.totalPrice);
+    }
+
+    const stepToUse = step ?? currentStep;
+
+    const orderStatus = stepToUse === 3 ? 'waiting for review' : 
+                        stepToUse === 4 ? 'confirmed' : 
+                        'ongoing';
+
+    const orderData = {
+      selectedPlan,
+      clientInfo,
+      selectedProducts: designSelections?.selectedProducts || [],
+      occupiedSpots: designSelections?.spotSelections || {},
+      designSelections,
+      paymentDetails: updatedPaymentDetails,
+      status: orderStatus,
+      step: stepToUse
+    };
+
+    const response = await fetch(endpoint, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(orderData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save progress: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Save progress response:', data);
+    
+    setExistingOrder(data);
+    setPaymentDetails(updatedPaymentDetails);
+
+    localStorage.setItem('selectedPlan', JSON.stringify(selectedPlan));
+    localStorage.setItem('clientInfo', JSON.stringify(clientInfo));
+    localStorage.setItem('currentStep', stepToUse.toString());
+    localStorage.setItem('orderStatus', orderStatus);
+  } catch (error) {
+    console.error('Error saving progress:', error);
+    throw error;
+  }
+};
+
 
   useEffect(() => {
     return () => {
@@ -570,7 +573,7 @@ const UserDesignFlow = () => {
       setShowDesignReviewModal(true);
       return;
     }
-  
+
     // Handle order confirmation at step 3 (review)
     if (currentStep === 3) {
       setShowConfirmationModal(true);
@@ -624,18 +627,21 @@ const UserDesignFlow = () => {
   };
 
   // Add handleBack function to prevent navigation when confirmed
-  const handleBack = () => {
+  const handleBack = async () => {
     if (existingOrder?.status === 'confirmed') {
       alert("You cannot modify your selections after order confirmation.");
       return;
     }
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+
+    const useStep = currentStep - 1;
+    await saveProgress(useStep);
+    setCurrentStep(useStep);
   };
 
   const handleDesignReviewConfirm = async () => {
     setShowDesignReviewModal(false);
     try {
-      await saveProgress();
+      await saveProgress(3);
       setCurrentStep(prev => Math.min(prev + 1, 4));
     } catch (error) {
       console.error('Error saving progress:', error);

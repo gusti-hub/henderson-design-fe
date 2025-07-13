@@ -866,32 +866,34 @@ const FloorPlanSelection = ({ onNext, showNavigationButtons }) => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="mb-8 flex border-b">
-        <button
-          onClick={() => setActiveTab('packages')}
-          className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${
-            activeTab === 'packages' ? 'border-[#005670] text-[#005670]' : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          Design Packages
-        </button>
-        <button
-          onClick={() => setActiveTab('info')}
-          className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${
-            activeTab === 'info' ? 'border-[#005670] text-[#005670]' : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          Your Information
-        </button>
-        <button
-          onClick={() => setActiveTab('warranty')}
-          className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${
-            activeTab === 'warranty' ? 'border-[#005670] text-[#005670]' : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          Warranty Information
-        </button>
-      </div>
+      {!selectedPlanType && 
+        <div className="mb-8 flex border-b">
+          <button
+            onClick={() => setActiveTab('packages')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${
+              activeTab === 'packages' ? 'border-[#005670] text-[#005670]' : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Design Packages
+          </button>
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${
+              activeTab === 'info' ? 'border-[#005670] text-[#005670]' : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Your Information
+          </button>
+          <button
+            onClick={() => setActiveTab('warranty')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-px ${
+              activeTab === 'warranty' ? 'border-[#005670] text-[#005670]' : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Warranty Information
+          </button>
+        </div>
+      }
 
       {/* Design Process Steps - Visual guide */}
       {/* {activeTab === 'packages' && !selectedPlanType && (

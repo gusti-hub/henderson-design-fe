@@ -73,6 +73,7 @@ const BulkProductImport = ({ onComplete }) => {
             product_id: row.product_id,
             name: row.name,
             description: row.description,
+            dimension: row.dimension,
             basePrice: parseFloat(row.base_price),
             variants: []
           };
@@ -84,7 +85,8 @@ const BulkProductImport = ({ onComplete }) => {
           size: row.size,         // Add size attribute
           insetPanel: row.insetPanel, // Add insetPanel attribute
           price: parseFloat(row.variant_price),
-          image: row.image ? { url: row.image } : null
+          image: row.image ? { url: row.image } : null,
+          model: row.model ? { url: row.model } : null
         });
 
         return acc;
@@ -98,6 +100,7 @@ const BulkProductImport = ({ onComplete }) => {
           formData.append('product_id', product.product_id);
           formData.append('name', product.name);
           formData.append('description', product.description);
+          formData.append('dimension', product.dimension);
           formData.append('basePrice', product.basePrice.toString());
           formData.append('variants', JSON.stringify(product.variants));
 

@@ -254,7 +254,7 @@ const ProductCard = ({ product, onCustomize }) => {
       </div>
       <div className="p-4">
         <h3 className="text-lg font-semibold">{product.name}</h3>
-        <p className="text-sm text-gray-500">{product.product_id}</p>
+        {/* <p className="text-sm text-gray-500">{product.product_id}</p> */}
         <button
           onClick={() => onCustomize(product)}
           className="w-full mt-4 py-2 text-white rounded-lg bg-[#005670] hover:bg-opacity-90"

@@ -142,6 +142,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   const [isLoading, setIsLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [existingOrder, setExistingOrder] = useState(initialOrder);
+  const [viewingProduct, setViewingProduct] = useState(null);
 
   if (!selectedPlan || !selectedPlan.id) {
     return (
@@ -167,18 +168,42 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
       'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
       'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' },
-
-      // New fabric options
       'Shell': { type: 'Shell', previewUrl: '/images/fabrics/pearl.png' },
       'Leather': { type: 'Leather', previewUrl: '/images/fabrics/leather.png' },
       'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' }
     },
-    // New inset panel attribute
     insetPanel: {
       'Wood': { previewUrl: '/images/insetpanels/Wood.jpg' },
       'Shell': { previewUrl: '/images/insetpanels/pearl.png' },
       'Faux Linen': { previewUrl: '/images/insetpanels/Faux Linen.png' },
       'Woven Material': { previewUrl: '/images/insetpanels/LIGHT WOOD.png' }
+    }
+  };
+
+  // Function to view selected product details
+  const handleViewSelectedProduct = async (product) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${backendServer}/api/products/${product._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const fullProductData = await response.json();
+      
+      const productWithSelections = {
+        ...fullProductData,
+        selectedOptions: product.selectedOptions,
+        quantity: product.quantity,
+        finalPrice: product.finalPrice,
+        spotId: product.spotId,
+        spotName: product.spotName
+      };
+      
+      setViewingProduct(productWithSelections);
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      setViewingProduct(product);
     }
   };
 
@@ -191,7 +216,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             setSelectedProducts(initialOrder.selectedProducts);
             setOccupiedSpots(initialOrder.occupiedSpots || {});
           } else {
-            // Clear localStorage if no products in order
             localStorage.removeItem('selectedProducts');
             localStorage.removeItem('occupiedSpots');
             localStorage.removeItem('designSelections');
@@ -203,7 +227,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           const savedSpots = localStorage.getItem('occupiedSpots');
           
           if (!savedProducts || !savedSpots) {
-            // Clear all if any is missing
             localStorage.removeItem('selectedProducts');
             localStorage.removeItem('occupiedSpots');
             localStorage.removeItem('designSelections');
@@ -217,11 +240,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             const parsedSpots = JSON.parse(savedSpots);
             
             if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
-              console.log(parsedProducts);
               setSelectedProducts(parsedProducts);
               setOccupiedSpots(parsedSpots);
             } else {
-              // Clear all if products array is empty
               localStorage.removeItem('selectedProducts');
               localStorage.removeItem('occupiedSpots');
               localStorage.removeItem('designSelections');
@@ -230,7 +251,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             }
           } catch (parseError) {
             console.error('Error parsing saved data:', parseError);
-            // Clear invalid data
             localStorage.removeItem('selectedProducts');
             localStorage.removeItem('occupiedSpots');
             localStorage.removeItem('designSelections');
@@ -250,48 +270,35 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     const previousPlanId = localStorage.getItem('currentPlanId');
     
     if (previousPlanId && previousPlanId !== selectedPlan.id) {
-      // Clear all selections if floor plan changed
       setSelectedProducts([]);
       setOccupiedSpots({});
       setCurrentProduct(null);
       setSelectedTab(null);
       setActiveSpot(null);
       
-      // Clear localStorage
       localStorage.removeItem('selectedProducts');
       localStorage.removeItem('occupiedSpots');
       localStorage.removeItem('designSelections');
     }
     
-    // Save current plan ID
     localStorage.setItem('currentPlanId', selectedPlan.id);
   }, [selectedPlan.id]);
 
-  // Get dimensions and furniture spots for the selected plan
   const planDimensions = useMemo(() => {
     try {
       return getPlanDimensions(selectedPlan.id);
     } catch (error) {
       console.error('Error getting plan dimensions:', error);
-      return { width: 1000, height: 800 }; // Fallback dimensions
+      return { width: 1000, height: 800 };
     }
   }, [selectedPlan.id]);
 
-  // const arrayBufferToBase64 = (buffer) => {
-  //   let binary = '';
-  //   const bytes = new Uint8Array(buffer);
-  //   for (let i = 0; i < bytes.length; i++) {
-  //     binary += String.fromCharCode(bytes[i]);
-  //   }
-  //   return window.btoa(binary);
-  // };
-  
   const furnitureSpots = useMemo(() => {
     try {
       return generateFurnitureAreas(selectedPlan.id);
     } catch (error) {
       console.error('Error generating furniture areas:', error);
-      return {}; // Return empty object if there's an error
+      return {};
     }
   }, [selectedPlan.id]);
 
@@ -299,12 +306,10 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     spot => !occupiedSpots[spot.id]
   );
 
-  // Update parent component when products change
   useEffect(() => {
     if (selectedProducts.length > 0) {
       const totalPrice = selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0);
       
-      // Save to localStorage
       localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
       localStorage.setItem('occupiedSpots', JSON.stringify(occupiedSpots));
       
@@ -318,55 +323,55 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   }, [selectedProducts, occupiedSpots]);
 
   const handleSpotClick = async (spotId) => {
-
-     // Check if order exists
-     if (!existingOrder) {
+    if (!existingOrder) {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // Create initial order
       const orderData = {
         selectedPlan,
-        clientInfo: clientInfo, // Use the passed clientInfo
+        clientInfo: clientInfo,
         selectedProducts: [],
         occupiedSpots: {},
         step: 2,
         status: 'ongoing'
       };
 
-      const response = await fetch(`${backendServer}/api/orders`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(orderData)
-      });
+      try {
+        const response = await fetch(`${backendServer}/api/orders`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(orderData)
+        });
 
-      if (!response.ok) throw new Error('Failed to create order');
-      
-      const newOrder = await response.json();
-      setExistingOrder(newOrder);
+        if (!response.ok) throw new Error('Failed to create order');
+        
+        const newOrder = await response.json();
+        setExistingOrder(newOrder);
+      } catch (error) {
+        console.error('Error creating order:', error);
+        return;
+      }
     }
 
-    // First check if spot exists in occupiedSpots and has a value
     if (Object.keys(occupiedSpots).includes(spotId) && occupiedSpots[spotId] !== null) {
       const occupyingProduct = selectedProducts.find(p => p.spotId === spotId);
       if (occupyingProduct) {
         alert(`This space is already occupied by: ${occupyingProduct.name}. Please remove it first if you want to place a different item.`);
       }
-      return; // Exit early if spot is occupied
+      return;
     }
   
     try {
       setSelectedTab(spotId);
       setActiveSpot(spotId);
       setIsLoading(true);
-      setAvailableProducts([]); // Clear previous products while loading
+      setAvailableProducts([]);
       
       const token = localStorage.getItem('token');
       
-      // Fetch products for this location from mapping
       const mappingResponse = await fetch(
         `${backendServer}/api/location-mappings/products?locationId=${spotId}&floorPlanId=${selectedPlan.title}`,
         {
@@ -378,10 +383,8 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       const mappingData = await mappingResponse.json();
       
       if (mappingData.products && mappingData.products.length > 0) {
-        // Get detailed product info including variants for each product
         const productDetailsPromises = mappingData.products.map(async (product) => {
           try {
-            // Fetch variants for each product
             const variantsResponse = await fetch(
               `${backendServer}/api/products/${product._id}/variants`,
               {
@@ -402,7 +405,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           }
         });
   
-        // Check again if spot became occupied during API call
         if (Object.keys(occupiedSpots).includes(spotId) && occupiedSpots[spotId] !== null) {
           setSelectedTab(null);
           setActiveSpot(null);
@@ -445,19 +447,15 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         }
       });
       const fullProductData = await response.json();
-      console.log('Full product data with variants:', fullProductData); // Debug log
       
-      // Ensure variants are properly included
       if (!fullProductData.variants || fullProductData.variants.length === 0) {
         console.warn('No variants found for product:', fullProductData);
-        // Use original product variants if API response doesn't include them
         fullProductData.variants = product.variants;
       }
       
       setCurrentProduct(fullProductData);
     } catch (error) {
       console.error('Error fetching complete product data:', error);
-      // Fallback to original product data if API fails
       setCurrentProduct(product);
     }
   };
@@ -468,7 +466,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         spot.id === selectedTab || spot.label === selectedTab
       );
   
-      // Find the selected variant based on options
       const selectedVariant = productWithOptions.variants.find(variant => 
         (!productWithOptions.selectedOptions.fabric || variant.fabric === productWithOptions.selectedOptions?.fabric) && 
         (!productWithOptions.selectedOptions.finish || variant.finish === productWithOptions.selectedOptions?.finish) &&
@@ -479,7 +476,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       const unitPrice = productWithOptions.finalPrice || productWithOptions.basePrice;
       const quantity = productWithOptions.selectedOptions?.quantity || 1;
   
-      // Create streamlined product object
       const newProduct = {
         _id: productWithOptions._id,
         name: productWithOptions.name,
@@ -505,7 +501,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
   
       const updatedProducts = [...selectedProducts, newProduct];
   
-      // Update all states
       setOccupiedSpots(updatedOccupiedSpots);
       setSelectedProducts(updatedProducts);
       setCurrentProduct(null);
@@ -513,11 +508,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       setActiveSpot(null);
       setAvailableProducts([]);
   
-      // Update localStorage
       localStorage.setItem('selectedProducts', JSON.stringify(updatedProducts));
       localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
       
-      // Save to server immediately
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -525,7 +518,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           return;
         }
   
-        // First, try to get existing order if we don't have it yet
         if (!existingOrder) {
           const orderResponse = await fetch(`${backendServer}/api/orders/user-order`, {
             headers: {
@@ -541,7 +533,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           }
         }
   
-        // Always use PUT to update the existing order or create a new one
         const endpoint = `${backendServer}/api/orders${existingOrder ? `/${existingOrder._id}` : ''}`;
         
         const orderData = {
@@ -566,7 +557,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         }
   
         const savedOrder = await response.json();
-        setExistingOrder(savedOrder); // Update existingOrder reference
+        setExistingOrder(savedOrder);
         checkExistingOrder();
   
       } catch (error) {
@@ -576,7 +567,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     }
   };
 
-  // In AreaCustomization.jsx, modify handleRemoveProduct:
   const handleRemoveProduct = async (index) => {
     try {
       const productToRemove = selectedProducts[index];
@@ -585,11 +575,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       
       const updatedProducts = selectedProducts.filter((_, i) => i !== index);
       
-      // Update local state
       setOccupiedSpots(updatedOccupiedSpots);
       setSelectedProducts(updatedProducts);
       
-      // Update localStorage
       localStorage.removeItem('selectedProducts');
       localStorage.removeItem('occupiedSpots');
       
@@ -598,7 +586,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         localStorage.setItem('occupiedSpots', JSON.stringify(updatedOccupiedSpots));
       }
   
-      // Update server
       const token = localStorage.getItem('token');
       if (!token) {
         console.warn('No authentication token found');
@@ -637,7 +624,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       const updatedOrder = await response.json();
       setExistingOrder(updatedOrder);
       
-      // Call onComplete with updated data
       onComplete({
         selectedProducts: updatedProducts,
         totalPrice: updatedProducts.reduce((sum, p) => sum + p.finalPrice, 0),
@@ -645,7 +631,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         floorPlanId: selectedPlan.id
       });
   
-      // Clear designSelections in localStorage if no products remain
       if (updatedProducts.length === 0) {
         localStorage.removeItem('designSelections');
       }
@@ -658,10 +643,8 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     }
   };
 
-  // Add cleanup effect
   useEffect(() => {
     return () => {
-      // Save state before component unmounts
       if (selectedProducts.length > 0) {
         localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
         localStorage.setItem('occupiedSpots', JSON.stringify(occupiedSpots));
@@ -669,14 +652,199 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
     };
   }, [selectedProducts, occupiedSpots]);
 
-  const CustomizationModal = ({ product, onClose, onAdd, currentSpot  }) => {
-    // Get unique attributes
+  // Product Detail Modal for Selected Products
+  const ProductDetailModal = ({ product, onClose }) => {
+    const [detailImageLoading, setDetailImageLoading] = useState(true);
+    const [show3DModel, setShow3DModel] = useState(false);
+
+    const getMediaType = (url) => {
+      if (!url) return 'none';
+      const lower = url.toLowerCase();
+      if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return 'video';
+      if (lower.endsWith('.obj')) return '3d';
+      return 'image';
+    };
+
+    const getSelectedVariant = () => {
+      if (!product.variants?.length) return null;
+      return (
+        product.variants.find(
+          (v) =>
+            (!product.selectedOptions?.fabric || v.fabric === product.selectedOptions.fabric) &&
+            (!product.selectedOptions?.finish || v.finish === product.selectedOptions.finish) &&
+            (!product.selectedOptions?.size || v.size === product.selectedOptions.size) &&
+            (!product.selectedOptions?.insetPanel || v.insetPanel === product.selectedOptions.insetPanel)
+        ) || product.variants[0]
+      );
+    };
+
+    const selectedVariant = getSelectedVariant();
+    const mediaType = getMediaType(product.selectedOptions?.image);
+    const has3DModel = selectedVariant?.model?.url;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-7xl w-full m-4 overflow-y-auto max-h-[95vh]">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold">{product.name}</h3>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X size={24} />
+            </button>
+          </div>
+
+          {has3DModel && (
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setShow3DModel(false)}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  !show3DModel ? 'bg-[#005670] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Image View
+              </button>
+              <button
+                onClick={() => setShow3DModel(true)}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  show3DModel ? 'bg-[#005670] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                3D Model
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-8">
+            {/* Viewer Section */}
+            <div className="relative w-full h-[500px] flex items-center justify-center bg-white border border-gray-200 rounded-lg shadow-inner">
+              {detailImageLoading && !show3DModel && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                  <Loader className="w-12 h-12 text-[#005670] animate-spin" />
+                </div>
+              )}
+
+              {show3DModel && has3DModel ? (
+                <iframe
+                  src={selectedVariant.model.url}
+                  className="w-full h-full rounded-lg border-0"
+                  title="3D Model"
+                  onLoad={() => setDetailImageLoading(false)}
+                />
+              ) : mediaType === '3d' && product.selectedOptions?.image ? (
+                <Furniture360Viewer
+                  objUrl={product.selectedOptions.image}
+                  mtlUrl={product.selectedOptions.image.replace(/\.obj$/i, '.mtl')}
+                  initialRotation={{ x: 0, y: 30, z: 0 }}
+                  autoRotate={true}
+                  onLoad={() => setDetailImageLoading(false)}
+                />
+              ) : mediaType === 'video' && product.selectedOptions?.image ? (
+                <video
+                  src={product.selectedOptions.image}
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                  onLoadedData={() => setDetailImageLoading(false)}
+                  onError={() => setDetailImageLoading(false)}
+                />
+              ) : product.selectedOptions?.image ? (
+                <ProductImageZoom
+                  imageUrl={product.selectedOptions.image}
+                  altText={product.name}
+                  onLoad={() => setDetailImageLoading(false)}
+                  onError={() => setDetailImageLoading(false)}
+                />
+              ) : (
+                <div className="flex items-center justify-center flex-col">
+                  <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <span className="text-gray-500">No product image available</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Description Section */}
+            {product.description && (
+              <div>
+                <h4 className="font-semibold mb-3 text-lg">Description</h4>
+                <div className="p-4 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+                  <p className="text-gray-600 text-sm leading-relaxed">{product.description}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Dimensions Section */}
+            {product.dimension && (
+              <div>
+                <h4 className="font-semibold mb-3 text-lg">Dimension</h4>
+                <div className="p-4 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+                  <p className="text-gray-600 text-sm leading-relaxed">{product.dimension}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Product Info Section */}
+            <div>
+              <h4 className="font-semibold mb-3 text-lg">Product Information</h4>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Location:</span>
+                  <span className="font-medium">{product.spotName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Quantity:</span>
+                  <span className="font-medium">{product.quantity}</span>
+                </div>
+                {product.selectedOptions?.finish && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Finish:</span>
+                    <span className="font-medium">{product.selectedOptions.finish}</span>
+                  </div>
+                )}
+                {product.selectedOptions?.fabric && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fabric:</span>
+                    <span className="font-medium">{product.selectedOptions.fabric}</span>
+                  </div>
+                )}
+                {product.selectedOptions?.size && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Size:</span>
+                    <span className="font-medium">{product.selectedOptions.size}</span>
+                  </div>
+                )}
+                {product.selectedOptions?.insetPanel && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Inset Panel:</span>
+                    <span className="font-medium">{product.selectedOptions.insetPanel}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-8 py-3 bg-[#005670] text-white rounded-lg hover:bg-opacity-90 font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
+  const CustomizationModal = ({ product, onClose, onAdd, currentSpot }) => {
     const uniqueFinishes = [...new Set(product.variants.map(v => v.finish).filter(Boolean))];
     const uniqueFabrics = [...new Set(product.variants.map(v => v.fabric).filter(Boolean))];
     const uniqueSizes = [...new Set(product.variants.map(v => v.size).filter(Boolean))];
     const uniqueInsetPanels = [...new Set(product.variants.map(v => v.insetPanel).filter(Boolean))];
+    const [show3DModel, setShow3DModel] = useState(false);
   
-    // Initialize state with fixed quantity if specified
     const [selectedOptions, setSelectedOptions] = useState({
       finish: uniqueFinishes.length === 1 ? uniqueFinishes[0] : '',
       fabric: uniqueFabrics.length === 1 ? uniqueFabrics[0] : '',
@@ -697,19 +865,18 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
         (!selectedOptions.insetPanel || variant.insetPanel === selectedOptions.insetPanel)
       );
       
-      // Add these properties to the variant dynamically if it has an OBJ file
       if (variant && variant.image?.url) {
         if (variant.image.url.toLowerCase().endsWith('.obj')) {
-          // Use the same URL for model3dUrl
           variant.model3dUrl = variant.image.url;
-          
-          // Create MTL URL by replacing .obj with .mtl
           variant.materialUrl = variant.image.url.replace(/\.obj$/i, '.mtl');
         }
       }
       
       return variant;
     };
+
+    const selectedVariant = getSelectedVariant();
+    const has3DModel = selectedVariant?.model?.url;
   
     const handleAdd = () => {
       const selectedVariant = getSelectedVariant();
@@ -726,49 +893,17 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       });
     };
   
-    // Helper function to get variant image or video
-    const getMediaType = (url) => {
-      if (!url) return 'none';
-      const lowercasedUrl = url.toLowerCase();
-      if (lowercasedUrl.endsWith('.mp4') || lowercasedUrl.endsWith('.webm') || lowercasedUrl.endsWith('.mov')) {
-        return 'video';
-      }
-      return 'image';
-    };
-    
-    const getVariantMedia = () => {
-      const selectedVariant = getSelectedVariant();
-      
-      if (selectedVariant?.image?.url) {
-        const url = selectedVariant.image.url;
-        const type = getMediaType(url);
-        return { type, url };
-      }
-      
-      if (product.variants[0]?.image?.url) {
-        const url = product.variants[0].image.url;
-        const type = getMediaType(url);
-        return { type, url };
-      }
-      
-      return { type: 'none', url: null };
-    };
-  
     const getVariantPrice = () => {
       const selectedVariant = getSelectedVariant();
       return selectedVariant ? selectedVariant.price : product.basePrice;
     };
-  
-    const media = getVariantMedia();
   
     const hasFinishOptions = uniqueFinishes.length > 0;
     const hasFabricOptions = uniqueFabrics.length > 0;
     const hasSizeOptions = uniqueSizes.length > 0;
     const hasInsetPanelOptions = uniqueInsetPanels.length > 0;
   
-    // Modified validation check
     const isValid = () => {
-      // Check if each attribute with options is selected
       const finishValid = !hasFinishOptions || selectedOptions.finish;
       const fabricValid = !hasFabricOptions || selectedOptions.fabric;
       const sizeValid = !hasSizeOptions || selectedOptions.size;
@@ -777,108 +912,122 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       return finishValid && fabricValid && sizeValid && insetPanelValid;
     };
   
-    // Function for fabric previews with attributeOptions
-    const FabricPreview = ({ fabricValue, attributeOptions }) => {
-      if (!fabricValue || !attributeOptions.fabric?.[fabricValue]) return null;
-      
-      return (
-        <div className="flex flex-col items-center">
-          <div className="w-32 h-32 relative rounded-lg overflow-hidden">
-            <img
-              src={attributeOptions.fabric[fabricValue].previewUrl}
-              alt={fabricValue}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-center">
-              {attributeOptions.fabric[fabricValue].type || fabricValue}
-            </div>
-          </div>
-        </div>
-      );
-    };
-  
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full m-4 overflow-y-auto max-h-[90vh]">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold">{product.name}</h3>
+        <div className="bg-white rounded-lg p-6 max-w-7xl w-full m-4 overflow-y-auto max-h-[95vh]">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold">{product.name}</h3>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-              <X size={20} />
+              <X size={24} />
             </button>
           </div>
-    
-          {/* Display 360 viewer instead of static image */}
-          {/* 3D Model or Image Viewer */}
-          <div className="relative w-full h-[500px] mb-6 flex items-center justify-center bg-white border border-gray-200 rounded-lg">
-            {modalImageLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-                <Loader className="w-12 h-12 text-[#005670] animate-spin" />
-              </div>
-            )}
-            
-            {getSelectedVariant()?.model3dUrl ? (
-              // If there's a 3D model URL, display the 3D viewer
-            <Furniture360Viewer 
-              objUrl={getSelectedVariant().model3dUrl}
-              mtlUrl={getSelectedVariant().materialUrl}
-              initialRotation={{ x: 0, y: 30, z: 0 }}
-              autoRotate={true}
-              onLoad={() => setModalImageLoading(false)}
-            />
-            ) : getSelectedVariant()?.image?.url ? (
-              // Fallback to image/video if 3D model is not available
-              <>
-                {getSelectedVariant().image.url.toLowerCase().endsWith('.mp4') ? (
-                  // Video display for mp4 files
-                  <video
-                    src={getSelectedVariant().image.url}
-                    controls
-                    autoPlay
-                    loop
-                    muted
-                    className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
-                    onLoadedData={() => setModalImageLoading(false)}
-                    onError={(e) => {
-                      setModalImageLoading(false);
-                    }}
-                  />
-                ) : (
-                  // Regular image display
-                  <ProductImageZoom 
-                    imageUrl={getSelectedVariant().image.url}
-                    altText={product.name}
-                    onLoad={() => setModalImageLoading(false)}
-                    onError={(e) => {
-                      setModalImageLoading(false);
-                      e.target.src = "/images/placeholder.png";
-                    }}
-                  />
+
+          {has3DModel && (
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setShow3DModel(false)}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  !show3DModel 
+                    ? 'bg-[#005670] text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Image View
+              </button>
+              <button
+                onClick={() => setShow3DModel(true)}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  show3DModel 
+                    ? 'bg-[#005670] text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                3D Model
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-8">
+            {/* Image/3D Viewer - Full Width */}
+            <div className="space-y-4">
+              <div className="relative w-full h-[500px] flex items-center justify-center bg-white border border-gray-200 rounded-lg shadow-inner">
+                {modalImageLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                    <Loader className="w-12 h-12 text-[#005670] animate-spin" />
+                  </div>
                 )}
-              </>
-            ) : (
-              // No image or 3D model available
-              <div className="flex items-center justify-center flex-col">
-                <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500">No product image available</span>
+                
+                {show3DModel && has3DModel ? (
+                  <iframe
+                    src={selectedVariant.model.url}
+                    className="w-full h-full rounded-lg border-0"
+                    title="3D Model"
+                    onLoad={() => setModalImageLoading(false)}
+                  />
+                ) : getSelectedVariant()?.model3dUrl ? (
+                  <Furniture360Viewer 
+                    objUrl={getSelectedVariant().model3dUrl}
+                    mtlUrl={getSelectedVariant().materialUrl}
+                    initialRotation={{ x: 0, y: 30, z: 0 }}
+                    autoRotate={true}
+                    onLoad={() => setModalImageLoading(false)}
+                  />
+                ) : getSelectedVariant()?.image?.url ? (
+                  <>
+                    {getSelectedVariant().image.url.toLowerCase().endsWith('.mp4') ? (
+                      <video
+                        src={getSelectedVariant().image.url}
+                        controls
+                        autoPlay
+                        loop
+                        muted
+                        className="max-w-full max-h-full h-auto w-auto object-contain rounded-lg"
+                        onLoadedData={() => setModalImageLoading(false)}
+                        onError={(e) => {
+                          setModalImageLoading(false);
+                        }}
+                      />
+                    ) : (
+                      <ProductImageZoom 
+                        imageUrl={getSelectedVariant().image.url}
+                        altText={product.name}
+                        onLoad={() => setModalImageLoading(false)}
+                        onError={(e) => {
+                          setModalImageLoading(false);
+                          e.target.src = "/images/placeholder.png";
+                        }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center flex-col">
+                    <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <span className="text-gray-500">No product image available</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-3 text-lg">Description</h4>
+                <div className="p-4 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    {product.description || 'No description available.'}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
-    
-          <div className="space-y-6 mb-6">
-            <div>
-              <h4 className="font-semibold mb-2">Description</h4>
-              <textarea
-                readOnly
-                value={product.description || 'No description available.'}
-                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#005670]/20 resize-none overflow-y-auto max-h-56 bg-gray-50 text-gray-600"
-                rows={6}
-              />
+
+              <div>
+                <h4 className="font-semibold mb-3 text-lg">Dimension</h4>
+                <div className="p-4 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    {product.dimension || 'No dimension available.'}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-    
+
           <div className="space-y-6 mb-6">
-            {/* Finish options */}
             {uniqueFinishes.length > 0 && (
               <div>
                 <h4 className="font-semibold mb-2">Wood Finish</h4>
@@ -917,7 +1066,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
     
-            {/* Fabric options */}
             {uniqueFabrics.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-semibold mb-2">Fabric</h4>
@@ -956,7 +1104,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
   
-            {/* Size options */}
             {uniqueSizes.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-semibold mb-2">Size</h4>
@@ -978,7 +1125,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
   
-            {/* Inset Panel options */}
             {uniqueInsetPanels.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-semibold mb-2">Inset Panel</h4>
@@ -1015,11 +1161,9 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
   
-            {/* Quantity field - only show if enabled */}
             {currentSpot?.quantity?.enabled && (
               <div>
                 <div className="space-y-4">
-                  {/* Fixed Quantity Section */}
                   {currentSpot.quantity.fixed ? (
                     <div className="flex items-center gap-4">
                       <h4 className="font-semibold">Quantity</h4>
@@ -1030,7 +1174,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                     </div>
                   ) : (
                     <>
-                      {/* Regular Quantity Section */}
                       <div>
                         <h4 className="font-semibold mb-2">Quantity</h4>
                         <div className="flex items-center gap-4">
@@ -1068,7 +1211,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
   
-            {/* Additional Quantity Section */}
             {currentSpot?.quantity?.additional?.enabled && (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -1133,29 +1275,28 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
               </div>
             )}
   
-            {/* Price information */}
             <div className="mt-8 text-xl font-bold">
-              {/* Uncomment this if you want to show price */}
-              {/* Total Price: ${(getVariantPrice() * ((selectedOptions.quantity || 1) + (selectedOptions.useAdditional ? selectedOptions.additionalQuantity : 0))).toFixed(2)} */}
             </div>
           </div>
-    
-          <button
-            onClick={handleAdd}
-            disabled={!isValid()}
-            className={`w-full py-2 rounded-lg ${
-              !isValid()
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-[#005670] text-white hover:bg-opacity-90'
-            }`}
-          >
-            Add to Space
-          </button>
+          </div>
+
+          <div className="mt-8 pt-6 border-t">
+            <button
+              onClick={handleAdd}
+              disabled={!isValid()}
+              className={`w-full py-3 rounded-lg font-medium ${
+                !isValid()
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#005670] text-white hover:bg-opacity-90'
+              }`}
+            >
+              Add to Space
+            </button>
+          </div>
         </div>
       </div>
     );
   };
-  
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -1176,7 +1317,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             </div>
           )}
 
-
           <div className="relative w-full h-[900px] border border-gray-200 rounded-lg">
             <svg 
               width="100%" 
@@ -1195,7 +1335,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 <g key={spot.id}>
                   <path
                     d={spot.path}
-                    transform={spot.transform}  // Added this line
+                    transform={spot.transform}
                     data-spot-id={spot.id}
                     fill={
                       occupiedSpots[spot.id] 
@@ -1226,7 +1366,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                     <>
                       <text
                         x={spot.labelPosition.x}
-                        y={spot.labelPosition.y - 10} // Offset y position for the checkmark
+                        y={spot.labelPosition.y - 10}
                         textAnchor="middle"
                         fill="#005670"
                         style={{
@@ -1239,7 +1379,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                       </text>
                       <text
                         x={spot.labelPosition.x}
-                        y={spot.labelPosition.y + 10} // Offset y position for "Occupied" text
+                        y={spot.labelPosition.y + 10}
                         textAnchor="middle"
                         fill="#64748b"
                         style={{
@@ -1266,13 +1406,13 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                         : undefined}
                       dominantBaseline={spot.labelStyle.orientation === 'vertical' ? 'text-before-edge' : 'central'}
                     >
-                      {/* {spot.label} */}
                     </text>
                   )}
                 </g>
               ))}
             </svg>
           </div>
+          
           <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between flex-wrap gap-6">
               <h4 className="text-lg font-semibold text-gray-700">Floor Plan Guide</h4>
@@ -1298,9 +1438,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
           </div>
         </div>
 
-        {/* Product Selection and Cart */}
         <div className="grid grid-cols-3 gap-6">
-          {/* Available Products */}
           <div className="col-span-2 bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold mb-6">Available Options</h3>
             {isLoading ? (
@@ -1325,7 +1463,6 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
             )}
           </div>
 
-          {/* Selected Products */}
           <div className="col-span-1 bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold mb-6">Selected Products</h3>
             {selectedProducts.length === 0 ? (
@@ -1337,112 +1474,118 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                   </p>
                 </div>
               ) : (
-              <div className="space-y-4">
-              {selectedProducts.map((product, index) => (
-                <div key={index} className="flex justify-between items-center border-b pb-4">
-                  <div className="flex gap-4">
-                    {/* Check if image URL is a video */}
-                    {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
-                      <video
-                        src={product.selectedOptions.image}
-                        className="w-20 h-20 object-cover rounded"
-                        muted
-                        autoPlay
-                        loop
-                        onError={(e) => {
-                          console.error(`Error loading video for ${product.name}:`, e);
-                          // Replace with static placeholder
-                          e.target.style.display = 'none';
-                          const img = document.createElement('img');
-                          img.src = '/images/placeholder.png';
-                          img.className = 'w-20 h-20 object-cover rounded';
-                          img.alt = product.name;
-                          e.target.parentNode.insertBefore(img, e.target);
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src={product.selectedOptions?.image || '/images/placeholder.png'}
-                        alt={product.name}
-                        className="w-20 h-20 object-cover rounded"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = '/images/placeholder.png';
-                        }}
-                      />
-                    )}
-                    <div>
-                      <h4 className="font-semibold">
-                        {product.name} 
-                        {product.quantity > 1 && (
-                          <span className="ml-2 text-sm text-gray-600">
-                            (x{product.quantity})
-                          </span>
-                        )}
-                      </h4>
-                      <p className="text-xs text-gray-500">{product.spotName}</p>
-                      {/* Display all selected attributes */}
-                      <div className="text-sm text-gray-600">
-                        {product.selectedOptions?.finish && <span>Finish: {product.selectedOptions.finish}</span>}
-                        {product.selectedOptions?.fabric && (
-                          <span>
-                            {product.selectedOptions?.finish && ' | '}
-                            Fabric: {product.selectedOptions.fabric}
-                          </span>
-                        )}
-                        {product.selectedOptions?.size && (
-                          <span>
-                            {(product.selectedOptions?.finish || product.selectedOptions?.fabric) && ' | '}
-                            Size: {product.selectedOptions.size}
-                          </span>
-                        )}
-                        {product.selectedOptions?.insetPanel && (
-                          <span>
-                            {(product.selectedOptions?.finish || product.selectedOptions?.fabric || product.selectedOptions?.size) && ' | '}
-                            Panel: {product.selectedOptions.insetPanel}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveProduct(index)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              ))}
-                {/* <div className="pt-4 border-t">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span>
-                      {/* ${selectedProducts.reduce((sum, p) => sum + p.finalPrice, 0)} *
-                    </span>
-                  </div>
-                </div> */}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {currentProduct && (
-        <CustomizationModal
-          product={currentProduct}
-          currentSpot={Object.values(furnitureSpots).find(spot => 
-            spot.id === selectedTab || spot.label === selectedTab
-          )}
-          onClose={() => {
-            setCurrentProduct(null);
-            setSelectedTab(null);
-            setActiveSpot(null);
-          }}
-          onAdd={handleAddProduct}
-        />
-      )}
-    </div>
-  );
-};
-
-export default AreaCustomization;
+               <div className="space-y-4">
+               {selectedProducts.map((product, index) => (
+                 <div key={index} className="border-b pb-4">
+                   <div className="flex justify-between items-start mb-2">
+                     <div className="flex gap-3 flex-1">
+                       <div className="relative w-20 h-20 flex-shrink-0">
+                         {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
+                           <video
+                             src={product.selectedOptions.image}
+                             className="w-full h-full object-cover rounded cursor-pointer"
+                             muted
+                             autoPlay
+                             loop
+                             onClick={() => handleViewSelectedProduct(product)}
+                             onError={(e) => {
+                               console.error(`Error loading video for ${product.name}:`, e);
+                               e.target.style.display = 'none';
+                               const img = document.createElement('img');
+                               img.src = '/images/placeholder.png';
+                               img.className = 'w-full h-full object-cover rounded cursor-pointer';
+                               img.alt = product.name;
+                               img.onclick = () => handleViewSelectedProduct(product);
+                               e.target.parentNode.insertBefore(img, e.target);
+                             }}
+                           />
+                         ) : (
+                           <img
+                             src={product.selectedOptions?.image || '/images/placeholder.png'}
+                             alt={product.name}
+                             className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                             onClick={() => handleViewSelectedProduct(product)}
+                             onError={(e) => {
+                               e.target.onerror = null;
+                               e.target.src = '/images/placeholder.png';
+                             }}
+                           />
+                         )}
+                       </div>
+                       
+                       <div className="flex-1 min-w-0">
+                       <button
+                         onClick={() => handleViewSelectedProduct(product)}
+                         className="text-left w-full"
+                       >
+                         <h4 className="font-semibold text-sm leading-tight text-[#005670] hover:text-[#005670]/80 underline hover:no-underline cursor-pointer transition-all">
+                           {product.name} 
+                           {product.quantity > 1 && (
+                             <span className="ml-2 text-sm text-gray-600">
+                               (x{product.quantity})
+                             </span>
+                           )}
+                         </h4>
+                       </button>
+                         <p className="text-xs text-gray-500 mt-1">{product.spotName}</p>
+                         <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+                           {product.selectedOptions?.finish && (
+                             <div>Finish: {product.selectedOptions.finish}</div>
+                           )}
+                           {product.selectedOptions?.fabric && (
+                             <div>Fabric: {product.selectedOptions.fabric}</div>
+                           )}
+                           {product.selectedOptions?.size && (
+                             <div>Size: {product.selectedOptions.size}</div>
+                           )}
+                           {product.selectedOptions?.insetPanel && (
+                             <div>Panel: {product.selectedOptions.insetPanel}</div>
+                           )}
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="flex items-center gap-2 ml-2">                      
+                       <button
+                         onClick={() => handleRemoveProduct(index)}
+                         className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                         title="Remove Product"
+                       >
+                         <Trash2 size={16} />
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               ))}
+               </div>
+             )}
+           </div>
+         </div>
+       </div>
+ 
+       {currentProduct && (
+         <CustomizationModal
+           product={currentProduct}
+           currentSpot={Object.values(furnitureSpots).find(spot => 
+             spot.id === selectedTab || spot.label === selectedTab
+           )}
+           onClose={() => {
+             setCurrentProduct(null);
+             setSelectedTab(null);
+             setActiveSpot(null);
+           }}
+           onAdd={handleAddProduct}
+         />
+       )}
+ 
+       {viewingProduct && (
+         <ProductDetailModal
+           product={viewingProduct}
+           onClose={() => setViewingProduct(null)}
+         />
+       )}
+     </div>
+   );
+ };
+ 
+ export default AreaCustomization;
