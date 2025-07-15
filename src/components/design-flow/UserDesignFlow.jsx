@@ -526,7 +526,7 @@ const saveProgress = async (step) => {
   }, []);
 
   const steps = [
-    { number: 1, title: 'Select Package' },
+    { number: 1, title: 'Select Furniture Solution' },
     { number: 2, title: 'Customize Design' },
     { number: 3, title: 'Review & Finalize' },
     { number: 4, title: 'Project Details & Payment' }
@@ -535,7 +535,7 @@ const saveProgress = async (step) => {
   const stepDescriptions = [
     'Choose the design style and budget that matches your vision',
     'Personalize your selections with our virtual designer',
-    'Confirm your choices and submit your design preferences',
+    'Confirm your choices and we approve your design preferences',
     'We handle everything from ordering to white-glove installation'
   ];
 
@@ -573,6 +573,8 @@ const saveProgress = async (step) => {
       setShowDesignReviewModal(true);
       return;
     }
+
+    console.log(currentStep)
 
     // Handle order confirmation at step 3 (review)
     if (currentStep === 3) {
@@ -619,7 +621,7 @@ const saveProgress = async (step) => {
         throw new Error('Failed to confirm order');
       }
   
-      await saveProgress();
+      await saveProgress(4);
       setCurrentStep(prev => Math.min(prev + 1, 4));
     } catch (error) {
       console.error('Error confirming order:', error);
@@ -641,6 +643,7 @@ const saveProgress = async (step) => {
   const handleDesignReviewConfirm = async () => {
     setShowDesignReviewModal(false);
     try {
+      console.log('3 here')
       await saveProgress(3);
       setCurrentStep(prev => Math.min(prev + 1, 4));
     } catch (error) {
@@ -735,6 +738,7 @@ const saveProgress = async (step) => {
             selectedPlan={selectedPlan}
             clientInfo={clientInfo}
             orderId={existingOrder?._id}
+            floorPlanImage={selectedPlan?.image}
           />
         );
       default:
