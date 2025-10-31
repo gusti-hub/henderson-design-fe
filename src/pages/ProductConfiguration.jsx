@@ -11,7 +11,8 @@ const ProductConfiguration = () => {
   const attributeOptions = {
     finish: {
       'Light': { previewUrl: '/images/woods/Light Wood.jpg' },
-      'Dark': { previewUrl: '/images/woods/Dark Wood.png' }
+      'Dark': { previewUrl: '/images/woods/Dark Wood.png' },
+      'Medium': { previewUrl: '/images/woods/Dark Wood.png' }
     },
     fabric: {
       'Cream - Lounge Chair': { type: 'Cream', previewUrl: '/images/fabrics/Cream Lounge Chair.png' },
@@ -25,7 +26,11 @@ const ProductConfiguration = () => {
       // New fabric options
       'Shell': { type: 'Shell', previewUrl: '/images/fabrics/pearl.png' },
       'Leather': { type: 'Leather', previewUrl: '/images/fabrics/leather.png' },
-      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' }
+      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' },
+
+      'Light': { type: 'Light', previewUrl: '/images/fabrics/pearl.png' },
+      'Medium': { type: 'Medium', previewUrl: '/images/fabrics/leather.png' },
+      'Dark': { type: 'Dark', previewUrl: '/images/fabrics/faux linen.png' }
     },
     // New inset panel attribute
     insetPanel: {

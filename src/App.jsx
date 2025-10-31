@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/CommonContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
+import BrochureLandingPage from './pages/BrochureLandingPage';
+import DesignerLogin from './pages/DesignerLogin';
+import ClientPortal from './pages/ClientPortal';
 import ClientRegistration from './pages/ClientRegistration';
 import AdminPanel from './pages/AdminPanel';
 import UserDashboard from './pages/UserDashboard';
@@ -16,14 +18,13 @@ function App() {
     <AppProvider>
       <AutoLogout />
       <Routes>
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? 
-              <Navigate to={userRole === 'admin' ? '/admin-panel' : '/dashboard'} /> : 
-              <Login />
-          } 
-        />
+        {/* Public Routes */}
+        <Route path="/" element={<BrochureLandingPage />} />
+        <Route path="/designer-login" element={<DesignerLogin />} />
+        <Route path="/client-portal" element={<ClientPortal />} />
+        <Route path="/register" element={<ClientRegistration />} />
+        
+        {/* Protected Routes */}
         <Route 
           path="/admin-panel/*" 
           element={
@@ -42,7 +43,15 @@ function App() {
             />
           } 
         />
-        <Route path="/register" element={<ClientRegistration />} />
+
+        {/* Redirect old login route to new designer login */}
+        <Route 
+          path="/login" 
+          element={<Navigate to="/designer-login" replace />} 
+        />
+
+        {/* Catch all - redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppProvider>
   );

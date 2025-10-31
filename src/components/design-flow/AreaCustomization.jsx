@@ -170,7 +170,10 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
       'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' },
       'Shell': { type: 'Shell', previewUrl: '/images/fabrics/pearl.png' },
       'Leather': { type: 'Leather', previewUrl: '/images/fabrics/leather.png' },
-      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' }
+      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' },
+      'Light': { type: 'Light', previewUrl: '/images/fabrics/pearl.png' },
+      'Medium': { type: 'Medium', previewUrl: '/images/fabrics/leather.png' },
+      'Dark': { type: 'Dark', previewUrl: '/images/fabrics/faux linen.png' }
     },
     insetPanel: {
       'Wood': { previewUrl: '/images/insetpanels/Wood.jpg' },
