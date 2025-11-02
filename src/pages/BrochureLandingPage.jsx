@@ -521,9 +521,9 @@ const BrochureLandingPage = () => {
 
             {/* Option 2 - Design Fee */}
             <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] text-white rounded-2xl p-8 relative overflow-hidden">
-              <div className="absolute top-4 right-4 bg-white/20 px-3 py-1 rounded-full text-xs font-medium">
+              {/* <div className="absolute top-4 right-4 bg-white/20 px-3 py-1 rounded-full text-xs font-medium">
                 MOST POPULAR
-              </div>
+              </div> */}
               
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-white text-[#005670] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-light">
