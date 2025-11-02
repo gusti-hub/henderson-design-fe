@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Check, XIcon, Eye, Clock, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Check, XIcon, Eye, Clock, Filter, DollarSign, Receipt } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
@@ -18,7 +18,9 @@ const ClientManagement = () => {
     password: '',
     unitNumber: '',
     floorPlan: '',
-    role: 'user'
+    role: 'user',
+    totalAmount: 0,                    // ✅ NEW
+    downPaymentPercentage: 30 
   });
   const [errors, setErrors] = useState({});
   const [showPasswordField, setShowPasswordField] = useState(false);
@@ -39,6 +41,84 @@ const ClientManagement = () => {
     rejectionReason: ''
   });
   const [approvalLoading, setApprovalLoading] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentData, setPaymentData] = useState({
+    amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    method: '',
+    reference: '',
+    notes: ''
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
+    // Payment handlers
+  const openPaymentModal = (client) => {
+    setSelectedClient(client);
+    const requiredDP = (client.paymentInfo?.totalAmount || 0) * 
+      ((client.paymentInfo?.downPaymentPercentage || 30) / 100);
+    
+    setPaymentData({
+      amount: requiredDP,
+      date: new Date().toISOString().split('T')[0],
+      method: '',
+      reference: '',
+      notes: ''
+    });
+    setIsPaymentModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setSelectedClient(null);
+    setPaymentData({
+      amount: 0,
+      date: new Date().toISOString().split('T')[0],
+      method: '',
+      reference: '',
+      notes: ''
+    });
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    setPaymentLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${backendServer}/api/clients/${selectedClient._id}/record-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            amount: paymentData.amount,
+            paymentDate: paymentData.date,
+            paymentMethod: paymentData.method,
+            transactionReference: paymentData.reference,
+            notes: paymentData.notes
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to record payment');
+      }
+
+      await fetchClients(); // Refresh list
+      closePaymentModal();
+      
+      // Show success message
+      alert('Payment recorded successfully!');
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      alert('Failed to record payment. Please try again.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchClients();
@@ -142,7 +222,10 @@ const ClientManagement = () => {
         ? `${backendServer}/api/clients`
         : `${backendServer}/api/clients/${selectedClient._id}`;
 
-      const submitData = { ...formData };
+      const submitData = { ...formData,
+          totalAmount: formData.totalAmount || 0,
+          downPaymentPercentage: formData.downPaymentPercentage || 30
+       };
       if (!showPasswordField && modalMode === 'edit') {
         delete submitData.password;
       }
@@ -281,6 +364,43 @@ const ClientManagement = () => {
     setIsApprovalModalOpen(true);
   };
 
+  const getDownPaymentBadge = (status) => {
+    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
+    
+    switch (status) {
+      case 'paid':
+        return (
+          <span className={`${baseClasses} bg-green-100 text-green-800`}>
+            ✓ Paid
+          </span>
+        );
+      case 'partial':
+        return (
+          <span className={`${baseClasses} bg-yellow-100 text-yellow-800`}>
+            ⚡ Partial
+          </span>
+        );
+      case 'overdue':
+        return (
+          <span className={`${baseClasses} bg-red-100 text-red-800`}>
+            ⚠ Overdue
+          </span>
+        );
+      case 'not-paid':
+        return (
+          <span className={`${baseClasses} bg-gray-100 text-gray-800`}>
+            ⏳ Not Paid
+          </span>
+        );
+      default:
+        return (
+          <span className={`${baseClasses} bg-gray-100 text-gray-800`}>
+            - Not Set
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -339,6 +459,8 @@ const ClientManagement = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Number</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floor Plan</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">DP Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -357,6 +479,17 @@ const ClientManagement = () => {
                 <td className="px-6 py-4">{client.email}</td>
                 <td className="px-6 py-4">{client.unitNumber}</td>
                 <td className="px-6 py-4">{client.floorPlan || '-'}</td>
+                {/* ✅ NEW: Total Amount */}
+                <td className="px-6 py-4">
+                  {client.paymentInfo?.totalAmount 
+                    ? `$${client.paymentInfo.totalAmount.toLocaleString()}` 
+                    : '-'}
+                </td>
+                
+                {/* ✅ NEW: DP Status */}
+                <td className="px-6 py-4">
+                  {getDownPaymentBadge(client.paymentInfo?.downPaymentStatus)}
+                </td>
                 <td className="px-6 py-4">
                   {getStatusBadge(client.status, client.registrationType)}
                 </td>
@@ -410,6 +543,27 @@ const ClientManagement = () => {
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
+                        {/* ✅ NEW: Payment Button */}
+                        {client.paymentInfo?.downPaymentStatus !== 'paid' && (
+                          <button
+                            onClick={() => openPaymentModal(client)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Record Payment"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </button>
+                        )}
+                        
+                        {/* ✅ NEW: View Payment Details Button */}
+                        {client.paymentInfo?.totalAmount > 0 && (
+                          <button
+                            onClick={() => openPaymentDetailsModal(client)}
+                            className="text-purple-600 hover:text-purple-800"
+                            title="Payment Details"
+                          >
+                            <Receipt className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={async () => {
                             if (window.confirm('Are you sure you want to delete this client?')) {
@@ -454,6 +608,147 @@ const ClientManagement = () => {
           onPageChange={(page) => setCurrentPage(page)}
         />
       </div>
+
+      {/* Payment Recording Modal */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
+                💰 Record Down Payment
+              </h3>
+              <button onClick={closePaymentModal}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">
+                Client: <strong>{selectedClient?.name}</strong>
+              </p>
+              <p className="text-sm text-gray-600">
+                Unit: <strong>{selectedClient?.unitNumber}</strong>
+              </p>
+              <p className="text-sm text-gray-600">
+                Required DP: <strong>
+                  ${selectedClient?.paymentInfo?.totalAmount 
+                    ? ((selectedClient.paymentInfo.totalAmount * 
+                        (selectedClient.paymentInfo.downPaymentPercentage || 30)) / 100)
+                        .toLocaleString() 
+                    : '0'}
+                </strong>
+              </p>
+            </div>
+
+            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Amount ($) *
+                </label>
+                <input
+                  type="number"
+                  value={paymentData.amount}
+                  onChange={(e) => setPaymentData({ 
+                    ...paymentData, 
+                    amount: parseFloat(e.target.value) 
+                  })}
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Date *
+                </label>
+                <input
+                  type="date"
+                  value={paymentData.date}
+                  onChange={(e) => setPaymentData({ 
+                    ...paymentData, 
+                    date: e.target.value 
+                  })}
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Method *
+                </label>
+                <select
+                  value={paymentData.method}
+                  onChange={(e) => setPaymentData({ 
+                    ...paymentData, 
+                    method: e.target.value 
+                  })}
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                >
+                  <option value="">Select method</option>
+                  <option value="bank-transfer">Bank Transfer</option>
+                  <option value="credit-card">Credit Card</option>
+                  <option value="check">Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={paymentData.reference}
+                  onChange={(e) => setPaymentData({ 
+                    ...paymentData, 
+                    reference: e.target.value 
+                  })}
+                  className="w-full px-3 py-2 border rounded"
+                  placeholder="Transaction ID or check number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={paymentData.notes}
+                  onChange={(e) => setPaymentData({ 
+                    ...paymentData, 
+                    notes: e.target.value 
+                  })}
+                  className="w-full px-3 py-2 border rounded"
+                  rows="3"
+                  placeholder="Additional notes..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  type="button"
+                  onClick={closePaymentModal}
+                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={paymentLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  {paymentLoading ? 'Recording...' : 'Record Payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Main Modal for Create/Edit/View */}
       {isModalOpen && (
@@ -628,6 +923,61 @@ const ClientManagement = () => {
                       ))}
                     </select>
                     {errors.floorPlan && <p className="text-red-500 text-sm mt-1">{errors.floorPlan}</p>}
+                  </div>
+
+                  {/* ✅ NEW: Payment Information Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">
+                      💰 Payment Information
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Total Amount ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.totalAmount || ''}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            totalAmount: parseFloat(e.target.value) || 0 
+                          })}
+                          className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          DP Percentage (%)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.downPaymentPercentage || 30}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            downPaymentPercentage: parseInt(e.target.value) || 30 
+                          })}
+                          className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                          placeholder="30"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                    </div>
+                    
+                    {formData.totalAmount > 0 && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                        <p>
+                          Required DP: <strong>
+                            ${((formData.totalAmount * (formData.downPaymentPercentage || 30)) / 100).toLocaleString()}
+                          </strong>
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {modalMode === 'create' ? (

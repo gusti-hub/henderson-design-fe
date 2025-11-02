@@ -9,17 +9,20 @@ import {
   Phone,
   ArrowLeft,
   Loader2,
-  Send
+  Send,
+  ClipboardList
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import DesignQuestionnaire from '../pages/DesignQuestionnaire';
 
 const ClientPortal = () => {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
-  const [step, setStep] = useState('verify'); // verify, schedule, confirmation
+  const [step, setStep] = useState('verify'); // verify, questionnaire, schedule, confirmation
   const [clientData, setClientData] = useState(null);
   const navigate = useNavigate();
+  
 
   // Verification form
   const [verificationForm, setVerificationForm] = useState({
@@ -34,7 +37,7 @@ const ClientPortal = () => {
     preferredTime: '',
     alternateDate: '',
     alternateTime: '',
-    meetingType: 'in-person', // in-person or virtual
+    meetingType: 'in-person',
     notes: ''
   });
   const [scheduleErrors, setScheduleErrors] = useState({});
@@ -45,7 +48,6 @@ const ClientPortal = () => {
     '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM'
   ];
 
-  // Get minimum date (today)
   const getMinDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -136,7 +138,7 @@ const ClientPortal = () => {
 
       setClientData(data.client);
       setVerified(true);
-      setStep('schedule');
+      setStep('questionnaire'); // Changed from 'schedule' to 'questionnaire'
       
     } catch (error) {
       setVerificationErrors({
@@ -145,6 +147,12 @@ const ClientPortal = () => {
     } finally {
       setVerifying(false);
     }
+  };
+
+  // Handler when questionnaire is completed
+  const handleQuestionnaireComplete = (questionnaire) => {
+    console.log('Questionnaire completed:', questionnaire);
+    setStep('schedule'); // Move to schedule step after questionnaire
   };
 
   const handleScheduleSubmit = async (e) => {
@@ -187,45 +195,58 @@ const ClientPortal = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
-          <div className="text-[#005670]">
-            <div className="text-2xl tracking-widest font-light">HENDERSON</div>
-            <div className="text-xs tracking-wider font-light mt-1">DESIGN GROUP</div>
-          </div>
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-600 hover:text-[#005670] flex items-center gap-2 text-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </button>
-        </div>
+      <header className="bg-[#005670] flex justify-between items-center p-8">
+        <img 
+          src="/images/HDG-Logo.png" 
+          alt="Henderson Design Group" 
+          className="h-12"
+        />
+        <button
+          onClick={() => navigate('/')}
+          className="text-white/90 hover:text-white text-sm tracking-wide transition-colors"
+        >
+          Back to Home →
+        </button>
       </header>
+      
 
-      <div className="max-w-4xl mx-auto px-8 py-16">
-        {/* Progress Indicator */}
+      <div className="max-w-6xl mx-auto px-8 py-16">
+        {/* Progress Indicator - Updated with 4 steps */}
         <div className="mb-12">
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-2">
+            {/* Step 1: Verify */}
             <div className={`flex items-center gap-2 ${step === 'verify' ? 'text-[#005670]' : verified ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'verify' ? 'bg-[#005670] text-white' : verified ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
                 {verified ? <CheckCircle className="w-6 h-6" /> : '1'}
               </div>
-              <span className="font-medium hidden sm:inline">Verify</span>
+              <span className="font-medium hidden sm:inline text-sm">Verify</span>
             </div>
-            <div className={`h-1 w-16 ${verified ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`h-1 w-12 ${verified ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            
+            {/* Step 2: Questionnaire */}
+            <div className={`flex items-center gap-2 ${step === 'questionnaire' ? 'text-[#005670]' : (step === 'schedule' || step === 'confirmation') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'questionnaire' ? 'bg-[#005670] text-white' : (step === 'schedule' || step === 'confirmation') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+                {(step === 'schedule' || step === 'confirmation') ? <CheckCircle className="w-6 h-6" /> : <ClipboardList className="w-5 h-5" />}
+              </div>
+              <span className="font-medium hidden sm:inline text-sm">Questionnaire</span>
+            </div>
+            <div className={`h-1 w-12 ${(step === 'schedule' || step === 'confirmation') ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            
+            {/* Step 3: Schedule */}
             <div className={`flex items-center gap-2 ${step === 'schedule' ? 'text-[#005670]' : step === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'schedule' ? 'bg-[#005670] text-white' : step === 'confirmation' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                {step === 'confirmation' ? <CheckCircle className="w-6 h-6" /> : '2'}
+                {step === 'confirmation' ? <CheckCircle className="w-6 h-6" /> : <Calendar className="w-5 h-5" />}
               </div>
-              <span className="font-medium hidden sm:inline">Schedule</span>
+              <span className="font-medium hidden sm:inline text-sm">Schedule</span>
             </div>
-            <div className={`h-1 w-16 ${step === 'confirmation' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`h-1 w-12 ${step === 'confirmation' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            
+            {/* Step 4: Confirm */}
             <div className={`flex items-center gap-2 ${step === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'confirmation' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                {step === 'confirmation' ? <CheckCircle className="w-6 h-6" /> : '3'}
+                {step === 'confirmation' ? <CheckCircle className="w-6 h-6" /> : '4'}
               </div>
-              <span className="font-medium hidden sm:inline">Confirm</span>
+              <span className="font-medium hidden sm:inline text-sm">Confirm</span>
             </div>
           </div>
         </div>
@@ -239,7 +260,7 @@ const ClientPortal = () => {
                 Welcome to Your Client Portal
               </h1>
               <p className="text-gray-600 text-lg">
-                Please verify your down payment to schedule your design consultation
+                Please verify your information to get started
               </p>
             </div>
 
@@ -306,14 +327,24 @@ const ClientPortal = () => {
 
             <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
               <p className="text-sm text-blue-800">
-                <strong>Note:</strong> You must have completed your down payment to access this portal. 
-                If you haven't made your payment yet, please contact our office.
+                <strong>Note:</strong> After verification, you'll complete a design questionnaire before scheduling your consultation.
               </p>
             </div>
           </div>
         )}
 
-        {/* Step 2: Schedule Meeting */}
+        {/* Step 2: Design Questionnaire */}
+        {step === 'questionnaire' && (
+          <div>
+            <DesignQuestionnaire 
+              unitNumber={verificationForm.unitNumber}
+              email={verificationForm.email}
+              onComplete={handleQuestionnaireComplete}
+            />
+          </div>
+        )}
+
+        {/* Step 3: Schedule Meeting */}
         {step === 'schedule' && (
           <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
             <div className="text-center mb-8">
@@ -327,7 +358,7 @@ const ClientPortal = () => {
               <div className="inline-block bg-green-50 px-6 py-3 rounded-lg">
                 <p className="text-sm text-green-800">
                   <CheckCircle className="w-4 h-4 inline mr-2" />
-                  Unit {clientData?.unitNumber} • Down Payment Verified
+                  Unit {clientData?.unitNumber} • Questionnaire Completed
                 </p>
               </div>
             </div>
@@ -489,14 +520,13 @@ const ClientPortal = () => {
             <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
               <p className="text-sm text-blue-800">
                 <strong>Please note:</strong> Our team will review your request and confirm your 
-                meeting time via email within 24 hours. We'll do our best to accommodate your 
-                preferred time slot.
+                meeting time via email within 24 hours.
               </p>
             </div>
           </div>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 4: Confirmation */}
         {step === 'confirmation' && (
           <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -560,8 +590,8 @@ const ClientPortal = () => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t mt-16 py-8">
-        <div className="max-w-7xl mx-auto px-8 text-center text-sm text-gray-600">
+      <footer className="bg-[#005670] border-t border-[#005670] mt-16 py-8 font-freight">
+        <div className="max-w-7xl mx-auto px-8 text-center text-sm text-white/80">
           <p className="mb-2">Questions? Contact us at (808) 315-8782 or aloha@henderson.house</p>
           <p>&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
         </div>
