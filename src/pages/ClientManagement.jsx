@@ -50,6 +50,18 @@ const ClientManagement = () => {
     notes: ''
   });
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [isPaymentDetailsModalOpen, setIsPaymentDetailsModalOpen] = useState(false);
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
+
+  const openPaymentDetailsModal = (client) => {
+    setSelectedPaymentDetails(client);
+    setIsPaymentDetailsModalOpen(true);
+  };
+
+  const closePaymentDetailsModal = () => {
+    setIsPaymentDetailsModalOpen(false);
+    setSelectedPaymentDetails(null);
+  };
 
     // Payment handlers
   const openPaymentModal = (client) => {
@@ -1161,6 +1173,161 @@ const ClientManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {isPaymentDetailsModalOpen && selectedPaymentDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
+                📊 Payment Details
+              </h3>
+              <button onClick={closePaymentDetailsModal}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Client Info */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Client Name</p>
+                  <p className="font-semibold">{selectedPaymentDetails.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Unit Number</p>
+                  <p className="font-semibold">{selectedPaymentDetails.unitNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Client Code</p>
+                  <p className="font-semibold">{selectedPaymentDetails.clientCode || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Floor Plan</p>
+                  <p className="font-semibold">{selectedPaymentDetails.floorPlan || '-'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-gray-800 mb-3">💰 Payment Summary</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="font-semibold">
+                    ${selectedPaymentDetails.paymentInfo?.totalAmount?.toLocaleString() || '0'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Down Payment ({selectedPaymentDetails.paymentInfo?.downPaymentPercentage || 30}%):</span>
+                  <span className="font-semibold">
+                    ${((selectedPaymentDetails.paymentInfo?.totalAmount || 0) * 
+                      ((selectedPaymentDetails.paymentInfo?.downPaymentPercentage || 30) / 100))
+                      .toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount Paid:</span>
+                  <span className="font-semibold text-green-600">
+                    ${selectedPaymentDetails.paymentInfo?.amountPaid?.toLocaleString() || '0'}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-blue-300">
+                  <span className="text-gray-600">Remaining Balance:</span>
+                  <span className="font-semibold text-red-600">
+                    ${((selectedPaymentDetails.paymentInfo?.totalAmount || 0) - 
+                      (selectedPaymentDetails.paymentInfo?.amountPaid || 0))
+                      .toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-gray-600">Status:</span>
+                  {getDownPaymentBadge(selectedPaymentDetails.paymentInfo?.downPaymentStatus)}
+                </div>
+              </div>
+            </div>
+
+            {/* Payment History */}
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3">📋 Payment History</h4>
+              {selectedPaymentDetails.paymentInfo?.payments && 
+              selectedPaymentDetails.paymentInfo.payments.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedPaymentDetails.paymentInfo.payments
+                    .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+                    .map((payment, index) => (
+                    <div 
+                      key={index} 
+                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-semibold text-lg">
+                            ${payment.amount?.toLocaleString() || '0'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(payment.paymentDate).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                          ✓ Completed
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm mt-3">
+                        <div>
+                          <span className="text-gray-600">Method:</span>
+                          <span className="ml-2 font-medium capitalize">
+                            {payment.paymentMethod?.replace('-', ' ') || '-'}
+                          </span>
+                        </div>
+                        {payment.transactionReference && (
+                          <div>
+                            <span className="text-gray-600">Reference:</span>
+                            <span className="ml-2 font-medium">
+                              {payment.transactionReference}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {payment.notes && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Notes:</span> {payment.notes}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="mt-2 text-xs text-gray-500">
+                        Recorded by: {payment.recordedBy || 'System'} • 
+                        {new Date(payment.recordedAt).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Receipt className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <p>No payment history available</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={closePaymentDetailsModal}
+                className="px-4 py-2 border rounded hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
