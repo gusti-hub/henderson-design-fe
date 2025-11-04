@@ -20,7 +20,10 @@ import {
   ArrowRight,
   ChevronDown,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Info,
+  Award,
+  Heart
 } from 'lucide-react';
 
 const BrochureLandingPage = () => {
@@ -28,6 +31,8 @@ const BrochureLandingPage = () => {
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [activeCollection, setActiveCollection] = useState('nalu');
   const [expandedFAQ, setExpandedFAQ] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
 
   const heroSlides = [
@@ -57,23 +62,29 @@ const BrochureLandingPage = () => {
     {
       id: 'lani',
       name: 'Lani Collection',
+      tagline: 'The Pinnacle of Luxury',
       description: 'Complete bespoke-level furnishing, including custom cabinetry, curated art, premium rugs, and designer accessories.',
       features: ['Custom Design', 'Premium Materials', 'Full Accessories', 'Art Curation'],
-      details: 'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space.'
+      details: 'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space.',
+      gradient: 'from-amber-50 to-orange-50'
     },
     {
       id: 'nalu',
       name: 'Nalu Collection',
+      tagline: 'Sophisticated Balance',
       description: 'Comprehensive furnishing with elevated design details and refined finish selections for sophisticated island living.',
       features: ['Elevated Design', 'Quality Finishes', 'Coordinated Style', 'Designer Touches'],
-      details: 'Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.'
+      details: 'Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.',
+      gradient: 'from-blue-50 to-cyan-50'
     },
     {
       id: 'foundation',
       name: 'Foundation Collection',
+      tagline: 'Elegant Essentials',
       description: 'Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.',
       features: ['Core Furnishings', 'Move-In Ready', 'Quality Basics', 'Functional Design'],
-      details: 'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.'
+      details: 'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.',
+      gradient: 'from-slate-50 to-gray-50'
     }
   ];
 
@@ -158,6 +169,7 @@ const BrochureLandingPage = () => {
     };
 
     loadImages();
+    setIsVisible(true);
   }, []);
 
   // Auto-advance slides
@@ -166,7 +178,7 @@ const BrochureLandingPage = () => {
 
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
+    }, 6000);
 
     return () => clearInterval(timer);
   }, [imagesLoaded, heroSlides.length]);
@@ -176,14 +188,14 @@ const BrochureLandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white font-freight">
-      {/* Hero Section with Slideshow */}
+    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white">
+      {/* Elegant Hero Section */}
       <section className="relative h-screen overflow-hidden">
         {!imagesLoaded && (
           <div className="absolute inset-0 bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] flex items-center justify-center">
-            <div className="text-center text-white">
-              <div className="text-5xl tracking-widest font-light mb-4">HENDERSON</div>
-              <div className="text-xl tracking-wider font-light">DESIGN GROUP</div>
+            <div className="text-center text-white animate-pulse">
+              <div className="text-6xl tracking-[0.3em] font-light mb-6">HENDERSON</div>
+              <div className="text-2xl tracking-[0.2em] font-light opacity-80">DESIGN GROUP</div>
             </div>
           </div>
         )}
@@ -191,59 +203,69 @@ const BrochureLandingPage = () => {
         {heroSlides.map((slide, index) => (
           <div
             key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
+            className={`absolute inset-0 transition-opacity duration-2000 ${
               currentSlide === index && imagesLoaded ? 'opacity-100' : 'opacity-0'
             }`}
           >
             <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${slide.image})` }}
+              className="absolute inset-0 bg-cover bg-center transform scale-105 transition-transform duration-[20000ms]"
+              style={{ 
+                backgroundImage: `url(${slide.image})`,
+                animation: currentSlide === index ? 'ken-burns 20s ease-out' : 'none'
+              }}
             ></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent"></div>
           </div>
         ))}
 
-        {/* Hero Content */}
         <div className="relative z-10 h-full flex flex-col justify-between">
-          {/* Header */}
-          <header className="flex justify-between items-center p-8">
+          {/* Elegant Header */}
+          <header className="flex justify-between items-center p-8 backdrop-blur-sm">
             <img 
               src="/images/HDG-Logo.png" 
               alt="Henderson Design Group" 
-              className="h-12"
+              className="h-14 opacity-0 animate-fade-in"
+              style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}
             />
             <button
               onClick={() => navigate('/designer-login')}
-              className="text-white/90 hover:text-white text-sm tracking-wide transition-colors"
+              className="text-white/90 hover:text-white text-sm tracking-[0.15em] uppercase transition-all duration-300 opacity-0 animate-fade-in hover:tracking-[0.2em]"
+              style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}
             >
-              Designer Login →
+              Designer Access →
             </button>
           </header>
 
-          {/* Hero Text */}
-          <div className="px-8 pb-32 max-w-4xl">
-            <h1 className="text-white text-6xl md:text-7xl font-light tracking-wide mb-6">
-              {heroSlides[currentSlide].title}
-            </h1>
-            <p className="text-white/90 text-2xl md:text-3xl font-light tracking-wide mb-12">
-              {heroSlides[currentSlide].subtitle}
-            </p>
-            <button
-              onClick={() => scrollToSection('collections')}
-              className="bg-white text-[#005670] px-8 py-4 text-lg tracking-wide hover:bg-white/95 transition-all duration-300 flex items-center gap-2"
-            >
-              Explore Collections <ChevronRight className="w-5 h-5" />
-            </button>
+          {/* Hero Content */}
+          <div className="px-8 md:px-16 pb-32 max-w-5xl">
+            <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
+              <div className="text-white/60 text-sm tracking-[0.3em] uppercase mb-4 font-light">
+                Ālia Project
+              </div>
+              <h1 className="text-white text-6xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 leading-tight">
+                {heroSlides[currentSlide].title}
+              </h1>
+              <p className="text-white/90 text-2xl md:text-3xl font-light tracking-wide mb-12 max-w-2xl">
+                {heroSlides[currentSlide].subtitle}
+              </p>
+              <button
+                onClick={() => scrollToSection('main-content')}
+                className="group bg-white/10 backdrop-blur-md border border-white/30 text-white px-10 py-4 text-base tracking-[0.15em] uppercase hover:bg-white hover:text-[#005670] transition-all duration-500 flex items-center gap-3"
+              >
+                Discover More 
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+              </button>
+            </div>
           </div>
 
-          {/* Slide Indicators */}
+          {/* Elegant Slide Indicators */}
           {imagesLoaded && (
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-3 z-20">
+            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex gap-3 z-20">
               {heroSlides.map((_, index) => (
                 <button
                   key={index}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    currentSlide === index ? 'bg-white w-12' : 'bg-white/50 w-2'
+                  className={`h-0.5 rounded-full transition-all duration-700 ${
+                    currentSlide === index ? 'bg-white w-16' : 'bg-white/40 w-8 hover:bg-white/60'
                   }`}
                   onClick={() => setCurrentSlide(index)}
                 ></button>
@@ -253,782 +275,684 @@ const BrochureLandingPage = () => {
         </div>
       </section>
 
-      {/* About Ālia Project */}
-      <section id="about" className="py-24 px-8 max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-light text-[#005670] mb-6 tracking-wide">
-            Ālia Project
-          </h2>
-          <p className="text-gray-700 text-xl leading-relaxed max-w-3xl mx-auto">
-            Henderson Design Group brings over three decades of expertise to Hawaii's most 
-            prestigious residential projects. The Ālia Project represents the pinnacle of 
-            island living—where modern elegance meets Hawaiian authenticity.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8 mt-16">
-          <div className="text-center p-6">
-            <Home className="w-12 h-12 text-[#005670] mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-[#005670] mb-3">Turnkey Solutions</h3>
-            <p className="text-gray-600 leading-relaxed">
-              Complete furnishing packages from furniture to final styling, ready for you to move in and enjoy.
-            </p>
-          </div>
-          <div className="text-center p-6">
-            <Users className="w-12 h-12 text-[#005670] mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-[#005670] mb-3">Personalized Service</h3>
-            <p className="text-gray-600 leading-relaxed">
-              Dedicated design team to understand your lifestyle and create spaces that reflect your vision.
-            </p>
-          </div>
-          <div className="text-center p-6">
-            <Sparkles className="w-12 h-12 text-[#005670] mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-[#005670] mb-3">Island Living</h3>
-            <p className="text-gray-600 leading-relaxed">
-              Designs that embrace Hawaiian culture, climate, and the relaxed elegance of island life.
-            </p>
+      {/* Elegant Tab Navigation */}
+      <section id="main-content" className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide py-4 justify-center">
+            {[
+              { id: 'overview', label: 'Overview', icon: <Home className="w-4 h-4" /> },
+              { id: 'collections', label: 'Collections', icon: <Sparkles className="w-4 h-4" /> },
+              { id: 'process', label: 'Process', icon: <Calendar className="w-4 h-4" /> },
+              { id: 'investment', label: 'Investment', icon: <DollarSign className="w-4 h-4" /> },
+              { id: 'sustainability', label: 'Sustainability', icon: <Leaf className="w-4 h-4" /> },
+              { id: 'faq', label: 'FAQ', icon: <Info className="w-4 h-4" /> }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-3 text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all duration-300 rounded-lg ${
+                  activeTab === tab.id
+                    ? 'bg-[#005670] text-white shadow-lg shadow-[#005670]/20'
+                    : 'text-gray-600 hover:text-[#005670] hover:bg-gray-50'
+                }`}
+              >
+                {tab.icon}
+                <span className="tracking-wide">{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Collections Section */}
-      <section id="collections" className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-wide">
-              Our Collections
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Choose from three carefully curated collections, each designed to complement 
-              the Ālia architecture and Hawaiian lifestyle. Mix between collections or request fully custom design.
-            </p>
-          </div>
+      {/* Main Content Area */}
+      <div className="py-16 px-6 max-w-7xl mx-auto">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-16 animate-fade-in">
+            {/* Hero Statement */}
+            <div className="text-center max-w-4xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#005670]/5 rounded-full mb-6">
+                <Award className="w-4 h-4 text-[#005670]" />
+                <span className="text-sm tracking-wide text-[#005670] font-medium">30+ Years of Excellence</span>
+              </div>
+              <h2 className="text-5xl md:text-6xl font-light text-[#005670] mb-6 tracking-tight leading-tight">
+                Ālia Project
+              </h2>
+              <p className="text-gray-600 text-xl leading-relaxed">
+                Henderson Design Group brings decades of expertise to Hawaii's most prestigious 
+                residential projects. We create complete turnkey furnishing solutions that honor 
+                the land, respect the culture, and celebrate island living.
+              </p>
+            </div>
 
-          {/* Collection Tabs */}
-          <div className="flex justify-center gap-4 mb-12 flex-wrap">
-            {collections.map((collection) => (
-              <button
-                key={collection.id}
-                onClick={() => setActiveCollection(collection.id)}
-                className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                  activeCollection === collection.id
-                    ? 'bg-[#005670] text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {collection.name}
-              </button>
-            ))}
-          </div>
+            {/* Value Propositions */}
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  icon: <Home className="w-12 h-12" />,
+                  title: "Turnkey Excellence",
+                  description: "From concept to installation, we handle every detail. Your home is ready to enjoy from day one.",
+                  gradient: "from-blue-500 to-cyan-500"
+                },
+                {
+                  icon: <Heart className="w-12 h-12" />,
+                  title: "Personalized Journey",
+                  description: "Dedicated design team who listens, understands, and brings your unique vision to life.",
+                  gradient: "from-purple-500 to-pink-500"
+                },
+                {
+                  icon: <Sparkles className="w-12 h-12" />,
+                  title: "Island Authenticity",
+                  description: "Designs that embrace Hawaiian culture, climate, and the relaxed elegance of island life.",
+                  gradient: "from-amber-500 to-orange-500"
+                }
+              ].map((item, index) => (
+                <div 
+                  key={index} 
+                  className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-transparent overflow-hidden"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+                  <div className={`relative inline-flex p-3 rounded-xl bg-gradient-to-br ${item.gradient} text-white mb-6 group-hover:scale-110 transition-transform duration-500`}>
+                    {item.icon}
+                  </div>
+                  <h3 className="text-2xl font-light text-[#005670] mb-4 tracking-tight">{item.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{item.description}</p>
+                </div>
+              ))}
+            </div>
 
-          {/* Active Collection Details */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12">
+            {/* Client Portal CTA */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] p-12 text-white shadow-2xl">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+              <div className="relative text-center max-w-3xl mx-auto">
+                <CheckCircle className="w-16 h-16 mx-auto mb-6 opacity-90" />
+                <h3 className="text-4xl font-light mb-4 tracking-tight">Already Made Your Deposit?</h3>
+                <p className="text-white/90 text-lg mb-8 leading-relaxed">
+                  Access your personalized client portal to schedule your design consultation, 
+                  review selections, and track your project journey.
+                </p>
+                <button
+                  onClick={() => navigate('/client-portal')}
+                  className="inline-flex items-center gap-3 bg-white text-[#005670] px-10 py-4 text-base font-medium tracking-wide hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
+                >
+                  <Calendar className="w-6 h-6" />
+                  Access Your Portal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Collections Tab */}
+        {activeTab === 'collections' && (
+          <div className="space-y-12 animate-fade-in">
+            <div className="text-center max-w-3xl mx-auto">
+              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Our Collections</h2>
+              <p className="text-gray-600 text-lg">
+                Three carefully curated collections designed to complement the Ālia architecture. 
+                Mix between collections or request fully custom design.
+              </p>
+            </div>
+
+            {/* Collection Selector */}
+            <div className="flex justify-center gap-4 flex-wrap">
+              {collections.map((collection) => (
+                <button
+                  key={collection.id}
+                  onClick={() => setActiveCollection(collection.id)}
+                  className={`px-8 py-4 rounded-xl font-medium transition-all duration-500 ${
+                    activeCollection === collection.id
+                      ? 'bg-[#005670] text-white shadow-xl shadow-[#005670]/30 scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+                  }`}
+                >
+                  <div className="text-lg tracking-wide">{collection.name}</div>
+                  <div className={`text-xs mt-1 ${activeCollection === collection.id ? 'text-white/80' : 'text-gray-500'}`}>
+                    {collection.tagline}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Active Collection Display */}
             {collections.map((collection) => (
               collection.id === activeCollection && (
-                <div key={collection.id}>
-                  <h3 className="text-3xl font-light text-[#005670] mb-6">
-                    {collection.name}
-                  </h3>
-                  <p className="text-gray-700 text-lg mb-4 leading-relaxed">
-                    {collection.description}
-                  </p>
-                  <p className="text-gray-600 mb-8 leading-relaxed">
-                    {collection.details}
-                  </p>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {collection.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
-                      </div>
-                    ))}
+                <div 
+                  key={collection.id} 
+                  className={`bg-gradient-to-br ${collection.gradient} rounded-3xl p-12 shadow-xl border border-gray-200/50 animate-fade-in`}
+                >
+                  <div className="max-w-4xl mx-auto">
+                    <div className="text-center mb-10">
+                      <h3 className="text-4xl font-light text-[#005670] mb-3 tracking-tight">
+                        {collection.name}
+                      </h3>
+                      <p className="text-[#005670]/70 text-sm tracking-[0.2em] uppercase mb-6">
+                        {collection.tagline}
+                      </p>
+                      <p className="text-gray-700 text-lg leading-relaxed mb-4">
+                        {collection.description}
+                      </p>
+                      <p className="text-gray-600 leading-relaxed">
+                        {collection.details}
+                      </p>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {collection.features.map((feature, index) => (
+                        <div 
+                          key={index} 
+                          className="flex items-center gap-3 bg-white/60 backdrop-blur-sm px-6 py-4 rounded-xl"
+                        >
+                          <CheckCircle className="w-5 h-5 text-[#005670] flex-shrink-0" />
+                          <span className="text-gray-800 font-medium">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )
             ))}
           </div>
+        )}
 
-          <div className="text-center mt-12">
-            <button
-              onClick={() => scrollToSection('process')}
-              className="text-[#005670] font-medium inline-flex items-center gap-2 hover:gap-3 transition-all"
-            >
-              Learn About Our Process <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Process Section */}
-      <section id="process" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-wide">
-              Our Process
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              From initial consultation to final installation, we guide you through every 
-              step of creating your perfect island sanctuary.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                step: "01",
-                title: "Design Questionnaire",
-                description: "Complete our comprehensive intake form to share your lifestyle, preferences, and vision for your Ālia home.",
-                icon: <FileText className="w-8 h-8 text-[#005670]" />
-              },
-              {
-                step: "02",
-                title: "Design Development",
-                description: "Our team creates customized layouts and curated selections tailored to your unit and personal style. Two design presentations included.",
-                icon: <Sparkles className="w-8 h-8 text-[#005670]" />
-              },
-              {
-                step: "03",
-                title: "Deposit & Scheduling",
-                description: "Secure 2025 pricing or reserve your design slot. Once approved, we schedule production and confirm your timeline.",
-                icon: <Calendar className="w-8 h-8 text-[#005670]" />
-              },
-              {
-                step: "04",
-                title: "Installation & Reveal",
-                description: "We handle production in Indonesia, shipping, and white-glove installation. Your unit is ready to enjoy in 6-8 days.",
-                icon: <Home className="w-8 h-8 text-[#005670]" />
-              }
-            ].map((item) => (
-              <div key={item.step} className="bg-gray-50 p-8 rounded-lg hover:shadow-lg transition-shadow duration-300">
-                <div className="mb-4">{item.icon}</div>
-                <div className="text-[#005670] text-4xl font-light mb-4 opacity-30">
-                  {item.step}
-                </div>
-                <h3 className="text-xl font-medium text-[#005670] mb-4">
-                  {item.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Timeline Overview */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-light text-[#005670] mb-4 tracking-wide">
-              Project Timeline
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Estimated November 2025 – March 2027
-            </p>
-          </div>
-
-          <div className="space-y-8">
-            {[
-              { phase: "Nov 2025 - Jan 2026", title: "Client Onboarding", description: "Initial meetings, questionnaires, deposit collection, and portal activation" },
-              { phase: "Feb - Apr 2026", title: "Design Phase", description: "Design intake meetings, two presentations, revisions, and final approvals" },
-              { phase: "May - Sep 2026", title: "Production", description: "Manufacturing in Indonesia with rigorous quality control and progress updates" },
-              { phase: "Oct - Dec 2026", title: "Shipping & Logistics", description: "Container shipping, customs coordination, and delivery scheduling" },
-              { phase: "Jan - Mar 2027", title: "Installation", description: "White-glove delivery, professional installation (6-8 days), and reveal" }
-            ].map((phase, index) => (
-              <div key={index} className="flex gap-6 items-start">
-                <div className="flex-shrink-0">
-                  <div className="w-16 h-16 rounded-full bg-[#005670] text-white flex items-center justify-center font-light text-lg">
-                    {index + 1}
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <div className="text-sm text-[#005670] font-medium mb-2">{phase.phase}</div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">{phase.title}</h3>
-                    <p className="text-gray-600">{phase.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Deposit Options Section */}
-      <section id="deposit-options" className="py-24 px-8 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-wide">
-              Your Path Forward
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Two flexible options to secure your place in the Ālia Furnishing Program
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Option 1 - Deposit to Hold Pricing */}
-            <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-2xl p-8 hover:border-[#005670] transition-all duration-300">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-[#005670] text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-light">
-                  1
-                </div>
-                <h3 className="text-2xl font-medium text-[#005670] mb-2">
-                  Deposit to Hold 2025 Pricing
-                </h3>
-                <p className="text-gray-600">
-                  Secure current pricing while finalizing your design
-                </p>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <DollarSign className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium text-gray-900">30% Deposit</p>
-                    <p className="text-sm text-gray-600">Based on selected furnishing package</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium text-gray-900">Lock 2025 Pricing</p>
-                    <p className="text-sm text-gray-600">Protect against price increases</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Package className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium text-gray-900">Reserve Materials</p>
-                    <p className="text-sm text-gray-600">Production allocation secured</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium text-gray-900">Full Credit Applied</p>
-                    <p className="text-sm text-gray-600">100% toward final package</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-                <p className="font-medium text-blue-900 mb-1">Refund Policy</p>
-                <p className="text-blue-800">Refundable less 10% admin fee if cancelled before design approval. Must be applied within 6 months or credit expires.</p>
-              </div>
-            </div>
-
-            {/* Option 2 - Design Fee */}
-            <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] text-white rounded-2xl p-8 relative overflow-hidden">
-              {/* <div className="absolute top-4 right-4 bg-white/20 px-3 py-1 rounded-full text-xs font-medium">
-                MOST POPULAR
-              </div> */}
-              
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-white text-[#005670] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-light">
-                  2
-                </div>
-                <h3 className="text-2xl font-medium mb-2">
-                  Design Fee to Hold Place in Line
-                </h3>
-                <p className="text-white/90">
-                  Guarantee your design start position
-                </p>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-white flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium">Non-Refundable Fee</p>
-                    <p className="text-sm text-white/80">Based on unit type and bedrooms</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-white flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium">Confirmed Start Date</p>
-                    <p className="text-sm text-white/80">Reserved in Q1 2026 calendar</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-white flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium">Complete Design Services</p>
-                    <p className="text-sm text-white/80">Intake, layouts, 2 presentations, 1 revision</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-white flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-medium">100% Credit Applied</p>
-                    <p className="text-sm text-white/80">Full amount toward production</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/10 border border-white/30 rounded-lg p-4 text-sm">
-                <p className="font-medium mb-1">What's Included</p>
-                <p className="text-white/90">Design intake meeting, floor plan review, material selections, and final proposal presentation</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-12 p-6 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg">
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <AlertCircle className="w-6 h-6 text-red-600" />
-              <p className="text-gray-900 text-lg font-medium">
-                Important Deadline: December 15, 2025
+        {/* Process Tab */}
+        {activeTab === 'process' && (
+          <div className="space-y-12 animate-fade-in">
+            <div className="text-center max-w-3xl mx-auto">
+              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Our Process</h2>
+              <p className="text-gray-600 text-lg">
+                A seamless journey from consultation to installation, typically 10-12 months
               </p>
             </div>
-            <p className="text-gray-600">
-              Deposit must be received by this date to guarantee 2025 pricing
-            </p>
-          </div>
-        </div>
-      </section>
 
-      {/* Payment Schedule Section */}
-      <section className="py-24 px-8 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-light text-[#005670] mb-4 tracking-wide">
-              Payment Structure
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Clear, straightforward payment milestones throughout your journey
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg p-6 flex items-start gap-6 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-full bg-[#005670] text-white flex items-center justify-center text-2xl font-light">
-                  50%
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-medium text-[#005670] mb-2">Initial Deposit</h3>
-                <p className="text-gray-700 mb-2">
-                  Due upon approval of your furnishing proposal
-                </p>
-                <p className="text-sm text-gray-600">
-                  Less any prior deposits or credits. This activates production and scheduling. Your total price is based on the final approved design.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6 flex items-start gap-6 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-full bg-[#007a9a] text-white flex items-center justify-center text-2xl font-light">
-                  25%
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-medium text-[#005670] mb-2">Progress Payment</h3>
-                <p className="text-gray-700 mb-2">
-                  Due six months before completion of production and shipping
-                </p>
-                <p className="text-sm text-gray-600">
-                  Covers production completion and shipping preparation. Invoiced automatically through your portal.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6 flex items-start gap-6 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-full bg-[#00a0c8] text-white flex items-center justify-center text-2xl font-light">
-                  25%
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-medium text-[#005670] mb-2">Final Payment</h3>
-                <p className="text-gray-700 mb-2">
-                  Due 30 days prior to installation
-                </p>
-                <p className="text-sm text-gray-600">
-                  Final balance or remaining amount before white-glove delivery and installation begins. Payment in full required before shipment.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <div className="flex items-start gap-3">
-              <Shield className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-              <div>
-                <h4 className="font-medium text-blue-900 mb-2">Payment Methods</h4>
-                <p className="text-blue-800 text-sm">
-                  All payments accepted via wire transfer or check in U.S. Dollars, payable to Henderson Design Group. Payment tracking available 24/7 through your secure client portal with automatic email notifications.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Client Portal CTA */}
-      <section className="py-24 px-8 bg-gradient-to-br from-[#005670] to-[#007a9a]">
-        <div className="max-w-4xl mx-auto text-center">
-          <CheckCircle className="w-16 h-16 text-white mx-auto mb-6" />
-          <h2 className="text-4xl md:text-5xl font-light text-white mb-6 tracking-wide">
-            Already Made Your Down Payment?
-          </h2>
-          <p className="text-white/90 text-xl mb-4 leading-relaxed">
-            Access your centralized workspace for all documents, design selections, approvals, and communication.
-          </p>
-          <p className="text-white/80 text-lg mb-8">
-            Schedule your personalized design consultation and track your project every step of the way.
-          </p>
-          <button
-            onClick={() => navigate('/client-portal')}
-            className="bg-white text-[#005670] px-10 py-4 text-lg font-medium tracking-wide hover:bg-gray-100 transition-all duration-300 inline-flex items-center gap-3"
-          >
-            <Calendar className="w-6 h-6" />
-            Access Client Portal
-          </button>
-        </div>
-      </section>
-
-      {/* Environmental Commitment */}
-      <section id="sustainability" className="py-24 px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <Leaf className="w-16 h-16 text-[#005670] mx-auto mb-6" />
-            <h2 className="text-5xl font-light text-[#005670] mb-6 tracking-wide">
-              Our Environmental Commitment
-            </h2>
-            <p className="text-gray-700 text-xl leading-relaxed max-w-4xl mx-auto">
-              We design with intention—not only for how a home looks and feels, but for 
-              how it impacts the world around it.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12 mb-16">
-            <div className="space-y-6">
-              <p className="text-gray-700 text-lg leading-relaxed">
-                Hawaii's environment is fragile and finite. Every piece that arrives here stays here, 
-                which means responsible sourcing and manufacturing are essential to long-term sustainability.
-              </p>
-              <p className="text-gray-700 text-lg leading-relaxed">
-                By producing over eighty percent of our furnishings in Indonesia, we directly oversee 
-                every stage of production—from raw materials to final packaging. This allows us to maintain 
-                consistent quality while supporting skilled craftsmanship and sustainable forestry practices.
-              </p>
-              <p className="text-gray-700 text-lg leading-relaxed">
-                Working with trusted partners enables us to build and ship complete unit packages, 
-                minimizing excess packaging and consolidating shipments to dramatically lower our carbon footprint.
-              </p>
-            </div>
-            <div className="relative h-[400px] rounded-lg overflow-hidden">
-              <img
-                src="/images/SAS00286.jpg"
-                alt="Sustainable Design"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-
-          {/* Environmental Benefits */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: <CheckCircle className="w-10 h-10 text-[#005670]" />,
-                title: "Quality Control",
-                description: "Direct oversight reduces waste at source and maintains consistent quality throughout production."
-              },
-              {
-                icon: <Package className="w-10 h-10 text-[#005670]" />,
-                title: "Smart Packaging",
-                description: "Complete unit packages minimize excess packaging and redundant freight shipments."
-              },
-              {
-                icon: <Ship className="w-10 h-10 text-[#005670]" />,
-                title: "Efficient Logistics",
-                description: "Container loading by unit reduces handling, damage, and streamlines delivery process."
-              },
-              {
-                icon: <TrendingDown className="w-10 h-10 text-[#005670]" />,
-                title: "Lower Impact",
-                description: "Consolidated shipments dramatically reduce carbon footprint vs. multi-vendor purchasing."
-              }
-            ].map((benefit, index) => (
-              <div key={index} className="text-center p-6 bg-gray-50 rounded-lg">
-                <div className="mb-4 flex justify-center">
-                  {benefit.icon}
-                </div>
-                <h3 className="text-lg font-medium text-[#005670] mb-3">
-                  {benefit.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {benefit.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-16 bg-gray-50 p-12 rounded-lg text-center">
-            <p className="text-gray-700 text-xl leading-relaxed max-w-4xl mx-auto italic">
-              "Every decision we make, from material selection to shipping and installation, considers 
-              longevity, recyclability, and environmental stewardship. Our goal: create enduring interiors 
-              that respect the land, the people, and the planet that sustain them."
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Warranty & Support */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-16">
-            <Shield className="w-16 h-16 text-[#005670] mx-auto mb-6" />
-            <h2 className="text-4xl font-light text-[#005670] mb-4 tracking-wide">
-              Warranty & Aftercare
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Your investment is protected with our comprehensive warranty and ongoing support
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-white p-8 rounded-lg text-center">
-              <h3 className="text-xl font-medium text-[#005670] mb-4">One-Year Warranty</h3>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                Coverage against manufacturing defects in materials and workmanship from installation date.
-              </p>
-              <p className="text-sm text-gray-500">
-                Includes structural defects, hardware failures, upholstery stitching, and finish problems
-              </p>
-            </div>
-            <div className="bg-white p-8 rounded-lg text-center">
-              <h3 className="text-xl font-medium text-[#005670] mb-4">Care & Maintenance</h3>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                Detailed care guide provided with every installation to help preserve your furnishings.
-              </p>
-              <p className="text-sm text-gray-500">
-                Guidelines for cleaning, humidity control, and protecting natural materials
-              </p>
-            </div>
-            <div className="bg-white p-8 rounded-lg text-center">
-              <h3 className="text-xl font-medium text-[#005670] mb-4">Ongoing Support</h3>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                Continued service and support available beyond warranty period at standard rates.
-              </p>
-              <p className="text-sm text-gray-500">
-                Contact your project manager anytime for repairs, refinishing, or replacements
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-8">
-            <h3 className="text-2xl font-light text-[#005670] mb-6">What's Not Covered</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+            {/* Process Steps */}
+            <div className="grid md:grid-cols-2 gap-6">
               {[
-                "Normal wear and tear, fading, or aging",
-                "Damage from misuse, neglect, or accidents",
-                "Natural variations in wood, stone, or fabric",
-                "Shrinkage from humidity or temperature changes",
-                "Improper cleaning or unapproved products",
-                "Building construction or environmental damage"
-              ].map((item, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-600">{item}</span>
+                { 
+                  step: "01", 
+                  title: "Design Questionnaire", 
+                  description: "Share your lifestyle, preferences, and vision through our comprehensive intake form",
+                  duration: "Initial Phase",
+                  icon: <FileText className="w-8 h-8" />,
+                  color: "from-blue-500 to-cyan-500"
+                },
+                { 
+                  step: "02", 
+                  title: "Design Development", 
+                  description: "Customized layouts and curated selections with two presentations and revisions",
+                  duration: "6-8 Weeks",
+                  icon: <Sparkles className="w-8 h-8" />,
+                  color: "from-purple-500 to-pink-500"
+                },
+                { 
+                  step: "03", 
+                  title: "Production & Shipping", 
+                  description: "Expert manufacturing in Indonesia with rigorous quality control and ocean freight",
+                  duration: "24-32 Weeks",
+                  icon: <Package className="w-8 h-8" />,
+                  color: "from-amber-500 to-orange-500"
+                },
+                { 
+                  step: "04", 
+                  title: "Installation & Reveal", 
+                  description: "White-glove delivery and professional installation, ready for your move-in",
+                  duration: "6-8 Days",
+                  icon: <Home className="w-8 h-8" />,
+                  color: "from-green-500 to-emerald-500"
+                }
+              ].map((item) => (
+                <div 
+                  key={item.step} 
+                  className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`}></div>
+                  <div className="relative flex gap-6">
+                    <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} text-white flex items-center justify-center shadow-lg`}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl font-light text-gray-300">{item.step}</span>
+                        <span className="text-xs tracking-wider uppercase text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                          {item.duration}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-medium text-[#005670] mb-3">{item.title}</h3>
+                      <p className="text-gray-600 leading-relaxed">{item.description}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-sm text-blue-900">
-                <span className="font-medium">Filing a Claim:</span> Submit requests through your HDG portal with photos and description. We respond within 10 business days.
-              </p>
+
+            {/* Timeline */}
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-10 border border-gray-200">
+              <h3 className="text-2xl font-light text-[#005670] mb-8 text-center">Estimated Project Timeline</h3>
+              <div className="space-y-4 max-w-3xl mx-auto">
+                {[
+                  { phase: "Nov 2025 - Jan 2026", title: "Client Onboarding", desc: "Intake, deposits, portal activation" },
+                  { phase: "Feb - Apr 2026", title: "Design Phase", desc: "Presentations, revisions, approvals" },
+                  { phase: "May - Sep 2026", title: "Production", desc: "Manufacturing with quality control" },
+                  { phase: "Oct - Dec 2026", title: "Shipping", desc: "Container shipping and customs" },
+                  { phase: "Jan - Mar 2027", title: "Installation", desc: "White-glove delivery and reveal" }
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-6 bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] text-white flex items-center justify-center text-lg font-light flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-[#005670]">{item.title}</h4>
+                        <span className="text-sm text-gray-500">{item.phase}</span>
+                      </div>
+                      <p className="text-sm text-gray-600">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* FAQ Preview */}
-      <section className="py-24 bg-white">
-        <div className="max-w-4xl mx-auto px-8">
-          <h2 className="text-4xl font-light text-[#005670] mb-12 text-center tracking-wide">
-            Frequently Asked Questions
-          </h2>
-          
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-                <button
-                  onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
-                  className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-100 transition-colors"
-                >
-                  <h3 className="text-lg font-medium text-[#005670] pr-4">
-                    {faq.question}
-                  </h3>
-                  <ChevronDown 
-                    className={`w-5 h-5 text-[#005670] flex-shrink-0 transition-transform ${
-                      expandedFAQ === index ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {expandedFAQ === index && (
-                  <div className="px-6 pb-6">
-                    <p className="text-gray-600 leading-relaxed">
-                      {faq.answer}
+        {/* Investment Tab */}
+        {activeTab === 'investment' && (
+          <div className="space-y-12 animate-fade-in">
+            <div className="text-center max-w-3xl mx-auto">
+              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Investment Options</h2>
+              <p className="text-gray-600 text-lg">
+                Two flexible pathways to secure your place in the Ālia Furnishing Program
+              </p>
+            </div>
+
+            {/* Deposit Options */}
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Option 1 */}
+              <div className="group relative bg-white rounded-3xl p-10 shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-gray-200 hover:border-[#005670]">
+                <div className="absolute top-6 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center text-2xl font-light shadow-lg">
+                  1
+                </div>
+                <div className="mb-8">
+                  <h3 className="text-3xl font-light text-[#005670] mb-3">Hold 2025 Pricing</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Secure current pricing while finalizing your design decisions
+                  </p>
+                </div>
+                <div className="space-y-4 mb-8">
+                  {[
+                    { icon: <DollarSign className="w-5 h-5" />, title: "30% Deposit", desc: "Based on selected package" },
+                    { icon: <CheckCircle className="w-5 h-5" />, title: "Lock Pricing", desc: "Protect against increases" },
+                    { icon: <Package className="w-5 h-5" />, title: "Reserve Materials", desc: "Production allocation secured" },
+                    { icon: <CheckCircle className="w-5 h-5" />, title: "Full Credit", desc: "100% toward final package" }
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-start gap-4 bg-gray-50 p-4 rounded-xl">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center flex-shrink-0">
+                        {item.icon}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{item.title}</p>
+                        <p className="text-sm text-gray-600">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-lg">
+                  <p className="text-sm text-blue-900">
+                    <span className="font-semibold">Refund Policy:</span> Refundable less 10% admin fee before design approval. Must apply within 6 months.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2 */}
+              <div className="relative bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] rounded-3xl p-10 text-white shadow-2xl overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                <div className="relative">
+                  <div className="absolute top-0 right-0 w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-2xl font-light">
+                    2
+                  </div>
+                  <div className="mb-8">
+                    <h3 className="text-3xl font-light mb-3">Design Fee to Hold Place</h3>
+                    <p className="text-white/90 leading-relaxed">
+                      Guarantee your design start position with confirmed calendar slot
                     </p>
                   </div>
-                )}
+                  <div className="space-y-4 mb-8">
+                    {[
+                      { icon: <AlertCircle className="w-5 h-5" />, title: "Non-Refundable Fee", desc: "Based on unit type" },
+                      { icon: <Calendar className="w-5 h-5" />, title: "Confirmed Start", desc: "Reserved Q1 2026 slot" },
+                      { icon: <Sparkles className="w-5 h-5" />, title: "Full Design Services", desc: "Complete presentations" },
+                      { icon: <CheckCircle className="w-5 h-5" />, title: "100% Credit", desc: "Applied to production" }
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-start gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                          {item.icon}
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.title}</p>
+                          <p className="text-sm text-white/80">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm border border-white/30 p-5 rounded-lg">
+                    <p className="text-sm">
+                      <span className="font-semibold">Includes:</span> Intake meeting, floor plans, material selections, and final proposal presentation
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Critical Deadline */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 rounded-2xl p-8 border-2 border-red-200">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-16 h-16 rounded-full bg-red-500 text-white flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-2xl font-medium text-gray-900 mb-2">Critical Deadline: December 15, 2025</h4>
+                  <p className="text-gray-700">Deposit must be received by this date to guarantee 2025 pricing and secure your production slot</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Schedule */}
+            <div className="bg-white rounded-3xl p-10 shadow-xl border border-gray-200">
+              <h3 className="text-3xl font-light text-[#005670] mb-8 text-center">Payment Schedule</h3>
+              <div className="space-y-6">
+                {[
+                  { percentage: "50%", title: "Initial Deposit", desc: "Upon design approval (less prior credits)", color: "from-[#005670] to-[#007a9a]" },
+                  { percentage: "25%", title: "Progress Payment", desc: "Six months before completion", color: "from-[#007a9a] to-[#00a0c8]" },
+                  { percentage: "25%", title: "Final Payment", desc: "30 days prior to installation", color: "from-[#00a0c8] to-cyan-400" }
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-6 bg-gray-50 p-6 rounded-2xl hover:bg-gray-100 transition-colors">
+                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${item.color} text-white flex items-center justify-center text-2xl font-light shadow-lg flex-shrink-0`}>
+                      {item.percentage}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xl font-medium text-[#005670] mb-2">{item.title}</h4>
+                      <p className="text-gray-600">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 bg-blue-50 border-l-4 border-[#005670] p-6 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-6 h-6 text-[#005670] flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-[#005670] mb-2">Secure Payment Tracking</h4>
+                    <p className="text-sm text-gray-700">All payments processed via wire transfer or check. Track every transaction through your secure portal with automatic notifications.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sustainability Tab */}
+        {activeTab === 'sustainability' && (
+          <div className="space-y-12 animate-fade-in">
+            <div className="text-center max-w-4xl mx-auto">
+              <Leaf className="w-16 h-16 text-[#005670] mx-auto mb-6" />
+              <h2 className="text-5xl font-light text-[#005670] mb-6 tracking-tight">Environmental Stewardship</h2>
+              <p className="text-gray-700 text-xl leading-relaxed">
+                We design with intention—not only for how a home looks and feels, 
+                but for how it impacts the world around it
+              </p>
+            </div>
+
+            {/* Main Content */}
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-6">
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Hawaii's environment is fragile and finite. Every piece that arrives here stays here, 
+                  making responsible sourcing and manufacturing essential to long-term sustainability.
+                </p>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Over 80% of our furnishings are manufactured in Indonesia with direct oversight 
+                  of every production stage—from raw materials to final packaging—supporting skilled 
+                  craftsmanship and sustainable forestry practices.
+                </p>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Complete unit packages minimize excess packaging and consolidate shipments, 
+                  dramatically lowering our carbon footprint while ensuring quality control.
+                </p>
+              </div>
+              <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl">
+                <img src="/images/SAS00286.jpg" alt="Sustainable Design" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+              </div>
+            </div>
+
+            {/* Benefits Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { icon: <CheckCircle className="w-10 h-10" />, title: "Quality Control", desc: "Direct oversight reduces waste", color: "from-green-500 to-emerald-500" },
+                { icon: <Package className="w-10 h-10" />, title: "Smart Packaging", desc: "Minimal excess materials", color: "from-blue-500 to-cyan-500" },
+                { icon: <Ship className="w-10 h-10" />, title: "Efficient Logistics", desc: "Container loading by unit", color: "from-purple-500 to-pink-500" },
+                { icon: <TrendingDown className="w-10 h-10" />, title: "Lower Impact", desc: "Consolidated shipments", color: "from-amber-500 to-orange-500" }
+              ].map((item, index) => (
+                <div key={index} className="group bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 text-center">
+                  <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${item.color} text-white mb-4 group-hover:scale-110 transition-transform duration-500`}>
+                    {item.icon}
+                  </div>
+                  <h3 className="text-lg font-medium text-[#005670] mb-3">{item.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Warranty Section */}
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-10 border border-gray-200">
+              <div className="text-center mb-10">
+                <Shield className="w-12 h-12 text-[#005670] mx-auto mb-4" />
+                <h3 className="text-3xl font-light text-[#005670] mb-3">Warranty & Support</h3>
+                <p className="text-gray-600">Your investment is protected with comprehensive coverage and ongoing care</p>
+              </div>
+              <div className="grid md:grid-cols-3 gap-8">
+                {[
+                  { title: "One-Year Warranty", desc: "Coverage against manufacturing defects from installation date", detail: "Structural, hardware, upholstery, and finish issues" },
+                  { title: "Care Guidelines", desc: "Detailed maintenance guide provided with every installation", detail: "Cleaning, humidity control, material preservation" },
+                  { title: "Ongoing Support", desc: "Continued service beyond warranty at standard rates", detail: "Repairs, refinishing, replacements available" }
+                ].map((item, index) => (
+                  <div key={index} className="bg-white p-6 rounded-xl shadow-sm">
+                    <h4 className="text-lg font-medium text-[#005670] mb-3">{item.title}</h4>
+                    <p className="text-gray-700 mb-3">{item.desc}</p>
+                    <p className="text-sm text-gray-500">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quote */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-3xl p-12 text-white shadow-2xl">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+              <div className="relative text-center max-w-4xl mx-auto">
+                <div className="text-6xl text-white/20 mb-6">"</div>
+                <p className="text-2xl font-light leading-relaxed mb-6 italic">
+                  Every decision we make considers longevity, recyclability, and environmental stewardship. 
+                  Our goal: create enduring interiors that respect the land, the people, and the planet that sustain them.
+                </p>
+                <div className="text-sm tracking-wider uppercase text-white/60">Henderson Design Group</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FAQ Tab */}
+        {activeTab === 'faq' && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Questions & Answers</h2>
+              <p className="text-gray-600 text-lg">Everything you need to know about the Ālia Furnishing Program</p>
+            </div>
+            
+            <div className="max-w-4xl mx-auto space-y-4">
+              {faqs.map((faq, index) => (
+                <div 
+                  key={index} 
+                  className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300"
+                >
+                  <button
+                    onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
+                    className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors group"
+                  >
+                    <h3 className="font-medium text-[#005670] pr-4 text-lg group-hover:text-[#007a9a] transition-colors">
+                      {faq.question}
+                    </h3>
+                    <ChevronDown 
+                      className={`w-6 h-6 text-[#005670] flex-shrink-0 transition-all duration-300 ${
+                        expandedFAQ === index ? 'transform rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {expandedFAQ === index && (
+                    <div className="px-6 pb-6 animate-fade-in">
+                      <div className="pt-4 border-t border-gray-100">
+                        <p className="text-gray-600 leading-relaxed">
+                          {faq.answer}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-12 p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200">
+              <p className="text-gray-600 mb-4 text-lg">Have more questions?</p>
+              <button
+                onClick={() => scrollToSection('contact')}
+                className="inline-flex items-center gap-2 text-[#005670] font-medium hover:gap-3 transition-all text-lg group"
+              >
+                Contact Our Team 
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Elegant Contact Section */}
+      <section id="contact" className="py-20 px-6 bg-gradient-to-br from-gray-50 to-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Begin Your Journey</h2>
+            <p className="text-gray-600 text-lg">Contact your Ālia sales representative or reach out directly</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {[
+              { icon: <MapPin className="w-6 h-6" />, title: "Visit Us", content: "74-5518 Kaiwi Street Suite B\nKailua Kona, HI 96740" },
+              { icon: <Phone className="w-6 h-6" />, title: "Call Us", content: "(808) 315-8782" },
+              { icon: <Mail className="w-6 h-6" />, title: "Email Us", content: "aloha@henderson.house" },
+              { icon: <Clock className="w-6 h-6" />, title: "Hours", content: "Mon-Fri: 9AM-5PM HST\nSat: By Appointment" }
+            ].map((item, index) => (
+              <div key={index} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 text-center border border-gray-100">
+                <div className="inline-flex p-3 rounded-xl bg-gradient-to-br from-[#005670] to-[#007a9a] text-white mb-4">
+                  {item.icon}
+                </div>
+                <h3 className="font-medium text-[#005670] mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600 whitespace-pre-line">{item.content}</p>
               </div>
             ))}
           </div>
 
-          <div className="text-center mt-12">
-            <p className="text-gray-600 mb-4">Have more questions?</p>
-            <button
-              onClick={() => scrollToSection('contact')}
-              className="text-[#005670] font-medium inline-flex items-center gap-2 hover:gap-3 transition-all"
-            >
-              Contact Our Team <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="py-24 px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-16">
-            <div>
-              <h2 className="text-4xl font-light text-[#005670] mb-8 tracking-wide">
-                Get In Touch
-              </h2>
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <MapPin className="w-6 h-6 text-[#005670] mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">Visit Us</h3>
-                    <p className="text-gray-600">
-                      74-5518 Kaiwi Street Suite B<br />
-                      Kailua Kona, HI 96740-3145
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Phone className="w-6 h-6 text-[#005670] mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">Call Us</h3>
-                    <p className="text-gray-600">(808) 315-8782</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Mail className="w-6 h-6 text-[#005670] mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">Email Us</h3>
-                    <p className="text-gray-600">aloha@henderson.house</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Clock className="w-6 h-6 text-[#005670] mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">Business Hours</h3>
-                    <p className="text-gray-600">
-                      Monday - Friday: 9:00 AM - 5:00 PM HST<br />
-                      Saturday: By Appointment<br />
-                      Sunday: Closed
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200">
-                <p className="text-gray-700 leading-relaxed">
-                  <span className="font-medium text-[#005670]">Ready to begin?</span><br />
-                  Contact your Ālia sales representative or reach out directly to Henderson Design Group 
-                  to schedule your introduction meeting.
-                </p>
-              </div>
-            </div>
-            <div className="relative h-[500px] rounded-lg overflow-hidden">
-              <img
-                src="/images/SAS00319.jpg"
-                alt="Henderson Design Group"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-{/* Footer */}
-      <footer className="bg-[#005670] text-white py-12 px-8 font-freight">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-12 mb-8">
-          <div>
-            <img 
-              src="/images/HDG-Logo.png" 
-              alt="Henderson Design Group" 
-              className="h-16 mb-4"
-            />
-            <p className="text-white/80 text-sm leading-relaxed">
-              Henderson Design Group specializes in curated, turnkey furnishing solutions for Hawaii's premier residential developments. We create exceptional interiors with sustainable practices and timeless elegance, honoring the land, people, and planet that sustain us.
+          <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200 text-center">
+            <p className="text-gray-700 text-lg leading-relaxed max-w-3xl mx-auto">
+              <span className="font-semibold text-[#005670]">Ready to create your island sanctuary?</span><br />
+              Schedule your introduction meeting with Henderson Design Group to explore 
+              collections, discuss your vision, and begin your Ālia journey.
             </p>
           </div>
-            <div>
-              <h3 className="text-lg font-medium mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-white/80 text-sm">
-                <li>
-                  <button onClick={() => scrollToSection('about')} className="hover:text-white transition-colors">
-                    About Ālia
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollToSection('collections')} className="hover:text-white transition-colors">
-                    Collections
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollToSection('process')} className="hover:text-white transition-colors">
-                    Our Process
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollToSection('deposit-options')} className="hover:text-white transition-colors">
-                    Deposit Options
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollToSection('sustainability')} className="hover:text-white transition-colors">
-                    Sustainability
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => navigate('/client-portal')} className="hover:text-white transition-colors">
-                    Client Portal
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium mb-4">Professional Access</h3>
-              <ul className="space-y-2 text-white/80 text-sm mb-6">
-                <li>
-                  <button onClick={() => navigate('/designer-login')} className="hover:text-white transition-colors">
-                    Designer Login
-                  </button>
-                </li>
-              </ul>
-              <h3 className="text-lg font-medium mb-4">Important Dates</h3>
-              <p className="text-white/80 text-sm">
-                Deposit Deadline: December 15, 2025<br />
-                Design Phase: Feb - Apr 2026<br />
-                Installation: Jan - Mar 2027
+        </div>
+      </section>
+
+      {/* Elegant Footer */}
+      <footer className="bg-[#005670] text-white py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-12 mb-10">
+            <div className="md:col-span-2">
+              <img src="/images/HDG-Logo.png" alt="Henderson Design Group" className="h-14 mb-6 opacity-90" />
+              <p className="text-white/70 leading-relaxed text-sm">
+                Henderson Design Group specializes in curated, turnkey furnishing solutions 
+                for Hawaii's premier residential developments. Creating exceptional interiors 
+                with sustainable practices and timeless elegance.
               </p>
             </div>
+            <div>
+              <h3 className="text-lg font-medium mb-4 tracking-wide">Navigation</h3>
+              <div className="space-y-2 text-sm text-white/70">
+                {['overview', 'collections', 'process', 'investment', 'sustainability', 'faq'].map((tab) => (
+                  <button 
+                    key={tab}
+                    onClick={() => { setActiveTab(tab); scrollToSection('main-content'); }} 
+                    className="block hover:text-white transition-colors capitalize"
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-medium mb-4 tracking-wide">Important Dates</h3>
+              <div className="space-y-2 text-sm text-white/70">
+                <p>Deposit Deadline:<br /><span className="text-white font-medium">December 15, 2025</span></p>
+                <p>Design Phase:<br /><span className="text-white">Feb - Apr 2026</span></p>
+                <p>Installation:<br /><span className="text-white">Jan - Mar 2027</span></p>
+              </div>
+            </div>
           </div>
-          <div className="border-t border-white/20 pt-8 text-center text-white/60 text-sm">
-            <p className="mb-2">Ālia Project by Henderson Design Group</p>
-            <p>&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
+          <div className="border-t border-white/20 pt-8 text-center">
+            <p className="text-white/60 text-sm mb-2">Ālia Project by Henderson Design Group</p>
+            <p className="text-white/40 text-xs">&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
           </div>
         </div>
       </footer>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes ken-burns {
+          from {
+            transform: scale(1);
+          }
+          to {
+            transform: scale(1.1);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
+        }
+        
+        .animate-fade-in-up {
+          animation: fade-in-up 0.8s ease-out;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };
