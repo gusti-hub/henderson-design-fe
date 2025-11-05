@@ -14,7 +14,6 @@ import {
   Clock,
   FileText,
   Shield,
-  Users,
   Home,
   Sparkles,
   ArrowRight,
@@ -22,18 +21,146 @@ import {
   DollarSign,
   AlertCircle,
   Info,
-  Award,
-  Heart
+  Heart,
+  Download,
+   X 
 } from 'lucide-react';
 
-const BrochureLandingPage = () => {
+// Navigation Component
+const Navigation = ({ activeTab, setActiveTab }) => {
+  const navigate = useNavigate();
+  const [isScrolled, setIsScrolled] = useState(false);
+  
+  useEffect(() => {
+    const handleScroll = () => {
+      if (activeTab === 'about') {
+        setIsScrolled(window.scrollY > 50);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeTab]);
+  
+  const needsSolidBg = activeTab !== 'about';
+  
+  const tabs = [
+    { id: 'about', label: 'About', icon: <Home className="w-4 h-4" /> },
+    { id: 'collection', label: 'Collection', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'inspiration', label: 'Inspiration', icon: <Heart className="w-4 h-4" /> },
+    { id: 'process', label: 'Process', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'timeline', label: 'Timeline', icon: <Clock className="w-4 h-4" /> },
+    { id: 'next-steps', label: 'Next Steps', icon: <ArrowRight className="w-4 h-4" /> },
+    { id: 'faq', label: 'FAQ', icon: <Info className="w-4 h-4" /> },
+    { id: 'payment', label: 'Payment', icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'warranty', label: 'Warranty & Care', icon: <Shield className="w-4 h-4" /> },
+    { id: 'environment', label: 'Environment', icon: <Leaf className="w-4 h-4" /> },
+    { id: 'questionnaire', label: 'Questionnaire', icon: <FileText className="w-4 h-4" /> },
+    { id: 'contact', label: 'Contact', icon: <Mail className="w-4 h-4" /> }
+  ];
+
+  return (
+    <header className={`${activeTab === 'about' ? 'absolute' : 'fixed'} top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      needsSolidBg 
+        ? 'bg-white border-b border-gray-100 shadow-sm' 
+        : 'bg-gradient-to-b from-black/20 to-transparent backdrop-blur-[2px]'
+    }`}>
+      <div className="px-6">
+        <div className="flex items-center py-4">
+          {/* Logo - White logo file needs inversion on white bg to become visible */}
+          <div className="relative">
+            <img 
+              src="/images/HDG-Logo.png" 
+              alt="Henderson Design Group" 
+              className="h-12 cursor-pointer hover:opacity-80 transition-all duration-500"
+              style={{
+                filter: needsSolidBg ? 'invert(1)' : 'brightness(0) invert(1)',
+                display: 'block'
+              }}
+              onClick={() => setActiveTab('about')}
+            />
+          </div>
+          
+          <nav className="hidden lg:flex items-center gap-1 ml-8">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-light whitespace-nowrap flex items-center gap-2 transition-all duration-500 rounded relative group ${
+                  needsSolidBg
+                    ? activeTab === tab.id
+                      ? 'text-[#005670] bg-[#005670]/5'
+                      : 'text-gray-600 hover:text-[#005670] hover:bg-gray-50'
+                    : activeTab === tab.id
+                      ? 'text-white bg-white/10 backdrop-blur-md'
+                      : 'text-white/80 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {tab.icon}
+                <span className="tracking-wide">{tab.label}</span>
+                {activeTab === tab.id && (
+                  <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${
+                    needsSolidBg ? 'bg-[#005670]' : 'bg-white'
+                  }`}></div>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <button
+            onClick={() => navigate('/designer-login')}
+            className={`hidden md:flex items-center gap-2 text-sm font-light tracking-wide hover:gap-3 transition-all ml-auto ${
+              needsSolidBg 
+                ? 'text-[#005670] hover:text-[#004a5c]' 
+                : 'text-white/90 hover:text-white'
+            }`}
+          >
+            Designer Access
+            <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button className={`lg:hidden p-2 transition-colors ml-auto ${
+            needsSolidBg 
+              ? 'text-gray-600 hover:text-[#005670]' 
+              : 'text-white/90 hover:text-white'
+          }`}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="lg:hidden pb-4">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-light whitespace-nowrap flex items-center gap-2 transition-all duration-500 rounded ${
+                  needsSolidBg
+                    ? activeTab === tab.id
+                      ? 'bg-[#005670] text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : activeTab === tab.id
+                      ? 'bg-white/20 text-white backdrop-blur-md border border-white/30'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10'
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+// Hero Section Component  
+const HeroSection = ({ setActiveTab }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [activeCollection, setActiveCollection] = useState('nalu');
-  const [expandedFAQ, setExpandedFAQ] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [isVisible, setIsVisible] = useState(false);
-  const navigate = useNavigate();
 
   const heroSlides = [
     {
@@ -58,96 +185,6 @@ const BrochureLandingPage = () => {
     }
   ];
 
-  const collections = [
-    {
-      id: 'lani',
-      name: 'Lani Collection',
-      tagline: 'The Pinnacle of Luxury',
-      description: 'Complete bespoke-level furnishing, including custom cabinetry, curated art, premium rugs, and designer accessories.',
-      features: ['Custom Design', 'Premium Materials', 'Full Accessories', 'Art Curation'],
-      details: 'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space.',
-      gradient: 'from-amber-50 to-orange-50'
-    },
-    {
-      id: 'nalu',
-      name: 'Nalu Collection',
-      tagline: 'Sophisticated Balance',
-      description: 'Comprehensive furnishing with elevated design details and refined finish selections for sophisticated island living.',
-      features: ['Elevated Design', 'Quality Finishes', 'Coordinated Style', 'Designer Touches'],
-      details: 'Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.',
-      gradient: 'from-blue-50 to-cyan-50'
-    },
-    {
-      id: 'foundation',
-      name: 'Foundation Collection',
-      tagline: 'Elegant Essentials',
-      description: 'Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.',
-      features: ['Core Furnishings', 'Move-In Ready', 'Quality Basics', 'Functional Design'],
-      details: 'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.',
-      gradient: 'from-slate-50 to-gray-50'
-    }
-  ];
-
-  const faqs = [
-    {
-      question: "What collections are available?",
-      answer: "We offer three collections: Lani (bespoke luxury with custom cabinetry and art curation), Nalu (elevated contemporary with refined finishes), and Foundation (streamlined essentials). You can also mix between collections or request fully custom design services tailored to your preferences."
-    },
-    {
-      question: "How long does the entire process take?",
-      answer: "From design intake to installation typically takes 10-12 months. The timeline includes: 6-8 weeks for design development, 16-20 weeks for production in Indonesia, 8-12 weeks for shipping and customs clearance, and 6-8 business days for installation."
-    },
-    {
-      question: "What's included in the Design Fee?",
-      answer: "The Design Fee includes your design intake meeting, floor plan review, furniture layout and collection recommendations, material and finish selections, two design presentations, one round of revisions, and preparation of your final furnishing proposal. The fee is 100% credited toward your total package if you proceed to production within six months."
-    },
-    {
-      question: "What's the payment schedule?",
-      answer: "50% deposit upon design approval (less any prior deposits or credits), 25% progress payment six months before completion, and 25% final payment 30 days prior to installation. All payments are tracked through your secure client portal."
-    },
-    {
-      question: "Can I be present during installation?",
-      answer: "We ask that clients not be present during installation to ensure efficiency and safety. Our professional team coordinates all details and will invite you for a spectacular reveal once your unit is complete. Installation typically takes 6-8 business days depending on your collection."
-    },
-    {
-      question: "Where is the furniture manufactured?",
-      answer: "Over 80% of our collections are manufactured in Indonesia by our trusted partner workshops specializing in teak, woven materials, metals, stone, leather, and premium upholstery. Each piece undergoes rigorous quality control before shipping directly to Hawaii."
-    },
-    {
-      question: "What warranty do I receive?",
-      answer: "HDG provides a one-year limited warranty against manufacturing defects in materials and workmanship from your installation date. This covers structural defects, hardware failures, upholstery stitching issues, and finish problems. We also offer continued service beyond the warranty period at standard rates."
-    },
-    {
-      question: "What if my unit isn't ready when furniture arrives?",
-      answer: "HDG will coordinate adjusted delivery timing or temporary storage as needed. Any associated storage or re-delivery costs will be discussed with you in advance to ensure transparency."
-    },
-    {
-      question: "Can I customize individual pieces?",
-      answer: "Yes! Custom modifications can be discussed during the design phase. Our team can work with you on specific adjustments, though additional fees and extended timelines may apply depending on the complexity of changes."
-    },
-    {
-      question: "Can HDG coordinate additional services?",
-      answer: "Absolutely. HDG can coordinate external trades for wall coverings, window treatments, closet systems, and other specialized services as part of your installation scope. Additional fees and timelines apply."
-    },
-    {
-      question: "What if I plan to rent my unit?",
-      answer: "Our designs work beautifully for both owner-occupied and high-end rental properties. We can advise on more durable finish options if your unit will be used as a rental to ensure longevity."
-    },
-    {
-      question: "What forms of payment do you accept?",
-      answer: "Payments can be made by wire transfer or check in U.S. Dollars, payable to Henderson Design Group. All payment tracking is available through your secure client portal."
-    },
-    {
-      question: "Are deposits refundable?",
-      answer: "Design Fees are non-refundable but fully credited toward production. Deposits to Hold Pricing are refundable less a 10% administrative fee if cancelled before design approval or production scheduling begins. Once production starts, deposits become non-refundable."
-    },
-    {
-      question: "How do I begin the process?",
-      answer: "Contact your Ālia sales representative or Henderson Design Group directly to schedule your introduction meeting. We'll walk you through the collections, answer your questions, and help you choose the best path forward."
-    }
-  ];
-
-  // Image preloading
   useEffect(() => {
     const loadImages = async () => {
       const imagePromises = heroSlides.map((slide) => {
@@ -169,10 +206,8 @@ const BrochureLandingPage = () => {
     };
 
     loadImages();
-    setIsVisible(true);
   }, []);
 
-  // Auto-advance slides
   useEffect(() => {
     if (!imagesLoaded) return;
 
@@ -183,732 +218,1884 @@ const BrochureLandingPage = () => {
     return () => clearInterval(timer);
   }, [imagesLoaded, heroSlides.length]);
 
-  const scrollToSection = (sectionId) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white">
-      {/* Elegant Hero Section */}
-      <section className="relative h-screen overflow-hidden">
-        {!imagesLoaded && (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] flex items-center justify-center">
-            <div className="text-center text-white animate-pulse">
-              <div className="text-6xl tracking-[0.3em] font-light mb-6">HENDERSON</div>
-              <div className="text-2xl tracking-[0.2em] font-light opacity-80">DESIGN GROUP</div>
-            </div>
+    <section className="relative h-screen overflow-hidden">
+      {!imagesLoaded && (
+        <div className="absolute inset-0 bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] flex items-center justify-center">
+          <div className="text-center text-white animate-pulse">
+            <div className="text-7xl tracking-[0.3em] font-light mb-6">HENDERSON</div>
+            <div className="text-2xl tracking-[0.2em] font-light opacity-80">DESIGN GROUP</div>
           </div>
-        )}
+        </div>
+      )}
 
-        {heroSlides.map((slide, index) => (
+      {heroSlides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-2000 ${
+            currentSlide === index && imagesLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
           <div
-            key={index}
-            className={`absolute inset-0 transition-opacity duration-2000 ${
-              currentSlide === index && imagesLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            <div
-              className="absolute inset-0 bg-cover bg-center transform scale-105 transition-transform duration-[20000ms]"
-              style={{ 
-                backgroundImage: `url(${slide.image})`,
-                animation: currentSlide === index ? 'ken-burns 20s ease-out' : 'none'
-              }}
-            ></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent"></div>
-          </div>
-        ))}
+            className="absolute inset-0 bg-cover bg-center transform scale-105 transition-transform duration-[20000ms]"
+            style={{ 
+              backgroundImage: `url(${slide.image})`,
+              animation: currentSlide === index ? 'ken-burns 20s ease-out' : 'none'
+            }}
+          ></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent"></div>
+        </div>
+      ))}
 
-        <div className="relative z-10 h-full flex flex-col justify-between">
-          {/* Elegant Header */}
-          <header className="flex justify-between items-center p-8 backdrop-blur-sm">
-            <img 
-              src="/images/HDG-Logo.png" 
-              alt="Henderson Design Group" 
-              className="h-14 opacity-0 animate-fade-in"
-              style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}
-            />
+      <div className="relative z-10 h-full flex items-center">
+        <div className="px-8 md:px-16 max-w-6xl mx-auto">
+          <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
+            <div className="text-white/60 text-sm tracking-[0.3em] uppercase mb-4 font-light">
+              Ālia Project
+            </div>
+            <h1 className="text-white text-7xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 leading-tight">
+              {heroSlides[currentSlide].title}
+            </h1>
+            <p className="text-white/90 text-2xl md:text-3xl font-light tracking-wide mb-12 max-w-2xl">
+              {heroSlides[currentSlide].subtitle}
+            </p>
             <button
-              onClick={() => navigate('/designer-login')}
-              className="text-white/90 hover:text-white text-sm tracking-[0.15em] uppercase transition-all duration-300 opacity-0 animate-fade-in hover:tracking-[0.2em]"
-              style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}
+              onClick={() => setActiveTab('collection')}
+              className="group bg-white/10 backdrop-blur-md border border-white/30 text-white px-10 py-4 text-base tracking-[0.15em] uppercase hover:bg-white hover:text-[#005670] transition-all duration-500 flex items-center gap-3"
             >
-              Designer Access →
+              Explore Collections
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-500" />
             </button>
-          </header>
-
-          {/* Hero Content */}
-          <div className="px-8 md:px-16 pb-32 max-w-5xl">
-            <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
-              <div className="text-white/60 text-sm tracking-[0.3em] uppercase mb-4 font-light">
-                Ālia Project
-              </div>
-              <h1 className="text-white text-6xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 leading-tight">
-                {heroSlides[currentSlide].title}
-              </h1>
-              <p className="text-white/90 text-2xl md:text-3xl font-light tracking-wide mb-12 max-w-2xl">
-                {heroSlides[currentSlide].subtitle}
-              </p>
-              <button
-                onClick={() => scrollToSection('main-content')}
-                className="group bg-white/10 backdrop-blur-md border border-white/30 text-white px-10 py-4 text-base tracking-[0.15em] uppercase hover:bg-white hover:text-[#005670] transition-all duration-500 flex items-center gap-3"
-              >
-                Discover More 
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-              </button>
-            </div>
           </div>
-
-          {/* Elegant Slide Indicators */}
-          {imagesLoaded && (
-            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex gap-3 z-20">
-              {heroSlides.map((_, index) => (
-                <button
-                  key={index}
-                  className={`h-0.5 rounded-full transition-all duration-700 ${
-                    currentSlide === index ? 'bg-white w-16' : 'bg-white/40 w-8 hover:bg-white/60'
-                  }`}
-                  onClick={() => setCurrentSlide(index)}
-                ></button>
-              ))}
-            </div>
-          )}
         </div>
-      </section>
 
-      {/* Elegant Tab Navigation */}
-      <section id="main-content" className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide py-4 justify-center">
-            {[
-              { id: 'overview', label: 'Overview', icon: <Home className="w-4 h-4" /> },
-              { id: 'collections', label: 'Collections', icon: <Sparkles className="w-4 h-4" /> },
-              { id: 'process', label: 'Process', icon: <Calendar className="w-4 h-4" /> },
-              { id: 'investment', label: 'Investment', icon: <DollarSign className="w-4 h-4" /> },
-              { id: 'sustainability', label: 'Sustainability', icon: <Leaf className="w-4 h-4" /> },
-              { id: 'faq', label: 'FAQ', icon: <Info className="w-4 h-4" /> }
-            ].map((tab) => (
+        {imagesLoaded && (
+          <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex gap-3 z-20">
+            {heroSlides.map((_, index) => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all duration-300 rounded-lg ${
-                  activeTab === tab.id
-                    ? 'bg-[#005670] text-white shadow-lg shadow-[#005670]/20'
-                    : 'text-gray-600 hover:text-[#005670] hover:bg-gray-50'
+                key={index}
+                className={`h-0.5 rounded-full transition-all duration-700 ${
+                  currentSlide === index ? 'bg-white w-16' : 'bg-white/40 w-8 hover:bg-white/60'
                 }`}
-              >
-                {tab.icon}
-                <span className="tracking-wide">{tab.label}</span>
-              </button>
+                onClick={() => setCurrentSlide(index)}
+              ></button>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content Area */}
-      <div className="py-16 px-6 max-w-7xl mx-auto">
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div className="space-y-16 animate-fade-in">
-            {/* Hero Statement */}
-            <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#005670]/5 rounded-full mb-6">
-                <Award className="w-4 h-4 text-[#005670]" />
-                <span className="text-sm tracking-wide text-[#005670] font-medium">30+ Years of Excellence</span>
-              </div>
-              <h2 className="text-5xl md:text-6xl font-light text-[#005670] mb-6 tracking-tight leading-tight">
-                Ālia Project
-              </h2>
-              <p className="text-gray-600 text-xl leading-relaxed">
-                Henderson Design Group brings decades of expertise to Hawaii's most prestigious 
-                residential projects. We create complete turnkey furnishing solutions that honor 
-                the land, respect the culture, and celebrate island living.
-              </p>
-            </div>
-
-            {/* Value Propositions */}
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  icon: <Home className="w-12 h-12" />,
-                  title: "Turnkey Excellence",
-                  description: "From concept to installation, we handle every detail. Your home is ready to enjoy from day one.",
-                  gradient: "from-blue-500 to-cyan-500"
-                },
-                {
-                  icon: <Heart className="w-12 h-12" />,
-                  title: "Personalized Journey",
-                  description: "Dedicated design team who listens, understands, and brings your unique vision to life.",
-                  gradient: "from-purple-500 to-pink-500"
-                },
-                {
-                  icon: <Sparkles className="w-12 h-12" />,
-                  title: "Island Authenticity",
-                  description: "Designs that embrace Hawaiian culture, climate, and the relaxed elegance of island life.",
-                  gradient: "from-amber-500 to-orange-500"
-                }
-              ].map((item, index) => (
-                <div 
-                  key={index} 
-                  className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-transparent overflow-hidden"
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-                  <div className={`relative inline-flex p-3 rounded-xl bg-gradient-to-br ${item.gradient} text-white mb-6 group-hover:scale-110 transition-transform duration-500`}>
-                    {item.icon}
-                  </div>
-                  <h3 className="text-2xl font-light text-[#005670] mb-4 tracking-tight">{item.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{item.description}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Client Portal CTA */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] p-12 text-white shadow-2xl">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-              <div className="relative text-center max-w-3xl mx-auto">
-                <CheckCircle className="w-16 h-16 mx-auto mb-6 opacity-90" />
-                <h3 className="text-4xl font-light mb-4 tracking-tight">Already Made Your Deposit?</h3>
-                <p className="text-white/90 text-lg mb-8 leading-relaxed">
-                  Access your personalized client portal to schedule your design consultation, 
-                  review selections, and track your project journey.
-                </p>
-                <button
-                  onClick={() => navigate('/client-portal')}
-                  className="inline-flex items-center gap-3 bg-white text-[#005670] px-10 py-4 text-base font-medium tracking-wide hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
-                >
-                  <Calendar className="w-6 h-6" />
-                  Access Your Portal
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Collections Tab */}
-        {activeTab === 'collections' && (
-          <div className="space-y-12 animate-fade-in">
-            <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Our Collections</h2>
-              <p className="text-gray-600 text-lg">
-                Three carefully curated collections designed to complement the Ālia architecture. 
-                Mix between collections or request fully custom design.
-              </p>
-            </div>
-
-            {/* Collection Selector */}
-            <div className="flex justify-center gap-4 flex-wrap">
-              {collections.map((collection) => (
-                <button
-                  key={collection.id}
-                  onClick={() => setActiveCollection(collection.id)}
-                  className={`px-8 py-4 rounded-xl font-medium transition-all duration-500 ${
-                    activeCollection === collection.id
-                      ? 'bg-[#005670] text-white shadow-xl shadow-[#005670]/30 scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
-                  }`}
-                >
-                  <div className="text-lg tracking-wide">{collection.name}</div>
-                  <div className={`text-xs mt-1 ${activeCollection === collection.id ? 'text-white/80' : 'text-gray-500'}`}>
-                    {collection.tagline}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Active Collection Display */}
-            {collections.map((collection) => (
-              collection.id === activeCollection && (
-                <div 
-                  key={collection.id} 
-                  className={`bg-gradient-to-br ${collection.gradient} rounded-3xl p-12 shadow-xl border border-gray-200/50 animate-fade-in`}
-                >
-                  <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-10">
-                      <h3 className="text-4xl font-light text-[#005670] mb-3 tracking-tight">
-                        {collection.name}
-                      </h3>
-                      <p className="text-[#005670]/70 text-sm tracking-[0.2em] uppercase mb-6">
-                        {collection.tagline}
-                      </p>
-                      <p className="text-gray-700 text-lg leading-relaxed mb-4">
-                        {collection.description}
-                      </p>
-                      <p className="text-gray-600 leading-relaxed">
-                        {collection.details}
-                      </p>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {collection.features.map((feature, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-center gap-3 bg-white/60 backdrop-blur-sm px-6 py-4 rounded-xl"
-                        >
-                          <CheckCircle className="w-5 h-5 text-[#005670] flex-shrink-0" />
-                          <span className="text-gray-800 font-medium">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )
-            ))}
-          </div>
-        )}
-
-        {/* Process Tab */}
-        {activeTab === 'process' && (
-          <div className="space-y-12 animate-fade-in">
-            <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Our Process</h2>
-              <p className="text-gray-600 text-lg">
-                A seamless journey from consultation to installation, typically 10-12 months
-              </p>
-            </div>
-
-            {/* Process Steps */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                { 
-                  step: "01", 
-                  title: "Design Questionnaire", 
-                  description: "Share your lifestyle, preferences, and vision through our comprehensive intake form",
-                  duration: "Initial Phase",
-                  icon: <FileText className="w-8 h-8" />,
-                  color: "from-blue-500 to-cyan-500"
-                },
-                { 
-                  step: "02", 
-                  title: "Design Development", 
-                  description: "Customized layouts and curated selections with two presentations and revisions",
-                  duration: "6-8 Weeks",
-                  icon: <Sparkles className="w-8 h-8" />,
-                  color: "from-purple-500 to-pink-500"
-                },
-                { 
-                  step: "03", 
-                  title: "Production & Shipping", 
-                  description: "Expert manufacturing in Indonesia with rigorous quality control and ocean freight",
-                  duration: "24-32 Weeks",
-                  icon: <Package className="w-8 h-8" />,
-                  color: "from-amber-500 to-orange-500"
-                },
-                { 
-                  step: "04", 
-                  title: "Installation & Reveal", 
-                  description: "White-glove delivery and professional installation, ready for your move-in",
-                  duration: "6-8 Days",
-                  icon: <Home className="w-8 h-8" />,
-                  color: "from-green-500 to-emerald-500"
-                }
-              ].map((item) => (
-                <div 
-                  key={item.step} 
-                  className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`}></div>
-                  <div className="relative flex gap-6">
-                    <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} text-white flex items-center justify-center shadow-lg`}>
-                      {item.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-3xl font-light text-gray-300">{item.step}</span>
-                        <span className="text-xs tracking-wider uppercase text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                          {item.duration}
-                        </span>
-                      </div>
-                      <h3 className="text-xl font-medium text-[#005670] mb-3">{item.title}</h3>
-                      <p className="text-gray-600 leading-relaxed">{item.description}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Timeline */}
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-10 border border-gray-200">
-              <h3 className="text-2xl font-light text-[#005670] mb-8 text-center">Estimated Project Timeline</h3>
-              <div className="space-y-4 max-w-3xl mx-auto">
-                {[
-                  { phase: "Nov 2025 - Jan 2026", title: "Client Onboarding", desc: "Intake, deposits, portal activation" },
-                  { phase: "Feb - Apr 2026", title: "Design Phase", desc: "Presentations, revisions, approvals" },
-                  { phase: "May - Sep 2026", title: "Production", desc: "Manufacturing with quality control" },
-                  { phase: "Oct - Dec 2026", title: "Shipping", desc: "Container shipping and customs" },
-                  { phase: "Jan - Mar 2027", title: "Installation", desc: "White-glove delivery and reveal" }
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center gap-6 bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] text-white flex items-center justify-center text-lg font-light flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-[#005670]">{item.title}</h4>
-                        <span className="text-sm text-gray-500">{item.phase}</span>
-                      </div>
-                      <p className="text-sm text-gray-600">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Investment Tab */}
-        {activeTab === 'investment' && (
-          <div className="space-y-12 animate-fade-in">
-            <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Investment Options</h2>
-              <p className="text-gray-600 text-lg">
-                Two flexible pathways to secure your place in the Ālia Furnishing Program
-              </p>
-            </div>
-
-            {/* Deposit Options */}
-            <div className="grid lg:grid-cols-2 gap-8">
-              {/* Option 1 */}
-              <div className="group relative bg-white rounded-3xl p-10 shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-gray-200 hover:border-[#005670]">
-                <div className="absolute top-6 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center text-2xl font-light shadow-lg">
-                  1
-                </div>
-                <div className="mb-8">
-                  <h3 className="text-3xl font-light text-[#005670] mb-3">Hold 2025 Pricing</h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    Secure current pricing while finalizing your design decisions
-                  </p>
-                </div>
-                <div className="space-y-4 mb-8">
-                  {[
-                    { icon: <DollarSign className="w-5 h-5" />, title: "30% Deposit", desc: "Based on selected package" },
-                    { icon: <CheckCircle className="w-5 h-5" />, title: "Lock Pricing", desc: "Protect against increases" },
-                    { icon: <Package className="w-5 h-5" />, title: "Reserve Materials", desc: "Production allocation secured" },
-                    { icon: <CheckCircle className="w-5 h-5" />, title: "Full Credit", desc: "100% toward final package" }
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-start gap-4 bg-gray-50 p-4 rounded-xl">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center flex-shrink-0">
-                        {item.icon}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{item.title}</p>
-                        <p className="text-sm text-gray-600">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-lg">
-                  <p className="text-sm text-blue-900">
-                    <span className="font-semibold">Refund Policy:</span> Refundable less 10% admin fee before design approval. Must apply within 6 months.
-                  </p>
-                </div>
-              </div>
-
-              {/* Option 2 */}
-              <div className="relative bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] rounded-3xl p-10 text-white shadow-2xl overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="relative">
-                  <div className="absolute top-0 right-0 w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-2xl font-light">
-                    2
-                  </div>
-                  <div className="mb-8">
-                    <h3 className="text-3xl font-light mb-3">Design Fee to Hold Place</h3>
-                    <p className="text-white/90 leading-relaxed">
-                      Guarantee your design start position with confirmed calendar slot
-                    </p>
-                  </div>
-                  <div className="space-y-4 mb-8">
-                    {[
-                      { icon: <AlertCircle className="w-5 h-5" />, title: "Non-Refundable Fee", desc: "Based on unit type" },
-                      { icon: <Calendar className="w-5 h-5" />, title: "Confirmed Start", desc: "Reserved Q1 2026 slot" },
-                      { icon: <Sparkles className="w-5 h-5" />, title: "Full Design Services", desc: "Complete presentations" },
-                      { icon: <CheckCircle className="w-5 h-5" />, title: "100% Credit", desc: "Applied to production" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-start gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
-                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                          {item.icon}
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.title}</p>
-                          <p className="text-sm text-white/80">{item.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-sm border border-white/30 p-5 rounded-lg">
-                    <p className="text-sm">
-                      <span className="font-semibold">Includes:</span> Intake meeting, floor plans, material selections, and final proposal presentation
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Critical Deadline */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 rounded-2xl p-8 border-2 border-red-200">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-16 h-16 rounded-full bg-red-500 text-white flex items-center justify-center">
-                  <AlertCircle className="w-8 h-8" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-2xl font-medium text-gray-900 mb-2">Critical Deadline: December 15, 2025</h4>
-                  <p className="text-gray-700">Deposit must be received by this date to guarantee 2025 pricing and secure your production slot</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Schedule */}
-            <div className="bg-white rounded-3xl p-10 shadow-xl border border-gray-200">
-              <h3 className="text-3xl font-light text-[#005670] mb-8 text-center">Payment Schedule</h3>
-              <div className="space-y-6">
-                {[
-                  { percentage: "50%", title: "Initial Deposit", desc: "Upon design approval (less prior credits)", color: "from-[#005670] to-[#007a9a]" },
-                  { percentage: "25%", title: "Progress Payment", desc: "Six months before completion", color: "from-[#007a9a] to-[#00a0c8]" },
-                  { percentage: "25%", title: "Final Payment", desc: "30 days prior to installation", color: "from-[#00a0c8] to-cyan-400" }
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center gap-6 bg-gray-50 p-6 rounded-2xl hover:bg-gray-100 transition-colors">
-                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${item.color} text-white flex items-center justify-center text-2xl font-light shadow-lg flex-shrink-0`}>
-                      {item.percentage}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-xl font-medium text-[#005670] mb-2">{item.title}</h4>
-                      <p className="text-gray-600">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-8 bg-blue-50 border-l-4 border-[#005670] p-6 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Shield className="w-6 h-6 text-[#005670] flex-shrink-0 mt-1" />
-                  <div>
-                    <h4 className="font-semibold text-[#005670] mb-2">Secure Payment Tracking</h4>
-                    <p className="text-sm text-gray-700">All payments processed via wire transfer or check. Track every transaction through your secure portal with automatic notifications.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Sustainability Tab */}
-        {activeTab === 'sustainability' && (
-          <div className="space-y-12 animate-fade-in">
-            <div className="text-center max-w-4xl mx-auto">
-              <Leaf className="w-16 h-16 text-[#005670] mx-auto mb-6" />
-              <h2 className="text-5xl font-light text-[#005670] mb-6 tracking-tight">Environmental Stewardship</h2>
-              <p className="text-gray-700 text-xl leading-relaxed">
-                We design with intention—not only for how a home looks and feels, 
-                but for how it impacts the world around it
-              </p>
-            </div>
-
-            {/* Main Content */}
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  Hawaii's environment is fragile and finite. Every piece that arrives here stays here, 
-                  making responsible sourcing and manufacturing essential to long-term sustainability.
-                </p>
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  Over 80% of our furnishings are manufactured in Indonesia with direct oversight 
-                  of every production stage—from raw materials to final packaging—supporting skilled 
-                  craftsmanship and sustainable forestry practices.
-                </p>
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  Complete unit packages minimize excess packaging and consolidate shipments, 
-                  dramatically lowering our carbon footprint while ensuring quality control.
-                </p>
-              </div>
-              <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl">
-                <img src="/images/SAS00286.jpg" alt="Sustainable Design" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              </div>
-            </div>
-
-            {/* Benefits Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { icon: <CheckCircle className="w-10 h-10" />, title: "Quality Control", desc: "Direct oversight reduces waste", color: "from-green-500 to-emerald-500" },
-                { icon: <Package className="w-10 h-10" />, title: "Smart Packaging", desc: "Minimal excess materials", color: "from-blue-500 to-cyan-500" },
-                { icon: <Ship className="w-10 h-10" />, title: "Efficient Logistics", desc: "Container loading by unit", color: "from-purple-500 to-pink-500" },
-                { icon: <TrendingDown className="w-10 h-10" />, title: "Lower Impact", desc: "Consolidated shipments", color: "from-amber-500 to-orange-500" }
-              ].map((item, index) => (
-                <div key={index} className="group bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 text-center">
-                  <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${item.color} text-white mb-4 group-hover:scale-110 transition-transform duration-500`}>
-                    {item.icon}
-                  </div>
-                  <h3 className="text-lg font-medium text-[#005670] mb-3">{item.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Warranty Section */}
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-10 border border-gray-200">
-              <div className="text-center mb-10">
-                <Shield className="w-12 h-12 text-[#005670] mx-auto mb-4" />
-                <h3 className="text-3xl font-light text-[#005670] mb-3">Warranty & Support</h3>
-                <p className="text-gray-600">Your investment is protected with comprehensive coverage and ongoing care</p>
-              </div>
-              <div className="grid md:grid-cols-3 gap-8">
-                {[
-                  { title: "One-Year Warranty", desc: "Coverage against manufacturing defects from installation date", detail: "Structural, hardware, upholstery, and finish issues" },
-                  { title: "Care Guidelines", desc: "Detailed maintenance guide provided with every installation", detail: "Cleaning, humidity control, material preservation" },
-                  { title: "Ongoing Support", desc: "Continued service beyond warranty at standard rates", detail: "Repairs, refinishing, replacements available" }
-                ].map((item, index) => (
-                  <div key={index} className="bg-white p-6 rounded-xl shadow-sm">
-                    <h4 className="text-lg font-medium text-[#005670] mb-3">{item.title}</h4>
-                    <p className="text-gray-700 mb-3">{item.desc}</p>
-                    <p className="text-sm text-gray-500">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quote */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-3xl p-12 text-white shadow-2xl">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-              <div className="relative text-center max-w-4xl mx-auto">
-                <div className="text-6xl text-white/20 mb-6">"</div>
-                <p className="text-2xl font-light leading-relaxed mb-6 italic">
-                  Every decision we make considers longevity, recyclability, and environmental stewardship. 
-                  Our goal: create enduring interiors that respect the land, the people, and the planet that sustain them.
-                </p>
-                <div className="text-sm tracking-wider uppercase text-white/60">Henderson Design Group</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FAQ Tab */}
-        {activeTab === 'faq' && (
-          <div className="space-y-8 animate-fade-in">
-            <div className="text-center max-w-3xl mx-auto mb-12">
-              <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Questions & Answers</h2>
-              <p className="text-gray-600 text-lg">Everything you need to know about the Ālia Furnishing Program</p>
-            </div>
-            
-            <div className="max-w-4xl mx-auto space-y-4">
-              {faqs.map((faq, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300"
-                >
-                  <button
-                    onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
-                    className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors group"
-                  >
-                    <h3 className="font-medium text-[#005670] pr-4 text-lg group-hover:text-[#007a9a] transition-colors">
-                      {faq.question}
-                    </h3>
-                    <ChevronDown 
-                      className={`w-6 h-6 text-[#005670] flex-shrink-0 transition-all duration-300 ${
-                        expandedFAQ === index ? 'transform rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                  {expandedFAQ === index && (
-                    <div className="px-6 pb-6 animate-fade-in">
-                      <div className="pt-4 border-t border-gray-100">
-                        <p className="text-gray-600 leading-relaxed">
-                          {faq.answer}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center mt-12 p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200">
-              <p className="text-gray-600 mb-4 text-lg">Have more questions?</p>
-              <button
-                onClick={() => scrollToSection('contact')}
-                className="inline-flex items-center gap-2 text-[#005670] font-medium hover:gap-3 transition-all text-lg group"
-              >
-                Contact Our Team 
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
           </div>
         )}
       </div>
+    </section>
+  );
+};
 
-      {/* Elegant Contact Section */}
-      <section id="contact" className="py-20 px-6 bg-gradient-to-br from-gray-50 to-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-light text-[#005670] mb-4 tracking-tight">Begin Your Journey</h2>
-            <p className="text-gray-600 text-lg">Contact your Ālia sales representative or reach out directly</p>
+// About Page - Simple, clean and elegant
+const AboutPage = ({ setActiveTab }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="animate-fade-in">
+      <HeroSection setActiveTab={setActiveTab} />
+      
+      {/* About Alia Collection */}
+      <section className="py-32 px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-5xl font-light text-[#005670] mb-8 text-center">About Ālia Collection</h2>
+          
+          <div className="space-y-6 text-center">
+            <p className="text-xl text-gray-700 leading-relaxed">
+              Three carefully curated collections designed to complement the Ālia architecture. 
+              Each collection offers distinct levels of customization and finish, from streamlined 
+              essentials to complete bespoke furnishing.
+            </p>
+            <p className="text-lg text-gray-600 leading-relaxed">
+              Mix between collections or work with our design team to create a fully custom solution 
+              that reflects your unique vision and lifestyle. Every piece is thoughtfully selected to 
+              honor island living and Hawaiian culture.
+            </p>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {[
-              { icon: <MapPin className="w-6 h-6" />, title: "Visit Us", content: "74-5518 Kaiwi Street Suite B\nKailua Kona, HI 96740" },
-              { icon: <Phone className="w-6 h-6" />, title: "Call Us", content: "(808) 315-8782" },
-              { icon: <Mail className="w-6 h-6" />, title: "Email Us", content: "aloha@henderson.house" },
-              { icon: <Clock className="w-6 h-6" />, title: "Hours", content: "Mon-Fri: 9AM-5PM HST\nSat: By Appointment" }
-            ].map((item, index) => (
-              <div key={index} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 text-center border border-gray-100">
-                <div className="inline-flex p-3 rounded-xl bg-gradient-to-br from-[#005670] to-[#007a9a] text-white mb-4">
-                  {item.icon}
-                </div>
-                <h3 className="font-medium text-[#005670] mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 whitespace-pre-line">{item.content}</p>
-              </div>
-            ))}
+          
+          <div className="text-center mt-12">
+            <button 
+              onClick={() => setActiveTab('collection')}
+              className="inline-flex items-center gap-2 bg-[#005670] text-white px-10 py-4 hover:bg-[#004a5c] transition-all"
+            >
+              Explore Collections
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
+        </div>
+      </section>
 
-          <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200 text-center">
-            <p className="text-gray-700 text-lg leading-relaxed max-w-3xl mx-auto">
-              <span className="font-semibold text-[#005670]">Ready to create your island sanctuary?</span><br />
-              Schedule your introduction meeting with Henderson Design Group to explore 
-              collections, discuss your vision, and begin your Ālia journey.
+      {/* About HDG - Our Story */}
+      <section className="py-32 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-5xl font-light text-[#005670] mb-4 text-center">About Henderson Design Group</h2>
+          <p className="text-xl text-gray-500 text-center mb-12 italic">Our Story</p>
+          
+          <div className="space-y-8 text-gray-700">
+            <p className="text-lg leading-relaxed">
+              Established by Eric Henderson in 2002, Henderson Design Group has built a reputation 
+              for refinement and style, and for respecting the values of clients and enhancing the 
+              aesthetics of the homes on which we work.
+            </p>
+            
+            <p className="text-lg leading-relaxed">
+              Eric approaches his life's work by fusing the personal with the practical, along the 
+              way delivering an enduring aesthetic that exudes a sense of relaxed sophistication. 
+              Henderson's signature marries clean lines with touches of playfulness to create a 
+              unique aesthetic designed for island living.
+            </p>
+            
+            <blockquote className="text-lg italic text-gray-600 border-l-4 border-[#005670] pl-6 py-2 my-8">
+              "We create organized, symmetrical floor plans where the furniture layouts encourage 
+              conversation when occupied or contemplation when on your own. Comfort is always 
+              incorporated into the design, where every movement is anticipated."
+              <footer className="text-sm text-gray-500 mt-2 not-italic">— Eric Henderson</footer>
+            </blockquote>
+            
+            <p className="text-lg leading-relaxed">
+              Over the past 15 years furnishing homes on the islands of Hawaii, Henderson has grown 
+              into a team of established, reliable, and experienced designers with offices in Hawaii 
+              and San Francisco. We design and furnish homes for a lifestyle and state of mind that 
+              is based on comfort, elegance, and warmth. Our clients know that they can count on our 
+              experience and know-how to deliver smart and sophisticated solutions, top quality pieces, 
+              first-rate service, and our willingness to go the extra mile every time.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Elegant Footer */}
-      <footer className="bg-[#005670] text-white py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-12 mb-10">
-            <div className="md:col-span-2">
-              <img src="/images/HDG-Logo.png" alt="Henderson Design Group" className="h-14 mb-6 opacity-90" />
-              <p className="text-white/70 leading-relaxed text-sm">
-                Henderson Design Group specializes in curated, turnkey furnishing solutions 
-                for Hawaii's premier residential developments. Creating exceptional interiors 
-                with sustainable practices and timeless elegance.
+{/* About Team - Real Images & High-Class Design */}
+  <section className="py-32 px-8 bg-white">
+    <div className="max-w-6xl mx-auto">
+      {/* Section Header */}
+      <div className="text-center mb-20">
+        <div className="inline-block mb-6">
+          <div className="text-xs tracking-[0.4em] uppercase text-[#005670]/70 font-light mb-4">
+            Our Team
+          </div>
+          <div className="h-px w-16 bg-[#005670]/30 mx-auto"></div>
+        </div>
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 leading-tight tracking-tight">
+          Meet Your Design Team
+        </h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed max-w-3xl mx-auto">
+          A dedicated group of established, reliable, and experienced designers committed to 
+          delivering exceptional results for every Ālia residence
+        </p>
+      </div>
+      
+      {/* Team Grid - Featured Members with Real Photos */}
+      <div className="grid md:grid-cols-3 gap-16 mb-20">
+        {[
+          { 
+            name: 'Eric Henderson', 
+            role: 'CEO & Creative Director', 
+            image: '/images/team/eric.jpg',
+            bio: 'Founder guiding every project with refined vision and over 20 years of design excellence'
+          },
+          { 
+            name: 'Janelle', 
+            role: 'Creative Director', 
+            image: '/images/team/Janelle.jpg',
+            bio: 'Ensuring seamless execution from concept through installation with meticulous attention to detail'
+          },
+          { 
+            name: 'Madeline', 
+            role: 'Project Manager', 
+            image: '/images/team/Madeline.jpg',
+            bio: 'Your dedicated point of contact throughout the journey, ensuring clear communication'
+          }
+        ].map((member, index) => (
+          <div key={index} className="group text-center">
+            {/* Photo with Hover Effect */}
+            <div className="relative mb-8 overflow-hidden">
+              <div className="aspect-[3/4] overflow-hidden bg-gray-100">
+                <img 
+                  src={member.image}
+                  alt={member.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              </div>
+            </div>
+            {/* Info */}
+            <h3 className="text-2xl font-light text-gray-900 mb-2">{member.name}</h3>
+            <p className="text-sm text-[#005670] mb-4 tracking-wide uppercase font-light">{member.role}</p>
+            <p className="text-gray-600 leading-relaxed font-light">{member.bio}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Additional Team Members - Without Photos */}
+      <div className="grid md:grid-cols-2 gap-12 max-w-3xl mx-auto">
+        {[
+          { name: 'Ash', role: 'Design Manager', bio: 'Leading design development and material curation with expertise' },
+          { name: 'Daiki', role: 'Production Coordinator', bio: 'Maintaining quality standards and project timelines' }
+        ].map((member, index) => (
+          <div key={index} className="group text-center p-8 border border-gray-100 hover:border-[#005670]/30 transition-all duration-500">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border border-gray-100 group-hover:border-[#005670]/30 transition-all duration-500">
+              <span className="text-3xl font-extralight text-[#005670]/30 group-hover:text-[#005670]/50 transition-colors duration-500">
+                {member.name[0]}
+              </span>
+            </div>
+            <h3 className="text-xl font-light text-gray-900 mb-2">{member.name}</h3>
+            <p className="text-sm text-[#005670] mb-4 tracking-wide uppercase font-light">{member.role}</p>
+            <p className="text-sm text-gray-600 leading-relaxed font-light">{member.bio}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+      {/* Client Portal CTA */}
+      <section className="py-20 px-6 bg-[#005670]">
+        <div className="max-w-4xl mx-auto text-center text-white">
+          <h3 className="text-3xl font-light mb-6">Already Made Your Deposit?</h3>
+          <p className="text-lg text-white/90 mb-8 leading-relaxed max-w-2xl mx-auto">
+            Access your personalized client portal to schedule your design consultation, 
+            review selections, and track your project journey.
+          </p>
+          <button
+            onClick={() => navigate('/client-portal')}
+            className="inline-flex items-center gap-3 bg-white text-[#005670] px-10 py-4 hover:bg-gray-100 transition-all"
+          >
+            <Calendar className="w-5 h-5" />
+            Access Your Portal
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+// Collection Page - Luxurious, elegant and simple
+const CollectionPage = () => {
+  const [activeCollection, setActiveCollection] = useState('nalu');
+
+  const collections = [
+    {
+      id: 'nalu',
+      name: 'Nalu Collection',
+      tagline: 'Sophisticated Balance',
+      description: 'Comprehensive furnishing with elevated design details and refined finish selections for sophisticated island living.',
+      features: [
+        'Elevated Design',
+        'Quality Finishes', 
+        'Coordinated Style',
+        'Designer Touches'
+      ],
+      details: 'Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.',
+      lookbook: '/pdfs/nalu-lookbook.pdf'
+    },
+    {
+      id: 'lani',
+      name: 'Lani Collection',
+      tagline: 'The Pinnacle of Luxury',
+      description: 'Complete bespoke-level furnishing, including custom cabinetry, curated art, premium rugs, and designer accessories.',
+      features: [
+        'Custom Design',
+        'Premium Materials',
+        'Full Accessories',
+        'Art Curation'
+      ],
+      details: 'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space.',
+      lookbook: '/pdfs/lani-lookbook.pdf'
+    },
+    {
+      id: 'foundation',
+      name: 'Foundation Collection',
+      tagline: 'Elegant Essentials',
+      description: 'Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.',
+      features: [
+        'Core Furnishings',
+        'Move-In Ready',
+        'Quality Basics',
+        'Functional Design'
+      ],
+      details: 'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.',
+      lookbook: '/pdfs/foundation-lookbook.pdf'
+    }
+  ];
+
+  const activeCollectionData = collections.find(c => c.id === activeCollection);
+
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero Section */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Ālia Collections</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          Three carefully curated expressions of island living, each designed to complement 
+          the Ālia architecture with distinct levels of customization and refinement.
+        </p>
+      </div>
+
+      {/* Collection Selector - Elegant Tabs */}
+      <div className="flex justify-center gap-0 mb-20 max-w-4xl mx-auto border-b border-gray-100">
+        {collections.map((collection) => (
+          <button
+            key={collection.id}
+            onClick={() => setActiveCollection(collection.id)}
+            className={`flex-1 px-8 py-6 font-light transition-all duration-500 border-b-2 ${
+              activeCollection === collection.id
+                ? 'border-[#005670] text-[#005670]'
+                : 'border-transparent text-gray-500 hover:text-[#005670]'
+            }`}
+          >
+            <div className="text-xl mb-1">{collection.name}</div>
+            <div className="text-sm opacity-70">{collection.tagline}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Collection Content */}
+      {activeCollectionData && (
+        <div className="animate-fade-in">
+          <div className="max-w-5xl mx-auto">
+            {/* Main Description */}
+            <div className="text-center mb-16 max-w-3xl mx-auto">
+              <p className="text-2xl text-gray-700 leading-relaxed font-light mb-6">
+                {activeCollectionData.description}
+              </p>
+              <p className="text-lg text-gray-600 leading-relaxed font-light">
+                {activeCollectionData.details}
               </p>
             </div>
-            <div>
-              <h3 className="text-lg font-medium mb-4 tracking-wide">Navigation</h3>
-              <div className="space-y-2 text-sm text-white/70">
-                {['overview', 'collections', 'process', 'investment', 'sustainability', 'faq'].map((tab) => (
-                  <button 
-                    key={tab}
-                    onClick={() => { setActiveTab(tab); scrollToSection('main-content'); }} 
-                    className="block hover:text-white transition-colors capitalize"
-                  >
-                    {tab}
-                  </button>
+
+            {/* Features Grid */}
+            <div className="mb-16">
+              <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                {activeCollectionData.features.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-4 p-6 bg-gray-50">
+                    <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                    <span className="text-lg text-gray-700 font-light">{feature}</span>
+                  </div>
                 ))}
               </div>
             </div>
-            <div>
-              <h3 className="text-lg font-medium mb-4 tracking-wide">Important Dates</h3>
-              <div className="space-y-2 text-sm text-white/70">
-                <p>Deposit Deadline:<br /><span className="text-white font-medium">December 15, 2025</span></p>
-                <p>Design Phase:<br /><span className="text-white">Feb - Apr 2026</span></p>
-                <p>Installation:<br /><span className="text-white">Jan - Mar 2027</span></p>
-              </div>
+
+            {/* Lookbook Download */}
+            <div className="max-w-2xl mx-auto">
+              <a
+                href={activeCollectionData.lookbook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block bg-white border-2 border-gray-100 hover:border-[#005670] transition-all duration-500 overflow-hidden"
+              >
+                <div className="flex items-center justify-between p-8">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-light text-[#005670] mb-2">View Lookbook</h3>
+                    <p className="text-gray-600 font-light">
+                      Browse the complete {activeCollectionData.name} with detailed imagery and specifications
+                    </p>
+                  </div>
+                  <div className="ml-6 flex items-center justify-center w-16 h-16 rounded-full bg-[#005670] group-hover:bg-[#004a5c] transition-all duration-500">
+                    <Download className="w-7 h-7 text-white" />
+                  </div>
+                </div>
+              </a>
             </div>
           </div>
-          <div className="border-t border-white/20 pt-8 text-center">
-            <p className="text-white/60 text-sm mb-2">Ālia Project by Henderson Design Group</p>
-            <p className="text-white/40 text-xs">&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Inspiration Page - Elegant gallery with real collection images
+const InspirationPage = () => {
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const galleryImages = [
+    // { id: 2, src: '/images/collections/2.jpg', title: 'Sophisticated Living' },
+    // { id: 4, src: '/images/collections/4.jpg', title: 'Coastal Elegance' },
+    // { id: 7, src: '/images/collections/7.jpg', title: 'Island Luxury' },
+    // { id: 10, src: '/images/collections/10.jpg', title: 'Modern Comfort' },
+    // { id: 13, src: '/images/collections/13.jpg', title: 'Refined Details' },
+    // { id: 15, src: '/images/collections/15.jpg', title: 'Curated Spaces' },
+    // { id: 17, src: '/images/collections/17.jpg', title: 'Hawaiian Living' },
+    // { id: 19, src: '/images/collections/19.jpg', title: 'Designer Touch' },
+    // { id: 26, src: '/images/collections/26.jpg', title: 'Timeless Design' }
+    { id: 1, src: '/images/collections/1.jpg', title: '' },
+    { id: 2, src: '/images/collections/2.jpg', title: '' },
+    { id: 3, src: '/images/collections/3.jpg', title: '' },
+    { id: 4, src: '/images/collections/4.jpg', title: '' },
+    { id: 7, src: '/images/collections/7.jpg', title: '' },
+    { id: 8, src: '/images/collections/8.jpg', title: '' },
+    { id: 10, src: '/images/collections/10.jpg', title: '' },
+    { id: 11, src: '/images/collections/11.jpg', title: '' },
+    { id: 12, src: '/images/collections/12.jpg', title: '' },
+    { id: 13, src: '/images/collections/13.jpg', title: '' },
+    { id: 15, src: '/images/collections/15.jpg', title: '' },
+    { id: 16, src: '/images/collections/16.jpg', title: '' },
+    { id: 17, src: '/images/collections/17.jpg', title: '' },
+    { id: 18, src: '/images/collections/18.jpg', title: '' },
+    { id: 19, src: '/images/collections/19.jpg', title: '' },
+    { id: 21, src: '/images/collections/21.jpg', title: '' },
+    { id: 26, src: '/images/collections/26.jpg', title: '' },
+    { id: 27, src: '/images/collections/27.jpg', title: '' },
+    { id: 28, src: '/images/collections/28.jpg', title: '' }
+  ];
+
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-5xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Design Inspiration</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          Explore our curated collections and completed Ālia residences
+        </p>
+      </div>
+
+      {/* Gallery Grid */}
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {galleryImages.map((image) => (
+            <div 
+              key={image.id}
+              onClick={() => setSelectedImage(image)}
+              className="group relative aspect-[4/3] overflow-hidden bg-gray-100 cursor-pointer"
+            >
+              <img 
+                src={image.src}
+                alt={image.title}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              />
+              {/* Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h3 className="text-white text-xl font-light">{image.title}</h3>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lightbox Modal */}
+      {selectedImage && (
+        <div 
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6 animate-fade-in"
+        >
+          <button 
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-8 right-8 text-white hover:text-gray-300 transition-colors"
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <img 
+            src={selectedImage.src}
+            alt={selectedImage.title}
+            className="max-w-full max-h-[85vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="absolute bottom-8 left-0 right-0 text-center">
+            <h3 className="text-white text-2xl font-light">{selectedImage.title}</h3>
           </div>
         </div>
-      </footer>
+      )}
+
+      {/* CTA Section */}
+      {/* <div className="max-w-4xl mx-auto mt-20 bg-gray-50 p-12 text-center">
+        <h3 className="text-2xl font-light text-[#005670] mb-4">Ready to Begin Your Design Journey?</h3>
+        <p className="text-gray-600 mb-8 leading-relaxed font-light">
+          Schedule your introduction meeting to explore how Henderson Design Group can create your perfect island home.
+        </p>
+        <a
+          href="#contact"
+          className="inline-flex items-center gap-2 bg-[#005670] text-white px-8 py-4 hover:bg-[#004a5c] transition-all"
+        >
+          <Mail className="w-5 h-5" />
+          <span className="font-light">Schedule a Meeting</span>
+        </a>
+      </div> */}
+    </div>
+  );
+};
+
+// Process Page - Complete content from PDF, elegant and simple
+const ProcessPage = () => {
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Client Process</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          A seamless journey from introduction to installation, typically 10-12 months
+        </p>
+      </div>
+
+      {/* Process Steps */}
+      <div className="max-w-4xl mx-auto space-y-12">
+        
+        {/* Step 1 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">01</span>
+            <h3 className="text-2xl font-light text-[#005670]">Engage with Henderson</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            The Ālia sales team introduces Henderson Design Group (HDG) and our curated furnishing 
+            collections to the client, sharing the brochure and facilitating a personal introduction to 
+            schedule an initial meeting.
+          </p>
+        </div>
+
+        {/* Step 2 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">02</span>
+            <h3 className="text-2xl font-light text-[#005670]">Introduction Meeting and Collection Review</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Henderson Design Group meets with the client, either in person or via an online call, to review 
+            the available furniture collections:
+          </p>
+          <ul className="space-y-2 mb-4 ml-6">
+            <li className="text-gray-700">1. Lani Furniture Collection</li>
+            <li className="text-gray-700">2. Nalu Furniture Collection</li>
+            <li className="text-gray-700">3. Foundation Collection</li>
+            <li className="text-gray-700">4. Custom Design</li>
+          </ul>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            During this meeting, HDG presents the overall design philosophy, collection options, pricing, 
+            customization possibilities, and project process. Clients may then decide how they wish to move forward:
+          </p>
+          <div className="bg-gray-50 p-6 space-y-3">
+            <p className="text-gray-700">• Place a <strong>Deposit to Hold 2025 Pricing</strong>, locking in current pricing while finalizing design decisions.</p>
+            <p className="text-gray-700">• Place a <strong>Design Fee to Hold Place in Line</strong>, securing a confirmed design start position in HDG's calendar.</p>
+            <p className="text-gray-700">• Take time to consider options and contact HDG when ready to proceed.</p>
+          </div>
+        </div>
+
+        {/* Step 3 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">03</span>
+            <h3 className="text-2xl font-light text-[#005670]">Client Portal Access and Onboarding</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Once a client decides to move forward and places either deposit, HDG will send an invitation to 
+            the client's personal HDG Project Portal. This portal serves as the central workspace for all 
+            information, communication, documents, selections, approvals, and project timelines.
+          </p>
+          <p className="text-gray-700 font-medium mb-3">When first activated, the client's portal opens in "Welcome Mode," which includes:</p>
+          <div className="bg-gray-50 p-6 space-y-2 mb-4">
+            <p className="text-gray-700">• HDG collection look books and furniture catalog</p>
+            <p className="text-gray-700">• Material and finish library</p>
+            <p className="text-gray-700">• Our Process overview and FAQs</p>
+            <p className="text-gray-700">• Contact information for the HDG project team</p>
+            <p className="text-gray-700">• Design Preferences Questionnaire</p>
+          </div>
+          <p className="text-gray-700 mb-3">After completing the questionnaire, HDG will reach out to schedule the Design Intake Meeting.</p>
+          <p className="text-gray-700 font-medium mb-3">Once the deposit is received, the Design Phase section unlocks, providing access to:</p>
+          <div className="bg-gray-50 p-6 space-y-2">
+            <p className="text-gray-700">• Unit-specific floor plans and layouts</p>
+            <p className="text-gray-700">• Selections and pricing proposals</p>
+            <p className="text-gray-700">• Communication threads for design approvals</p>
+            <p className="text-gray-700">• Project timeline and dashboard</p>
+          </div>
+        </div>
+
+        {/* Step 4 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">04</span>
+            <h3 className="text-2xl font-light text-[#005670]">Design Intake Meeting</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            A Henderson team member schedules a call or in-person meeting in Hawaii to review the 
+            questionnaire and confirm design intent. At this stage, the client is formally introduced to their 
+            Henderson Design Team, who will remain their primary point of contact throughout the process. 
+            Clients also receive full access to the Design Phase of the HDG software, customized for their 
+            unit or floor plan.
+          </p>
+        </div>
+
+        {/* Step 5 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">05</span>
+            <h3 className="text-2xl font-light text-[#005670]">Curated Design Preparation</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            Within one to two months of the intake meeting, Henderson prepares a curated design tailored to 
+            each client's expectations, budget, and aesthetic.
+          </p>
+        </div>
+
+        {/* Step 6 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">06</span>
+            <h3 className="text-2xl font-light text-[#005670]">Presentation of Curated Design</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            Henderson's concierge contacts the client to schedule a design presentation. During this meeting, 
+            clients can explore their floor plan and review proposed furnishings. Clients may approve the 
+            design as presented or request revisions for a follow-up meeting.
+          </p>
+        </div>
+
+        {/* Step 7 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">07</span>
+            <h3 className="text-2xl font-light text-[#005670]">Finalize and Present the Purchase Agreement</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            Once selections are confirmed in the design software by clicking "Confirm My Order," a final 
+            meeting is scheduled to review the complete design, budget, and timeline. The client then 
+            receives an order acknowledgment and a deposit receipt.
+          </p>
+        </div>
+
+        {/* Step 8 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">08</span>
+            <h3 className="text-2xl font-light text-[#005670]">Procurement, Delivery, and Installation Coordination</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            After orders are placed and vendor timelines are confirmed, Henderson provides an estimated 
+            installation date. Final installation dates align with the Ālia delivery schedule, with installations 
+            occurring in the order units are released.
+          </p>
+        </div>
+
+        {/* Step 9 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">09</span>
+            <h3 className="text-2xl font-light text-[#005670]">Invoice Schedule</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Once the furniture package is finalized, clients receive a Purchasing Agreement outlining the payment schedule:
+          </p>
+          <div className="bg-gray-50 p-6 space-y-4">
+            <div>
+              <p className="font-medium text-gray-900 mb-1">50% Deposit</p>
+              <p className="text-gray-700">Due upon approval of the furnishings proposal (if a 30% deposit was previously placed to hold 2025 pricing, an additional 20% will be due to place the order).</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900 mb-1">25% Progress Payment</p>
+              <p className="text-gray-700">Due six months prior to completion of production and shipping.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900 mb-1">25% Final Payment</p>
+              <p className="text-gray-700">Due 30 days prior to installation.</p>
+            </div>
+          </div>
+          <p className="text-gray-700 mt-4">All payments are tracked within the design software for full transparency.</p>
+        </div>
+
+        {/* Step 10 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">10</span>
+            <h3 className="text-2xl font-light text-[#005670]">White-Glove Delivery and Installation</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            Installation dates are confirmed 90 days in advance. Once Henderson receives notice that a unit 
+            has been turned over, our concierge coordinates all delivery and installation logistics. Installation 
+            typically requires six to eight business days and includes work by external trades such as 
+            wallcovering, window coverings, closet systems, and decorative fixtures, all managed by 
+            Henderson Design Group. Clients are asked not to be present during installation to ensure 
+            efficiency and safety.
+          </p>
+        </div>
+
+        {/* Step 11 */}
+        <div className="border-l-2 border-[#005670] pl-8 py-4">
+          <div className="flex items-baseline gap-4 mb-4">
+            <span className="text-5xl font-extralight text-[#005670]">11</span>
+            <h3 className="text-2xl font-light text-[#005670]">Client Walk-Through and Handover</h3>
+          </div>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            The Henderson concierge schedules a reveal to present the completed unit, review design details, 
+            and answer any questions. At this time, the client receives their Care and Maintenance Binder for 
+            all furnishings. Your concierge remains your ongoing point of contact for any future assistance 
+            or warranty support.
+          </p>
+        </div>
+
+      </div>
+
+      {/* Timeline Note */}
+      <div className="max-w-4xl mx-auto mt-16 bg-gray-50 p-8 text-center">
+        <p className="text-lg text-gray-700">
+          <strong>Updated October 30, 2025</strong>
+        </p>
+        <p className="text-gray-600 mt-2">
+          Typical process duration: 10-12 months from engagement to installation
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Timeline Page - Simple and elegant with complete content
+const TimelinePage = () => {
+  const [activePhase, setActivePhase] = useState(0);
+
+  const timeline = [
+    { 
+      period: "Nov 2025 - Jan 2026",
+      phase: "Client Outreach and Onboarding",
+      items: [
+        "HDG and Ālia Sales launch client introductions",
+        "Clients receive the pre-call email and initial presentation meeting",
+        "Client portal invitations are issued in \"Welcome Mode\"",
+        "Deposits to hold pricing or Design Fees to hold place in line are collected",
+        "Clients complete their Design Preferences Questionnaire"
+      ]
+    },
+    { 
+      period: "Feb - Apr 2026",
+      phase: "Design Intake and Active Design Phase",
+      items: [
+        "Clients attend their Design Intake Meetings, in person or online",
+        "HDG design team prepares curated layouts, material selections, and proposals",
+        "Design Presentation #1",
+        "Clients review concepts and request refinements",
+        "Design Presentation #2",
+        "Final design approvals begin rolling in by late April"
+      ]
+    },
+    { 
+      period: "May - Jun 2026",
+      phase: "Final Design Approvals and Purchase Agreements",
+      items: [
+        "Clients click \"Confirm My Order\" in the HDG software",
+        "Client Purchase Agreements are executed",
+        "50 percent deposits, less any prior credits, are invoiced and received",
+        "Production scheduling and material allocations are confirmed with manufacturers",
+        "Redline reviews and final shop drawings completed before fabrication"
+      ]
+    },
+    { 
+      period: "Jul - Sep 2026",
+      phase: "Production and Quality Control",
+      items: [
+        "Manufacturing and finishing take place in Indonesia and US Mainland, approximately 16-20 weeks",
+        "Quality control inspections, photography, and packaging occur through September",
+        "First containers begin shipping in early September 2026, approximately 8-12 weeks in transit to Hawaii"
+      ]
+    },
+    { 
+      period: "Oct - Nov 2026",
+      phase: "Shipping and Logistics Coordination",
+      items: [
+        "Remaining production batches ship",
+        "Mainland accessories and art pieces coordinated to match container arrivals",
+        "Progress payments of 25% invoiced six months before completion",
+        "HDG and freight teams manage customs, storage, and sequencing for building access"
+      ]
+    },
+    { 
+      period: "Dec 2026 - Jan 2027",
+      phase: "Final Preparations and Installation Scheduling",
+      items: [
+        "Final payments of 25% or any remaining balance invoiced thirty days prior to installation",
+        "Final delivery windows and elevator reservations confirmed with the building",
+        "Project Manager issues final installation notices and preparation checklists"
+      ]
+    },
+    { 
+      period: "Jan - Mar 2027",
+      phase: "White-Glove Delivery and Installation",
+      items: [
+        "Container deliveries staged by phase",
+        "Installation begins",
+        "Lani installations average ten to twelve business days; Nalu and Foundation units average six to eight business days",
+        "Finishing team completes styling, bed making, accessories, and final inspections"
+      ]
+    },
+    { 
+      period: "Feb - Apr 2027",
+      phase: "Client Walk-Throughs and Handover",
+      items: [
+        "HDG Project Manager conducts client reveals and walkthroughs",
+        "Care and Maintenance Binders distributed at completion",
+        "Warranty coverage begins at installation date",
+        "Client portal remains active for service, warranty, and aftercare requests"
+      ]
+    }
+  ];
+
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Project Timeline</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          November 2025 – April 2027
+        </p>
+      </div>
+
+      {/* Interactive Timeline */}
+      <div className="max-w-6xl mx-auto mb-20">
+        {/* Timeline Navigation */}
+        <div className="flex overflow-x-auto pb-6 mb-12 scrollbar-hide border-b border-gray-100">
+          {timeline.map((item, index) => (
+            <button
+              key={index}
+              onClick={() => setActivePhase(index)}
+              className={`flex-shrink-0 px-6 py-4 transition-all duration-500 border-b-2 ${
+                activePhase === index
+                  ? 'border-[#005670] text-[#005670]'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <div className="text-sm mb-1 font-light">{item.period}</div>
+              <div className={`text-xs ${activePhase === index ? 'opacity-100' : 'opacity-60'}`}>
+                Phase {index + 1}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Active Phase Content */}
+        <div className="animate-fade-in">
+          <div className="bg-gray-50 p-12">
+            <h3 className="text-3xl font-light text-[#005670] mb-8">{timeline[activePhase].phase}</h3>
+            <ul className="space-y-4">
+              {timeline[activePhase].items.map((item, idx) => (
+                <li key={idx} className="flex gap-4 items-start">
+                  <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                  <p className="text-lg text-gray-700 leading-relaxed">{item}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Navigation Arrows */}
+          <div className="flex justify-between mt-8">
+            <button
+              onClick={() => setActivePhase(Math.max(0, activePhase - 1))}
+              disabled={activePhase === 0}
+              className={`flex items-center gap-2 px-6 py-3 transition-all ${
+                activePhase === 0
+                  ? 'text-gray-300 cursor-not-allowed'
+                  : 'text-[#005670] hover:bg-gray-50'
+              }`}
+            >
+              <ChevronDown className="w-5 h-5 rotate-90" />
+              Previous Phase
+            </button>
+            <button
+              onClick={() => setActivePhase(Math.min(timeline.length - 1, activePhase + 1))}
+              disabled={activePhase === timeline.length - 1}
+              className={`flex items-center gap-2 px-6 py-3 transition-all ${
+                activePhase === timeline.length - 1
+                  ? 'text-gray-300 cursor-not-allowed'
+                  : 'text-[#005670] hover:bg-gray-50'
+              }`}
+            >
+              Next Phase
+              <ChevronDown className="w-5 h-5 -rotate-90" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Simplified Summary */}
+      <div className="max-w-4xl mx-auto">
+        <h3 className="text-3xl font-light text-[#005670] mb-10 text-center">Summary</h3>
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="bg-gray-50 p-8">
+            <p className="text-gray-600 mb-2">Client Onboarding and Design</p>
+            <p className="text-2xl font-light text-[#005670]">Nov 2025 - Apr 2026</p>
+          </div>
+          <div className="bg-gray-50 p-8">
+            <p className="text-gray-600 mb-2">Purchase Agreement and Production</p>
+            <p className="text-2xl font-light text-[#005670]">May - Sep 2026</p>
+          </div>
+          <div className="bg-gray-50 p-8">
+            <p className="text-gray-600 mb-2">Shipping and Logistics</p>
+            <p className="text-2xl font-light text-[#005670]">Sep - Dec 2026</p>
+          </div>
+          <div className="bg-gray-50 p-8">
+            <p className="text-gray-600 mb-2">Installation and Turnover</p>
+            <p className="text-2xl font-light text-[#005670]">Jan - Apr 2027</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500 text-center mt-12">Updated October 30, 2025</p>
+      </div>
+    </div>
+  );
+};
+
+// Next Steps Page - Investment Options dari PDF
+const NextStepsPage = () => {
+  return (
+    <div className="pt-24 pb-20 px-6 max-w-6xl mx-auto space-y-16 animate-fade-in">
+      <div className="text-center max-w-3xl mx-auto">
+        <div className="w-16 h-0.5 bg-[#005670] mx-auto mb-8"></div>
+        <h2 className="text-5xl font-extralight text-[#005670] mb-6 tracking-tight">Next Steps</h2>
+        <p className="text-gray-600 font-light">
+          Two flexible pathways to secure your place in the Ālia Furnishing Program
+        </p>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        {/* Option 1 */}
+        <div className="group border border-gray-100 p-10 hover:border-[#005670] transition-all duration-500">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <div className="text-xs tracking-widest uppercase text-gray-500 mb-2 font-light">Option 1</div>
+              <h3 className="text-2xl font-extralight text-[#005670]">Deposit to Hold 2025 Pricing</h3>
+            </div>
+            <div className="w-10 h-10 rounded-full border border-[#005670]/30 text-[#005670] flex items-center justify-center font-light">
+              1
+            </div>
+          </div>
+          <p className="text-gray-600 leading-relaxed mb-8 font-light">
+            Secure current pricing while finalizing your design decisions
+          </p>
+          <div className="space-y-4 mb-8">
+            {[
+              { title: "30% Deposit", desc: "Based on selected package" },
+              { title: "Lock Pricing", desc: "Protect against increases" },
+              { title: "Reserve Materials", desc: "Production allocation secured" },
+              { title: "Full Credit", desc: "100% toward final package" }
+            ].map((item, index) => (
+              <div key={index} className="flex gap-4 py-3 border-b border-gray-100 last:border-b-0">
+                <CheckCircle className="w-4 h-4 text-[#005670] flex-shrink-0 mt-1" />
+                <div>
+                  <p className="font-light text-gray-900">{item.title}</p>
+                  <p className="text-sm text-gray-600 font-light">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-blue-50/50 border-l-2 border-[#005670] p-4 text-xs font-light">
+            <p className="text-gray-700">
+              <span className="font-medium">Refund Policy:</span> Refundable less 10% admin fee before design approval. Must apply within 6 months.
+            </p>
+          </div>
+        </div>
+
+        {/* Option 2 */}
+        <div className="relative bg-[#005670] text-white p-10 overflow-hidden">
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <div className="text-xs tracking-widest uppercase text-white/60 mb-2 font-light">Option 2</div>
+                <h3 className="text-2xl font-extralight">Design Fee to Hold Place</h3>
+              </div>
+              <div className="w-10 h-10 rounded-full border border-white/30 text-white flex items-center justify-center font-light">
+                2
+              </div>
+            </div>
+            <p className="text-white/80 leading-relaxed mb-8 font-light">
+              Guarantee your design start position with confirmed calendar slot
+            </p>
+            <div className="space-y-4 mb-8">
+              {[
+                { title: "Non-Refundable Fee", desc: "Based on unit type" },
+                { title: "Confirmed Start", desc: "Reserved Q1 2026 slot" },
+                { title: "Full Design Services", desc: "Complete presentations" },
+                { title: "100% Credit", desc: "Applied to production" }
+              ].map((item, index) => (
+                <div key={index} className="flex gap-4 py-3 border-b border-white/10 last:border-b-0">
+                  <CheckCircle className="w-4 h-4 text-white flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="font-light text-white">{item.title}</p>
+                    <p className="text-sm text-white/70 font-light">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white/10 border-l-2 border-white/30 p-4 text-xs font-light">
+              <p className="text-white/90">
+                <span className="font-medium">Includes:</span> Intake meeting, floor plans, material selections, and final proposal presentation
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Critical Deadline */}
+      <div className="border-2 border-red-200 bg-red-50/50 p-8 max-w-3xl mx-auto">
+        <div className="flex items-start gap-4">
+          <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+          <div>
+            <h4 className="text-xl font-light text-gray-900 mb-2">Critical Deadline: December 15, 2025</h4>
+            <p className="text-gray-700 font-light">Deposit must be received by this date to guarantee 2025 pricing and secure your production slot</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// FAQ Page - With Load More concept
+const FAQPage = ({ setActiveTab }) => {
+  const [expandedFAQ, setExpandedFAQ] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(6); // Show 6 questions initially
+
+  const faqs = [
+    {
+      category: "GENERAL OVERVIEW",
+      questions: [
+        {
+          question: "Who is Henderson Design Group?",
+          answer: "Henderson Design Group (HDG) is an interior design and furnishing firm specializing in curated, turnkey solutions for residential developments. For Ālia, we have created a collection of fully coordinated furniture collections—Lani, Nalu, and Foundation—crafted to complement the architecture and finishes of the building."
+        },
+        {
+          question: "What are the available furniture collections?",
+          answer: "The Ālia program offers four options:\n\n• Lani Collection – Complete bespoke-level furnishing, including cabinetry, art, rugs, and accessories.\n• Nalu Collection – Comprehensive furnishing with elevated design details and finish selections.\n• Foundation Collection – Streamlined essentials for move-in-ready comfort.\n• Custom Design – For clients wishing to fully personalize their unit with HDG's design team."
+        },
+        {
+          question: "Can I mix items between collections?",
+          answer: "Yes. Clients often select a mix of pieces across Lani & Nalu Collection. Our collections allow flexibility in choosing items and finishes while maintaining overall design harmony."
+        }
+      ]
+    },
+    {
+      category: "PROCESS AND TIMELINE",
+      questions: [
+        {
+          question: "What happens during the first meeting?",
+          answer: "Your initial meeting introduces the HDG team, design philosophy, and each furnishing collection. We review pricing, customization options, and next steps."
+        },
+        {
+          question: "What are my options for moving forward after the first meeting?",
+          answer: "You may:\n• Place a Deposit to Hold 2025 Pricing.\n• Pay a Design Fee to Hold Place in Line.\n• Take time to review and contact HDG when ready."
+        },
+        {
+          question: "What is the difference between the two deposit options?",
+          answer: "Deposit to Hold Pricing locks current 2025 pricing and reserves material allocation.\n\nDesign Fee to Hold Place in Line secures a confirmed design start position and includes the design intake meeting, layout review, and curated presentation."
+        },
+        {
+          question: "How long does the design process take?",
+          answer: "From intake to presentation typically takes six to eight weeks, depending on customization level and client feedback speed."
+        },
+        {
+          question: "What happens after I approve my design?",
+          answer: "Once you click \"Confirm My Order\" in the HDG portal, we finalize your Purchase Agreement and issue the 50% deposit invoice. This activates production and scheduling."
+        },
+        {
+          question: "When will my furniture be installed?",
+          answer: "Installation dates are coordinated with the Ālia construction schedule. Most deliveries occur in the order units are released. Clients will be notified approximately 90 days before their scheduled installation."
+        }
+      ]
+    },
+    {
+      category: "PORTAL AND COMMUNICATION",
+      questions: [
+        {
+          question: "What is the HDG Client Portal?",
+          answer: "The HDG Portal is your centralized workspace for all documents, design selections, approvals, and communication. It replaces long email threads and ensures everything stays organized and accessible."
+        },
+        {
+          question: "When do I receive access to the portal?",
+          answer: "You will receive your portal invitation after our first introductory meeting. Initially the portal opens in welcome mode where you can view the collections, catalog, FAQ, and our process overview. Once your deposit is processed, the Design Phase unlocks, giving you access to floor plans, selections, proposals, and approvals."
+        },
+        {
+          question: "Will I still receive updates by email?",
+          answer: "Yes. You'll receive email notifications whenever your attention or approval is needed, but all source documents and communication remain inside the portal."
+        }
+      ]
+    },
+    {
+      category: "FINANCIAL AND PAYMENTS",
+      questions: [
+        {
+          question: "What is the payment schedule?",
+          answer: "• 50% Deposit – Due upon approval of the furnishings proposal (less any prior deposits or credits, such as 30% hold price deposit or design fee. The total price is based on the final approved design).\n• 25% Progress Payment – Due six months before completion of production and shipping.\n• 25% Final Payment or remaining balance – Due 30 days prior to installation."
+        },
+        {
+          question: "What forms of payment do you accept?",
+          answer: "Payments can be made by wire transfer or check in U.S. Dollars, payable to Henderson Design Group."
+        },
+        {
+          question: "Are deposits refundable?",
+          answer: "Design Fees are non-refundable. Deposits to Hold Pricing are refundable less a 10% administrative fee if cancelled before design approval or production scheduling."
+        }
+      ]
+    },
+    {
+      category: "PRODUCTION, DELIVERY, AND INSTALLATION",
+      questions: [
+        {
+          question: "Where is the furniture manufactured?",
+          answer: "The majority of the HDG collections are manufactured in Indonesia by our partner workshops specializing in teak, woven materials, metals, stone, leather, and premium upholstery. Each piece undergoes quality control and is shipped directly to Hawaii for installation."
+        },
+        {
+          question: "How long does production take?",
+          answer: "Average production time is 16-20 weeks after design approval, followed by approximately 8-12 weeks of shipping and customs clearance."
+        },
+        {
+          question: "How long does installation take?",
+          answer: "Installation typically requires six to eight business days per unit, depending on collection type and building elevator access."
+        },
+        {
+          question: "Can I be present during installation?",
+          answer: "No. We ask that clients not be present during installation to ensure efficiency and safety. Our team coordinates all details and will invite you back for your reveal once the unit is complete. We like the WOW effect of a final reveal!"
+        },
+        {
+          question: "What happens if my unit isn't ready when my furniture arrives?",
+          answer: "HDG will coordinate adjusted delivery timing or temporary storage as needed. Any associated storage or re-delivery costs will be discussed in advance."
+        }
+      ]
+    },
+    {
+      category: "WARRANTY AND AFTERCARE",
+      questions: [
+        {
+          question: "What warranty do I receive?",
+          answer: "HDG provides a one-year limited warranty against manufacturing defects in materials and workmanship from the date of installation."
+        },
+        {
+          question: "What is not covered under warranty?",
+          answer: "Normal wear, fading, misuse, natural variations in materials, or damage caused by improper care or environmental conditions are not covered."
+        },
+        {
+          question: "How do I file a warranty claim?",
+          answer: "Submit a request through your HDG portal or contact your project manager. Include a description and photos of the issue. We will respond within ten business days."
+        },
+        {
+          question: "What happens after the one-year warranty period?",
+          answer: "HDG continues to offer service, repair, and replacement assistance at standard rates. Contact your project manager for details."
+        },
+        {
+          question: "How do I care for my furnishings?",
+          answer: "Care and maintenance instructions are included in your Care & Maintenance Binder. In general:\n• Avoid prolonged sunlight exposure.\n• Maintain moderate humidity.\n• Use soft cloths and mild cleaning agents.\n• Avoid standing water, heat, or abrasive products."
+        }
+      ]
+    },
+    {
+      category: "ADDITIONAL INFORMATION",
+      questions: [
+        {
+          question: "Can I customize individual pieces?",
+          answer: "Yes, custom modifications can be discussed during the design phase. Additional fees and extended timelines may apply."
+        },
+        {
+          question: "Can HDG coordinate additional work such as wall covering, window treatments, or closet systems?",
+          answer: "Yes. HDG can coordinate external trades for these services as part of your installation scope. Additional fees and extended timelines may apply."
+        },
+        {
+          question: "What if I plan to rent my unit?",
+          answer: "HDG's designs are created for residential living but suitable for high-end rental use. We can advise on durable finish options if your unit will be rented."
+        },
+        {
+          question: "Who do I contact for general questions?",
+          answer: "Your assigned HDG Project Manager remains your main point of contact throughout the process."
+        },
+        {
+          question: "How do I begin?",
+          answer: "Contact your Ālia sales representative or Henderson Design Group to schedule your introduction meeting. We look forward to helping you create your home."
+        }
+      ]
+    }
+  ];
+
+  // Flatten all questions with category info
+  const allQuestions = faqs.flatMap((cat) => 
+    cat.questions.map((q) => ({
+      ...q,
+      category: cat.category
+    }))
+  );
+
+  const visibleQuestions = allQuestions.slice(0, visibleCount);
+  const hasMore = visibleCount < allQuestions.length;
+
+  const loadMore = () => {
+    setVisibleCount(prev => Math.min(prev + 6, allQuestions.length));
+  };
+
+  const handleContactClick = () => {
+    setActiveTab('contact');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Frequently Asked Questions</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          Everything you need to know about the Ālia Furnishing Program
+        </p>
+      </div>
+
+      {/* FAQ List */}
+      <div className="max-w-4xl mx-auto space-y-3 mb-12">
+        {visibleQuestions.map((item, index) => {
+          const faqId = `faq-${index}`;
+          return (
+            <div key={index} className="bg-white border border-gray-100 hover:border-[#005670]/40 transition-all duration-500 overflow-hidden">
+              <button
+                onClick={() => setExpandedFAQ(expandedFAQ === faqId ? null : faqId)}
+                className="w-full px-8 py-6 flex items-start justify-between gap-4 text-left"
+              >
+                <div className="flex-1">
+                  <div className="text-xs text-[#005670] mb-2 font-light tracking-widest uppercase">{item.category}</div>
+                  <h3 className="text-lg font-light text-gray-900 leading-relaxed">{item.question}</h3>
+                </div>
+                <ChevronDown 
+                  className={`w-5 h-5 text-[#005670] flex-shrink-0 transition-transform duration-500 mt-1 ${
+                    expandedFAQ === faqId ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              
+              {expandedFAQ === faqId && (
+                <div className="px-8 pb-6 animate-fade-in">
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-line">{item.answer}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="max-w-4xl mx-auto text-center mb-16">
+          <button
+            onClick={loadMore}
+            className="inline-flex items-center gap-3 px-12 py-5 bg-white border-2 border-[#005670] text-[#005670] hover:bg-[#005670] hover:text-white transition-all duration-500 group"
+          >
+            <span className="font-light tracking-wide text-lg">Load More Questions</span>
+            <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
+          </button>
+          <p className="text-sm text-gray-500 mt-4 font-light">
+            Showing {visibleCount} of {allQuestions.length} questions
+          </p>
+        </div>
+      )}
+
+      {/* Contact CTA */}
+      <div className="max-w-4xl mx-auto bg-gray-50 p-12 text-center">
+        <h3 className="text-2xl font-light text-[#005670] mb-4">Still have questions?</h3>
+        <p className="text-gray-600 mb-8 leading-relaxed font-light">
+          Your HDG project manager can assist you. Contact your Ālia sales representative or Henderson Design Group directly.
+        </p>
+        <button
+          onClick={handleContactClick}
+          className="inline-flex items-center gap-2 bg-[#005670] text-white px-8 py-4 hover:bg-[#004a5c] transition-all"
+        >
+          <Mail className="w-5 h-5" />
+          <span className="font-light">Contact Us</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Payment Page - Exact content from PDFs
+const PaymentPage = () => {
+  return (
+    <div className="pt-24 pb-20 px-6 max-w-5xl mx-auto space-y-12 animate-fade-in">
+      <div className="text-center max-w-4xl mx-auto mb-12">
+        <h2 className="text-4xl font-light text-[#005670] mb-6">Payment Schedule & Deposit Options</h2>
+      </div>
+
+      {/* Payment Schedule */}
+      <div className="space-y-8">
+        <h3 className="text-2xl font-light text-[#005670] border-b pb-3">Standard Payment Schedule</h3>
+        
+        <div className="space-y-6 bg-gray-50 p-8">
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium text-[#005670] mb-2">50% Deposit</h4>
+              <p className="text-gray-700">Due upon approval of the furnishings proposal (less any prior deposits or credits, such as 30% hold price deposit or design fee. The total price is based on the final approved design).</p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-[#005670] mb-2">25% Progress Payment</h4>
+              <p className="text-gray-700">Due six months before completion of production and shipping.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium text-[#005670] mb-2">25% Final Payment or remaining balance</h4>
+              <p className="text-gray-700">Due 30 days prior to installation.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-[#005670] p-6">
+          <p className="text-gray-700"><strong>Payment Methods:</strong> Payments can be made by wire transfer or check in U.S. Dollars, payable to Henderson Design Group.</p>
+          <p className="text-gray-700 mt-2">All payment tracking is available through your secure client portal.</p>
+        </div>
+      </div>
+
+      {/* Deposit Options */}
+      <div className="space-y-8 mt-16">
+        <h3 className="text-2xl font-light text-[#005670] border-b pb-3">Understanding Your Deposit Options</h3>
+        
+        <p className="text-gray-700 leading-relaxed">This summary explains the two ways clients can move forward with Henderson Design Group for their Ālia residence. Each option secures your place in the HDG design and production schedule in a different way.</p>
+
+        {/* Option 1 */}
+        <div className="border-2 border-gray-300 p-8">
+          <h4 className="text-xl font-medium text-[#005670] mb-4">OPTION 1 – DEPOSIT TO HOLD 2025 PRICING</h4>
+          
+          <div className="space-y-4">
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2">Purpose</h5>
+              <p className="text-gray-700">Secure current HDG collection pricing while you finalize your design decisions.</p>
+            </div>
+
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2">Deposit Amount</h5>
+              <p className="text-gray-700">Thirty percent (30%) of your selected furnishing package total.</p>
+            </div>
+
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2">What This Does</h5>
+              <ul className="list-disc pl-6 space-y-1 text-gray-700">
+                <li>Locks in 2025 pricing for your chosen collection (Lani, Nalu, or Foundation).</li>
+                <li>Reserves materials and production allocation in HDG's manufacturing schedule.</li>
+                <li>Applies in full toward your total furnishing package once you move forward to design and production.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2">Refund Policy</h5>
+              <p className="text-gray-700">Refundable less a 10% administrative fee if cancelled before design selections or production scheduling begin. Less any design fees incurred.</p>
+              <p className="text-gray-700 mt-2">Non-refundable once design selections are approved or production scheduling has started.</p>
+            </div>
+
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2">Next Step</h5>
+              <p className="text-gray-700">Once your deposit is received, HDG will confirm your pricing lock and place your project in the design calendar for the 2026 design phase.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Option 2 */}
+        <div className="bg-[#005670] text-white p-8">
+          <h4 className="text-xl font-medium mb-4">OPTION 2 – DESIGN FEE TO HOLD PLACE IN LINE</h4>
+          
+          <div className="space-y-4">
+            <div>
+              <h5 className="font-medium mb-2">Purpose</h5>
+              <p className="text-white/90">Guarantee your design start position in HDG's calendar before capacity fills.</p>
+            </div>
+
+            <div>
+              <h5 className="font-medium mb-2">Fee Amount</h5>
+              <p className="text-white/90">One hundred percent (100%) due upon signing. Fee is non-refundable.</p>
+              <p className="text-white/90 text-sm mt-1">(Refer to Design Fee Schedule by unit type and bedroom count.)</p>
+            </div>
+
+            <div>
+              <h5 className="font-medium mb-2">What This Does</h5>
+              <ul className="list-disc pl-6 space-y-1 text-white/90">
+                <li>Confirms your reserved design start date.</li>
+                <li>Includes design intake meeting, floor plan review, furniture layout, material selections, and one revision.</li>
+                <li>Applies in full as a credit toward your total furnishing package when you proceed to production.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 className="font-medium mb-2">Refund Policy</h5>
+              <p className="text-white/90">Non-refundable. The full amount is credited toward your total package if you move forward into production.</p>
+            </div>
+
+            <div>
+              <h5 className="font-medium mb-2">Next Step</h5>
+              <p className="text-white/90">Once the design fee is received, HDG will issue your confirmation notice and schedule your design intake meeting.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Critical Deadline */}
+      <div className="bg-red-50 border-2 border-red-300 p-8 mt-12">
+        <h4 className="text-xl font-medium text-red-900 mb-3">CRITICAL DEADLINE: December 15, 2025</h4>
+        <p className="text-red-800">Deposit must be received by this date to guarantee 2025 pricing and secure your production slot.</p>
+      </div>
+    </div>
+  );
+};
+
+// Warranty Page - Complete content from PDF
+const WarrantyPage = () => {
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Warranty & Aftercare Policy</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          Ālia Furnishing Program
+        </p>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto space-y-16">
+        
+        {/* Purpose */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Purpose</h3>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            This document outlines the warranty coverage and aftercare guidelines provided by Henderson Design Group (HDG) 
+            for the furnishings, fixtures, and accessories supplied and installed under the Ālia Furnishing Program. 
+            The goal is to ensure every client receives continued support, clear maintenance guidance, and timely service when needed.
+          </p>
+        </section>
+
+        {/* Warranty Coverage */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Warranty Coverage</h3>
+          <p className="text-lg text-gray-700 leading-relaxed mb-6">
+            HDG warrants that all furnishings supplied under the Client Purchase Agreement are free from defects in 
+            materials and workmanship for a period of <strong>one (1) year from the date of installation</strong>.
+          </p>
+          
+          <div className="bg-gray-50 p-8">
+            <h4 className="text-xl font-light text-[#005670] mb-4">This warranty covers:</h4>
+            <ul className="space-y-3">
+              <li className="flex gap-3 items-start">
+                <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                <p className="text-gray-700">Structural defects in furniture frames, cabinetry, and joinery</p>
+              </li>
+              <li className="flex gap-3 items-start">
+                <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                <p className="text-gray-700">Hardware and mechanism failures (hinges, drawer glides, latches, or similar components)</p>
+              </li>
+              <li className="flex gap-3 items-start">
+                <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                <p className="text-gray-700">Upholstery stitching or seam failures not related to wear or misuse</p>
+              </li>
+              <li className="flex gap-3 items-start">
+                <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                <p className="text-gray-700">Finishes or coatings that peel or delaminate under normal residential conditions</p>
+              </li>
+              <li className="flex gap-3 items-start">
+                <div className="w-2 h-2 rounded-full bg-[#005670] mt-2 flex-shrink-0"></div>
+                <p className="text-gray-700">Manufacturing defects in accessories or lighting items supplied by HDG</p>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Exclusions */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Exclusions</h3>
+          <p className="text-lg text-gray-700 leading-relaxed mb-6">This warranty does not cover:</p>
+          
+          <div className="space-y-3">
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Normal wear and tear, fading, or aging of materials</p>
+            </div>
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Damage from misuse, neglect, accident, or alterations by the client or third parties</p>
+            </div>
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Variations in color, grain, texture, or tone due to the natural characteristics of wood, stone, fabric, or rattan</p>
+            </div>
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Shrinkage or movement in natural materials caused by humidity, temperature, or environmental changes</p>
+            </div>
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Damage caused by improper cleaning, use of unapproved products, or failure to follow care instructions</p>
+            </div>
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Electrical components, appliances, or fixtures covered under manufacturer warranties</p>
+            </div>
+            <div className="flex gap-3 items-start p-4 border-l-2 border-gray-300">
+              <p className="text-gray-700">• Damage resulting from building construction, water leaks, pests, or environmental exposure</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Warranty Limitations */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Warranty Limitations</h3>
+          <div className="bg-gray-50 p-8 space-y-4">
+            <p className="text-gray-700 leading-relaxed">
+              HDG's liability under this warranty is limited to repair or replacement of the defective item, at HDG's discretion. 
+              If an identical replacement is unavailable, HDG may substitute an item of equal or greater value consistent with the design intent.
+            </p>
+            <p className="text-gray-700 leading-relaxed">
+              Under no circumstances shall HDG be liable for consequential damages, loss of use, or any claim exceeding 
+              the original purchase value of the defective item.
+            </p>
+          </div>
+        </section>
+
+        {/* Warranty Claims */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Warranty Claims</h3>
+          <p className="text-lg text-gray-700 leading-relaxed mb-6">
+            All warranty claims must be submitted in writing through the HDG client portal or directly to your HDG Project Manager. 
+            Claims must include:
+          </p>
+          <div className="bg-gray-50 p-8 space-y-3">
+            <p className="text-gray-700">• Client name and unit number</p>
+            <p className="text-gray-700">• Description and photographs of the issue</p>
+            <p className="text-gray-700">• Date of installation or purchase</p>
+          </div>
+          <p className="text-gray-700 leading-relaxed mt-6">
+            HDG will acknowledge receipt of the claim within ten (10) business days and may request an onsite inspection 
+            or additional information. Repairs or replacements will be scheduled as soon as practicable, based on material 
+            and labor availability.
+          </p>
+        </section>
+
+        {/* Service Outside Warranty */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Service Outside Warranty</h3>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            After the one-year warranty period, HDG continues to offer support or referral out for repairs, refinishing, 
+            and replacement parts at standard service rates. Clients may contact their Project Manager for quotes and scheduling.
+          </p>
+        </section>
+
+        {/* Client Responsibilities */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Client Responsibilities</h3>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            Clients agree to maintain furnishings in accordance with HDG's Care and Maintenance Guidelines, included in this binder. 
+            Proper environmental conditions (temperature, humidity, and ventilation) are necessary to preserve materials and finishes. 
+            Damage caused by failure to maintain these conditions is not covered under this warranty.
+          </p>
+        </section>
+
+        {/* Product Care and Maintenance */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Product Care and Maintenance</h3>
+          <p className="text-lg text-gray-700 leading-relaxed mb-6">General care recommendations include:</p>
+          <div className="bg-gray-50 p-8 space-y-3">
+            <p className="text-gray-700">• Avoid direct prolonged sunlight exposure to prevent fading</p>
+            <p className="text-gray-700">• Maintain indoor humidity between 40%–60% to minimize wood movement</p>
+            <p className="text-gray-700">• Clean with a soft, damp cloth using mild, non-abrasive products</p>
+            <p className="text-gray-700">• Do not use any bleach, ammonia, or solvent-based cleaners</p>
+            <p className="text-gray-700">• Protect surfaces from standing water, hot objects, or sharp impacts</p>
+            <p className="text-gray-700">• Vacuum or brush upholstery regularly without a beater bar (suction only)</p>
+            <p className="text-gray-700">• Rotate upholstery cushions for even wear</p>
+          </div>
+        </section>
+
+        {/* Transferability */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Transferability</h3>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            This warranty applies only to the original purchaser and is non-transferable.
+          </p>
+        </section>
+
+        {/* Governing Law */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-6">Governing Law</h3>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            This Warranty Policy shall be governed by and construed in accordance with the laws of the State of Hawaii.
+          </p>
+        </section>
+
+        {/* Contact Information */}
+        <section className="bg-[#005670] text-white p-12">
+          <h3 className="text-3xl font-extralight mb-8">Contact Information</h3>
+          <p className="text-lg text-white/90 mb-6">
+            For warranty questions, service requests, or aftercare support, please contact:
+          </p>
+          <div className="space-y-2 text-white/90">
+            <p className="font-light">Henderson Design Group – Project Manager</p>
+            <p className="text-sm">Available through your HDG client portal</p>
+          </div>
+        </section>
+
+        {/* Updated Date */}
+        <div className="text-center">
+          <p className="text-sm text-gray-500">Updated October 30, 2025</p>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// Environment Page - Consistent elegant theme
+const EnvironmentPage = () => {
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">Environmental Commitment</h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed">
+          We design with intention—not only for how a home looks and feels, 
+          but for how it impacts the world around it
+        </p>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto space-y-16">
+        
+        {/* Philosophy */}
+        <section>
+          <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
+            <p>
+              Hawaii's environment is fragile and finite. Every piece that arrives here stays here, 
+              making responsible sourcing and manufacturing essential to long-term sustainability.
+            </p>
+            <p>
+              By producing over eighty percent of our furnishings in Indonesia, we directly oversee 
+              every stage of production—from raw materials to final packaging.
+            </p>
+            <p>
+              Complete unit packages minimize excess packaging and consolidate shipments, 
+              dramatically lowering our carbon footprint compared to multi-vendor purchasing.
+            </p>
+          </div>
+        </section>
+
+        {/* Our Approach */}
+        <section>
+          <h3 className="text-3xl font-light text-[#005670] mb-8">Our Environmental Approach</h3>
+          <div className="space-y-4 bg-gray-50 p-8">
+            <p className="text-gray-700 leading-relaxed">• Maintain consistent quality and reduce waste at the source</p>
+            <p className="text-gray-700 leading-relaxed">• Build and ship complete unit packages, minimizing excess packaging</p>
+            <p className="text-gray-700 leading-relaxed">• Load each container by client unit, reducing handling and damage</p>
+            <p className="text-gray-700 leading-relaxed">• Consolidate shipments to dramatically lower carbon footprint</p>
+            <p className="text-gray-700 leading-relaxed">• Support skilled craftsmanship and sustainable forestry practices</p>
+          </div>
+        </section>
+
+        {/* Impact Grid */}
+        <section>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="border-l-4 border-[#005670] pl-6 py-4">
+              <h4 className="text-xl font-light text-[#005670] mb-3">Quality Control</h4>
+              <p className="text-gray-700">Direct oversight reduces waste at source</p>
+            </div>
+            <div className="border-l-4 border-[#005670] pl-6 py-4">
+              <h4 className="text-xl font-light text-[#005670] mb-3">Smart Packaging</h4>
+              <p className="text-gray-700">Minimal excess materials and waste</p>
+            </div>
+            <div className="border-l-4 border-[#005670] pl-6 py-4">
+              <h4 className="text-xl font-light text-[#005670] mb-3">Efficient Logistics</h4>
+              <p className="text-gray-700">Container loading by unit minimizes handling</p>
+            </div>
+            <div className="border-l-4 border-[#005670] pl-6 py-4">
+              <h4 className="text-xl font-light text-[#005670] mb-3">Lower Impact</h4>
+              <p className="text-gray-700">Consolidated shipments reduce carbon footprint</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Quote */}
+        <section className="bg-gray-50 p-12 text-center">
+          <p className="text-2xl font-light leading-relaxed italic text-gray-700 mb-6">
+            "Every decision we make considers longevity, recyclability, and environmental stewardship. 
+            Our goal: create enduring interiors that respect the land, the people, and the planet."
+          </p>
+          <p className="text-sm text-gray-500 uppercase tracking-wide">Henderson Design Group</p>
+        </section>
+
+      </div>
+    </div>
+  );
+};
+
+// Questionnaire Page - Link to download PDF atau embed form
+const QuestionnairePage = () => {
+  return (
+    <div className="pt-24 pb-20 px-6 max-w-6xl mx-auto space-y-16 animate-fade-in">
+      <div className="text-center max-w-3xl mx-auto">
+        <div className="w-16 h-0.5 bg-[#005670] mx-auto mb-8"></div>
+        <h2 className="text-5xl font-extralight text-[#005670] mb-6 tracking-tight">Design Questionnaire</h2>
+        <p className="text-gray-600 font-light">
+          Share your lifestyle, preferences, and vision to help us create your perfect island home
+        </p>
+      </div>
+
+      <div className="max-w-4xl mx-auto bg-white border border-gray-100 p-12 text-center">
+        <div className="inline-flex p-6 rounded-full bg-[#005670]/5 text-[#005670] mb-8">
+          <FileText className="w-12 h-12" />
+        </div>
+        <h3 className="text-2xl font-light text-[#005670] mb-4">Ready to Begin Your Design Journey?</h3>
+        <p className="text-gray-600 font-light mb-8 leading-relaxed">
+          Our comprehensive questionnaire helps us understand your unique lifestyle, aesthetic preferences, 
+          and how you envision living in your Ālia residence. This information guides every design decision 
+          we make for your home.
+        </p>
+        <div className="space-y-4">
+          <button className="inline-flex items-center gap-3 bg-[#005670] text-white px-8 py-4 text-sm font-light tracking-wide hover:bg-[#004a5c] transition-all duration-500">
+            <Download className="w-5 h-5" />
+            Download Questionnaire (PDF)
+          </button>
+          <p className="text-xs text-gray-500 font-light">
+            Or complete it online through your client portal after making your deposit
+          </p>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        {[
+          { title: "Home Use & Lifestyle", desc: "Tell us how you'll use your space, who will live there, and your daily routines" },
+          { title: "Design Aesthetic", desc: "Share your style preferences, color palettes, and design inspirations" },
+          { title: "Functional Needs", desc: "Specify bedroom setup, entertaining habits, work-from-home needs, and special requirements" }
+        ].map((item, index) => (
+          <div key={index} className="text-center p-6 border border-gray-100">
+            <div className="text-3xl font-extralight text-[#005670] mb-3">{index + 1}</div>
+            <h4 className="font-light text-[#005670] mb-2">{item.title}</h4>
+            <p className="text-sm text-gray-600 font-light">{item.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Contact Page - Standalone tab
+const ContactPage = () => {
+  return (
+    <div className="pt-24 pb-20 px-6 max-w-5xl mx-auto animate-fade-in">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl font-light text-[#005670] mb-4">Begin Your Journey</h2>
+        <p className="text-gray-600">Contact your Ālia sales representative or reach out directly</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <MapPin className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Visit Us</h3>
+          <p className="text-sm text-gray-600">74-5518 Kaiwi Street Suite B</p>
+          <p className="text-sm text-gray-600">Kailua Kona, HI 96740</p>
+        </div>
+
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <Phone className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Call Us</h3>
+          <p className="text-sm text-gray-600">(808) 315-8782</p>
+        </div>
+
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <Mail className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Email Us</h3>
+          <p className="text-sm text-gray-600">aloha@henderson.house</p>
+        </div>
+
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <Clock className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Hours</h3>
+          <p className="text-sm text-gray-600">Mon-Fri: 9AM-5PM HST</p>
+          <p className="text-sm text-gray-600">Sat: By Appointment</p>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-100 p-8 text-center max-w-3xl mx-auto">
+        <h3 className="text-xl font-medium text-[#005670] mb-4">Ready to create your island sanctuary?</h3>
+        <p className="text-gray-700 leading-relaxed">
+          Schedule your introduction meeting with Henderson Design Group to explore 
+          collections, discuss your vision, and begin your Ālia journey.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Footer
+const Footer = ({ setActiveTab }) => {
+  return (
+    <footer className="bg-[#005670] text-white py-12 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-4 gap-12 mb-10">
+          <div className="md:col-span-2">
+            <img src="/images/HDG-Logo.png" alt="Henderson Design Group" className="h-14 mb-6 opacity-90" />
+            <p className="text-white/70 leading-relaxed text-sm">
+              Henderson Design Group specializes in curated, turnkey furnishing solutions 
+              for Hawaii's premier residential developments. Creating exceptional interiors 
+              with sustainable practices and timeless elegance.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium mb-4 tracking-wide">Navigation</h3>
+            <div className="space-y-2 text-sm text-white/70">
+              {['about', 'collection', 'process', 'timeline', 'payment', 'faq'].map((tab) => (
+                <button 
+                  key={tab}
+                  onClick={() => { setActiveTab(tab); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                  className="block hover:text-white transition-colors capitalize"
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium mb-4 tracking-wide">Important Dates</h3>
+            <div className="space-y-2 text-sm text-white/70">
+              <p>Deposit Deadline:<br /><span className="text-white font-medium">December 15, 2025</span></p>
+              <p>Design Phase:<br /><span className="text-white">Feb - Apr 2026</span></p>
+              <p>Installation:<br /><span className="text-white">Jan - Mar 2027</span></p>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-white/20 pt-8 text-center">
+          <p className="text-white/60 text-sm mb-2">Ālia Project by Henderson Design Group</p>
+          <p className="text-white/40 text-xs">&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+// Main Component
+const BrochureLandingPage = () => {
+  const [activeTab, setActiveTab] = useState('about');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
+  const renderPage = () => {
+    switch(activeTab) {
+      case 'about':
+        return <AboutPage setActiveTab={setActiveTab} />;
+      case 'collection':
+        return <CollectionPage />;
+      case 'inspiration':
+        return <InspirationPage />;
+      case 'process':
+        return <ProcessPage />;
+      case 'timeline':
+        return <TimelinePage />;
+      case 'next-steps':
+        return <NextStepsPage />;
+      case 'faq':
+        return <FAQPage setActiveTab={setActiveTab} />;
+      case 'payment':
+        return <PaymentPage />;
+      case 'warranty':
+        return <WarrantyPage />;
+      case 'environment':
+        return <EnvironmentPage />;
+      case 'questionnaire':
+        return <QuestionnairePage />;
+      case 'contact':
+        return <ContactPage />;
+      default:
+        return <AboutPage setActiveTab={setActiveTab} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white">
+      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      
+      <main>
+        {renderPage()}
+      </main>
+
+      <Footer setActiveTab={setActiveTab} />
 
       <style jsx>{`
         @keyframes fade-in {
