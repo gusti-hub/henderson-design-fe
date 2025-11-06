@@ -2591,6 +2591,62 @@ const QuestionnairePage = () => {
   );
 };
 
+// Contact Page - Standalone tab
+const ContactPage = () => {
+  return (
+    <div className="pt-24 pb-20 px-6 max-w-5xl mx-auto animate-fade-in">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl font-light text-[#005670] mb-4">Begin Your Journey</h2>
+        <p className="text-gray-600">Contact your Ālia sales representative or reach out directly</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <MapPin className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Visit Us</h3>
+          <p className="text-sm text-gray-600">74-5518 Kaiwi Street Suite B</p>
+          <p className="text-sm text-gray-600">Kailua Kona, HI 96740</p>
+        </div>
+
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <Phone className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Call Us</h3>
+          <p className="text-sm text-gray-600">(808) 315-8782</p>
+        </div>
+
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <Mail className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Email Us</h3>
+          <p className="text-sm text-gray-600">aloha@henderson.house</p>
+        </div>
+
+        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
+          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
+            <Clock className="w-6 h-6" />
+          </div>
+          <h3 className="font-medium text-[#005670] mb-3">Hours</h3>
+          <p className="text-sm text-gray-600">Mon-Fri: 9AM-5PM HST</p>
+          <p className="text-sm text-gray-600">Sat: By Appointment</p>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-100 p-8 text-center max-w-3xl mx-auto">
+        <h3 className="text-xl font-medium text-[#005670] mb-4">Ready to create your island sanctuary?</h3>
+        <p className="text-gray-700 leading-relaxed">
+          Schedule your introduction meeting with Henderson Design Group to explore 
+          collections, discuss your vision, and begin your Ālia journey.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Footer
 const Footer = ({ setActiveTab }) => {
   return (
