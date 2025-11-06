@@ -67,7 +67,6 @@ const Navigation = ({ activeTab, setActiveTab }) => {
     }`}>
       <div className="px-6">
         <div className="flex items-center py-4">
-          {/* Logo - White logo file needs inversion on white bg to become visible */}
           <div className="relative">
             <img 
               src="/images/HDG-Logo.png" 
@@ -223,8 +222,8 @@ const HeroSection = ({ setActiveTab }) => {
       {!imagesLoaded && (
         <div className="absolute inset-0 bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#00a0c8] flex items-center justify-center">
           <div className="text-center text-white animate-pulse">
-            <div className="text-7xl tracking-[0.3em] font-light mb-6">HENDERSON</div>
-            <div className="text-2xl tracking-[0.2em] font-light opacity-80">DESIGN GROUP</div>
+            {/* <div className="text-7xl tracking-[0.3em] font-light mb-6">HENDERSON</div>
+            <div className="text-2xl tracking-[0.2em] font-light opacity-80">DESIGN GROUP</div> */}
           </div>
         </div>
       )}
@@ -1129,11 +1128,35 @@ const TimelinePage = () => {
 
 // Next Steps Page - Investment Options dari PDF
 const NextStepsPage = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="pt-24 pb-20 px-6 max-w-6xl mx-auto space-y-16 animate-fade-in">
+      {/* Portal Access Banner */}
+      <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-10 max-w-4xl mx-auto rounded-lg shadow-xl">
+        <div className="text-center">
+          <div className="inline-flex p-4 rounded-full bg-white/10 backdrop-blur-md mb-6">
+            <CheckCircle className="w-8 h-8" />
+          </div>
+          <h3 className="text-3xl font-light mb-4">Already Made Your Deposit?</h3>
+          <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
+            If you've already secured your place with a deposit, access your personalized client portal 
+            to schedule meetings, review selections, and track your project journey.
+          </p>
+          <button
+            onClick={() => navigate('/client-portal')}
+            className="inline-flex items-center gap-3 bg-white text-[#005670] px-10 py-4 hover:bg-gray-100 transition-all duration-500 group rounded-lg shadow-lg"
+          >
+            <Calendar className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="font-light tracking-wide">Access Your Portal</span>
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+
       <div className="text-center max-w-3xl mx-auto">
         <div className="w-16 h-0.5 bg-[#005670] mx-auto mb-8"></div>
-        <h2 className="text-5xl font-extralight text-[#005670] mb-6 tracking-tight">Next Steps</h2>
+        <h2 className="text-5xl font-extralight text-[#005670] mb-6 tracking-tight">Haven't Made a Deposit Yet?</h2>
         <p className="text-gray-600 font-light">
           Two flexible pathways to secure your place in the Ālia Furnishing Program
         </p>
@@ -1218,7 +1241,7 @@ const NextStepsPage = () => {
       </div>
 
       {/* Critical Deadline */}
-      <div className="border-2 border-red-200 bg-red-50/50 p-8 max-w-3xl mx-auto">
+      <div className="border-2 border-red-200 bg-red-50/50 p-8 max-w-3xl mx-auto rounded-lg">
         <div className="flex items-start gap-4">
           <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
           <div>
@@ -1898,106 +1921,672 @@ const EnvironmentPage = () => {
 
 // Questionnaire Page - Link to download PDF atau embed form
 const QuestionnairePage = () => {
-  return (
-    <div className="pt-24 pb-20 px-6 max-w-6xl mx-auto space-y-16 animate-fade-in">
-      <div className="text-center max-w-3xl mx-auto">
-        <div className="w-16 h-0.5 bg-[#005670] mx-auto mb-8"></div>
-        <h2 className="text-5xl font-extralight text-[#005670] mb-6 tracking-tight">Design Questionnaire</h2>
-        <p className="text-gray-600 font-light">
-          Share your lifestyle, preferences, and vision to help us create your perfect island home
-        </p>
-      </div>
+  const sections = [
+    {
+      title: "Personal Information",
+      questions: [
+        { id: "name", label: "Full Name", type: "text", required: true },
+        { id: "email", label: "Email Address", type: "email", required: true },
+        { id: "phone", label: "Phone Number", type: "tel", required: true },
+        { id: "unit", label: "Ālia Unit Number", type: "text", required: true },
+        { id: "bedrooms", label: "Number of Bedrooms", type: "select", options: ["2BR", "3BR", "4BR"], required: true },
+        { id: "preferred_contact", label: "Preferred Contact Method", type: "select", options: ["Email", "Phone", "Text"], required: true }
+      ]
+    },
+    {
+      title: "Home Use & Lifestyle",
+      questions: [
+        { 
+          id: "primary_use", 
+          label: "How will you primarily use this residence?", 
+          type: "radio", 
+          options: [
+            "Primary residence",
+            "Second home/vacation home",
+            "Investment property for rental",
+            "Mixed use (personal & rental)"
+          ],
+          required: true 
+        },
+        { 
+          id: "occupancy", 
+          label: "Who will be living in or using this home?", 
+          type: "checkbox", 
+          options: [
+            "Just me",
+            "Couple",
+            "Family with young children",
+            "Family with teenagers",
+            "Adult children visit",
+            "Frequent guests",
+            "Multi-generational"
+          ],
+          required: true 
+        },
+        { 
+          id: "lifestyle", 
+          label: "How would you describe your lifestyle?", 
+          type: "checkbox", 
+          options: [
+            "Active and outdoors-oriented",
+            "Entertaining and social",
+            "Quiet and relaxing",
+            "Work-from-home focused",
+            "Health and wellness focused",
+            "Art and culture enthusiast"
+          ],
+          required: true 
+        },
+        { 
+          id: "entertaining", 
+          label: "How often do you entertain guests?", 
+          type: "radio", 
+          options: [
+            "Frequently (weekly)",
+            "Regularly (monthly)",
+            "Occasionally (few times a year)",
+            "Rarely"
+          ],
+          required: true 
+        },
+        {
+          id: "entertaining_style",
+          label: "What type of entertaining do you prefer?",
+          type: "checkbox",
+          options: [
+            "Intimate dinners (4-6 people)",
+            "Larger gatherings (8+ people)",
+            "Casual get-togethers",
+            "Formal dinner parties",
+            "Outdoor barbecues",
+            "Cocktail parties"
+          ]
+        }
+      ]
+    },
+    {
+      title: "Design Style & Aesthetic",
+      questions: [
+        {
+          id: "design_style",
+          label: "Which design styles appeal to you? (Select all that apply)",
+          type: "checkbox",
+          options: [
+            "Modern/Contemporary",
+            "Coastal/Beach",
+            "Tropical/Hawaiian",
+            "Minimalist",
+            "Traditional",
+            "Transitional (blend of traditional and modern)",
+            "Mid-century modern",
+            "Bohemian/Eclectic",
+            "Industrial",
+            "Scandinavian"
+          ],
+          required: true
+        },
+        {
+          id: "color_preference",
+          label: "What color palettes do you prefer?",
+          type: "checkbox",
+          options: [
+            "Neutral tones (whites, beiges, grays)",
+            "Warm tones (earth tones, terracotta, warm woods)",
+            "Cool tones (blues, greens, silvers)",
+            "Bold and vibrant colors",
+            "Dark and moody",
+            "Light and airy",
+            "Natural materials and textures"
+          ],
+          required: true
+        },
+        {
+          id: "atmosphere",
+          label: "What atmosphere do you want to create?",
+          type: "checkbox",
+          options: [
+            "Calm and serene",
+            "Energizing and vibrant",
+            "Cozy and warm",
+            "Elegant and sophisticated",
+            "Casual and relaxed",
+            "Luxurious and refined",
+            "Natural and organic"
+          ],
+          required: true
+        },
+        {
+          id: "formality",
+          label: "How formal or casual should the space feel?",
+          type: "radio",
+          options: [
+            "Very formal and elegant",
+            "Somewhat formal but comfortable",
+            "Balanced - neither too formal nor casual",
+            "Casual and relaxed",
+            "Very casual and laid-back"
+          ],
+          required: true
+        },
+        {
+          id: "design_inspiration",
+          label: "Are there any specific homes, hotels, or spaces that inspire you?",
+          type: "textarea",
+          placeholder: "Please describe any places that inspire your design vision..."
+        }
+      ]
+    },
+    {
+      title: "Functional Requirements",
+      questions: [
+        {
+          id: "bedroom_use",
+          label: "How will you use each bedroom?",
+          type: "textarea",
+          placeholder: "E.g., Master for us, Guest room 1 for family visits, Guest room 2 as office...",
+          required: true
+        },
+        {
+          id: "work_from_home",
+          label: "Do you need a dedicated workspace?",
+          type: "radio",
+          options: [
+            "Yes, full home office setup",
+            "Yes, small desk area",
+            "No, not needed"
+          ],
+          required: true
+        },
+        {
+          id: "storage_needs",
+          label: "What are your storage priorities?",
+          type: "checkbox",
+          options: [
+            "Extensive closet space",
+            "Kitchen pantry storage",
+            "Linen and towel storage",
+            "Sports equipment storage",
+            "Beach gear storage",
+            "Wine storage",
+            "Display storage for collections",
+            "Hidden/concealed storage"
+          ]
+        },
+        {
+          id: "dining",
+          label: "How do you prefer to dine?",
+          type: "checkbox",
+          options: [
+            "Formal dining table for entertaining",
+            "Casual island/breakfast bar seating",
+            "Outdoor dining",
+            "Combination of formal and casual"
+          ],
+          required: true
+        },
+        {
+          id: "seating_preference",
+          label: "What type of seating do you prefer in the living area?",
+          type: "checkbox",
+          options: [
+            "Large sectional sofa",
+            "Sofa and armchairs",
+            "Multiple seating areas",
+            "Casual/conversation-focused",
+            "Media viewing-focused",
+            "Reading nook"
+          ],
+          required: true
+        },
+        {
+          id: "outdoor_use",
+          label: "How will you use your lanai/outdoor space?",
+          type: "checkbox",
+          options: [
+            "Outdoor dining",
+            "Lounging and relaxation",
+            "Entertaining guests",
+            "Morning coffee/evening cocktails",
+            "Yoga or exercise",
+            "Minimal use"
+          ]
+        }
+      ]
+    },
+    {
+      title: "Specific Preferences",
+      questions: [
+        {
+          id: "bed_size",
+          label: "Preferred bed size for master bedroom?",
+          type: "radio",
+          options: ["King", "California King", "Queen"],
+          required: true
+        },
+        {
+          id: "guest_bed",
+          label: "Preferred bed configuration for guest rooms?",
+          type: "checkbox",
+          options: [
+            "Queen beds",
+            "Twin beds (can be separated or combined)",
+            "Day beds",
+            "Sofa beds",
+            "Flexible based on design"
+          ]
+        },
+        {
+          id: "tv_preference",
+          label: "Television placement preferences?",
+          type: "checkbox",
+          options: [
+            "Living room - must have",
+            "Master bedroom - must have",
+            "Guest bedrooms",
+            "No TVs preferred",
+            "Hidden/concealed when not in use"
+          ]
+        },
+        {
+          id: "artwork",
+          label: "What are your preferences for artwork and accessories?",
+          type: "radio",
+          options: [
+            "Curated art collection - I want HDG to select",
+            "Minimal artwork",
+            "I will provide my own art",
+            "Mix of HDG selections and my pieces"
+          ],
+          required: true
+        },
+        {
+          id: "rug_preference",
+          label: "Rug preferences?",
+          type: "radio",
+          options: [
+            "Natural fiber (jute, sisal, seagrass)",
+            "Plush and soft",
+            "Patterned/colorful",
+            "Neutral tones",
+            "No rugs preferred"
+          ]
+        },
+        {
+          id: "window_treatment",
+          label: "Window treatment preferences?",
+          type: "checkbox",
+          options: [
+            "Blackout shades for bedrooms",
+            "Sheer curtains for light filtering",
+            "Natural woven shades",
+            "Motorized/automated",
+            "Minimal - maximize views",
+            "Privacy is important"
+          ],
+          required: true
+        }
+      ]
+    },
+    {
+      title: "Lifestyle Considerations",
+      questions: [
+        {
+          id: "pets",
+          label: "Do you have pets?",
+          type: "radio",
+          options: ["Yes", "No"],
+          required: true
+        },
+        {
+          id: "pet_details",
+          label: "If yes, please describe (type, size, special needs)",
+          type: "textarea",
+          placeholder: "E.g., Medium dog, cat, need durable fabrics..."
+        },
+        {
+          id: "allergies",
+          label: "Do you have any allergies or sensitivities to materials?",
+          type: "textarea",
+          placeholder: "E.g., latex, certain fabrics, fragrances..."
+        },
+        {
+          id: "accessibility",
+          label: "Are there any accessibility requirements?",
+          type: "textarea",
+          placeholder: "E.g., wheelchair access, grab bars, specific height requirements..."
+        },
+        {
+          id: "activities",
+          label: "What activities are important to you in Hawaii?",
+          type: "checkbox",
+          options: [
+            "Beach and ocean activities",
+            "Hiking and outdoor exploration",
+            "Golf",
+            "Dining and culinary experiences",
+            "Cultural activities",
+            "Relaxation and spa",
+            "Fitness and wellness",
+            "Water sports"
+          ]
+        }
+      ]
+    },
+    {
+      title: "Budget & Timeline",
+      questions: [
+        {
+          id: "collection_interest",
+          label: "Which collection are you most interested in?",
+          type: "radio",
+          options: [
+            "Lani Collection (Complete bespoke furnishing)",
+            "Nalu Collection (Elevated design with quality finishes)",
+            "Foundation Collection (Streamlined essentials)",
+            "Custom Design",
+            "Mix between collections",
+            "Not sure yet - need guidance"
+          ],
+          required: true
+        },
+        {
+          id: "budget_comfort",
+          label: "Are you comfortable with the estimated pricing for your chosen collection?",
+          type: "radio",
+          options: [
+            "Yes, budget is confirmed",
+            "Yes, but want to discuss options",
+            "Need more information",
+            "Would like to explore cost-saving options"
+          ],
+          required: true
+        },
+        {
+          id: "move_in",
+          label: "When do you plan to move in/use the residence?",
+          type: "text",
+          placeholder: "E.g., January 2027, as soon as ready...",
+          required: true
+        },
+        {
+          id: "timeline_flexibility",
+          label: "How flexible is your timeline?",
+          type: "radio",
+          options: [
+            "Fixed timeline - must be ready by specific date",
+            "Somewhat flexible",
+            "Very flexible - quality over speed"
+          ],
+          required: true
+        }
+      ]
+    },
+    {
+      title: "Items You're Bringing",
+      questions: [
+        {
+          id: "bringing_items",
+          label: "Will you be bringing any existing furniture or items?",
+          type: "radio",
+          options: ["Yes", "No", "Maybe - not decided yet"],
+          required: true
+        },
+        {
+          id: "existing_items",
+          label: "If yes, please describe what you'll bring",
+          type: "textarea",
+          placeholder: "E.g., family heirloom dining table, artwork collection, specific pieces..."
+        },
+        {
+          id: "keep_items",
+          label: "Are there any specific pieces you definitely want to keep?",
+          type: "textarea",
+          placeholder: "Describe items you must incorporate into the design..."
+        }
+      ]
+    },
+    {
+      title: "Special Requests & Additional Information",
+      questions: [
+        {
+          id: "must_haves",
+          label: "What are your absolute must-haves?",
+          type: "textarea",
+          placeholder: "List any non-negotiable items, features, or requirements...",
+          rows: 4
+        },
+        {
+          id: "dislikes",
+          label: "What should we avoid? (styles, colors, materials, etc.)",
+          type: "textarea",
+          placeholder: "List anything you definitely do not want...",
+          rows: 4
+        },
+        {
+          id: "inspiration_images",
+          label: "Do you have inspiration images or Pinterest boards to share?",
+          type: "textarea",
+          placeholder: "Please provide links or describe the images you'd like to share..."
+        },
+        {
+          id: "special_requests",
+          label: "Any other special requests or considerations?",
+          type: "textarea",
+          placeholder: "Anything else we should know about your vision, lifestyle, or requirements...",
+          rows: 5
+        }
+      ]
+    },
+    {
+      title: "Design Team Communication",
+      questions: [
+        {
+          id: "meeting_preference",
+          label: "Preferred meeting format?",
+          type: "radio",
+          options: [
+            "In-person in Hawaii",
+            "Virtual (Zoom/Video call)",
+            "Phone call",
+            "Mix of virtual and in-person",
+            "Primarily email communication"
+          ],
+          required: true
+        },
+        {
+          id: "availability",
+          label: "What is your general availability for design meetings?",
+          type: "checkbox",
+          options: [
+            "Weekday mornings (HST)",
+            "Weekday afternoons (HST)",
+            "Weekday evenings (HST)",
+            "Weekends",
+            "Flexible - will work around HDG schedule"
+          ],
+          required: true
+        },
+        {
+          id: "decision_making",
+          label: "Who will be involved in design decisions?",
+          type: "radio",
+          options: [
+            "Just me",
+            "Me and my partner/spouse",
+            "Family decision",
+            "I'll make decisions but want input from others"
+          ],
+          required: true
+        },
+        {
+          id: "additional_contacts",
+          label: "Additional contacts (if applicable)",
+          type: "textarea",
+          placeholder: "Names and contact info for anyone else involved in decisions..."
+        }
+      ]
+    }
+  ];
 
-      <div className="max-w-4xl mx-auto bg-white border border-gray-100 p-12 text-center">
-        <div className="inline-flex p-6 rounded-full bg-[#005670]/5 text-[#005670] mb-8">
-          <FileText className="w-12 h-12" />
-        </div>
-        <h3 className="text-2xl font-light text-[#005670] mb-4">Ready to Begin Your Design Journey?</h3>
-        <p className="text-gray-600 font-light mb-8 leading-relaxed">
-          Our comprehensive questionnaire helps us understand your unique lifestyle, aesthetic preferences, 
-          and how you envision living in your Ālia residence. This information guides every design decision 
-          we make for your home.
+  return (
+    <div className="pt-32 pb-24 px-6 animate-fade-in">
+      {/* Hero */}
+      <div className="max-w-4xl mx-auto text-center mb-20">
+        <h2 className="text-7xl font-extralight text-[#005670] mb-6 tracking-tight">
+          Design Preferences Questionnaire
+        </h2>
+        <p className="text-xl text-gray-600 font-light leading-relaxed mb-8">
+          Help us understand your lifestyle, preferences, and vision for your Ālia residence
         </p>
-        <div className="space-y-4">
-          <button className="inline-flex items-center gap-3 bg-[#005670] text-white px-8 py-4 text-sm font-light tracking-wide hover:bg-[#004a5c] transition-all duration-500">
-            <Download className="w-5 h-5" />
-            Download Questionnaire (PDF)
-          </button>
-          <p className="text-xs text-gray-500 font-light">
-            Or complete it online through your client portal after making your deposit
+        <div className="bg-blue-50 border-l-4 border-[#005670] p-6 text-left">
+          <p className="text-gray-700 font-light">
+            <strong className="font-medium">Note:</strong> This questionnaire is for reference. 
+            After making your deposit, you'll receive access to the interactive form in your 
+            client portal where you can save progress and submit your responses directly to your design team.
           </p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-        {[
-          { title: "Home Use & Lifestyle", desc: "Tell us how you'll use your space, who will live there, and your daily routines" },
-          { title: "Design Aesthetic", desc: "Share your style preferences, color palettes, and design inspirations" },
-          { title: "Functional Needs", desc: "Specify bedroom setup, entertaining habits, work-from-home needs, and special requirements" }
-        ].map((item, index) => (
-          <div key={index} className="text-center p-6 border border-gray-100">
-            <div className="text-3xl font-extralight text-[#005670] mb-3">{index + 1}</div>
-            <h4 className="font-light text-[#005670] mb-2">{item.title}</h4>
-            <p className="text-sm text-gray-600 font-light">{item.desc}</p>
+      {/* Questionnaire Sections */}
+      <div className="max-w-5xl mx-auto space-y-16">
+        {sections.map((section, sectionIndex) => (
+          <div key={sectionIndex} className="bg-white border border-gray-100 p-8 md:p-12">
+            {/* Section Header */}
+            <div className="mb-10 pb-6 border-b border-gray-200">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#005670] text-white font-light">
+                  {sectionIndex + 1}
+                </div>
+                <h3 className="text-3xl font-light text-[#005670]">{section.title}</h3>
+              </div>
+            </div>
+
+            {/* Questions */}
+            <div className="space-y-8">
+              {section.questions.map((question, qIndex) => (
+                <div key={question.id} className="space-y-3">
+                  {/* Question Label */}
+                  <label className="block text-lg text-gray-900 font-light">
+                    {question.label}
+                    {question.required && <span className="text-[#005670] ml-1">*</span>}
+                  </label>
+
+                  {/* Input Fields Based on Type */}
+                  {question.type === 'text' && (
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border border-gray-200 focus:border-[#005670] focus:ring-1 focus:ring-[#005670] transition-colors"
+                      placeholder={question.placeholder}
+                      disabled
+                    />
+                  )}
+
+                  {question.type === 'email' && (
+                    <input
+                      type="email"
+                      className="w-full px-4 py-3 border border-gray-200 focus:border-[#005670] focus:ring-1 focus:ring-[#005670] transition-colors"
+                      placeholder={question.placeholder}
+                      disabled
+                    />
+                  )}
+
+                  {question.type === 'tel' && (
+                    <input
+                      type="tel"
+                      className="w-full px-4 py-3 border border-gray-200 focus:border-[#005670] focus:ring-1 focus:ring-[#005670] transition-colors"
+                      placeholder={question.placeholder}
+                      disabled
+                    />
+                  )}
+
+                  {question.type === 'select' && (
+                    <select
+                      className="w-full px-4 py-3 border border-gray-200 focus:border-[#005670] focus:ring-1 focus:ring-[#005670] transition-colors"
+                      disabled
+                    >
+                      <option value="">Select an option...</option>
+                      {question.options?.map((option, i) => (
+                        <option key={i} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {question.type === 'textarea' && (
+                    <textarea
+                      rows={question.rows || 3}
+                      className="w-full px-4 py-3 border border-gray-200 focus:border-[#005670] focus:ring-1 focus:ring-[#005670] transition-colors resize-none"
+                      placeholder={question.placeholder}
+                      disabled
+                    />
+                  )}
+
+                  {question.type === 'radio' && (
+                    <div className="space-y-3 pl-2">
+                      {question.options?.map((option, i) => (
+                        <label key={i} className="flex items-start gap-3 cursor-pointer group">
+                          <input
+                            type="radio"
+                            name={question.id}
+                            value={option}
+                            className="mt-1 w-4 h-4 text-[#005670] focus:ring-[#005670]"
+                            disabled
+                          />
+                          <span className="text-gray-700 font-light group-hover:text-gray-900">
+                            {option}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {question.type === 'checkbox' && (
+                    <div className="space-y-3 pl-2">
+                      {question.options?.map((option, i) => (
+                        <label key={i} className="flex items-start gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            name={question.id}
+                            value={option}
+                            className="mt-1 w-4 h-4 text-[#005670] focus:ring-[#005670] rounded"
+                            disabled
+                          />
+                          <span className="text-gray-700 font-light group-hover:text-gray-900">
+                            {option}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
-    </div>
-  );
-};
 
-// Contact Page - Standalone tab
-const ContactPage = () => {
-  return (
-    <div className="pt-24 pb-20 px-6 max-w-5xl mx-auto animate-fade-in">
-      <div className="text-center mb-12">
-        <h2 className="text-4xl font-light text-[#005670] mb-4">Begin Your Journey</h2>
-        <p className="text-gray-600">Contact your Ālia sales representative or reach out directly</p>
-      </div>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
-          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
-            <MapPin className="w-6 h-6" />
-          </div>
-          <h3 className="font-medium text-[#005670] mb-3">Visit Us</h3>
-          <p className="text-sm text-gray-600">74-5518 Kaiwi Street Suite B</p>
-          <p className="text-sm text-gray-600">Kailua Kona, HI 96740</p>
-        </div>
-
-        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
-          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
-            <Phone className="w-6 h-6" />
-          </div>
-          <h3 className="font-medium text-[#005670] mb-3">Call Us</h3>
-          <p className="text-sm text-gray-600">(808) 315-8782</p>
-        </div>
-
-        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
-          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
-            <Mail className="w-6 h-6" />
-          </div>
-          <h3 className="font-medium text-[#005670] mb-3">Email Us</h3>
-          <p className="text-sm text-gray-600">aloha@henderson.house</p>
-        </div>
-
-        <div className="bg-white p-6 text-center border border-gray-100 hover:border-[#005670] transition-all">
-          <div className="inline-flex p-4 rounded-full bg-[#005670] text-white mb-4">
-            <Clock className="w-6 h-6" />
-          </div>
-          <h3 className="font-medium text-[#005670] mb-3">Hours</h3>
-          <p className="text-sm text-gray-600">Mon-Fri: 9AM-5PM HST</p>
-          <p className="text-sm text-gray-600">Sat: By Appointment</p>
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-100 p-8 text-center max-w-3xl mx-auto">
-        <h3 className="text-xl font-medium text-[#005670] mb-4">Ready to create your island sanctuary?</h3>
-        <p className="text-gray-700 leading-relaxed">
-          Schedule your introduction meeting with Henderson Design Group to explore 
-          collections, discuss your vision, and begin your Ālia journey.
+      {/* Bottom CTA
+      <div className="max-w-4xl mx-auto mt-16 bg-gray-50 p-12 text-center">
+        <h3 className="text-2xl font-light text-[#005670] mb-4">
+          Ready to Begin Your Design Journey?
+        </h3>
+        <p className="text-gray-600 mb-8 leading-relaxed font-light">
+          Complete this questionnaire in your personalized client portal after making your deposit. 
+          Your design team will use your responses to create a custom furnishing plan tailored to your lifestyle.
         </p>
-      </div>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <button className="inline-flex items-center justify-center gap-2 bg-[#005670] text-white px-8 py-4 hover:bg-[#004a5c] transition-all">
+            <Download className="w-5 h-5" />
+            <span className="font-light">Download PDF Version</span>
+          </button>
+          <button 
+            onClick={() => window.print()}
+            className="inline-flex items-center justify-center gap-2 bg-white border-2 border-[#005670] text-[#005670] px-8 py-4 hover:bg-gray-50 transition-all"
+          >
+            <FileText className="w-5 h-5" />
+            <span className="font-light">Print Questionnaire</span>
+          </button>
+        </div>
+      </div> */}
     </div>
   );
 };
