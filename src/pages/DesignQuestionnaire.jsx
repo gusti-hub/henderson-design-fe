@@ -859,19 +859,7 @@ const Step1 = ({ formData, handleChange, handleArrayToggle }) => (
         onChange={(val) => handleChange('homeUse', 'hasPets', val)}
       />
     </div>
-
-    {/* Pet Details */}
-    {formData.homeUse.hasPets && (
-      <div className="ml-4 pl-6 border-l-4 border-[#005670]/20">
-        <QuestionLabel>Pet details</QuestionLabel>
-        <TextInput
-          value={formData.homeUse.petDetails}
-          onChange={(val) => handleChange('homeUse', 'petDetails', val)}
-          placeholder="Type and number of pets (e.g., 1 dog, 2 cats)"
-        />
-      </div>
-    )}
-
+    
     {/* Living Style */}
     <div>
       <QuestionLabel required>How do you envision living here?</QuestionLabel>
