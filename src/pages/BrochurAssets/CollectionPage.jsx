@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { X, FileText, Sparkles, ChevronRight } from 'lucide-react';
+import { X, FileText, Sparkles, ChevronRight, BookOpen } from 'lucide-react';
 
 const CollectionPage = ({ language }) => {
   const [activeCollection, setActiveCollection] = useState('lani');
   const [showLookbook, setShowLookbook] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   const collections = [
     {
@@ -53,6 +54,7 @@ const CollectionPage = ({ language }) => {
       details:
         'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.',
       lookbook: '/pdfs/foundation-lookbook.pdf',
+      library: '/pdfs/foundation-library.pdf'
     },
   ];
 
@@ -210,7 +212,102 @@ const CollectionPage = ({ language }) => {
                     </div>
                   ))}
                 </div>
+
+                    {/* Add Library View Button for Foundation Collection */}
+                {activeCollection === 'foundation' && activeCollectionData.library && (
+                  <div className="mt-6">
+                    <button
+                      onClick={() => setShowLibrary(true)}
+                      className="group/btn relative w-full overflow-hidden bg-gradient-to-r from-[#004b5f] via-[#005f75] to-[#007a9e] px-8 py-4 text-white"
+                    >
+                      <div className="flex items-center justify-center gap-3">
+                        <BookOpen className="w-5 h-5" />
+                        <span className="text-sm tracking-[0.2em] uppercase font-light">
+                          View Design Library
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Library Modal - similar structure to Lookbook Modal */}
+              {showLibrary && activeCollectionData && activeCollectionData.library && (
+                <div className="fixed inset-0 z-50 animate-fade-in">
+                  {/* Backdrop with Blur */}
+                  <div 
+                    className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                    onClick={() => setShowLibrary(false)}
+                  ></div>
+                  
+                  {/* Modal Container */}
+                  <div className="relative h-full flex items-center justify-center p-4">
+                    <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
+                      {/* Elegant Header */}
+                      <div className="relative border-b border-gray-100">
+                        <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white to-gray-50"></div>
+                        
+                        {/* Header Content */}
+                        <div className="relative flex justify-between items-center px-12 py-8">
+                          <div className="flex items-center gap-6">
+                            {/* Icon */}
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#004b5f] to-[#007a9e] flex items-center justify-center shadow-lg">
+                              <BookOpen className="w-6 h-6 text-white" />
+                            </div>
+                            
+                            {/* Title */}
+                            <div>
+                              <h3 className="text-3xl font-extralight text-[#004b5f] mb-1 tracking-wide">
+                                {activeCollectionData.name}
+                              </h3>
+                              <p className="text-sm text-gray-500 font-light tracking-wide">
+                                Design Library
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Close Button - Elegant */}
+                          <button
+                            onClick={() => setShowLibrary(false)}
+                            className="group relative w-12 h-12 rounded-full border border-gray-200 hover:border-[#004b5f] transition-all duration-300 hover:scale-110"
+                          >
+                            {/* Hover Background */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#004b5f]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            
+                            {/* Icon */}
+                            <div className="relative flex items-center justify-center w-full h-full text-gray-400 group-hover:text-[#004b5f] group-hover:rotate-90 transition-all duration-300">
+                              <X size={20} />
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* PDF Viewer with Frame */}
+                      <div className="relative h-[calc(90vh-120px)] bg-gray-50 p-6">
+                        <div className="w-full h-full bg-white rounded-lg shadow-inner overflow-hidden border border-gray-200">
+                          <iframe
+                            src={`${activeCollectionData.library}#toolbar=0&navpanes=0&scrollbar=0`}
+                            className="w-full h-full"
+                            title={`${activeCollectionData.name} Design Library`}
+                            style={{ border: 'none' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Elegant Footer */}
+                      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white to-transparent flex items-center justify-center">
+                        <div className="flex items-center gap-3 text-xs text-gray-400 font-light tracking-wider">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f]/30"></div>
+                          <span>ĀLIA LIVING</span>
+                          <div className="w-px h-3 bg-gray-300"></div>
+                          <span>DESIGN LIBRARY PREVIEW</span>
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f]/30"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Note - Elegant Info Box */}
               <div className="relative overflow-hidden">
