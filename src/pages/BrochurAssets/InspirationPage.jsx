@@ -59,7 +59,7 @@ const InspirationPage = ({ language }) => {
         
         <div className="max-w-3xl mx-auto">
           <p className="text-xl text-gray-600 font-light leading-relaxed tracking-wide">
-            Explore our curated portfolio of completed Ālia residences, showcasing the artistry 
+            Explore our curated portfolio of completed, showcasing the craftsmanship 
             and attention to detail that defines Henderson Design Group.
           </p>
         </div>

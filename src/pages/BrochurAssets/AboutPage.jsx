@@ -119,8 +119,8 @@ const HeroSection = ({ setActiveTab, language }) => {
       <div className="relative z-10 h-full flex items-center">
         <div className="px-8 md:px-16 max-w-6xl mx-auto">
           <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
-            <div className="text-white/60 text-sm tracking-[0.3em] uppercase mb-4 font-light">
-              Ālia Project
+            <div className="text-white/60 text-base tracking-[0.3em] uppercase mb-4 font-semibold">
+              Ālia Furnishing Collection
             </div>
             <h1 className="text-white text-7xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 leading-tight">
               {heroSlides[currentSlide].title}
@@ -244,7 +244,7 @@ const AboutPage = ({ setActiveTab, language }) => {
               <div className="h-px w-16 bg-[#005670]/30 mx-auto"></div>
             </div>
             <h2 className="text-7xl font-extralight text-[#005670] mb-6 leading-tight tracking-tight">
-              Meet Your Design Team
+              Meet Our Team
             </h2>
             <p className="text-xl text-gray-600 font-light leading-relaxed max-w-3xl mx-auto">
               A dedicated group of established, reliable, and experienced designers committed to 
@@ -256,18 +256,18 @@ const AboutPage = ({ setActiveTab, language }) => {
             {[
               { 
                 name: 'Eric Henderson', 
-                role: 'CEO & Creative Director', 
+                role: 'CEO / Founder', 
                 image: '/images/team/eric.jpg',
                 bio: 'Founder guiding every project with refined vision and over 20 years of design excellence'
               },
               { 
-                name: 'Janelle', 
-                role: 'Creative Director', 
+                name: 'Janelle Balci', 
+                role: 'Creative Director / Senior Designer', 
                 image: '/images/team/Janelle.jpg',
                 bio: 'Ensuring seamless execution from concept through installation with meticulous attention to detail'
               },
               { 
-                name: 'Madeline', 
+                name: 'Madeline Clifford', 
                 role: 'Project Manager', 
                 image: '/images/team/Madeline.jpg',
                 bio: 'Your dedicated point of contact throughout the journey, ensuring clear communication'
@@ -285,26 +285,43 @@ const AboutPage = ({ setActiveTab, language }) => {
                   </div>
                 </div>
                 <h3 className="text-2xl font-light text-gray-900 mb-2">{member.name}</h3>
-                <p className="text-sm text-[#005670] mb-4 tracking-wide uppercase font-light">{member.role}</p>
-                <p className="text-gray-600 leading-relaxed font-light">{member.bio}</p>
+                <p className="text-1xl text-[#005670] mb-4 tracking-wide uppercase font-semibold">{member.role}</p>
+                {/* <p className="text-gray-600 leading-relaxed font-light">{member.bio}</p> */}
               </div>
             ))}
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 max-w-3xl mx-auto">
             {[
-              { name: 'Ash', role: 'Design Manager', bio: 'Leading design development and material curation with expertise' },
-              { name: 'Daiki', role: 'Production Coordinator', bio: 'Maintaining quality standards and project timelines' }
+                            { 
+                name: 'Joanna Staniszewski', 
+                role: 'Director of Design', 
+                image: '/images/team/Joanna.jpg',
+                bio: 'Founder guiding every project with refined vision and over 20 years of design excellence'
+              },
+              { 
+                name: 'Sara Bravo-Susel', 
+                role: 'Director of Logistics & Field Services', 
+                image: '/images/team/Sarah.jpg',
+                bio: 'Ensuring seamless execution from concept through installation with meticulous attention to detail'
+              }
+              // { name: 'Ash', role: 'Design Manager', bio: 'Leading design development and material curation with expertise' },
+              // { name: 'Daiki', role: 'Production Coordinator', bio: 'Maintaining quality standards and project timelines' }
             ].map((member, index) => (
-              <div key={index} className="group text-center p-8 border border-gray-100 hover:border-[#005670]/30 transition-all duration-500">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border border-gray-100 group-hover:border-[#005670]/30 transition-all duration-500">
-                  <span className="text-3xl font-extralight text-[#005670]/30 group-hover:text-[#005670]/50 transition-colors duration-500">
-                    {member.name[0]}
-                  </span>
+              <div key={index} className="group text-center">
+                <div className="relative mb-8 overflow-hidden">
+                  <div className="aspect-[3/4] overflow-hidden bg-gray-100">
+                    <img 
+                      src={member.image}
+                      alt={member.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  </div>
                 </div>
-                <h3 className="text-xl font-light text-gray-900 mb-2">{member.name}</h3>
-                <p className="text-sm text-[#005670] mb-4 tracking-wide uppercase font-light">{member.role}</p>
-                <p className="text-sm text-gray-600 leading-relaxed font-light">{member.bio}</p>
+                <h3 className="text-2xl font-light text-gray-900 mb-2">{member.name}</h3>
+                <p className="text-1xl text-[#005670] mb-4 tracking-wide uppercase font-semibold">{member.role}</p>
+                {/* <p className="text-gray-600 leading-relaxed font-light">{member.bio}</p> */}
               </div>
             ))}
           </div>

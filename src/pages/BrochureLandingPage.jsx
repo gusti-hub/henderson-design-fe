@@ -135,7 +135,7 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
           <div className={`text-xs tracking-[0.2em] uppercase font-light transition-colors ${
             needsSolidBg ? 'text-gray-400' : 'text-white/50'
           }`}>
-            Ālia Furnishing Program
+            Ālia Furnishing Collection
           </div>
           
           <div className="flex items-center gap-6">
@@ -177,7 +177,7 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
             {/* Designer Access */}
             <button
               onClick={() => navigate('/designer-login')}
-              className={`hidden md:flex items-center gap-2 text-xs tracking-[0.15em] uppercase font-light transition-all ${
+              className={`hidden md:flex items-center gap-2 text-xs tracking-[0.15em] uppercase font-semibold transition-all ${
                 needsSolidBg 
                   ? 'text-gray-600 hover:text-[#005670]' 
                   : 'text-white/70 hover:text-white'
@@ -218,43 +218,38 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
             </button>
           </div>
           
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {mainTabs.map((tab, index) => (
-              <React.Fragment key={tab.id}>
-                <button
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`relative px-6 py-3 text-sm font-light tracking-[0.08em] uppercase transition-all duration-500 group ${
-                    needsSolidBg
-                      ? activeTab === tab.id
-                        ? 'text-[#005670]'
-                        : 'text-gray-500 hover:text-[#005670]'
-                      : activeTab === tab.id
-                        ? 'text-white'
-                        : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  <span className="relative z-10">{tab.label}</span>
-                  
-                  {activeTab === tab.id && (
-                    <div className={`absolute bottom-0 left-0 right-0 h-px transition-all duration-500 ${
-                      needsSolidBg ? 'bg-[#005670]' : 'bg-white'
-                    }`}></div>
-                  )}
-                  
-                  <div className={`absolute inset-0 transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${
-                    needsSolidBg ? 'bg-gray-50' : 'bg-white/5'
-                  }`}></div>
-                </button>
+        {/* Desktop Navigation */}
+        <nav className="hidden lg:flex items-center justify-center gap-6 w-full">
+          {mainTabs.map((tab, index) => (
+            <React.Fragment key={tab.id}>
+              <button
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-6 py-3 text-lg font-semibold tracking-[0.1em] uppercase transition-all duration-500 group text-center ${
+                  needsSolidBg
+                    ? activeTab === tab.id
+                      ? 'text-[#005670]'
+                      : 'text-gray-600 hover:text-[#005670]'
+                    : activeTab === tab.id
+                      ? 'text-white'
+                      : 'text-white/70 hover:text-white'
+                }`}
+              >
+                <span className="relative z-10">{tab.label}</span>
                 
-                {index < mainTabs.length - 1 && (
-                  <div className={`w-px h-4 transition-colors ${
-                    needsSolidBg ? 'bg-gray-200' : 'bg-white/20'
+                {activeTab === tab.id && (
+                  <div className={`absolute bottom-0 left-0 right-0 h-0.5 transition-all duration-500 ${
+                    needsSolidBg ? 'bg-[#005670]' : 'bg-white'
                   }`}></div>
                 )}
-              </React.Fragment>
-            ))}
-          </nav>
+              </button>
+
+              {index < mainTabs.length - 1 && (
+                <div className={`w-px h-6 transition-colors ${needsSolidBg ? 'bg-gray-300' : 'bg-white/30'}`}></div>
+              )}
+            </React.Fragment>
+          ))}
+        </nav>
+
 
           {/* Mobile Menu Button */}
           <button 

@@ -24,7 +24,7 @@ const ProcessPage = () => {
             the available furniture collections:
           </p>
           <div className="grid md:grid-cols-2 gap-4 mb-6">
-            {['Lani Furniture Collection', 'Nalu Furniture Collection', 'Foundation Collection', 'Custom Design'].map((item, i) => (
+            {['Lani Furniture Collection', 'Nalu Furniture Collection', 'Foundation Collection'].map((item, i) => (
               <div key={i} className="flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-white border border-gray-100">
                 <div className="w-6 h-6 rounded-full bg-[#004b5f]/10 flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-light text-[#004b5f]">{i + 1}</span>

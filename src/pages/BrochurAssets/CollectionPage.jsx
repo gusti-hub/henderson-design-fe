@@ -12,15 +12,15 @@ const CollectionPage = ({ language }) => {
       name: 'Lani Collection',
       tagline: 'The Pinnacle of Luxury',
       description:
-        'Complete bespoke-level furnishing, including custom cabinetry, curated art, premium rugs, and designer accessories.',
+        'Complete bespoke-level furnishing, including custom furnishings, curated art, premium rugs, and accessories.',
       features: [
         'Custom Design',
         'Premium Materials',
-        'Full Accessories',
+        'accessories and wall coverings',
         'Art Curation',
       ],
       details:
-        'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space.',
+        'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space, offering 300 different options of furniture to perfectly suit your style and needs.',
       lookbook: '/pdfs/lani-lookbook.pdf',
     },
     {
@@ -28,12 +28,12 @@ const CollectionPage = ({ language }) => {
       name: 'Nalu Collection',
       tagline: 'Sophisticated Balance',
       description:
-        'Comprehensive furnishing with elevated design details and refined finish selections for sophisticated island living.',
+        'This collection is our investment level option that has streamline selections curated by our design team, and also offering 250 different options of furinshings of furniture. ',
       features: [
-        'Elevated Design',
-        'Quality Finishes',
-        'Coordinated Style',
-        'Designer Touches',
+        'Over 250 different Furniture Options',
+        '2 Wood Finish Options',
+        'Upholstery fabric options',
+        'Mix and Match Wood Finishes',
       ],
       details:
         'Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.',
@@ -46,10 +46,10 @@ const CollectionPage = ({ language }) => {
       description:
         'Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.',
       features: [
-        'Core Furnishings',
+        'Foundation Furnishings',
         'Move-In Ready',
-        'Quality Basics',
-        'Functional Design',
+        'Simplified, Curated Essentials',
+        'Cohesive Foundation For Your Space',
       ],
       details:
         'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.',
@@ -118,7 +118,7 @@ const CollectionPage = ({ language }) => {
                 {/* Content */}
                 <div className="relative z-10">
                   {/* Collection Number */}
-                  <div className={`text-xs tracking-[0.3em] uppercase mb-3 transition-all duration-500 ${
+                  <div className={`text-xs tracking-[0.3em] uppercase mb-3 transition-all duration-500 font-semibold ${
                     activeCollection === collection.id
                       ? 'text-[#004b5f]/60'
                       : 'text-gray-300 group-hover:text-gray-400'
@@ -127,12 +127,12 @@ const CollectionPage = ({ language }) => {
                   </div>
                   
                   {/* Collection Name */}
-                  <div className="text-2xl font-light mb-2 tracking-wide transition-all duration-500">
+                  <div className="text-2xl font-semibold mb-2 tracking-wide transition-all duration-500">
                     {collection.name}
                   </div>
                   
                   {/* Tagline */}
-                  <div className={`text-sm font-light tracking-wide transition-all duration-500 ${
+                  <div className={`text-sm font-semibold tracking-wide transition-all duration-500 ${
                     activeCollection === collection.id
                       ? 'opacity-70'
                       : 'opacity-50 group-hover:opacity-60'
@@ -190,9 +190,9 @@ const CollectionPage = ({ language }) => {
                       className="group relative"
                     >
                       {/* Elegant Card */}
-                      <div className="relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50 p-6 border border-gray-100 transition-all duration-500 hover:shadow-lg hover:border-[#004b5f]/20">
+                      <div className="relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50 p-6 border border-gray-100 transition-all duration-500">
                         {/* Corner Accent */}
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-[#004b5f]/5 to-transparent transform translate-x-8 -translate-y-8 group-hover:translate-x-6 group-hover:-translate-y-6 transition-transform duration-500"></div>
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-[#004b5f]/5 to-transparent transform translate-x-8 -translate-y-8 transition-transform duration-500"></div>
                         
                         {/* Number */}
                         <div className="text-xs text-[#004b5f]/30 font-light mb-3 tracking-wider">
@@ -202,7 +202,7 @@ const CollectionPage = ({ language }) => {
                         {/* Feature Text */}
                         <div className="relative z-10">
                           <div className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f] mt-2 flex-shrink-0 group-hover:scale-150 transition-transform duration-500"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f] mt-2 flex-shrink-0 transition-transform duration-500"></div>
                             <span className="text-base text-gray-700 font-light leading-relaxed">
                               {feature}
                             </span>
@@ -213,7 +213,7 @@ const CollectionPage = ({ language }) => {
                   ))}
                 </div>
 
-                    {/* Add Library View Button for Foundation Collection */}
+                {/* Add Library View Button for Foundation Collection */}
                 {activeCollection === 'foundation' && activeCollectionData.library && (
                   <div className="mt-6">
                     <button
