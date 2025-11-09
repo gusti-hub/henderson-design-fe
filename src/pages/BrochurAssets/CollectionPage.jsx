@@ -1,60 +1,60 @@
-import React, { useState } from 'react';
-import { X, FileText, Sparkles, ChevronRight, BookOpen } from 'lucide-react';
+import React, { useState } from "react";
+import { X, FileText, ChevronRight, BookOpen } from "lucide-react";
 
-const CollectionPage = ({ language }) => {
-  const [activeCollection, setActiveCollection] = useState('lani');
+const CollectionPage = () => {
+  const [activeCollection, setActiveCollection] = useState("lani");
   const [showLookbook, setShowLookbook] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
 
   const collections = [
     {
-      id: 'lani',
-      name: 'Lani Collection',
-      tagline: 'The Pinnacle of Luxury',
+      id: "lani",
+      name: "Lani Collection",
+      tagline: "The Pinnacle of Luxury",
       description:
-        'Complete bespoke-level furnishing, including custom furnishings, curated art, premium rugs, and accessories.',
+        "Complete bespoke-level furnishing, including custom furnishings, curated art, premium rugs, and accessories.",
       features: [
-        'Custom Design',
-        'Premium Materials',
-        'accessories and wall coverings',
-        'Art Curation',
+        "Custom Design",
+        "Premium Materials",
+        "Accessories and Wall Coverings",
+        "Art Curation",
       ],
       details:
-        'The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space, offering 300 different options of furniture to perfectly suit your style and needs.',
-      lookbook: '/pdfs/lani-lookbook.pdf',
+        "The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space, offering 300 different options of furniture to perfectly suit your style and needs.",
+      lookbook: "/pdfs/lani-lookbook.pdf",
     },
     {
-      id: 'nalu',
-      name: 'Nalu Collection',
-      tagline: 'Sophisticated Balance',
+      id: "nalu",
+      name: "Nalu Collection",
+      tagline: "Sophisticated Balance",
       description:
-        'This collection is our investment level option that has streamline selections curated by our design team, and also offering 250 different options of furinshings of furniture. ',
+        "This collection is our investment level option that has streamline selections curated by our design team, and also offering 250 different options of furnishings of furniture.",
       features: [
-        'Over 250 different Furniture Options',
-        '2 Wood Finish Options',
-        'Upholstery fabric options',
-        'Mix and Match Wood Finishes',
+        "Over 250 Furniture Options",
+        "2 Wood Finish Options",
+        "Upholstery Fabric Options",
+        "Mix and Match Wood Finishes",
       ],
       details:
-        'Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.',
-      lookbook: '/pdfs/nalu-lookbook.pdf',
+        "Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.",
+      lookbook: "/pdfs/nalu-lookbook.pdf",
     },
     {
-      id: 'foundation',
-      name: 'Foundation Collection',
-      tagline: 'Elegant Essentials',
+      id: "foundation",
+      name: "Foundation Collection",
+      tagline: "Elegant Essentials",
       description:
-        'Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.',
+        "Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.",
       features: [
-        'Foundation Furnishings',
-        'Move-In Ready',
-        'Simplified, Curated Essentials',
-        'Cohesive Foundation For Your Space',
+        "Foundation Furnishings",
+        "Move-In Ready",
+        "Simplified, Curated Essentials",
+        "Cohesive Foundation For Your Space",
       ],
       details:
-        'Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.',
-      lookbook: '/pdfs/foundation-lookbook.pdf',
-      library: '/pdfs/foundation-library.pdf'
+        "Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.",
+      lookbook: "/pdfs/foundation-lookbook.pdf",
+      library: "/pdfs/foundation-library.pdf",
     },
   ];
 
@@ -63,438 +63,245 @@ const CollectionPage = ({ language }) => {
   );
 
   return (
-    <div className="pt-40 pb-24 px-6 animate-fade-in">
-      {/* Hero Section - Ultra Elegant */}
-      <div className="max-w-5xl mx-auto text-center mb-24">
-        {/* Decorative Element - Perfectly positioned below header */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#004b5f]/30 to-transparent"></div>
-          <Sparkles className="w-5 h-5 text-[#004b5f]/40 mx-4" />
-          <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#004b5f]/30 to-transparent"></div>
+    <div className="pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white text-[#1a1a1a]">
+      {/* Header */}
+      <div className="max-w-5xl mx-auto text-center mb-20">
+        <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
+          <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">Our Collections</p>
         </div>
-        
-        <h2 className="text-8xl font-extralight text-[#004b5f] mb-8 tracking-tight leading-none">
+        <h2 className="text-5xl md:text-6xl font-bold text-[#005670] mb-6 leading-tight">
           Ālia Collections
         </h2>
-        
-        <div className="max-w-3xl mx-auto">
-          <p className="text-xl text-gray-600 font-light leading-relaxed tracking-wide">
-            Three carefully curated expressions of island living, each designed to
-            complement the Ālia architecture with distinct levels of customization
-            and refinement.
-          </p>
-        </div>
-        
-        {/* Decorative Bottom Line */}
-        <div className="flex items-center justify-center mt-8">
-          <div className="h-px w-24 bg-gradient-to-r from-transparent via-[#004b5f]/20 to-transparent"></div>
-        </div>
+        <p className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
+          Three carefully curated expressions of island living, each designed to complement the Ālia
+          architecture with distinct levels of customization and refinement.
+        </p>
+        <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>
 
-      {/* Collection Selector - Minimalist Elegant */}
-      <div className="max-w-6xl mx-auto mb-20">
-        <div className="relative">
-          {/* Background Gradient Bar */}
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
-          
-          <div className="flex justify-center gap-0 relative">
-            {collections.map((collection, index) => (
+      {/* Tabs - Segmented Control Style */}
+      <div className="max-w-5xl mx-auto mb-20">
+        <nav className="hidden md:flex items-stretch bg-white/80 backdrop-blur-md rounded-2xl p-1.5 border-2 border-[#005670]/20 shadow-xl">
+          {collections.map((collection, index) => (
+            <button
+              key={collection.id}
+              onClick={() => setActiveCollection(collection.id)}
+              className={`flex-1 flex flex-col items-center justify-center px-8 py-5 text-base font-bold tracking-wide uppercase transition-all duration-300 ${
+                index === 0 ? 'rounded-l-xl' : ''
+              } ${
+                index === collections.length - 1 ? 'rounded-r-xl' : ''
+              } ${
+                activeCollection === collection.id
+                  ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg z-10 scale-105"
+                  : "text-[#005670] hover:bg-[#005670]/5 active:scale-95"
+              }`}
+            >
+              <span className="mb-1">{collection.name}</span>
+              <span className={`text-xs font-semibold ${
+                activeCollection === collection.id ? "text-white/90" : "text-gray-500"
+              }`}>
+                {collection.tagline}
+              </span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Mobile - Stacked */}
+          <div className="md:hidden bg-white/90 backdrop-blur-md rounded-2xl p-4 border-2 border-[#005670]/30 shadow-xl space-y-4">
+            {collections.map((collection) => (
               <button
                 key={collection.id}
                 onClick={() => setActiveCollection(collection.id)}
-                className={`group relative flex-1 max-w-xs px-12 py-8 transition-all duration-700 ${
+                className={`w-full flex flex-col items-center justify-center px-8 py-6 text-lg font-semibold tracking-wide uppercase transition-all duration-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#005670]/30 ${
                   activeCollection === collection.id
-                    ? 'text-[#004b5f]'
-                    : 'text-gray-400 hover:text-gray-600'
+                    ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg scale-[1.03]"
+                    : "text-[#005670] bg-white hover:bg-[#005670]/10 active:scale-95"
                 }`}
               >
-                {/* Hover Background */}
-                <div className={`absolute inset-0 transition-all duration-700 ${
-                  activeCollection === collection.id
-                    ? 'bg-gradient-to-b from-[#004b5f]/5 to-transparent'
-                    : 'bg-transparent group-hover:bg-gray-50/50'
-                }`}></div>
-                
-                {/* Content */}
-                <div className="relative z-10">
-                  {/* Collection Number */}
-                  <div className={`text-xs tracking-[0.3em] uppercase mb-3 transition-all duration-500 font-semibold ${
+                <span className="mb-2 leading-relaxed">{collection.name}</span>
+                <span
+                  className={`text-sm font-medium ${
                     activeCollection === collection.id
-                      ? 'text-[#004b5f]/60'
-                      : 'text-gray-300 group-hover:text-gray-400'
-                  }`}>
-                    Collection {String(index + 1).padStart(2, '0')}
-                  </div>
-                  
-                  {/* Collection Name */}
-                  <div className="text-2xl font-semibold mb-2 tracking-wide transition-all duration-500">
-                    {collection.name}
-                  </div>
-                  
-                  {/* Tagline */}
-                  <div className={`text-sm font-semibold tracking-wide transition-all duration-500 ${
-                    activeCollection === collection.id
-                      ? 'opacity-70'
-                      : 'opacity-50 group-hover:opacity-60'
-                  }`}>
-                    {collection.tagline}
-                  </div>
-                </div>
-                
-                {/* Active Indicator - Elegant Line */}
-                <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#004b5f] to-transparent transition-all duration-700 ${
-                  activeCollection === collection.id
-                    ? 'opacity-100 scale-x-100'
-                    : 'opacity-0 scale-x-0'
-                }`}></div>
-                
-                {/* Subtle Side Divider */}
-                {index < collections.length - 1 && (
-                  <div className="absolute right-0 top-1/4 bottom-1/4 w-px bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
-                )}
+                      ? "text-white/90"
+                      : "text-[#007a9a]" // 💙 Ganti abu-abu jadi biru lembut
+                  }`}
+                >
+                  {collection.tagline}
+                </span>
               </button>
             ))}
           </div>
-        </div>
+
       </div>
 
-      {/* Collection Content - Luxury Layout */}
+      {/* Active Content */}
       {activeCollectionData && (
-        <div className="animate-fade-in max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            {/* Left Column - Content */}
-            <div className="space-y-10">
-              {/* Description with Elegant Typography */}
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-start">
+          {/* Text Section */}
+          <div className="space-y-10">
+            <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-[#005670]/10">
               <div className="space-y-6">
-                <p className="text-3xl text-gray-800 leading-relaxed font-extralight tracking-wide">
+                <p className="text-xl text-gray-700 leading-relaxed">
                   {activeCollectionData.description}
                 </p>
-                
-                <div className="h-px w-24 bg-gradient-to-r from-[#004b5f]/30 to-transparent"></div>
-                
-                <p className="text-lg text-gray-600 leading-relaxed font-light">
+                <p className="text-lg text-gray-600 leading-relaxed">
                   {activeCollectionData.details}
                 </p>
               </div>
+            </div>
 
-              {/* Features Grid - Refined */}
-              <div className="pt-8">
-                <h3 className="text-sm font-light text-[#004b5f] mb-8 uppercase tracking-[0.3em]">
+            {/* Features */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-[#005670]/10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
+                <h3 className="text-2xl font-bold text-[#005670]">
                   Collection Highlights
                 </h3>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  {activeCollectionData.features.map((feature, index) => (
-                    <div
-                      key={index}
-                      className="group relative"
-                    >
-                      {/* Elegant Card */}
-                      <div className="relative overflow-hidden bg-gradient-to-br from-white to-gray-50/50 p-6 border border-gray-100 transition-all duration-500">
-                        {/* Corner Accent */}
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-[#004b5f]/5 to-transparent transform translate-x-8 -translate-y-8 transition-transform duration-500"></div>
-                        
-                        {/* Number */}
-                        <div className="text-xs text-[#004b5f]/30 font-light mb-3 tracking-wider">
-                          {String(index + 1).padStart(2, '0')}
-                        </div>
-                        
-                        {/* Feature Text */}
-                        <div className="relative z-10">
-                          <div className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f] mt-2 flex-shrink-0 transition-transform duration-500"></div>
-                            <span className="text-base text-gray-700 font-light leading-relaxed">
-                              {feature}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add Library View Button for Foundation Collection */}
-                {activeCollection === 'foundation' && activeCollectionData.library && (
-                  <div className="mt-6">
-                    <button
-                      onClick={() => setShowLibrary(true)}
-                      className="group/btn relative w-full overflow-hidden bg-gradient-to-r from-[#004b5f] via-[#005f75] to-[#007a9e] px-8 py-4 text-white"
-                    >
-                      <div className="flex items-center justify-center gap-3">
-                        <BookOpen className="w-5 h-5" />
-                        <span className="text-sm tracking-[0.2em] uppercase font-light">
-                          View Design Library
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                )}
               </div>
+              <ul className="space-y-3 text-lg text-gray-700">
+                {activeCollectionData.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="text-[#005670] text-2xl leading-none mt-1">•</span>
+                    <span className="flex-1">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-              {/* Library Modal - similar structure to Lookbook Modal */}
-              {showLibrary && activeCollectionData && activeCollectionData.library && (
-                <div className="fixed inset-0 z-50 animate-fade-in">
-                  {/* Backdrop with Blur */}
-                  <div 
-                    className="absolute inset-0 bg-black/80 backdrop-blur-md"
-                    onClick={() => setShowLibrary(false)}
-                  ></div>
-                  
-                  {/* Modal Container */}
-                  <div className="relative h-full flex items-center justify-center p-4">
-                    <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
-                      {/* Elegant Header */}
-                      <div className="relative border-b border-gray-100">
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white to-gray-50"></div>
-                        
-                        {/* Header Content */}
-                        <div className="relative flex justify-between items-center px-12 py-8">
-                          <div className="flex items-center gap-6">
-                            {/* Icon */}
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#004b5f] to-[#007a9e] flex items-center justify-center shadow-lg">
-                              <BookOpen className="w-6 h-6 text-white" />
-                            </div>
-                            
-                            {/* Title */}
-                            <div>
-                              <h3 className="text-3xl font-extralight text-[#004b5f] mb-1 tracking-wide">
-                                {activeCollectionData.name}
-                              </h3>
-                              <p className="text-sm text-gray-500 font-light tracking-wide">
-                                Design Library
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {/* Close Button - Elegant */}
-                          <button
-                            onClick={() => setShowLibrary(false)}
-                            className="group relative w-12 h-12 rounded-full border border-gray-200 hover:border-[#004b5f] transition-all duration-300 hover:scale-110"
-                          >
-                            {/* Hover Background */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#004b5f]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            
-                            {/* Icon */}
-                            <div className="relative flex items-center justify-center w-full h-full text-gray-400 group-hover:text-[#004b5f] group-hover:rotate-90 transition-all duration-300">
-                              <X size={20} />
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* PDF Viewer with Frame */}
-                      <div className="relative h-[calc(90vh-120px)] bg-gray-50 p-6">
-                        <div className="w-full h-full bg-white rounded-lg shadow-inner overflow-hidden border border-gray-200">
-                          <iframe
-                            src={`${activeCollectionData.library}#toolbar=0&navpanes=0&scrollbar=0`}
-                            className="w-full h-full"
-                            title={`${activeCollectionData.name} Design Library`}
-                            style={{ border: 'none' }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Elegant Footer */}
-                      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white to-transparent flex items-center justify-center">
-                        <div className="flex items-center gap-3 text-xs text-gray-400 font-light tracking-wider">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f]/30"></div>
-                          <span>ĀLIA LIVING</span>
-                          <div className="w-px h-3 bg-gray-300"></div>
-                          <span>DESIGN LIBRARY PREVIEW</span>
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f]/30"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            {/* Library Button */}
+            {activeCollection === "foundation" &&
+              activeCollectionData.library && (
+                <button
+                  onClick={() => setShowLibrary(true)}
+                  className="w-full flex items-center justify-center gap-4 bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white px-8 py-5 rounded-xl text-lg font-bold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                >
+                  <BookOpen className="w-6 h-6" />
+                  View Design Library
+                </button>
               )}
 
-              {/* Note - Elegant Info Box */}
-              <div className="relative overflow-hidden">
-                {/* Decorative Background Pattern */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#004b5f]/5 via-transparent to-transparent"></div>
-                
-                <div className="relative border-l-2 border-[#004b5f]/40 bg-white/80 backdrop-blur-sm p-8 shadow-sm">
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full bg-[#004b5f]/10 flex items-center justify-center flex-shrink-0">
-                      <div className="w-2 h-2 rounded-full bg-[#004b5f]"></div>
-                    </div>
-                    <p className="text-sm text-gray-700 font-light leading-relaxed">
-                      <span className="font-medium text-[#004b5f]">Customization Available:</span>{' '}
-                      All collections can be tailored to your preferences. Connect with your design team
-                      to explore specific modifications or create unique combinations.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {/* Customization Note */}
+            <div className="bg-gradient-to-br from-[#005670]/5 to-[#007a9a]/5 border-l-4 border-[#005670] rounded-r-xl p-6">
+              <p className="text-base text-gray-800 leading-relaxed">
+                <span className="text-[#005670] font-bold text-lg block mb-2">
+                  Customization Available
+                </span>
+                All collections can be tailored to your preferences. Connect with your design team to explore specific modifications or create unique combinations.
+              </p>
             </div>
+          </div>
 
-            {/* Right Column - Lookbook Preview Card */}
-            <div className="lg:sticky lg:top-32">
-              <div className="group relative overflow-hidden bg-gradient-to-br from-gray-50 to-white border border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-700">
-                {/* Decorative Corner Elements */}
-                <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#004b5f]/10 to-transparent -translate-x-16 -translate-y-16"></div>
-                <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-[#004b5f]/10 to-transparent translate-x-16 translate-y-16"></div>
-                
-                {/* Content */}
-                <div className="relative z-10 p-12">
-                  {/* Icon */}
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#004b5f] to-[#007a9e] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 shadow-lg">
-                    <FileText className="w-8 h-8 text-white" />
-                  </div>
-                  
-                  {/* Title */}
-                  <h3 className="text-3xl font-extralight text-[#004b5f] mb-4 tracking-wide">
-                    {activeCollectionData.name}
-                  </h3>
-                  
-                  {/* Subtitle */}
-                  <p className="text-sm text-gray-500 font-light mb-8 tracking-wide">
-                    Comprehensive Lookbook
-                  </p>
-                  
-                  {/* Description */}
-                  <p className="text-base text-gray-600 font-light leading-relaxed mb-10">
-                    Explore detailed imagery, specifications, and design inspiration for the {activeCollectionData.name}. 
-                    View curated selections and finish options in our comprehensive digital lookbook.
-                  </p>
-                  
-                  {/* Button - Ultra Elegant */}
-                  <button
-                    onClick={() => setShowLookbook(true)}
-                    className="group/btn relative w-full overflow-hidden"
-                  >
-                    {/* Gradient Background */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#004b5f] via-[#005f75] to-[#007a9e] transition-transform duration-500 group-hover/btn:scale-105"></div>
-                    
-                    {/* Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000"></div>
-                    
-                    {/* Button Content */}
-                    <div className="relative flex items-center justify-center gap-3 px-8 py-5 text-white">
-                      <span className="text-sm tracking-[0.2em] uppercase font-light">
-                        View Lookbook
-                      </span>
-                      <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
-                    </div>
-                  </button>
-                  
-                  {/* Additional Info */}
-                  <p className="text-xs text-gray-400 text-center mt-6 font-light tracking-wide">
-                    Interactive digital preview
-                  </p>
+          {/* Lookbook Section */}
+          <div className="lg:sticky lg:top-32">
+            <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10">
+              <div className="text-center">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
+                  <FileText className="w-10 h-10 text-white" />
                 </div>
+                <h3 className="text-3xl font-bold text-[#005670] mb-3">
+                  {activeCollectionData.name}
+                </h3>
+                <p className="text-sm text-gray-500 mb-6 uppercase tracking-widest font-bold">
+                  Comprehensive Lookbook
+                </p>
+                <p className="text-lg text-gray-700 leading-relaxed mb-8">
+                  Explore detailed imagery, specifications, and design inspiration for the{" "}
+                  {activeCollectionData.name}. View curated selections and finish options in our
+                  comprehensive digital lookbook.
+                </p>
+                <button
+                  onClick={() => setShowLookbook(true)}
+                  className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                >
+                  View Lookbook
+                  <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <p className="text-sm text-gray-500 mt-4 font-semibold">
+                  Interactive Digital Preview
+                </p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* LUXURY MODAL LOOKBOOK */}
-      {showLookbook && activeCollectionData && (
-        <div className="fixed inset-0 z-50 animate-fade-in">
-          {/* Backdrop with Blur */}
-          <div 
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+      {/* Lookbook Modal */}
+      {showLookbook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => setShowLookbook(false)}
           ></div>
-          
-          {/* Modal Container */}
-          <div className="relative h-full flex items-center justify-center p-4">
-            <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
-              {/* Elegant Header */}
-              <div className="relative border-b border-gray-100">
-                {/* Background Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white to-gray-50"></div>
-                
-                {/* Header Content */}
-                <div className="relative flex justify-between items-center px-12 py-8">
-                  <div className="flex items-center gap-6">
-                    {/* Icon */}
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#004b5f] to-[#007a9e] flex items-center justify-center shadow-lg">
-                      <FileText className="w-6 h-6 text-white" />
-                    </div>
-                    
-                    {/* Title */}
-                    <div>
-                      <h3 className="text-3xl font-extralight text-[#004b5f] mb-1 tracking-wide">
-                        {activeCollectionData.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 font-light tracking-wide">
-                        Digital Lookbook Collection
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Close Button - Elegant */}
-                  <button
-                    onClick={() => setShowLookbook(false)}
-                    className="group relative w-12 h-12 rounded-full border border-gray-200 hover:border-[#004b5f] transition-all duration-300 hover:scale-110"
-                  >
-                    {/* Hover Background */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#004b5f]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    
-                    {/* Icon */}
-                    <div className="relative flex items-center justify-center w-full h-full text-gray-400 group-hover:text-[#004b5f] group-hover:rotate-90 transition-all duration-300">
-                      <X size={20} />
-                    </div>
-                  </button>
+          <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="flex justify-between items-center px-8 py-5 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-[#005670]">
+                    {activeCollectionData.name}
+                  </h3>
+                  <p className="text-sm text-gray-500 font-semibold">
+                    Digital Lookbook
+                  </p>
                 </div>
               </div>
-
-              {/* PDF Viewer with Frame */}
-              <div className="relative h-[calc(90vh-120px)] bg-gray-50 p-6">
-                <div className="w-full h-full bg-white rounded-lg shadow-inner overflow-hidden border border-gray-200">
-                  <iframe
-                    src={`${activeCollectionData.lookbook}#toolbar=0&navpanes=0&scrollbar=0`}
-                    className="w-full h-full"
-                    title={`${activeCollectionData.name} Lookbook`}
-                    style={{ border: 'none' }}
-                  />
-                </div>
-              </div>
-
-              {/* Elegant Footer */}
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white to-transparent flex items-center justify-center">
-                <div className="flex items-center gap-3 text-xs text-gray-400 font-light tracking-wider">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f]/30"></div>
-                  <span>ĀLIA LIVING</span>
-                  <div className="w-px h-3 bg-gray-300"></div>
-                  <span>VIEW-ONLY PREVIEW</span>
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#004b5f]/30"></div>
-                </div>
-              </div>
+              <button
+                onClick={() => setShowLookbook(false)}
+                className="w-12 h-12 rounded-full bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
+              >
+                <X className="text-[#005670]" size={24} />
+              </button>
             </div>
+            <iframe
+              src={`${activeCollectionData.lookbook}#toolbar=0`}
+              className="w-full h-[calc(90vh-80px)]"
+              title={`${activeCollectionData.name} Lookbook`}
+              style={{ border: "none" }}
+            ></iframe>
           </div>
         </div>
       )}
 
-      {/* CSS Animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out;
-        }
-        
-        .animate-scale-in {
-          animation: scale-in 0.4s ease-out;
-        }
-      `}</style>
+      {/* Library Modal (similar to Lookbook) */}
+      {showLibrary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowLibrary(false)}
+          ></div>
+          <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="flex justify-between items-center px-8 py-5 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-[#005670]">
+                    {activeCollectionData.name}
+                  </h3>
+                  <p className="text-sm text-gray-500 font-semibold">
+                    Design Library
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLibrary(false)}
+                className="w-12 h-12 rounded-full bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
+              >
+                <X className="text-[#005670]" size={24} />
+              </button>
+            </div>
+            <iframe
+              src={`${activeCollectionData.library}#toolbar=0`}
+              className="w-full h-[calc(90vh-80px)]"
+              title={`${activeCollectionData.name} Library`}
+              style={{ border: "none" }}
+            ></iframe>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

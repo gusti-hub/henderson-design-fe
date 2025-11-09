@@ -64,9 +64,9 @@ Deposit Amount
 Thirty percent (30%) of your selected furnishing package total.
 
 What This Does
-• Locks in 2025 pricing for your chosen collection (Lani, Nalu, or Foundation).
-• Reserves materials and production allocation in HDG's manufacturing schedule.
-• Applies in full toward your total furnishing package once you move forward to design and production.
+- Locks in 2025 pricing for your chosen collection (Lani, Nalu, or Foundation).
+- Reserves materials and production allocation in HDG's manufacturing schedule.
+- Applies in full toward your total furnishing package once you move forward to design and production.
 
 Refund Policy
 Refundable less a 10% administrative fee if cancelled before design selections or production scheduling begin. Less any design fees incurred.
@@ -86,9 +86,9 @@ One hundred percent (100%) due upon signing. Fee is non-refundable.
 (Refer to Design Fee Schedule by unit type and bedroom count.)
 
 What This Does
-• Confirms your reserved design start date.
-• Includes design intake meeting, floor plan review, furniture layout, material selections, and one revision.
-• Applies in full as a credit toward your total furnishing package when you proceed to production.
+- Confirms your reserved design start date.
+- Includes design intake meeting, floor plan review, furniture layout, material selections, and one revision.
+- Applies in full as a credit toward your total furnishing package when you proceed to production.
 
 Refund Policy
 Non-refundable. The full amount is credited toward your total package if you move forward into production.
@@ -107,6 +107,7 @@ UPDATED 10.30.25`
       content: `HENDERSON DESIGN GROUP
 DESIGN FEE AGREEMENT – ĀLIA FURNISHING PROGRAM
 
+
 1. Purpose
 This Agreement outlines the terms under which Henderson Design Group (HDG) will provide design services to reserve the Client's place in HDG's design calendar for the Ālia furnishing program. The Design Fee guarantees design capacity, secures scheduling priority, and covers the preparation and delivery of design materials for the Client's residence.
 
@@ -119,13 +120,13 @@ Payment is required before HDG confirms a design start date or begins design pre
 
 3. Scope of Services
 The Design Fee includes:
-• Design intake meeting and review of floor plan or unit layout.
-• Furniture layout and collection recommendations.
-• Material and finish selections for the chosen package.
-• Design Presentation #1
-• One round of revisions to the layout and selections.
-• Preparation of a final design presentation and furnishing proposal for approval
-• Design Presentation #2
+- Design intake meeting and review of floor plan or unit layout.
+- Furniture layout and collection recommendations.
+- Material and finish selections for the chosen package.
+- Design Presentation #1
+- One round of revisions to the layout and selections.
+- Preparation of a final design presentation and furnishing proposal for approval
+- Design Presentation #2
 
 Additional revisions, custom sourcing, or on-site consultations beyond this scope may be billed separately at HDG's standard hourly rates.
 
@@ -172,9 +173,9 @@ If the Client later proceeds to the design phase under a separate Design Fee Agr
 
 3. Scope of Agreement
 The Deposit to Hold Pricing includes:
-• Locking in current pricing for the selected HDG collection (Lani, Nalu, or Foundation).
-• Reserving materials and production allocation in the manufacturing schedule.
-• Preliminary scheduling in HDG's 2026 design calendar.
+- Locking in current pricing for the selected HDG collection (Lani, Nalu, or Foundation).
+- Reserving materials and production allocation in the manufacturing schedule.
+- Preliminary scheduling in HDG's 2026 design calendar.
 
 This deposit does include or cover design services. Design services are initiated upon receipt of the deposit.
 
@@ -317,7 +318,6 @@ UPDATED 10.30.25`
     setError("");
 
     try {
-      // Use new next-steps endpoint
       const response = await fetch(`${backendServer}/api/next-steps/submit`, {
         method: 'POST',
         headers: {
@@ -331,12 +331,10 @@ UPDATED 10.30.25`
       if (response.ok && data.success) {
         setSuccess(true);
         
-        // Show success message for 3 seconds then navigate to home
         setTimeout(() => {
           navigate("/");
         }, 3000);
       } else {
-        // Handle error from response
         setError(data.message || "Failed to schedule meeting. Please try again.");
       }
     } catch (err) {
@@ -352,21 +350,21 @@ UPDATED 10.30.25`
   // Success screen
   if (success) {
     return (
-      <div className="min-h-screen pt-40 pb-24 px-6 bg-white flex items-center justify-center">
-        <div className="max-w-2xl text-center animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+        <div className="max-w-2xl text-center">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-8">
+            <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
           
-          <h1 className="text-4xl font-light text-[#004b5f] mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6">
             Meeting Request Submitted!
           </h1>
           
-          <p className="text-lg text-gray-600 font-light mb-6">
+          <p className="text-xl text-gray-600 mb-8 leading-relaxed">
             Thank you for scheduling your design consultation. You will receive a confirmation email shortly with meeting details.
           </p>
           
-          <p className="text-sm text-gray-500 font-light">
+          <p className="text-base text-gray-500">
             Redirecting to your portal...
           </p>
         </div>
@@ -377,44 +375,46 @@ UPDATED 10.30.25`
   // Meeting scheduler screen
   if (showMeetingScheduler) {
     return (
-      <div className="min-h-screen pt-40 pb-24 px-6 bg-white">
+      <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12 animate-fade-in">
-            <div className="flex items-center justify-center mb-6">
-              <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#004b5f]/30 to-transparent"></div>
-              <Calendar className="w-6 h-6 text-[#004b5f]/40 mx-4" />
-              <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#004b5f]/30 to-transparent"></div>
+          <div className="text-center mb-16">
+            <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
+              <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">Schedule Meeting</p>
             </div>
 
-            <h1 className="text-5xl font-extralight text-[#004b5f] mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6 leading-tight">
               Schedule Your Design Consultation
             </h1>
-            <p className="text-lg text-gray-600 font-light max-w-2xl mx-auto">
+            <p className="text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
               Select your preferred meeting times and our team will confirm your appointment within 24 hours.
             </p>
+            <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleMeetingSubmit} className="bg-white rounded-2xl shadow-lg p-8 animate-slide-up">
+          <form onSubmit={handleMeetingSubmit} className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-10">
             {/* Error message */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="mb-8 p-5 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-4">
+                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-base text-red-800">{error}</p>
               </div>
             )}
 
             {/* Contact Information */}
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-[#004b5f] mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Contact Information
-              </h2>
+            <div className="mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
+                <h2 className="text-2xl font-bold text-[#005670] flex items-center gap-3">
+                  <Users className="w-6 h-6" />
+                  Contact Information
+                </h2>
+              </div>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Full Name *
                   </label>
                   <input
@@ -422,14 +422,14 @@ UPDATED 10.30.25`
                     name="name"
                     value={formData.name}
                     onChange={handleMeetingFormChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     placeholder="John Doe"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Email Address *
                   </label>
                   <input
@@ -437,17 +437,17 @@ UPDATED 10.30.25`
                     name="email"
                     value={formData.email}
                     onChange={handleMeetingFormChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     placeholder="your.email@gmail.com"
                     required
                   />
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-2 text-sm text-gray-500">
                     Please use public email (Gmail, Yahoo, Outlook, etc.)
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Unit Number *
                   </label>
                   <input
@@ -455,7 +455,7 @@ UPDATED 10.30.25`
                     name="unitNumber"
                     value={formData.unitNumber}
                     onChange={handleMeetingFormChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     placeholder="e.g., 101"
                     required
                   />
@@ -464,17 +464,20 @@ UPDATED 10.30.25`
             </div>
 
             {/* Meeting Type */}
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-[#004b5f] mb-4 flex items-center gap-2">
-                <Video className="w-5 h-5" />
-                Meeting Type
-              </h2>
+            <div className="mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
+                <h2 className="text-2xl font-bold text-[#005670] flex items-center gap-3">
+                  <Video className="w-6 h-6" />
+                  Meeting Type
+                </h2>
+              </div>
               
-              <div className="grid md:grid-cols-2 gap-4">
-                <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
+              <div className="grid md:grid-cols-2 gap-5">
+                <label className={`flex items-center gap-4 p-6 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
                   formData.meetingType === 'in-person' 
-                    ? 'border-[#004b5f] bg-[#004b5f]/5' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-[#005670] bg-[#005670]/5 shadow-md' 
+                    : 'border-gray-200 hover:border-[#005670]/30'
                 }`}>
                   <input
                     type="radio"
@@ -482,18 +485,18 @@ UPDATED 10.30.25`
                     value="in-person"
                     checked={formData.meetingType === 'in-person'}
                     onChange={handleMeetingFormChange}
-                    className="w-4 h-4 text-[#004b5f]"
+                    className="w-5 h-5 text-[#005670]"
                   />
                   <div>
-                    <div className="font-medium text-gray-900">In-Person</div>
-                    <div className="text-sm text-gray-500 font-light">Meet at HDG showroom</div>
+                    <div className="font-bold text-gray-900 text-lg">In-Person</div>
+                    <div className="text-sm text-gray-500">Meet at HDG showroom</div>
                   </div>
                 </label>
 
-                <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition ${
+                <label className={`flex items-center gap-4 p-6 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
                   formData.meetingType === 'virtual' 
-                    ? 'border-[#004b5f] bg-[#004b5f]/5' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-[#005670] bg-[#005670]/5 shadow-md' 
+                    : 'border-gray-200 hover:border-[#005670]/30'
                 }`}>
                   <input
                     type="radio"
@@ -501,26 +504,29 @@ UPDATED 10.30.25`
                     value="virtual"
                     checked={formData.meetingType === 'virtual'}
                     onChange={handleMeetingFormChange}
-                    className="w-4 h-4 text-[#004b5f]"
+                    className="w-5 h-5 text-[#005670]"
                   />
                   <div>
-                    <div className="font-medium text-gray-900">Virtual</div>
-                    <div className="text-sm text-gray-500 font-light">Video call meeting</div>
+                    <div className="font-bold text-gray-900 text-lg">Virtual</div>
+                    <div className="text-sm text-gray-500">Video call meeting</div>
                   </div>
                 </label>
               </div>
             </div>
 
             {/* Preferred Date & Time */}
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-[#004b5f] mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Preferred Date & Time
-              </h2>
+            <div className="mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
+                <h2 className="text-2xl font-bold text-[#005670] flex items-center gap-3">
+                  <Calendar className="w-6 h-6" />
+                  Preferred Date & Time
+                </h2>
+              </div>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Date *
                   </label>
                   <input
@@ -529,20 +535,20 @@ UPDATED 10.30.25`
                     value={formData.preferredDate}
                     onChange={handleMeetingFormChange}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Time *
                   </label>
                   <select
                     name="preferredTime"
                     value={formData.preferredTime}
                     onChange={handleMeetingFormChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     required
                   >
                     <option value="">Select time</option>
@@ -555,15 +561,18 @@ UPDATED 10.30.25`
             </div>
 
             {/* Alternate Date & Time */}
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-[#004b5f] mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Alternate Date & Time
-              </h2>
+            <div className="mb-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
+                <h2 className="text-2xl font-bold text-[#005670] flex items-center gap-3">
+                  <Clock className="w-6 h-6" />
+                  Alternate Date & Time
+                </h2>
+              </div>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Date *
                   </label>
                   <input
@@ -572,20 +581,20 @@ UPDATED 10.30.25`
                     value={formData.alternateDate}
                     onChange={handleMeetingFormChange}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-700 mb-3">
                     Time *
                   </label>
                   <select
                     name="alternateTime"
                     value={formData.alternateTime}
                     onChange={handleMeetingFormChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition"
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition"
                     required
                   >
                     <option value="">Select time</option>
@@ -598,26 +607,26 @@ UPDATED 10.30.25`
             </div>
 
             {/* Additional Notes */}
-            <div className="mb-8">
-              <label className="block text-sm font-light text-gray-700 mb-2">
+            <div className="mb-10">
+              <label className="block text-base font-bold text-gray-700 mb-3">
                 Additional Notes (Optional)
               </label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleMeetingFormChange}
-                rows="4"
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004b5f]/20 focus:border-[#004b5f] transition resize-none"
+                rows="5"
+                className="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition resize-none"
                 placeholder="Any specific topics you'd like to discuss or questions you have..."
               />
             </div>
 
             {/* Submit Button */}
-            <div className="flex gap-4">
+            <div className="flex gap-5">
               <button
                 type="button"
                 onClick={() => setShowMeetingScheduler(false)}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-light"
+                className="px-8 py-4 text-lg font-bold border-2 border-[#005670]/20 text-[#005670] rounded-xl hover:border-[#005670] hover:bg-[#005670]/5 transition-all duration-300 active:scale-95"
               >
                 Back
               </button>
@@ -625,17 +634,17 @@ UPDATED 10.30.25`
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-[#004b5f] text-white px-8 py-3 rounded-lg hover:bg-[#003b4a] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-10 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span className="font-light">Scheduling...</span>
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Scheduling...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
-                    <span className="font-light">Schedule Meeting</span>
+                    <Send className="w-5 h-5" />
+                    <span>Schedule Meeting</span>
                   </>
                 )}
               </button>
@@ -647,109 +656,113 @@ UPDATED 10.30.25`
   }
 
   return (
-    <div className="pt-40 pb-24 px-6 animate-fade-in bg-white">
+    <div className="pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
       {/* Page hero */}
-      <div className="max-w-6xl mx-auto text-center mb-12">
-        <div className="flex items-center justify-center mb-6">
-          <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#004b5f]/30 to-transparent"></div>
-          <CheckCircle className="w-6 h-6 text-[#004b5f]/40 mx-4" />
-          <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#004b5f]/30 to-transparent"></div>
+      <div className="max-w-6xl mx-auto text-center mb-20">
+        <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
+          <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">Next Steps</p>
         </div>
 
-        <h1 className="text-6xl font-extralight text-[#004b5f] mb-4">Next Steps</h1>
-        <p className="text-lg text-gray-600 font-light max-w-3xl mx-auto">
+        <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6 leading-tight">Next Steps</h1>
+        <p className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
           Choose how you would like to secure your place in the Ālia Furnishing Program.
         </p>
+        <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>
 
       {/* Two boxes side-by-side on desktop, stacked on mobile */}
       <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 items-stretch">
 
         {/* Already Made Your Deposit? */}
-        <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] text-white rounded-2xl p-14 shadow-lg flex flex-col items-center text-center">
-          <div className="inline-flex items-center justify-center p-4 rounded-full bg-white/10 mb-6">
-            <CheckCircle className="w-8 h-8" />
+        <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] text-white rounded-2xl p-12 shadow-xl flex flex-col items-center text-center hover:shadow-2xl transition-shadow duration-300">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/15 mb-8 backdrop-blur-sm">
+            <CheckCircle className="w-10 h-10" />
           </div>
 
-          <h2 className="text-3xl font-light mb-4">Already Made Your Deposit?</h2>
-          <p className="max-w-xl text-white/90 mb-8 font-light">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Already Made Your Deposit?</h2>
+          <p className="max-w-xl text-xl text-white/90 mb-10 leading-relaxed">
             If you have already secured your place with a deposit, access your personalized client portal to review selections and track your project.
           </p>
 
           <button
             onClick={() => navigate("/client-portal")}
-            className="inline-flex items-center gap-3 bg-white text-[#005670] px-8 py-3 rounded-lg shadow hover:bg-gray-100 transition"
+            className="inline-flex items-center gap-3 bg-white text-[#005670] px-10 py-4 text-lg font-bold rounded-xl shadow-lg hover:bg-white/95 transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            <ArrowRight className="w-4 h-4" />
-            <span className="font-light">Access Your Portal</span>
+            <ArrowRight className="w-5 h-5" />
+            <span>Access Your Portal</span>
           </button>
         </div>
 
         {/* Ready to Make Your Deposit? */}
-        <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] text-white rounded-2xl p-14 shadow-lg flex flex-col items-center text-center">
-          <div className="inline-flex items-center justify-center p-4 rounded-full bg-white/10 mb-6">
-            <FileText className="w-8 h-8" />
+        <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] text-white rounded-2xl p-12 shadow-xl flex flex-col items-center text-center hover:shadow-2xl transition-shadow duration-300">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/15 mb-8 backdrop-blur-sm">
+            <FileText className="w-10 h-10" />
           </div>
 
-          <h2 className="text-3xl font-light mb-4">Ready to Make Your Deposit?</h2>
-          <p className="max-w-xl text-white/90 mb-8 font-light">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Make Your Deposit?</h2>
+          <p className="max-w-xl text-xl text-white/90 mb-10 leading-relaxed">
             Please review the required agreements before proceeding. You will need to acknowledge all three documents to continue.
           </p>
 
           <button
             onClick={openDocuments}
-            className="inline-flex items-center gap-3 bg-white text-[#005670] px-8 py-3 rounded-lg shadow hover:bg-gray-100 transition"
+            className="inline-flex items-center gap-3 bg-white text-[#005670] px-10 py-4 text-lg font-bold rounded-xl shadow-lg hover:bg-white/95 transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            <FileText className="w-4 h-4" />
-            <span className="font-light">Review Agreements & Make Deposit</span>
+            <FileText className="w-5 h-5" />
+            <span>Review Agreements & Make Deposit</span>
           </button>
         </div>
       </div>
 
       {/* Documents Modal */}
       {showDocuments && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* backdrop */}
-          <div className="absolute inset-0 bg-black/50" onClick={closeDocuments} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeDocuments} />
 
-          <div className="relative w-full max-w-5xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <FileText className="w-6 h-6 text-[#004b5f]" />
+            <div className="flex items-center justify-between p-8 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{currentDoc.title}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-xl font-bold text-gray-900">{currentDoc.title}</h3>
+                  <p className="text-sm text-gray-500 font-semibold">
                     Document {currentDocIndex + 1} of {documents.length}
                   </p>
                 </div>
               </div>
-              <button onClick={closeDocuments} className="text-gray-500 hover:text-gray-700 p-2">
-                <X className="w-5 h-5" />
+              <button 
+                onClick={closeDocuments} 
+                className="w-12 h-12 rounded-full border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
+              >
+                <X className="w-6 h-6 text-[#005670]" />
               </button>
             </div>
 
             {/* Document progress indicator */}
-            <div className="px-6 pt-4 pb-2">
-              <div className="flex gap-2">
+            <div className="px-8 pt-6 pb-4">
+              <div className="flex gap-3">
                 {documents.map((doc, index) => (
                   <div
                     key={doc.id}
-                    className="flex-1 h-2 rounded-full overflow-hidden bg-gray-200"
+                    className="flex-1 h-3 rounded-full overflow-hidden bg-gray-200"
                   >
                     <div
-                      className={`h-full transition-all duration-300 ${
+                      className={`h-full transition-all duration-500 ${
                         acknowledgedDocs[doc.id]
                           ? 'bg-green-500 w-full'
                           : index === currentDocIndex
-                          ? 'bg-[#004b5f] w-1/2'
+                          ? 'bg-gradient-to-r from-[#005670] to-[#007a9a] w-1/2'
                           : 'bg-gray-200 w-0'
                       }`}
                     />
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <div className="flex justify-between mt-3 text-xs font-bold text-gray-500">
                 <span>Understanding Options</span>
                 <span>Design Fee</span>
                 <span>Deposit Pricing</span>
@@ -757,10 +770,10 @@ UPDATED 10.30.25`
             </div>
 
             {/* scrollable content */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto text-gray-800 leading-relaxed">
-              <div className="whitespace-pre-line font-light text-sm">
+            <div className="p-8 max-h-[55vh] overflow-y-auto text-gray-800 leading-relaxed">
+              <div className="whitespace-pre-line text-base">
                 {currentDoc.content.split('\n\n').map((block, i) => (
-                  <p key={i} className="mb-4">
+                  <p key={i} className="mb-5">
                     {block}
                   </p>
                 ))}
@@ -768,38 +781,38 @@ UPDATED 10.30.25`
             </div>
 
             {/* footer with navigation */}
-            <div className="p-6 border-t border-gray-100">
+            <div className="p-8 border-t-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center justify-between">
                 {/* Previous button */}
                 <button
                   onClick={previousDocument}
                   disabled={currentDocIndex === 0}
-                  className={`inline-flex items-center gap-2 px-5 py-3 rounded-lg transition ${
+                  className={`inline-flex items-center gap-3 px-8 py-4 text-lg font-bold rounded-xl transition-all duration-300 ${
                     currentDocIndex === 0
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200'
+                      : 'bg-white text-[#005670] border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 active:scale-95'
                   }`}
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span className="font-light">Previous</span>
+                  <ChevronLeft className="w-5 h-5" />
+                  <span>Previous</span>
                 </button>
 
                 {/* Center: Acknowledge or Continue */}
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                   {!acknowledgedDocs[currentDoc.id] && (
                     <button
                       onClick={acknowledgeCurrentDocument}
-                      className="inline-flex items-center gap-2 bg-[#004b5f] text-white px-6 py-3 rounded-lg hover:bg-[#003b4a] transition"
+                      className="inline-flex items-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-8 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="font-light">Acknowledge</span>
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Acknowledge</span>
                     </button>
                   )}
                   
                   {acknowledgedDocs[currentDoc.id] && (
-                    <div className="inline-flex items-center gap-2 text-green-600">
-                      <CheckCircle className="w-5 h-5 fill-current" />
-                      <span className="font-light">Acknowledged</span>
+                    <div className="inline-flex items-center gap-3 text-green-600 bg-green-50 px-6 py-4 rounded-xl border-2 border-green-200">
+                      <CheckCircle className="w-6 h-6 fill-current" />
+                      <span className="text-lg font-bold">Acknowledged</span>
                     </div>
                   )}
                 </div>
@@ -808,23 +821,23 @@ UPDATED 10.30.25`
                 {currentDocIndex < documents.length - 1 ? (
                   <button
                     onClick={nextDocument}
-                    className="inline-flex items-center gap-2 bg-[#004b5f] text-white px-5 py-3 rounded-lg hover:bg-[#003b4a] transition"
+                    className="inline-flex items-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-8 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
                   >
-                    <span className="font-light">Next</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <span>Next</span>
+                    <ChevronRight className="w-5 h-5" />
                   </button>
                 ) : (
                   <button
                     onClick={proceedToMeetingScheduler}
                     disabled={!allDocumentsAcknowledged()}
-                    className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg transition ${
+                    className={`inline-flex items-center gap-3 px-8 py-4 text-lg font-bold rounded-xl transition-all duration-300 ${
                       allDocumentsAcknowledged()
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-gray-300'
                     }`}
                   >
-                    <span className="font-light">Proceed to Schedule Meeting</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>Proceed to Schedule Meeting</span>
+                    <ArrowRight className="w-5 h-5" />
                   </button>
                 )}
               </div>
@@ -832,19 +845,6 @@ UPDATED 10.30.25`
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in { animation: fade-in 0.45s ease-out both; }
-        .animate-slide-up { animation: slide-up 0.6s ease-out 0.15s both; }
-      `}</style>
     </div>
   );
 };
