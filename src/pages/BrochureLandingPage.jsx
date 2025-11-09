@@ -5,7 +5,7 @@ import AboutPage from './BrochurAssets/AboutPage';
 import CollectionPage from './BrochurAssets/CollectionPage';
 import ContactPage from './BrochurAssets/ContactPage';
 import EnvironmentPage from './BrochurAssets/EnvironmentPage';
-import ProcessPage from './BrochurAssets/ProcessPage'; 
+import ProcessPage from './BrochurAssets/ProcessPage';
 import FAQPage from './BrochurAssets/FAQPage';
 import InspirationPage from './BrochurAssets/InspirationPage';
 import NextStepsPage from './BrochurAssets/NextStepsPage';
@@ -33,15 +33,36 @@ const translations = {
     home: 'Home',
     menu: 'Menu',
     close: 'Close'
+  },
+  ja: {
+    about: '紹介',
+    collection: 'コレクション',
+    inspiration: 'インスピレーション',
+    process: 'プロセス',
+    timeline: 'タイムライン',
+    nextSteps: '次のステップ',
+    faq: 'よくある質問',
+    payment: '支払い',
+    warranty: '保証とケア',
+    environment: '環境',
+    questionnaire: 'アンケート',
+    contact: 'お問い合わせ',
+    designerAccess: 'デザイナーアクセス',
+    selectLanguage: '言語を選択',
+    home: 'ホーム',
+    menu: 'メニュー',
+    close: '閉じる'
   }
 };
 
-// ===== HEADER - Segmented Control Style =====
+// ===== HEADER =====
 const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
   const navigate = useNavigate();
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const t = translations[language];
+
+  // fallback ke English jika language tidak ditemukan
+  const t = translations[language] || translations.en;
 
   const mainTabs = [
     { id: 'about', label: t.about },
@@ -59,14 +80,14 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
 
   return (
     <header className="relative z-50 bg-[#005670] shadow-[0_2px_20px_rgba(0,0,0,0.3)] border-b border-white/10">
-      {/* Top bar - Made Smaller */}
+      {/* Top bar */}
       <div className="max-w-[1800px] mx-auto px-8 py-3 flex items-center justify-between">
         <div className="text-xs md:text-sm tracking-[0.2em] uppercase font-light text-white/70">
           <span className="font-semibold text-sm md:text-base text-white">Ālia</span> Furnishing Collection
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Language selector - Smaller */}
+          {/* Language selector */}
           <div className="relative">
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
@@ -111,10 +132,9 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
         </div>
       </div>
 
-      {/* Main navigation */}
+      {/* Main nav */}
       <div className="max-w-[1800px] mx-auto px-8 border-t border-white/10">
         <div className="flex items-center justify-between py-5">
-          {/* Logo */}
           <div className="flex items-center">
             <button onClick={() => setActiveTab('about')} className="group relative transition-transform duration-300 hover:scale-105 active:scale-95">
               <img
@@ -125,7 +145,6 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
             </button>
           </div>
 
-          {/* Desktop nav - Segmented Control Style */}
           <nav className="hidden lg:flex items-stretch bg-white/10 backdrop-blur-md rounded-2xl p-1.5 border-2 border-white/25 shadow-xl">
             {mainTabs.map((tab, index) => (
               <button
@@ -146,7 +165,7 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
             ))}
           </nav>
 
-          {/* Mobile menu button */}
+          {/* Mobile button */}
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             className="lg:hidden p-4 transition-all duration-300 rounded-xl border-2 text-white border-white/25 hover:border-white/50 hover:bg-white/10 active:scale-95"
@@ -182,11 +201,10 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
   );
 };
 
-
-// ===== FOOTER - Larger & Closer Spacing =====
+// ===== FOOTER =====
 const Footer = ({ setActiveTab, language, activeTab }) => {
-  const t = translations[language];
-  
+  const t = translations[language] || translations.en;
+
   const footerTabs = [
     { id: 'inspiration', label: t.inspiration },
     { id: 'faq', label: t.faq },
@@ -199,13 +217,11 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
   return (
     <footer className="relative bg-[#005670] shadow-[0_-2px_20px_rgba(0,0,0,0.3)] border-t border-white/10">
       <div className="max-w-[1800px] mx-auto px-8 py-8">
-        {/* Additional Resources Navigation - Larger & Closer */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-white mb-5 text-center tracking-wide uppercase">
             Additional Resources
           </h3>
-          
-          {/* Desktop - Single Row, Larger & Tighter */}
+
           <nav className="hidden md:flex items-stretch bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl max-w-6xl mx-auto">
             {footerTabs.map((tab, index) => (
               <button
@@ -229,7 +245,6 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
             ))}
           </nav>
 
-          {/* Mobile - Stacked */}
           <nav className="md:hidden bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl space-y-1 max-w-md mx-auto">
             {footerTabs.map((tab) => (
               <button
@@ -250,9 +265,7 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
           </nav>
         </div>
 
-        {/* Footer Content Grid - 2 Columns Only */}
         <div className="grid md:grid-cols-2 gap-10 pb-6 border-b border-white/10">
-          {/* Company Info */}
           <div>
             <img
               src="/images/HDG-Logo.png"
@@ -264,7 +277,6 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
             </p>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h4 className="text-sm font-bold text-white mb-3 uppercase tracking-wide">
               Quick Links
@@ -292,7 +304,6 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
           </div>
         </div>
 
-        {/* Copyright */}
         <div className="pt-5 text-center">
           <p className="text-sm font-semibold text-white tracking-wide mb-1">
             Ālia Project by Henderson Design Group
@@ -317,7 +328,7 @@ const BrochureLandingPage = () => {
 
   const renderPage = () => {
     const pageProps = { setActiveTab, language };
-    switch(activeTab) {
+    switch (activeTab) {
       case 'about': return <AboutPage {...pageProps} />;
       case 'collection': return <CollectionPage language={language} />;
       case 'inspiration': return <InspirationPage language={language} />;
