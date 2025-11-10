@@ -16,7 +16,7 @@ const ProcessPage = () => {
     },
     {
       number: '02',
-      title: 'Introduction Meeting and Collection Review',
+      title: 'Introduction Meeting and Collections Review',
       content: (
         <>
           <p className="text-lg text-gray-700 leading-relaxed mb-6">
@@ -26,15 +26,15 @@ const ProcessPage = () => {
           <ul className="space-y-2 mb-6 text-base text-gray-700">
             <li className="flex items-start gap-2">
               <span className="text-[#005670] mt-1">•</span>
-              <span>Lani Furniture Collection</span>
+              <span>Lani Furniture Collections</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#005670] mt-1">•</span>
-              <span>Nalu Furniture Collection</span>
+              <span>Nalu Furniture Collections</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#005670] mt-1">•</span>
-              <span>Foundation Collection</span>
+              <span>Foundation Collections</span>
             </li>
           </ul>
             <p className="text-lg text-gray-700 leading-relaxed mb-6">

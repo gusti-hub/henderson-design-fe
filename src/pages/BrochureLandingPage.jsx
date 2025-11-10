@@ -17,7 +17,7 @@ import WarrantyPage from './BrochurAssets/WarrantyPage';
 const translations = {
   en: {
     about: 'About',
-    collection: 'Collection',
+    collection: 'Collections',
     inspiration: 'Inspiration',
     process: 'Process',
     timeline: 'Timeline',
@@ -83,7 +83,7 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
       {/* Top bar */}
       <div className="max-w-[1800px] mx-auto px-8 py-3 flex items-center justify-between">
         <div className="text-xs md:text-sm tracking-[0.2em] uppercase font-light text-white/70">
-          <span className="font-semibold text-sm md:text-base text-white">Ālia</span> Furnishing Collection
+          <span className="font-semibold text-sm md:text-base text-white">Ālia</span> Furnishings Collections
         </div>
 
         <div className="flex items-center gap-3">

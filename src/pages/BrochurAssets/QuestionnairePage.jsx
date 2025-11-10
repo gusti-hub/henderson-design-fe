@@ -337,9 +337,9 @@ const QuestionnairePage = ({ language }) => {
           label: 'Which collection are you most interested in?',
           type: 'radio',
           options: [
-            'Lani Collection (Complete bespoke furnishing)',
-            'Nalu Collection (Elevated design with quality finishes)',
-            'Foundation Collection (Streamlined essentials)',
+            'Lani Collections (Complete bespoke furnishing)',
+            'Nalu Collections (Elevated design with quality finishes)',
+            'Foundation Collections (Streamlined essentials)',
             'Custom Design',
             'Mix between collections',
             'Not sure yet - need guidance',

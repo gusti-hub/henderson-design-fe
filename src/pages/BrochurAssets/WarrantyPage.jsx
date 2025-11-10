@@ -15,7 +15,7 @@ const WarrantyPage = () => {
           Warranty & Aftercare Policy
         </h1>
         <p className="text-xl text-gray-700 font-light">
-          Ālia Furnishing Program
+          Ālia Furnishings Program
         </p>
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>

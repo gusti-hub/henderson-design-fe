@@ -63,7 +63,7 @@ const HeroSection = ({ setActiveTab, language }) => {
       <div className="relative z-10 h-full flex items-center">
         <div className="px-8 md:px-20 max-w-7xl mx-auto">
           <div className="text-white text-xl tracking-[0.5em] uppercase mb-8 font-light">
-            Ālia Furnishing Collection
+            Ālia Furnishings Collections
           </div>
           
           <h1 className="text-white text-7xl md:text-8xl lg:text-9xl font-light mb-10 leading-none drop-shadow-2xl">
@@ -117,7 +117,7 @@ const AboutPage = ({ setActiveTab, language }) => {
               <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">About Us</p>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-[#005670] mb-6 leading-tight">
-              About Ālia Collection
+              About Ālia Collections
             </h2>
             <div className="w-24 h-1 bg-[#005670] mx-auto rounded-full"></div>
           </div>

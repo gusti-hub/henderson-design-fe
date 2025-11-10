@@ -1068,7 +1068,7 @@ const Step3 = ({ formData, handleChange, handleArrayToggle }) => (
       <QuestionLabel>Preferred Collection</QuestionLabel>
       <div className="space-y-3">
         <RadioCard
-          label="Lani Collection"
+          label="Lani Collections"
           description="Complete bespoke-level furnishing with custom cabinetry and art"
           name="preferredCollection"
           value="lani"
@@ -1076,7 +1076,7 @@ const Step3 = ({ formData, handleChange, handleArrayToggle }) => (
           onChange={(val) => handleChange('designOptions', 'preferredCollection', val)}
         />
         <RadioCard
-          label="Nalu Collection"
+          label="Nalu Collections"
           description="Comprehensive furnishing with elevated design details"
           name="preferredCollection"
           value="nalu"

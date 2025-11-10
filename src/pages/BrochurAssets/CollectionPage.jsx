@@ -1,15 +1,169 @@
-import React, { useState } from "react";
-import { X, FileText, ChevronRight, BookOpen } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  FileText,
+  BookOpen,
+  ZoomIn,
+  ZoomOut,
+  ChevronRight as ChevronRightIcon,
+} from "lucide-react";
 
-const CollectionPage = () => {
+// ===================== IMAGE VIEWER =====================
+const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
+  const [scale, setScale] = useState(1.5);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleZoomIn = () => {
+    if (scale < 2) setScale((prev) => prev + 0.25);
+  };
+
+  const handleZoomOut = () => {
+    if (scale > 0.5) setScale((prev) => prev - 0.25);
+  };
+
+  useEffect(() => {
+    const preventActions = (e) => {
+      if (e.target.tagName === "IMG") {
+        e.preventDefault();
+        return false;
+      }
+    };
+    document.addEventListener("contextmenu", preventActions);
+    return () => document.removeEventListener("contextmenu", preventActions);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const container = e.target;
+      const images = container.querySelectorAll(".page-image");
+      images.forEach((img, index) => {
+        const rect = img.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        if (
+          rect.top >= containerRect.top &&
+          rect.top <= containerRect.top + containerRect.height / 2
+        ) {
+          setCurrentPage(index + 1);
+        }
+      });
+    };
+    const container = document.getElementById("pdf-scroll-container");
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      ></div>
+      <div className="relative bg-white w-full max-w-[1600px] h-[90vh] mx-4 rounded-2xl overflow-hidden shadow-2xl flex flex-col animate-slideUp">
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 md:px-8 py-4 md:py-5 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
+          <div className="flex items-center gap-3 md:gap-5">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
+              <Icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-2xl font-bold text-[#005670] line-clamp-1">
+                {title}
+              </h3>
+              <p className="text-xs md:text-sm text-gray-500 font-semibold">
+                Page {currentPage} of {images.length}
+              </p>
+            </div>
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleZoomOut}
+              disabled={scale <= 0.5}
+              className="p-2 rounded-lg bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <ZoomOut className="w-5 h-5 text-[#005670]" />
+            </button>
+            <span className="text-sm font-semibold text-[#005670] min-w-[60px] text-center hidden sm:block">
+              {Math.round(scale * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              disabled={scale >= 2}
+              className="p-2 rounded-lg bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <ZoomIn className="w-5 h-5 text-[#005670]" />
+            </button>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
+          >
+            <X className="text-[#005670]" size={24} />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div
+          id="pdf-scroll-container"
+          className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-100 p-4 md:p-8"
+          style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}
+        >
+          <div className="max-w-4xl mx-auto space-y-4">
+            {images.map((image, index) => (
+              <div
+                key={index}
+                className="page-image relative bg-white shadow-2xl rounded-lg overflow-hidden"
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top center",
+                  transition: "transform 0.3s ease-out",
+                  marginBottom: scale > 1 ? `${(scale - 1) * 100}px` : "0",
+                }}
+              >
+                <img
+                  src={image}
+                  alt={`Page ${index + 1}`}
+                  className="w-full h-auto select-none"
+                  draggable={false}
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ userSelect: "none", pointerEvents: "none" }}
+                  loading={index > 2 ? "lazy" : "eager"}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-center gap-4 px-4 py-4 border-t-2 border-[#005670]/10 bg-white flex-shrink-0">
+          <div className="text-sm text-gray-600">
+            Scroll to view all{" "}
+            <span className="font-bold text-[#005670]">{images.length}</span>{" "}
+            pages
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===================== MAIN PAGE =====================
+const CollectionsPage = () => {
   const [activeCollection, setActiveCollection] = useState("lani");
   const [showLookbook, setShowLookbook] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
+
+  const generateImagePaths = (folder, count) => {
+    return Array.from({ length: count }, (_, i) => `/pdfs/${folder}/${i + 1}.jpg`);
+  };
 
   const collections = [
     {
       id: "lani",
-      name: "Lani Collection",
+      name: "Lani Collections",
       tagline: "The Pinnacle of Luxury",
       description:
         "Complete bespoke-level furnishing, including custom furnishings, curated art, premium rugs, and accessories.",
@@ -20,15 +174,15 @@ const CollectionPage = () => {
         "Art Curation",
       ],
       details:
-        "The Lani Collection represents the pinnacle of Hawaiian luxury living, with every element thoughtfully selected and customized for your unique space, offering 300 different options of furniture to perfectly suit your style and needs.",
-      lookbook: "/pdfs/lani-lookbook.pdf",
+        "The Lani Collection represents the pinnacle of Hawaiian luxury living, offering 300 different options of furniture, each carefully curated for timeless elegance.",
+      lookbookImages: generateImagePaths("lani-lookbook", 26),
     },
     {
       id: "nalu",
-      name: "Nalu Collection",
+      name: "Nalu Collections",
       tagline: "Sophisticated Balance",
       description:
-        "This collection is our investment level option that has streamline selections curated by our design team, and also offering 250 different options of furnishings of furniture.",
+        "An investment-level option with 250+ carefully curated furniture options, blending comfort and sophistication.",
       features: [
         "Over 250 Furniture Options",
         "2 Wood Finish Options",
@@ -36,8 +190,8 @@ const CollectionPage = () => {
         "Mix and Match Wood Finishes",
       ],
       details:
-        "Nalu offers the perfect balance of sophistication and island comfort, with carefully curated pieces that create a cohesive, elegant environment.",
-      lookbook: "/pdfs/nalu-lookbook.pdf",
+        "Nalu combines balance and harmony in every space, merging organic materials with refined island design.",
+      lookbookImages: generateImagePaths("nalu-lookbook", 16),
     },
     {
       id: "foundation",
@@ -52,102 +206,86 @@ const CollectionPage = () => {
         "Cohesive Foundation For Your Space",
       ],
       details:
-        "Foundation provides all the essentials for comfortable island living, with quality pieces that allow you to personalize your space over time.",
-      lookbook: "/pdfs/foundation-lookbook.pdf",
-      library: "/pdfs/foundation-library.pdf",
+        "Foundation provides all the essentials for comfortable island living, offering a practical yet refined experience.",
+      lookbookImages: generateImagePaths("foundation-lookbook", 18),
+    },
+    {
+      id: "library",
+      name: "Design Library",
+      tagline: "Curated Resources",
+      description:
+        "Explore curated references and design inspirations tailored to elevate your creative process.",
+      features: [
+        "Mood Boards",
+        "Material Palettes",
+        "Color Inspirations",
+        "Sample Layouts",
+      ],
+      details:
+        "The Design Library provides access to visual references and curated palettes that guide refined decision-making.",
+      lookbookImages: generateImagePaths("foundation-library", 45), // ✅ updated folder name
     },
   ];
 
-  const activeCollectionData = collections.find(
-    (c) => c.id === activeCollection
-  );
+  const activeCollectionData = collections.find((c) => c.id === activeCollection);
 
   return (
     <div className="pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white text-[#1a1a1a]">
       {/* Header */}
       <div className="max-w-5xl mx-auto text-center mb-20">
         <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
-          <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">Our Collections</p>
+          <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">
+            Our Collections
+          </p>
         </div>
         <h2 className="text-5xl md:text-6xl font-bold text-[#005670] mb-6 leading-tight">
           Ālia Collections
         </h2>
         <p className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-          Three carefully curated expressions of island living, each designed to complement the Ālia
-          architecture with distinct levels of customization and refinement.
+          Four curated expressions of island living, each reflecting a unique
+          design philosophy and craftsmanship level.
         </p>
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>
 
-      {/* Tabs - Segmented Control Style */}
-      <div className="max-w-5xl mx-auto mb-20">
-        <nav className="hidden md:flex items-stretch bg-white/80 backdrop-blur-md rounded-2xl p-1.5 border-2 border-[#005670]/20 shadow-xl">
-          {collections.map((collection, index) => (
+      {/* Tabs */}
+      <div className="max-w-6xl mx-auto mb-20 flex items-center">
+        <nav className="flex-1 flex items-stretch bg-white/80 backdrop-blur-md rounded-2xl p-1.5 border-2 border-[#005670]/20 shadow-xl w-full">
+          {collections.map((c, i) => (
             <button
-              key={collection.id}
-              onClick={() => setActiveCollection(collection.id)}
-              className={`flex-1 flex flex-col items-center justify-center px-8 py-5 text-base font-bold tracking-wide uppercase transition-all duration-300 ${
-                index === 0 ? 'rounded-l-xl' : ''
-              } ${
-                index === collections.length - 1 ? 'rounded-r-xl' : ''
-              } ${
-                activeCollection === collection.id
-                  ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg z-10 scale-105"
+              key={c.id}
+              onClick={() => setActiveCollection(c.id)}
+              className={`flex-1 flex flex-col items-center justify-center px-6 py-5 text-base font-bold tracking-wide uppercase transition-all duration-300 border-r last:border-r-0 border-[#005670]/10 ${
+                activeCollection === c.id
+                  ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg z-10 scale-[1.03]"
                   : "text-[#005670] hover:bg-[#005670]/5 active:scale-95"
               }`}
             >
-              <span className="mb-1">{collection.name}</span>
-              <span className={`text-xs font-semibold ${
-                activeCollection === collection.id ? "text-white/90" : "text-gray-500"
-              }`}>
-                {collection.tagline}
+              <span className="mb-1">{c.name}</span>
+              <span
+                className={`text-xs font-semibold ${
+                  activeCollection === c.id ? "text-white/90" : "text-gray-500"
+                }`}
+              >
+                {c.tagline}
               </span>
             </button>
           ))}
         </nav>
-
-        {/* Mobile - Stacked */}
-          <div className="md:hidden bg-white/90 backdrop-blur-md rounded-2xl p-4 border-2 border-[#005670]/30 shadow-xl space-y-4">
-            {collections.map((collection) => (
-              <button
-                key={collection.id}
-                onClick={() => setActiveCollection(collection.id)}
-                className={`w-full flex flex-col items-center justify-center px-8 py-6 text-lg font-semibold tracking-wide uppercase transition-all duration-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#005670]/30 ${
-                  activeCollection === collection.id
-                    ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg scale-[1.03]"
-                    : "text-[#005670] bg-white hover:bg-[#005670]/10 active:scale-95"
-                }`}
-              >
-                <span className="mb-2 leading-relaxed">{collection.name}</span>
-                <span
-                  className={`text-sm font-medium ${
-                    activeCollection === collection.id
-                      ? "text-white/90"
-                      : "text-[#007a9a]" // 💙 Ganti abu-abu jadi biru lembut
-                  }`}
-                >
-                  {collection.tagline}
-                </span>
-              </button>
-            ))}
-          </div>
-
       </div>
 
-      {/* Active Content */}
+      {/* Content */}
       {activeCollectionData && (
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-start">
-          {/* Text Section */}
+          {/* Left Content */}
           <div className="space-y-10">
             <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-[#005670]/10">
-              <div className="space-y-6">
-                <p className="text-xl text-gray-700 leading-relaxed">
-                  {activeCollectionData.description}
-                </p>
-                <p className="text-lg text-gray-600 leading-relaxed">
-                  {activeCollectionData.details}
-                </p>
-              </div>
+              <p className="text-xl text-gray-700 leading-relaxed">
+                {activeCollectionData.description}
+              </p>
+              <p className="text-lg text-gray-600 leading-relaxed mt-4">
+                {activeCollectionData.details}
+              </p>
             </div>
 
             {/* Features */}
@@ -155,43 +293,23 @@ const CollectionPage = () => {
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
                 <h3 className="text-2xl font-bold text-[#005670]">
-                  Collection Highlights
+                  Highlights
                 </h3>
               </div>
               <ul className="space-y-3 text-lg text-gray-700">
-                {activeCollectionData.features.map((feature, i) => (
+                {activeCollectionData.features.map((f, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <span className="text-[#005670] text-2xl leading-none mt-1">•</span>
-                    <span className="flex-1">{feature}</span>
+                    <span className="text-[#005670] text-2xl leading-none mt-1">
+                      •
+                    </span>
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
             </div>
-
-            {/* Library Button */}
-            {activeCollection === "foundation" &&
-              activeCollectionData.library && (
-                <button
-                  onClick={() => setShowLibrary(true)}
-                  className="w-full flex items-center justify-center gap-4 bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white px-8 py-5 rounded-xl text-lg font-bold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                >
-                  <BookOpen className="w-6 h-6" />
-                  View Design Library
-                </button>
-              )}
-
-            {/* Customization Note */}
-            <div className="bg-gradient-to-br from-[#005670]/5 to-[#007a9a]/5 border-l-4 border-[#005670] rounded-r-xl p-6">
-              <p className="text-base text-gray-800 leading-relaxed">
-                <span className="text-[#005670] font-bold text-lg block mb-2">
-                  Customization Available
-                </span>
-                All collections can be tailored to your preferences. Connect with your design team to explore specific modifications or create unique combinations.
-              </p>
-            </div>
           </div>
 
-          {/* Lookbook Section */}
+          {/* Right Content */}
           <div className="lg:sticky lg:top-32">
             <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10">
               <div className="text-center">
@@ -202,22 +320,26 @@ const CollectionPage = () => {
                   {activeCollectionData.name}
                 </h3>
                 <p className="text-sm text-gray-500 mb-6 uppercase tracking-widest font-bold">
-                  Comprehensive Lookbook
+                  {activeCollectionData.id === "library"
+                    ? "Design Reference"
+                    : "Comprehensive Lookbook"}
                 </p>
                 <p className="text-lg text-gray-700 leading-relaxed mb-8">
-                  Explore detailed imagery, specifications, and design inspiration for the{" "}
-                  {activeCollectionData.name}. View curated selections and finish options in our
-                  comprehensive digital lookbook.
+                  {activeCollectionData.id === "library"
+                    ? "Browse curated inspirations and foundational design resources."
+                    : `Explore imagery, specifications, and design inspiration for the ${activeCollectionData.name}.`}
                 </p>
                 <button
                   onClick={() => setShowLookbook(true)}
                   className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
                 >
-                  View Lookbook
-                  <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  {activeCollectionData.id === "library"
+                    ? "View Library"
+                    : "View Lookbook"}
+                  <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <p className="text-sm text-gray-500 mt-4 font-semibold">
-                  Interactive Digital Preview
+                  {activeCollectionData.lookbookImages.length} Pages • Interactive Preview
                 </p>
               </div>
             </div>
@@ -227,83 +349,15 @@ const CollectionPage = () => {
 
       {/* Lookbook Modal */}
       {showLookbook && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowLookbook(false)}
-          ></div>
-          <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl">
-            <div className="flex justify-between items-center px-8 py-5 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-[#005670]">
-                    {activeCollectionData.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 font-semibold">
-                    Digital Lookbook
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowLookbook(false)}
-                className="w-12 h-12 rounded-full bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
-              >
-                <X className="text-[#005670]" size={24} />
-              </button>
-            </div>
-            <iframe
-              src={`${activeCollectionData.lookbook}#toolbar=0`}
-              className="w-full h-[calc(90vh-80px)]"
-              title={`${activeCollectionData.name} Lookbook`}
-              style={{ border: "none" }}
-            ></iframe>
-          </div>
-        </div>
-      )}
-
-      {/* Library Modal (similar to Lookbook) */}
-      {showLibrary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowLibrary(false)}
-          ></div>
-          <div className="relative bg-white w-full max-w-[1600px] h-[90vh] rounded-2xl overflow-hidden shadow-2xl">
-            <div className="flex justify-between items-center px-8 py-5 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
-                  <BookOpen className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-[#005670]">
-                    {activeCollectionData.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 font-semibold">
-                    Design Library
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowLibrary(false)}
-                className="w-12 h-12 rounded-full bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
-              >
-                <X className="text-[#005670]" size={24} />
-              </button>
-            </div>
-            <iframe
-              src={`${activeCollectionData.library}#toolbar=0`}
-              className="w-full h-[calc(90vh-80px)]"
-              title={`${activeCollectionData.name} Library`}
-              style={{ border: "none" }}
-            ></iframe>
-          </div>
-        </div>
+        <ImageViewer
+          images={activeCollectionData.lookbookImages}
+          onClose={() => setShowLookbook(false)}
+          title={`${activeCollectionData.name}`}
+          icon={activeCollectionData.id === "library" ? BookOpen : FileText}
+        />
       )}
     </div>
   );
 };
 
-export default CollectionPage;
+export default CollectionsPage;
