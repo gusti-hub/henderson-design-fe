@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, CheckCircle } from 'lucide-react';
+import { Heart, CheckCircle, Info } from 'lucide-react';
 
 const QuestionnairePage = ({ language }) => {
   const [likedImages, setLikedImages] = useState([]);
@@ -431,6 +431,33 @@ const QuestionnairePage = ({ language }) => {
         </div>
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-8 rounded-full"></div>
       </div>
+
+      {/* LEGEND - Explanation Section */}
+      <div className="max-w-4xl mx-auto mb-16 mt-10">
+        <div className="bg-white border border-[#005670]/20 p-6 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <Info className="w-6 h-6 text-[#005670]" />
+            <h3 className="text-xl font-semibold text-[#005670]">
+              How to Read This Form
+            </h3>
+          </div>
+
+          <ul className="space-y-3 text-gray-700 text-base leading-relaxed">
+            <li>
+              <span className="font-semibold text-[#005670]">*</span> &nbsp;= Required question that must be answered.
+            </li>
+            <li>
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-400 mr-2"></span>
+              <span className="font-medium text-[#005670]">Circle button</span> – Select <strong>only one option</strong>.
+            </li>
+            <li>
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-sm border border-gray-400 mr-2"></span>
+              <span className="font-medium text-[#005670]">Box button</span> – You can select <strong>more than one option</strong>.
+            </li>
+          </ul>
+        </div>
+      </div>
+
 
       {/* IMAGE PREFERENCE */}
       <div className="max-w-6xl mx-auto mb-20">
