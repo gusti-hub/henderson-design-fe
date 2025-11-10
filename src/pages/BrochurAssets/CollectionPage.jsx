@@ -6,6 +6,7 @@ import {
   ZoomIn,
   ZoomOut,
   ChevronRight as ChevronRightIcon,
+  DollarSign,
 } from "lucide-react";
 
 // ===================== IMAGE VIEWER =====================
@@ -176,6 +177,13 @@ const CollectionsPage = () => {
       details:
         "The Lani Collection represents the pinnacle of Hawaiian luxury living, offering 300 different options of furniture, each carefully curated for timeless elegance.",
       lookbookImages: generateImagePaths("lani-lookbook", 26),
+      pricing: {
+        "1-Bedroom": "$140,000",
+        "2-Bedroom": "$180,000",
+        "3-Bedroom": "$220,000",
+        includes: "Design, Furnishings & Delivery",
+        deadline: "June 2026",
+      },
     },
     {
       id: "nalu",
@@ -192,6 +200,13 @@ const CollectionsPage = () => {
       details:
         "Nalu combines balance and harmony in every space, merging organic materials with refined island design.",
       lookbookImages: generateImagePaths("nalu-lookbook", 16),
+      pricing: {
+        "1-Bedroom": "$84,000",
+        "2-Bedroom": "$108,000",
+        "3-Bedroom": "$132,000",
+        includes: "Design, Furnishings & Delivery",
+        deadline: "End of August 2026",
+      },
     },
     {
       id: "foundation",
@@ -208,6 +223,13 @@ const CollectionsPage = () => {
       details:
         "Foundation provides all the essentials for comfortable island living, offering a practical yet refined experience.",
       lookbookImages: generateImagePaths("foundation-lookbook", 18),
+      pricing: {
+        "1-Bedroom": "$50,000",
+        "2-Bedroom": "$65,000",
+        "3-Bedroom": "$80,000",
+        includes: "Design, Furniture Only, Delivery",
+        deadline: "End of Sept 2026",
+      },
     },
     {
       id: "library",
@@ -223,7 +245,8 @@ const CollectionsPage = () => {
       ],
       details:
         "The Design Library provides access to visual references and curated palettes that guide refined decision-making.",
-      lookbookImages: generateImagePaths("foundation-library", 45), // ✅ updated folder name
+      lookbookImages: generateImagePaths("foundation-library", 45),
+      pricing: null, // No pricing for library
     },
   ];
 
@@ -307,6 +330,53 @@ const CollectionsPage = () => {
                 ))}
               </ul>
             </div>
+
+            {/* Pricing Section */}
+            {activeCollectionData.pricing && (
+              <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-2xl p-8 shadow-xl text-white">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold">Collection Pricing</h3>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  {Object.entries(activeCollectionData.pricing)
+                    .filter(([key]) => key.includes("Bedroom"))
+                    .map(([unit, price]) => (
+                      <div
+                        key={unit}
+                        className="flex justify-between items-center bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20"
+                      >
+                        <span className="text-lg font-semibold">{unit}</span>
+                        <span className="text-2xl font-bold">{price}</span>
+                      </div>
+                    ))}
+                </div>
+
+                <div className="border-t border-white/20 pt-6 space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-white/80">Includes:</span>
+                    <span className="font-semibold">
+                      {activeCollectionData.pricing.includes}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-white/80">Order Deadline:</span>
+                    <span className="font-semibold">
+                      {activeCollectionData.pricing.deadline}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-4 bg-white/10 rounded-lg border border-white/20">
+                  <p className="text-sm text-white/90 text-center">
+                    All pricing reflects document rates as of October 2025. Delivery is first-come, first-served and scheduled by building floor release.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Content */}
