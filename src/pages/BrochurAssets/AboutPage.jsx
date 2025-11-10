@@ -129,7 +129,7 @@ const AboutPage = ({ setActiveTab, language }) => {
               </p>
             </div>
             
-            <p className="text-xl text-[#1a1a1a] leading-relaxed">
+            <p className="text-lg text-[#4a4a4a] leading-relaxed">
               Each collection offers distinct levels of customization and finish. From streamlined essentials to complete bespoke furnishing, we have options to suit every preference.
             </p>
             
