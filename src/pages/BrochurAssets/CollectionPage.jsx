@@ -7,6 +7,7 @@ import {
   ZoomOut,
   ChevronRight as ChevronRightIcon,
   DollarSign,
+  Sparkles,
 } from "lucide-react";
 
 // ===================== IMAGE VIEWER =====================
@@ -156,6 +157,7 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
 const CollectionsPage = () => {
   const [activeCollection, setActiveCollection] = useState("lani");
   const [showLookbook, setShowLookbook] = useState(false);
+  const [showPrototype, setShowPrototype] = useState(false);
 
   const generateImagePaths = (folder, count) => {
     return Array.from({ length: count }, (_, i) => `/pdfs/${folder}/${i + 1}.jpg`);
@@ -177,6 +179,7 @@ const CollectionsPage = () => {
       details:
         "The Lani Collection represents the pinnacle of Hawaiian luxury living, offering 300 different options of furniture, each carefully curated for timeless elegance.",
       lookbookImages: generateImagePaths("lani-lookbook", 26),
+      prototypeImages: generateImagePaths("lani-prototype", 26),
       pricing: {
         "1-Bedroom": "$140,000",
         "2-Bedroom": "$180,000",
@@ -200,12 +203,13 @@ const CollectionsPage = () => {
       details:
         "Nalu combines balance and harmony in every space, merging organic materials with refined island design.",
       lookbookImages: generateImagePaths("nalu-lookbook", 16),
+      prototypeImages: generateImagePaths("nalu-prototype", 19),
       pricing: {
         "1-Bedroom": "$84,000",
         "2-Bedroom": "$108,000",
         "3-Bedroom": "$132,000",
         includes: "Design, Furnishings & Delivery",
-        deadline: "End of August 2026",
+        deadline: "End of Sept 2026",
       },
     },
     {
@@ -246,7 +250,7 @@ const CollectionsPage = () => {
       details:
         "The Design Library provides access to visual references and curated palettes that guide refined decision-making.",
       lookbookImages: generateImagePaths("foundation-library", 45),
-      pricing: null, // No pricing for library
+      pricing: null,
     },
   ];
 
@@ -271,22 +275,22 @@ const CollectionsPage = () => {
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>
 
-      {/* Tabs */}
-      <div className="max-w-6xl mx-auto mb-20 flex items-center">
-        <nav className="flex-1 flex items-stretch bg-white/80 backdrop-blur-md rounded-2xl p-1.5 border-2 border-[#005670]/20 shadow-xl w-full">
+      {/* Tabs - Simetris untuk Desktop */}
+      <div className="max-w-6xl mx-auto mb-20">
+        <nav className="grid grid-cols-2 lg:grid-cols-4 bg-white/80 backdrop-blur-md rounded-2xl p-1.5 border-2 border-[#005670]/20 shadow-xl w-full gap-1.5">
           {collections.map((c, i) => (
             <button
               key={c.id}
               onClick={() => setActiveCollection(c.id)}
-              className={`flex-1 flex flex-col items-center justify-center px-6 py-5 text-base font-bold tracking-wide uppercase transition-all duration-300 border-r last:border-r-0 border-[#005670]/10 ${
+              className={`flex flex-col items-center justify-center px-3 py-4 lg:px-6 lg:py-5 text-xs lg:text-base font-bold tracking-wide uppercase transition-all duration-300 rounded-lg ${
                 activeCollection === c.id
-                  ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg z-10 scale-[1.03]"
+                  ? "bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-lg"
                   : "text-[#005670] hover:bg-[#005670]/5 active:scale-95"
               }`}
             >
-              <span className="mb-1">{c.name}</span>
+              <span className="mb-1 text-center leading-tight">{c.name}</span>
               <span
-                className={`text-xs font-semibold ${
+                className={`text-[10px] lg:text-xs font-semibold ${
                   activeCollection === c.id ? "text-white/90" : "text-gray-500"
                 }`}
               >
@@ -372,7 +376,7 @@ const CollectionsPage = () => {
 
                 <div className="mt-6 p-4 bg-white/10 rounded-lg border border-white/20">
                   <p className="text-sm text-white/90 text-center">
-                    All pricing reflects document rates as of October 2025. Delivery is first-come, first-served and scheduled by building floor release.
+                    All pricing includes October 2025 document rates. Delivery is first-come, first-served and scheduled by building floor release.
                   </p>
                 </div>
               </div>
@@ -399,17 +403,32 @@ const CollectionsPage = () => {
                     ? "Browse curated inspirations and foundational design resources."
                     : `Explore imagery, specifications, and design inspiration for the ${activeCollectionData.name}.`}
                 </p>
+                
+                {/* View Lookbook Button */}
                 <button
                   onClick={() => setShowLookbook(true)}
-                  className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                  className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 mb-4"
                 >
                   {activeCollectionData.id === "library"
                     ? "View Library"
                     : "View Lookbook"}
                   <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </button>
+
+                {/* View Prototype Button - Only for Nalu and Lani */}
+                {(activeCollectionData.id === "nalu" || activeCollectionData.id === "lani") && (
+                  <button
+                    onClick={() => setShowPrototype(true)}
+                    className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
+                  >
+                    <Sparkles className="w-6 h-6" />
+                    View Prototype
+                    <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+
                 <p className="text-sm text-gray-500 mt-4 font-semibold">
-                  {activeCollectionData.lookbookImages.length} Pages • Interactive Preview
+                  Interactive Preview
                 </p>
               </div>
             </div>
@@ -422,8 +441,18 @@ const CollectionsPage = () => {
         <ImageViewer
           images={activeCollectionData.lookbookImages}
           onClose={() => setShowLookbook(false)}
-          title={`${activeCollectionData.name}`}
+          title={`${activeCollectionData.name} - Lookbook`}
           icon={activeCollectionData.id === "library" ? BookOpen : FileText}
+        />
+      )}
+
+      {/* Prototype Modal */}
+      {showPrototype && activeCollectionData.prototypeImages && (
+        <ImageViewer
+          images={activeCollectionData.prototypeImages}
+          onClose={() => setShowPrototype(false)}
+          title={`${activeCollectionData.name} - Prototype`}
+          icon={Sparkles}
         />
       )}
     </div>
