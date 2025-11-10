@@ -428,7 +428,7 @@ const CollectionsPage = () => {
                       className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670] mb-3"
                     >
                       <Sparkles className="w-6 h-6" />
-                      View Prototype Lani
+                      View Lani Prototype
                       <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                     </button>
                     
@@ -441,7 +441,7 @@ const CollectionsPage = () => {
                       className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
                     >
                       <Sparkles className="w-6 h-6" />
-                      View Prototype Nalu
+                      View Nalu Prototype 
                       <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </>
