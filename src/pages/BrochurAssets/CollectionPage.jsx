@@ -158,6 +158,7 @@ const CollectionsPage = () => {
   const [activeCollection, setActiveCollection] = useState("lani");
   const [showLookbook, setShowLookbook] = useState(false);
   const [showPrototype, setShowPrototype] = useState(false);
+  const [activePrototypeCollection, setActivePrototypeCollection] = useState(null);
 
   const generateImagePaths = (folder, count) => {
     return Array.from({ length: count }, (_, i) => `/pdfs/${folder}/${i + 1}.jpg`);
@@ -404,7 +405,7 @@ const CollectionsPage = () => {
                     : `Explore imagery, specifications, and design inspiration for the ${activeCollectionData.name}.`}
                 </p>
                 
-                {/* View Lookbook Button */}
+                {/* View Lookbook/Library Button */}
                 <button
                   onClick={() => setShowLookbook(true)}
                   className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 mb-4"
@@ -415,16 +416,35 @@ const CollectionsPage = () => {
                   <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                {/* View Prototype Button - Only for Nalu and Lani */}
-                {(activeCollectionData.id === "nalu" || activeCollectionData.id === "lani") && (
-                  <button
-                    onClick={() => setShowPrototype(true)}
-                    className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
-                  >
-                    <Sparkles className="w-6 h-6" />
-                    View Prototype
-                    <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                {/* View Prototype Buttons - Only for Design Library */}
+                {activeCollectionData.id === "library" && (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        const laniCollection = collections.find(c => c.id === "lani");
+                        setActivePrototypeCollection(laniCollection);
+                        setShowPrototype(true);
+                      }}
+                      className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
+                    >
+                      <Sparkles className="w-6 h-6" />
+                      View Prototype Lani
+                      <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        const naluCollection = collections.find(c => c.id === "nalu");
+                        setActivePrototypeCollection(naluCollection);
+                        setShowPrototype(true);
+                      }}
+                      className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
+                    >
+                      <Sparkles className="w-6 h-6" />
+                      View Prototype Nalu
+                      <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
                 )}
 
                 <p className="text-sm text-gray-500 mt-4 font-semibold">
@@ -447,11 +467,14 @@ const CollectionsPage = () => {
       )}
 
       {/* Prototype Modal */}
-      {showPrototype && activeCollectionData.prototypeImages && (
+      {showPrototype && activePrototypeCollection && activePrototypeCollection.prototypeImages && (
         <ImageViewer
-          images={activeCollectionData.prototypeImages}
-          onClose={() => setShowPrototype(false)}
-          title={`${activeCollectionData.name} - Prototype`}
+          images={activePrototypeCollection.prototypeImages}
+          onClose={() => {
+            setShowPrototype(false);
+            setActivePrototypeCollection(null);
+          }}
+          title={`${activePrototypeCollection.name} - Prototype`}
           icon={Sparkles}
         />
       )}

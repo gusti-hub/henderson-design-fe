@@ -426,7 +426,7 @@ const QuestionnairePage = ({ language }) => {
         </p>
         <div className="bg-[#005670]/5 border-l-4 border-[#005670] p-6 rounded-xl text-left text-gray-800 font-light leading-relaxed max-w-3xl mx-auto">
           <strong className="text-[#005670]">Note:</strong> This questionnaire is for reference only.
-          After your deposit, you’ll receive access to the interactive form in your client portal
+          After your deposit, you'll receive access to the interactive form in your client portal
           where you can save progress and submit directly to your design team.
         </div>
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-8 rounded-full"></div>
@@ -485,13 +485,14 @@ const QuestionnairePage = ({ language }) => {
               return (
                 <div
                   key={image.id}
-                  className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all duration-500 ${isLiked ? 'border-[#005670]' : 'border-transparent hover:border-gray-200'}`}
+                  className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all duration-300 ${isLiked ? 'border-[#005670] shadow-lg' : 'border-transparent hover:border-gray-200 hover:shadow-md'}`}
                   onClick={() => toggleLike(image.id)}
                 >
                   <img
                     src={image.src}
                     alt={image.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                   <button
                     onClick={(e) => {
@@ -512,7 +513,7 @@ const QuestionnairePage = ({ language }) => {
 
           {likedImages.length > 0 && (
             <div className="mt-8 p-5 bg-green-50 border-l-4 border-green-500 rounded-xl text-green-800 font-light">
-              <strong className="font-medium">Great!</strong> You’ve selected {likedImages.length}{' '}
+              <strong className="font-medium">Great!</strong> You've selected {likedImages.length}{' '}
               design{likedImages.length !== 1 ? 's' : ''}. These preferences will be shared with your design team.
             </div>
           )}
