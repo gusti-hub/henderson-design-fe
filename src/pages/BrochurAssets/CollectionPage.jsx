@@ -408,7 +408,7 @@ const CollectionsPage = () => {
                 {/* View Lookbook/Library Button */}
                 <button
                   onClick={() => setShowLookbook(true)}
-                  className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 mb-4"
+                  className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 mb-3"
                 >
                   {activeCollectionData.id === "library"
                     ? "View Library"
@@ -418,14 +418,14 @@ const CollectionsPage = () => {
 
                 {/* View Prototype Buttons - Only for Design Library */}
                 {activeCollectionData.id === "library" && (
-                  <div className="space-y-3">
+                  <>
                     <button
                       onClick={() => {
                         const laniCollection = collections.find(c => c.id === "lani");
                         setActivePrototypeCollection(laniCollection);
                         setShowPrototype(true);
                       }}
-                      className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
+                      className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670] mb-3"
                     >
                       <Sparkles className="w-6 h-6" />
                       View Prototype Lani
@@ -444,7 +444,7 @@ const CollectionsPage = () => {
                       View Prototype Nalu
                       <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                     </button>
-                  </div>
+                  </>
                 )}
 
                 <p className="text-sm text-gray-500 mt-4 font-semibold">
