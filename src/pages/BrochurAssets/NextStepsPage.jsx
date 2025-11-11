@@ -412,7 +412,7 @@ Updated 10.30.25`
             <div className="flex items-center justify-between gap-6">
               <div>
                 <h3 className="text-xl font-bold text-[#005670] mb-2">Full Agreement Terms</h3>
-                <p className="text-gray-600">View the complete legal agreement (optional)</p>
+                <p className="text-gray-600">View the complete legal agreement</p>
               </div>
               <button
                 onClick={() => setShowAgreement(true)}
