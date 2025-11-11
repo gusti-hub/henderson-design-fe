@@ -17,7 +17,7 @@ const FAQPage = ({ setActiveTab }) => {
         {
           question: "What are the available furniture collections?",
           answer:
-            "The Ālia program offers four options:\n\n1. Lani Collections – Complete bespoke-level furnishing, including cabinetry, art, rugs, and accessories.\n2. Nalu Collections – Comprehensive furnishing with elevated design details and finish selections.\n3. Foundation Collections – Streamlined essentials for move-in-ready comfort.\n4. Custom Design – For clients wishing to fully personalize their unit with HDG's design team."
+            "The Ālia program offers Three options:\n\n1. Lani Collection – Complete bespoke-level furnishing, including cabinetry, art, rugs, and accessories.\n2. Nalu Collection – Comprehensive furnishing with elevated design details and finish selections.\n3. Nalu Foundation Collection – Streamlined essentials for move-in-ready comfort."
         },
         {
           question: "Can I mix items between collections?",
@@ -216,7 +216,7 @@ const FAQPage = ({ setActiveTab }) => {
         </h1>
 
         <p className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto mb-4">
-          Everything you need to know about the Ālia Furnishing Program.
+          Everything you need to know about the Ālia Furnishings Collections.
         </p>
 
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>

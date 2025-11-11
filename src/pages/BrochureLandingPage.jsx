@@ -134,45 +134,43 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
 
       {/* Main nav */}
       <div className="max-w-[1800px] mx-auto px-8 border-t border-white/10">
-        <div className="flex items-center justify-between py-5">
-          <div className="flex items-center">
-            <button onClick={() => setActiveTab('about')} className="group relative transition-transform duration-300 hover:scale-105 active:scale-95">
-              <img
-                src="/images/HDG-Logo.png"
-                alt="Henderson Design Group"
-                className="h-14 md:h-16 w-auto object-contain brightness-0 invert"
-              />
-            </button>
-          </div>
-
-          <nav className="hidden lg:flex items-stretch bg-white/10 backdrop-blur-md rounded-2xl p-1.5 border-2 border-white/25 shadow-xl">
-            {mainTabs.map((tab, index) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative px-8 py-4 text-base font-bold tracking-wide uppercase transition-all duration-300 ${
-                  index === 0 ? 'rounded-l-xl' : ''
-                } ${
-                  index === mainTabs.length - 1 ? 'rounded-r-xl' : ''
-                } ${
-                  activeTab === tab.id
-                    ? 'bg-white text-[#005670] shadow-lg z-10 scale-105'
-                    : 'text-white hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Mobile button */}
-          <button
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className="lg:hidden p-4 transition-all duration-300 rounded-xl border-2 text-white border-white/25 hover:border-white/50 hover:bg-white/10 active:scale-95"
-          >
-            {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      <div className="flex items-center justify-between py-5">
+        <div className="flex-1 flex items-center">
+          <button onClick={() => setActiveTab('about')} className="group relative transition-transform duration-300 hover:scale-105 active:scale-95">
+            <img
+              src="/images/HDG-Logo.png"
+              alt="Henderson Design Group"
+              className="h-10 md:h-12 w-auto object-contain brightness-0 invert"
+            />
           </button>
         </div>
+
+        <nav className="hidden lg:flex flex-1 justify-center items-stretch bg-white/10 backdrop-blur-md rounded-2xl p-1.5 border-2 border-white/25 shadow-xl mx-auto">
+          {mainTabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative px-10 py-4 min-w-[140px] text-base font-bold tracking-wide uppercase whitespace-nowrap transition-all duration-300 ${
+                index === 0 ? 'rounded-l-xl' : ''
+              } ${
+                index === mainTabs.length - 1 ? 'rounded-r-xl' : ''
+              } ${
+                activeTab === tab.id
+                  ? 'bg-white text-[#005670] shadow-lg z-10 scale-105'
+                  : 'text-white hover:text-white hover:bg-white/15 active:scale-95'
+              }`}
+            >
+              {tab.label}
+            </button>
+
+          ))}
+        </nav>
+
+        <div className="flex-1 flex justify-end">
+          {/* tombol language dan designer access tetap di sini */}
+        </div>
+      </div>
+
 
         {showMobileMenu && (
           <div className="lg:hidden pb-6 animate-slide-down">
@@ -218,32 +216,30 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
     <footer className="relative bg-[#005670] shadow-[0_-2px_20px_rgba(0,0,0,0.3)] border-t border-white/10">
       <div className="max-w-[1800px] mx-auto px-8 py-8">
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-white mb-5 text-center tracking-wide uppercase">
-            Additional Resources
-          </h3>
 
-          <nav className="hidden md:flex items-stretch bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl max-w-6xl mx-auto">
-            {footerTabs.map((tab, index) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 px-5 py-3.5 text-sm font-bold tracking-wide uppercase transition-all duration-300 whitespace-nowrap ${
-                  index === 0 ? 'rounded-l-lg' : ''
-                } ${
-                  index === footerTabs.length - 1 ? 'rounded-r-lg' : ''
-                } ${
-                  activeTab === tab.id
-                    ? 'bg-white text-[#005670] shadow-lg z-10 scale-105'
-                    : 'text-white hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+        <nav className="hidden md:flex items-stretch justify-center bg-white/10 backdrop-blur-md rounded-2xl p-1.5 border-2 border-white/25 shadow-xl max-w-6xl mx-auto">
+          {footerTabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`relative px-10 py-4 min-w-[140px] text-base font-bold tracking-wide uppercase whitespace-nowrap transition-all duration-300 ${
+                index === 0 ? 'rounded-l-xl' : ''
+              } ${
+                index === footerTabs.length - 1 ? 'rounded-r-xl' : ''
+              } ${
+                activeTab === tab.id
+                  ? 'bg-white text-[#005670] shadow-lg z-10 scale-105'
+                  : 'text-white hover:text-white hover:bg-white/15 active:scale-95'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
 
           <nav className="md:hidden bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl space-y-1 max-w-md mx-auto">
             {footerTabs.map((tab) => (

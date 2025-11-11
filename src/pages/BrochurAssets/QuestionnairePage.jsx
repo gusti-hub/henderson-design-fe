@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, CheckCircle, Info } from 'lucide-react';
 
 const QuestionnairePage = ({ language }) => {
   const [likedImages, setLikedImages] = useState([]);
+
+  useEffect(() => {
+    document.body.style.scrollBehavior = "smooth";
+    return () => {
+      document.body.style.scrollBehavior = "";
+    };
+  }, []);
+
 
   const inspirationImages = [
     { id: 1, src: '/images/collections/1.jpg', title: '' },
@@ -410,7 +418,15 @@ const QuestionnairePage = ({ language }) => {
   ];
 
   return (
-    <div className="pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
+    <div
+        className="pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white"
+        style={{
+          willChange: "transform",
+          contain: "paint",
+          transform: "translateZ(0)",
+        }}
+      >
+
       {/* HEADER */}
       <div className="max-w-5xl mx-auto text-center mb-20">
         <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
@@ -460,8 +476,11 @@ const QuestionnairePage = ({ language }) => {
 
 
       {/* IMAGE PREFERENCE */}
-      <div className="max-w-6xl mx-auto mb-20">
-        <div className="bg-white border-2 border-[#005670]/10 p-10 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+      <div
+          className="max-w-6xl mx-auto mb-20 contain-paint"
+          style={{ willChange: "transform" }}
+        >
+        <div className="bg-white border-2 border-[#005670]/10 p-10 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-200">
           <div className="mb-10">
             <div className="flex items-center gap-4 mb-3">
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] text-white">
@@ -485,7 +504,7 @@ const QuestionnairePage = ({ language }) => {
               return (
                 <div
                   key={image.id}
-                  className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all duration-300 ${isLiked ? 'border-[#005670] shadow-lg' : 'border-transparent hover:border-gray-200 hover:shadow-md'}`}
+                  className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-transition-transform duration-300 ${isLiked ? 'border-[#005670] shadow-lg' : 'border-transparent hover:border-gray-200 hover:shadow-md'}`}
                   onClick={() => toggleLike(image.id)}
                 >
                   <img
@@ -499,7 +518,7 @@ const QuestionnairePage = ({ language }) => {
                       e.stopPropagation();
                       toggleLike(image.id);
                     }}
-                    className={`absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full shadow-md transition-all duration-300 ${isLiked ? 'bg-[#005670] scale-110' : 'bg-white/90 hover:bg-white hover:scale-110'}`}
+                    className={`absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full shadow-md transition-transition-transform duration-300 ${isLiked ? 'bg-[#005670] scale-110' : 'bg-white/90 hover:bg-white hover:scale-110'}`}
                   >
                     <Heart className={`w-5 h-5 ${isLiked ? 'fill-white text-white' : 'text-gray-700'}`} />
                   </button>
@@ -521,11 +540,15 @@ const QuestionnairePage = ({ language }) => {
       </div>
 
       {/* QUESTIONNAIRE SECTIONS (preview-only, inputs disabled) */}
-      <div className="max-w-5xl mx-auto space-y-12">
+      <div
+          className="max-w-5xl mx-auto space-y-12"
+          style={{ willChange: "transform" }}
+        >
+
         {sections.map((section, sectionIndex) => (
           <div
             key={section.category}
-            className="bg-white border-2 border-[#005670]/10 p-10 md:p-12 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            className="bg-white border-2 border-[#005670]/10 p-10 md:p-12 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-200"
           >
             {/* Section Header */}
             <div className="mb-10 pb-6 border-b border-gray-200">

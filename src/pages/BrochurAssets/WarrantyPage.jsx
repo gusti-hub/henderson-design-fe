@@ -25,7 +25,7 @@ const WarrantyPage = () => {
         {/* Purpose */}
         <Section title="Purpose">
           This document outlines the warranty coverage and aftercare guidelines provided by Henderson Design Group (HDG)
-          for the furnishings, fixtures, and accessories supplied and installed under the Ālia Furnishing Program.
+          for the furnishings, fixtures, and accessories supplied and installed under the Ālia Furnishings Collections.
           The goal is to ensure every client receives continued support, clear maintenance guidance, and timely service when needed.
         </Section>
 

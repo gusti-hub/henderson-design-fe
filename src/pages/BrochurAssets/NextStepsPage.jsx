@@ -489,7 +489,7 @@ UPDATED 10.30.25`
                   />
                   <div>
                     <div className="font-bold text-gray-900 text-lg">In-Person</div>
-                    <div className="text-sm text-gray-500">Meet at HDG showroom</div>
+
                   </div>
                 </label>
 
@@ -665,7 +665,7 @@ UPDATED 10.30.25`
 
         <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6 leading-tight">Next Steps</h1>
         <p className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-          Choose how you would like to secure your place in the Ālia Furnishing Program.
+          Choose how you would like to secure your place in the Ālia Furnishings Collections.
         </p>
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>

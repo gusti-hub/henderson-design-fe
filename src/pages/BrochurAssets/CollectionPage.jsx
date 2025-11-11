@@ -10,17 +10,17 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// ===================== IMAGE VIEWER =====================
+// ===================== IMAGE VIEWER (Final Fixed Version) =====================
 const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
   const [scale, setScale] = useState(1.5);
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleZoomIn = () => {
-    if (scale < 2) setScale((prev) => prev + 0.25);
+    if (scale < 2.5) setScale(prev => prev + 0.25);
   };
 
   const handleZoomOut = () => {
-    if (scale > 0.5) setScale((prev) => prev - 0.25);
+    if (scale > 0.75) setScale(prev => prev - 0.25);
   };
 
   useEffect(() => {
@@ -37,8 +37,8 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
   useEffect(() => {
     const handleScroll = (e) => {
       const container = e.target;
-      const images = container.querySelectorAll(".page-image");
-      images.forEach((img, index) => {
+      const imgs = container.querySelectorAll(".page-image");
+      imgs.forEach((img, index) => {
         const rect = img.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         if (
@@ -59,13 +59,14 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
       <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       ></div>
+
       <div className="relative bg-white w-full max-w-[1600px] h-[90vh] mx-4 rounded-2xl overflow-hidden shadow-2xl flex flex-col animate-slideUp">
         {/* Header */}
         <div className="flex justify-between items-center px-6 md:px-8 py-4 md:py-5 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
-          <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-4">
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
               <Icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
             </div>
@@ -79,11 +80,11 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
             </div>
           </div>
 
-          {/* Zoom Controls */}
+          {/* Zoom controls */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleZoomOut}
-              disabled={scale <= 0.5}
+              disabled={scale <= 0.75}
               className="p-2 rounded-lg bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               <ZoomOut className="w-5 h-5 text-[#005670]" />
@@ -93,7 +94,7 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
             </span>
             <button
               onClick={handleZoomIn}
-              disabled={scale >= 2}
+              disabled={scale >= 2.5}
               className="p-2 rounded-lg bg-white border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               <ZoomIn className="w-5 h-5 text-[#005670]" />
@@ -108,23 +109,27 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
           </button>
         </div>
 
-        {/* Scrollable Content */}
+        {/* Scrollable content */}
         <div
           id="pdf-scroll-container"
-          className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-100 p-4 md:p-8"
-          style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}
+          className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-100 p-4 md:p-6"
+          style={{
+            scrollBehavior: "smooth",
+            WebkitOverflowScrolling: "touch",
+          }}
         >
-          <div className="max-w-4xl mx-auto space-y-4">
+          <div
+            className="max-w-5xl mx-auto"
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "top center",
+              transition: "transform 0.3s ease-out",
+            }}
+          >
             {images.map((image, index) => (
               <div
                 key={index}
-                className="page-image relative bg-white shadow-2xl rounded-lg overflow-hidden"
-                style={{
-                  transform: `scale(${scale})`,
-                  transformOrigin: "top center",
-                  transition: "transform 0.3s ease-out",
-                  marginBottom: scale > 1 ? `${(scale - 1) * 100}px` : "0",
-                }}
+                className="page-image relative bg-white shadow-2xl rounded-xl overflow-visible mb-2"
               >
                 <img
                   src={image}
@@ -132,7 +137,10 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
                   className="w-full h-auto select-none"
                   draggable={false}
                   onContextMenu={(e) => e.preventDefault()}
-                  style={{ userSelect: "none", pointerEvents: "none" }}
+                  style={{
+                    userSelect: "none",
+                    pointerEvents: "none",
+                  }}
                   loading={index > 2 ? "lazy" : "eager"}
                 />
               </div>
@@ -153,16 +161,21 @@ const ImageViewer = ({ images, onClose, title, icon: Icon = FileText }) => {
   );
 };
 
+
+
 // ===================== MAIN PAGE =====================
 const CollectionsPage = () => {
   const [activeCollection, setActiveCollection] = useState("lani");
   const [showLookbook, setShowLookbook] = useState(false);
   const [showPrototype, setShowPrototype] = useState(false);
   const [activePrototypeCollection, setActivePrototypeCollection] = useState(null);
+  const [showWallpaper, setShowWallpaper] = useState(false);
 
   const generateImagePaths = (folder, count) => {
     return Array.from({ length: count }, (_, i) => `/pdfs/${folder}/${i + 1}.jpg`);
   };
+
+  const wallpaperImages = generateImagePaths("wallpaper-library", 5); // ubah 30 sesuai jumlah file sebenarnya
 
   const collections = [
     {
@@ -170,7 +183,7 @@ const CollectionsPage = () => {
       name: "Lani Collections",
       tagline: "The Pinnacle of Luxury",
       description:
-        "Complete bespoke-level furnishing, including custom furnishings, curated art, premium rugs, and accessories.",
+        "Complete bespoke-level furnishings, including custom furnishings, curated art, premium rugs, wallpaper and accessories.",
       features: [
         "Custom Design",
         "Premium Materials",
@@ -215,7 +228,7 @@ const CollectionsPage = () => {
     },
     {
       id: "foundation",
-      name: "Foundation Collection",
+      name: "Nalu Foundation Collection",
       tagline: "Elegant Essentials",
       description:
         "Streamlined essentials for move-in-ready comfort with quality furnishings and functional elegance.",
@@ -355,7 +368,10 @@ const CollectionsPage = () => {
                         className="flex justify-between items-center bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20"
                       >
                         <span className="text-lg font-semibold">{unit}</span>
-                        <span className="text-2xl font-bold">{price}</span>
+                        <span className="text-2xl font-bold">
+                        <span className="text-white/80 text-base mr-2">Starting at</span>
+                        {price}
+                      </span>
                       </div>
                     ))}
                 </div>
@@ -441,7 +457,17 @@ const CollectionsPage = () => {
                       className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670]"
                     >
                       <Sparkles className="w-6 h-6" />
-                      View Nalu Prototype 
+                      View Nalu Prototype
+                      <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    </button>
+
+                    {/* View Pillow & Wallpaper Button */}
+                    <button
+                      onClick={() => setShowWallpaper(true)}
+                      className="w-full bg-white hover:bg-gray-50 text-[#005670] py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 border-2 border-[#005670] mt-3"
+                    >
+                      <Sparkles className="w-6 h-6" />
+                      View Pillow & Wallpaper
                       <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </>
@@ -478,6 +504,17 @@ const CollectionsPage = () => {
           icon={Sparkles}
         />
       )}
+
+      {/* Pillow & Wallpaper Modal */}
+      {showWallpaper && (
+        <ImageViewer
+          images={wallpaperImages}
+          onClose={() => setShowWallpaper(false)}
+          title="Pillow & Wallpaper Library"
+          icon={BookOpen}
+        />
+      )}
+
     </div>
   );
 };

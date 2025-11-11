@@ -15,7 +15,7 @@ const ContactPage = () => {
         </h2>
 
         <p className="text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-          We're here to answer your questions about the Ālia Furnishing Program
+          We're here to answer your questions about the Ālia Furnishings Collections
         </p>
 
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
