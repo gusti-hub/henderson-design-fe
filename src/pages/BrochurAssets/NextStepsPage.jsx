@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Lock, FileText, MessageCircle, ArrowRight, X, Send, AlertCircle } from "lucide-react";
+import { CheckCircle, Lock, FileText, MessageCircle, ArrowRight, X, Send, AlertCircle, ChevronDown } from "lucide-react";
 import { backendServer } from '../../utils/info';
 
 const NextStepsPage = () => {
   const navigate = useNavigate();
   const [selectedOption, setSelectedOption] = useState(null); // 'lock-price', 'design-fee', 'questions'
+  const [showOutline, setShowOutline] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -19,6 +20,68 @@ const NextStepsPage = () => {
     phone: "",
     notes: ""
   });
+
+  // Outlines for Lock Pricing and Design Fee
+  const outlines = {
+    'lock-price': {
+      title: 'Deposit to Hold 2025 Pricing',
+      sections: [
+        {
+          heading: 'Purpose',
+          content: 'Secure current HDG collection pricing while finalizing design decisions.'
+        },
+        {
+          heading: 'Deposit Amount',
+          content: 'Thirty percent (30%) of your selected furnishing package total.'
+        },
+        {
+          heading: 'What This Does',
+          bullets: [
+            'Locks in 2025 pricing for your chosen collection (Lani, Nalu, or Foundation).',
+            "Reserves materials and production allocation in HDG's manufacturing schedule.",
+            'Applies in full toward your total furnishing package once you move forward to production.'
+          ]
+        },
+        {
+          heading: 'Refund Policy',
+          content: 'Refundable less a 10% administrative fee if cancelled before design selections or production scheduling begin (less any design fees incurred). Non-refundable once design selections are approved or production has started.'
+        },
+        {
+          heading: 'Next Step',
+          content: 'Once your deposit is received, HDG will confirm your pricing lock and place your project in the design calendar for the 2026 phase.'
+        }
+      ]
+    },
+    'design-fee': {
+      title: 'Design Fee to Hold Place in Line',
+      sections: [
+        {
+          heading: 'Purpose',
+          content: "Guarantee your design start position in HDG's calendar before capacity fills."
+        },
+        {
+          heading: 'Fee Amount',
+          content: 'One hundred percent (100%) due upon signing. Fee is non-refundable. (Refer to Design Fee Schedule by unit type and bedroom count.)'
+        },
+        {
+          heading: 'What This Does',
+          bullets: [
+            'Confirms your reserved design start date.',
+            'Includes design intake meeting, floor plan review, furniture layout, material selections, and one revision.',
+            'Applies in full as a credit toward your total furnishing package when you proceed to production.'
+          ]
+        },
+        {
+          heading: 'Refund Policy',
+          content: 'Non-refundable. The full amount is credited toward your total package if you move forward into production.'
+        },
+        {
+          heading: 'Next Step',
+          content: 'Once the design fee is received, HDG will issue your confirmation notice and schedule your design intake meeting.'
+        }
+      ]
+    }
+  };
 
   // Agreement documents for Lock Pricing and Design Fee
   const agreements = {
@@ -80,7 +143,7 @@ DESIGN FEE AGREEMENT – ĀLIA FURNISHING PROGRAM
 
 1. Purpose
 
-This Agreement outlines the terms under which Henderson Design Group (HDG) will hold 2025 pricing for the Client’s selected furnishing package under the Ālia program. The Deposit secures current pricing for the selected HDG collection and establishes preliminary scheduling and resource allocation for future design and production.
+This Agreement outlines the terms under which Henderson Design Group (HDG) will hold 2025 pricing for the Client's selected furnishing package under the Ālia program. The Deposit secures current pricing for the selected HDG collection and establishes preliminary scheduling and resource allocation for future design and production.
 
 2. Deposit and Payment Terms
 
@@ -98,7 +161,7 @@ Locking in current pricing for the selected HDG collection (Lani, Nalu, or Found
 
 Reserving materials and production allocation in the manufacturing schedule.
 
-Preliminary scheduling in HDG’s 2026 design calendar.
+Preliminary scheduling in HDG's 2026 design calendar.
 
 UPDATED 10.30.25
 This deposit does not include or cover design services. Design services are initiated upon receipt of the deposit.
@@ -113,11 +176,11 @@ If the Client cancels prior to final design approval, the deposit will be refund
 
 Once design selections are approved or production scheduling has begun, the deposit becomes non-refundable.
 
-Deposit (Hold 2025 Pricing) not applied toward a signed Design Agreement within six (6) months of this effective date may expire at HDG’s discretion.
+Deposit (Hold 2025 Pricing) not applied toward a signed Design Agreement within six (6) months of this effective date may expire at HDG's discretion.
 
 6. Credit Toward Final Payment
 
-All deposit payments made under this Agreement will be fully credited toward the Client’s total furnishing package cost once production is initiated.
+All deposit payments made under this Agreement will be fully credited toward the Client's total furnishing package cost once production is initiated.
 
 7. Ownership of Materials
 
@@ -206,15 +269,17 @@ Updated 10.30.25`
 
   const handleOptionClick = (option) => {
     setSelectedOption(option);
-    // Show agreement for lock-price and design-fee, skip for questions
+    // Show outline for lock-price and design-fee, skip for questions
     if (option === 'lock-price' || option === 'design-fee') {
-      setShowAgreement(true);
+      setShowOutline(true);
+      setShowAgreement(false);
     }
   };
 
-  const handleConfirmAgreement = () => {
+  const handleContinueToForm = () => {
+    setShowOutline(false);
     setShowAgreement(false);
-    // Form will show because selectedOption is set and showAgreement is false
+    // Form will show because selectedOption is set and showOutline/showAgreement are false
   };
 
   const optionTitles = {
@@ -245,7 +310,7 @@ Updated 10.30.25`
     );
   }
 
-  // Agreement Modal (for lock-price and design-fee)
+  // Agreement Modal (only shown when user clicks "View Agreement")
   if (showAgreement && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
     const agreement = agreements[selectedOption];
     
@@ -260,14 +325,11 @@ Updated 10.30.25`
               </div>
               <div>
                 <h3 className="text-xl font-bold text-gray-900">{agreement.title}</h3>
-                <p className="text-sm text-gray-500 font-semibold">Please review the agreement below</p>
+                <p className="text-sm text-gray-500 font-semibold">Full Agreement Terms & Conditions</p>
               </div>
             </div>
             <button 
-              onClick={() => {
-                setShowAgreement(false);
-                setSelectedOption(null);
-              }}
+              onClick={() => setShowAgreement(false)}
               className="w-12 h-12 rounded-full border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
             >
               <X className="w-6 h-6 text-[#005670]" />
@@ -285,35 +347,110 @@ Updated 10.30.25`
             </div>
           </div>
 
-          {/* Footer with confirmation button */}
+          {/* Footer */}
           <div className="p-8 border-t-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
-            <div className="flex items-center justify-between gap-4">
-              <button
-                onClick={() => {
-                  setShowAgreement(false);
-                  setSelectedOption(null);
-                }}
-                className="px-8 py-4 text-lg font-bold border-2 border-[#005670]/20 text-[#005670] rounded-xl hover:border-[#005670] hover:bg-[#005670]/5 transition-all duration-300 active:scale-95"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleConfirmAgreement}
-                className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-10 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-              >
-                <CheckCircle className="w-5 h-5" />
-                <span>I Understand, Continue to Schedule</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setShowAgreement(false)}
+              className="w-full px-8 py-4 text-lg font-bold bg-[#005670] text-white rounded-xl hover:bg-[#004150] transition-all duration-300 active:scale-95"
+            >
+              Close Agreement
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Form screen (when option is selected and agreement confirmed or questions option)
-  if (selectedOption && !showAgreement) {
+  // Outline screen (shown after selecting lock-price or design-fee)
+  if (showOutline && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
+    const outline = outlines[selectedOption];
+    
+    return (
+      <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
+              <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">{optionTitles[selectedOption]}</p>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6 leading-tight">
+              {outline.title}
+            </h1>
+            <p className="text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
+              Review the key details below before proceeding to schedule your consultation.
+            </p>
+            <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
+          </div>
+
+          {/* Outline Content */}
+          <div className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-10 mb-8">
+            {outline.sections.map((section, index) => (
+              <div key={index} className={`${index !== outline.sections.length - 1 ? 'mb-8 pb-8 border-b-2 border-gray-100' : 'mb-0'}`}>
+                <h3 className="text-2xl font-bold text-[#005670] mb-4">{section.heading}</h3>
+                
+                {section.content && (
+                  <p className="text-lg text-gray-700 leading-relaxed">{section.content}</p>
+                )}
+                
+                {section.bullets && (
+                  <ul className="space-y-3">
+                    {section.bullets.map((bullet, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-[#005670] mt-2.5 flex-shrink-0"></div>
+                        <span className="text-lg text-gray-700 leading-relaxed">{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* View Agreement Button (Optional) */}
+          <div className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-8 mb-8">
+            <div className="flex items-center justify-between gap-6">
+              <div>
+                <h3 className="text-xl font-bold text-[#005670] mb-2">Full Agreement Terms</h3>
+                <p className="text-gray-600">View the complete legal agreement (optional)</p>
+              </div>
+              <button
+                onClick={() => setShowAgreement(true)}
+                className="px-8 py-4 text-lg font-bold border-2 border-[#005670] text-[#005670] rounded-xl hover:bg-[#005670]/5 transition-all duration-300 active:scale-95 whitespace-nowrap"
+              >
+                View Agreement
+              </button>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-5">
+            <button
+              onClick={() => {
+                setSelectedOption(null);
+                setShowOutline(false);
+                setShowAgreement(false);
+              }}
+              className="px-8 py-4 text-lg font-bold border-2 border-[#005670]/20 text-[#005670] rounded-xl hover:border-[#005670] hover:bg-[#005670]/5 transition-all duration-300 active:scale-95"
+            >
+              Back
+            </button>
+            
+            <button
+              onClick={handleContinueToForm}
+              className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-10 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+            >
+              <span>Continue to Schedule</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Form screen (when option is selected and outline/agreement are not shown)
+  if (selectedOption && !showOutline && !showAgreement) {
     return (
       <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-4xl mx-auto">
@@ -433,7 +570,11 @@ Updated 10.30.25`
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedOption(null);
+                  if (selectedOption === 'lock-price' || selectedOption === 'design-fee') {
+                    setShowOutline(true);
+                  } else {
+                    setSelectedOption(null);
+                  }
                   setFormData({
                     name: "",
                     email: "",
@@ -505,7 +646,7 @@ Updated 10.30.25`
             onClick={() => handleOptionClick('lock-price')}
             className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-8 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
           >
-            <span>Review Agreement</span>
+            <span>Select This Option</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -525,7 +666,7 @@ Updated 10.30.25`
             onClick={() => handleOptionClick('design-fee')}
             className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-8 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
           >
-            <span>Review Agreement</span>
+            <span>Select This Option</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>

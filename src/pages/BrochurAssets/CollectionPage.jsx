@@ -216,14 +216,14 @@ const CollectionsPage = () => {
       ],
       details:
         "Nalu combines balance and harmony in every space, merging organic materials with refined island design.",
-      lookbookImages: generateImagePaths("nalu-lookbook", 18),
+      lookbookImages: generateImagePaths("nalu-lookbook", 1),
       prototypeImages: generateImagePaths("nalu-prototype", 19),
       pricing: {
         "1-Bedroom": "$84,000",
         "2-Bedroom": "$108,000",
         "3-Bedroom": "$132,000",
         includes: "Design, Furnishings & Delivery",
-        deadline: "End of Jully 2026",
+        deadline: "July 2026",
       },
     },
     {
@@ -246,7 +246,7 @@ const CollectionsPage = () => {
         "2-Bedroom": "$65,000",
         "3-Bedroom": "$80,000",
         includes: "Design, Furniture Only, Delivery",
-        deadline: "End of August 2026",
+        deadline: "August 2026",
       },
     },
     {
@@ -256,7 +256,6 @@ const CollectionsPage = () => {
       description:
         "Explore curated references and design inspirations tailored to elevate your creative process.",
       features: [
-        "Mood Boards",
         "Material Palettes",
         "Color Inspirations",
         "Sample Layouts",
@@ -427,7 +426,7 @@ const CollectionsPage = () => {
                   className="w-full bg-gradient-to-br from-[#005670] to-[#007a9a] hover:from-[#004150] hover:to-[#005670] text-white py-5 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 mb-3"
                 >
                   {activeCollectionData.id === "library"
-                    ? "View Library"
+                    ? "View Catalog"
                     : "View Lookbook"}
                   <ChevronRightIcon className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </button>
