@@ -216,7 +216,7 @@ const CollectionsPage = () => {
       ],
       details:
         "Nalu combines balance and harmony in every space, merging organic materials with refined island design.",
-      lookbookImages: generateImagePaths("nalu-lookbook", 16),
+      lookbookImages: generateImagePaths("nalu-lookbook", 18),
       prototypeImages: generateImagePaths("nalu-prototype", 19),
       pricing: {
         "1-Bedroom": "$84,000",
