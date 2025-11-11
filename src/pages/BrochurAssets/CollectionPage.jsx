@@ -223,7 +223,7 @@ const CollectionsPage = () => {
         "2-Bedroom": "$108,000",
         "3-Bedroom": "$132,000",
         includes: "Design, Furnishings & Delivery",
-        deadline: "End of Sept 2026",
+        deadline: "End of Jully 2026",
       },
     },
     {
@@ -246,7 +246,7 @@ const CollectionsPage = () => {
         "2-Bedroom": "$65,000",
         "3-Bedroom": "$80,000",
         includes: "Design, Furniture Only, Delivery",
-        deadline: "End of Sept 2026",
+        deadline: "End of August 2026",
       },
     },
     {
@@ -393,7 +393,7 @@ const CollectionsPage = () => {
 
                 <div className="mt-6 p-4 bg-white/10 rounded-lg border border-white/20">
                   <p className="text-sm text-white/90 text-center">
-                    All pricing includes 2025 rates. Delivery is first-come, first-served and scheduled by building floor release.
+                    All pricing apply 2025 rates. Delivery is first-come, first-served and scheduled by building floor release.
                   </p>
                 </div>
               </div>
@@ -472,10 +472,6 @@ const CollectionsPage = () => {
                     </button>
                   </>
                 )}
-
-                <p className="text-sm text-gray-500 mt-4 font-semibold">
-                  Interactive Preview
-                </p>
               </div>
             </div>
           </div>

@@ -17,7 +17,7 @@ import WarrantyPage from './BrochurAssets/WarrantyPage';
 const translations = {
   en: {
     about: 'About',
-    collection: 'Collections',
+    collection: 'Collection',
     inspiration: 'Inspiration',
     process: 'Process',
     timeline: 'Timeline',

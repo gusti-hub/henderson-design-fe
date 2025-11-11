@@ -443,7 +443,7 @@ const QuestionnairePage = ({ language }) => {
         <div className="bg-[#005670]/5 border-l-4 border-[#005670] p-6 rounded-xl text-left text-gray-800 font-light leading-relaxed max-w-3xl mx-auto">
           <strong className="text-[#005670]">Note:</strong> This questionnaire is for reference only.
           After your deposit, you'll receive access to the interactive form in your client portal
-          where you can save progress and submit directly to your design team.
+          where you can save your progress and submit directly to your design team.
         </div>
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-8 rounded-full"></div>
       </div>
