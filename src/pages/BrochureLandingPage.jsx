@@ -79,7 +79,7 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
   ];
 
   return (
-    <header className="relative z-50 bg-[#005670] shadow-[0_2px_20px_rgba(0,0,0,0.3)] border-b border-white/10">
+    <header className="fixed top-0 left-0 w-full z-50 bg-[#005670] shadow-[0_2px_20px_rgba(0,0,0,0.3)] border-b border-white/10">
       {/* Top bar */}
       <div className="max-w-[1800px] mx-auto px-8 py-3 flex items-center justify-between">
         <div className="text-xs md:text-sm tracking-[0.2em] uppercase font-light text-white/70">
@@ -213,11 +213,10 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
   ];
 
   return (
-    <footer className="relative bg-[#005670] shadow-[0_-2px_20px_rgba(0,0,0,0.3)] border-t border-white/10">
-      <div className="max-w-[1800px] mx-auto px-8 py-8">
-        <div className="mb-8">
-
-        <nav className="hidden md:flex items-stretch justify-center bg-white/10 backdrop-blur-md rounded-2xl p-1.5 border-2 border-white/25 shadow-xl max-w-6xl mx-auto">
+    <footer className="fixed bottom-0 left-0 w-full bg-[#005670] shadow-[0_-2px_20px_rgba(0,0,0,0.3)] border-t border-white/10 z-40">
+      {/* Match header spacing */}
+      <div className="max-w-[1800px] mx-auto px-8 py-3">
+        <nav className="hidden md:flex items-stretch justify-center bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border-2 border-white/25 shadow-xl max-w-6xl mx-auto">
           {footerTabs.map((tab, index) => (
             <button
               key={tab.id}
@@ -225,7 +224,7 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
                 setActiveTab(tab.id);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`relative px-10 py-4 min-w-[140px] text-base font-bold tracking-wide uppercase whitespace-nowrap transition-all duration-300 ${
+              className={`relative px-10 py-3 min-w-[140px] text-base font-bold tracking-wide uppercase whitespace-nowrap transition-all duration-300 ${
                 index === 0 ? 'rounded-l-xl' : ''
               } ${
                 index === footerTabs.length - 1 ? 'rounded-r-xl' : ''
@@ -240,78 +239,30 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
           ))}
         </nav>
 
-
-          <nav className="md:hidden bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl space-y-1 max-w-md mx-auto">
-            {footerTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`w-full px-5 py-3 text-sm font-bold tracking-wide uppercase transition-all duration-300 rounded-lg ${
-                  activeTab === tab.id
-                    ? 'bg-white text-[#005670] shadow-lg scale-[1.02]'
-                    : 'text-white hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-10 pb-6 border-b border-white/10">
-          <div>
-            <img
-              src="/images/HDG-Logo.png"
-              alt="Henderson Design Group"
-              className="h-10 w-auto object-contain mb-3 brightness-0 invert"
-            />
-            <p className="text-sm text-white/80 leading-relaxed">
-              Henderson Design Group specializes in curated, turnkey furnishing solutions for Hawaii's premier residential developments.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-bold text-white mb-3 uppercase tracking-wide">
-              Quick Links
-            </h4>
-            <div className="space-y-1">
-              {[
-                { id: 'about', label: t.about },
-                { id: 'collection', label: t.collection },
-                { id: 'process', label: t.process },
-                { id: 'timeline', label: t.timeline },
-                { id: 'contact', label: t.contact }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="block w-full text-left text-sm text-white/80 hover:text-white font-semibold transition-all duration-300 py-2 px-3 rounded-lg hover:bg-white/10 hover:translate-x-1 active:scale-95"
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-5 text-center">
-          <p className="text-sm font-semibold text-white tracking-wide mb-1">
-            Ālia Project by Henderson Design Group
-          </p>
-          <p className="text-xs text-white/60">
-            &copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.
-          </p>
-        </div>
+        {/* Mobile menu version */}
+        <nav className="md:hidden bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl space-y-1 max-w-md mx-auto mt-2">
+          {footerTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`w-full px-5 py-3 text-sm font-bold tracking-wide uppercase transition-all duration-300 rounded-lg ${
+                activeTab === tab.id
+                  ? 'bg-white text-[#005670] shadow-lg scale-[1.02]'
+                  : 'text-white hover:text-white hover:bg-white/15 active:scale-95'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
     </footer>
   );
 };
+
 
 // ===== MAIN =====
 const BrochureLandingPage = () => {
@@ -349,7 +300,7 @@ const BrochureLandingPage = () => {
         language={language}
         setLanguage={setLanguage}
       />
-      <main>{renderPage()}</main>
+      <main className="pt-32 pb-40">{renderPage()}</main>
       <Footer setActiveTab={setActiveTab} language={language} activeTab={activeTab} />
     </div>
   );

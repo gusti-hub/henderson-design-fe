@@ -180,7 +180,7 @@ const CollectionsPage = () => {
   const collections = [
     {
       id: "lani",
-      name: "Lani Collections",
+      name: "Lani Collection",
       tagline: "The Pinnacle of Luxury",
       description:
         "Complete bespoke-level furnishings, including custom furnishings, curated art, premium rugs, wallpaper and accessories.",
@@ -204,7 +204,7 @@ const CollectionsPage = () => {
     },
     {
       id: "nalu",
-      name: "Nalu Collections",
+      name: "Nalu Collection",
       tagline: "Sophisticated Balance",
       description:
         "An investment-level option with 250+ carefully curated furniture options, blending comfort and sophistication.",
@@ -393,7 +393,7 @@ const CollectionsPage = () => {
 
                 <div className="mt-6 p-4 bg-white/10 rounded-lg border border-white/20">
                   <p className="text-sm text-white/90 text-center">
-                    All pricing includes October 2025 document rates. Delivery is first-come, first-served and scheduled by building floor release.
+                    All pricing includes 2025 rates. Delivery is first-come, first-served and scheduled by building floor release.
                   </p>
                 </div>
               </div>

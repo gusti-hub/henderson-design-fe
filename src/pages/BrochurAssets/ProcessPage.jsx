@@ -1,307 +1,183 @@
-import React from 'react';
-import { Sparkles, CheckCircle } from 'lucide-react';
+import React from "react";
+import { CheckCircle } from "lucide-react";
 
 const ProcessPage = () => {
   const steps = [
     {
-      number: '01',
-      title: 'Engage with Henderson',
+      number: "01",
+      title: "Engage with Henderson",
       content: (
         <p className="text-lg text-gray-700 leading-relaxed">
-          The Ālia sales team introduces Henderson Design Group (HDG) and our curated furnishing
-          collections to the client, sharing the brochure and facilitating a personal introduction to
-          schedule an initial meeting.
+          The Ālia sales team introduces Henderson Design Group (HDG) and our
+          curated furnishing collections, sharing the brochure and connecting
+          you with our team to schedule an initial meeting.
         </p>
       ),
     },
     {
-      number: '02',
-      title: 'Introduction Meeting and Collections Review',
+      number: "02",
+      title: "Introduction Meeting & Collection Review",
       content: (
         <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-6">
-            Henderson Design Group meets with the client, either in person or via an online call, to review
-            the available furniture collections:
+          <p className="text-lg text-gray-700 leading-relaxed mb-5">
+            Meet with HDG — in person or online — to review the Lani, Nalu, and
+            Foundation Collections. We’ll walk you through design philosophy,
+            pricing, customization, and next steps.
           </p>
-          <ul className="space-y-2 mb-6 text-base text-gray-700">
-            <li className="flex items-start gap-2">
-              <span className="text-[#005670] mt-1">•</span>
-              <span>Lani Furniture Collections</span>
+          <p className="text-lg text-gray-700 leading-relaxed">
+            After the meeting, you’ll be invited to your Welcome Page in the HDG
+            Project Portal to explore collections, learn about the process, and
+            decide how to move forward.
+          </p>
+        </>
+      ),
+    },
+    {
+      number: "03",
+      title: "Client Portal Access & Onboarding",
+      content: (
+        <>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Once you’re ready to proceed, we’ll invite you to the HDG Project
+            Portal — your private workspace for all communication, documents,
+            selections, and approvals. Your portal opens in Welcome Mode, giving
+            access to look books, finish libraries, FAQs, contact info, and a
+            Design Preferences Questionnaire.
+          </p>
+          <ul className="list-disc list-inside text-gray-700 mb-4 pl-6 space-y-1">
+            <li>Lock in current pricing with a deposit.</li>
+            <li>Reserve your design meeting.</li>
+            <li>Schedule a call to review options.</li>
+          </ul>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            After your choice and deposit, the Design Phase unlocks with
+            unit-specific layouts, pricing proposals, and your project
+            dashboard.
+          </p>
+        </>
+      ),
+    },
+    {
+      number: "04",
+      title: "Design Intake Meeting",
+      content: (
+        <p className="text-lg text-gray-700 leading-relaxed">
+          An HDG team member meets with you (in person or by call) to review
+          your questionnaire and confirm design direction. You’ll meet your
+          dedicated Henderson Design Team, who will guide your project from
+          concept through installation.
+        </p>
+      ),
+    },
+    {
+      number: "05",
+      title: "Curated Design Preparation",
+      content: (
+        <>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            HDG develops a curated design that reflects your preferences,
+            budget, and aesthetic — including furnishings, finishes, and layouts
+            customized to your unit.
+          </p>
+          <p className="italic text-gray-700 font-medium">Timeline: 1–2 months.</p>
+        </>
+      ),
+    },
+    {
+      number: "06",
+      title: "Presentation of Curated Design",
+      content: (
+        <>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Your HDG project manager schedules your Design Presentation. You’ll
+            review your floor plan, explore proposed furnishings, and discuss
+            refinements before confirming the final design.
+          </p>
+        </>
+      ),
+    },
+    {
+      number: "07",
+      title: "Finalize the Purchase Agreement",
+      content: (
+        <p className="text-lg text-gray-700 leading-relaxed">
+          Once selections are confirmed in the portal, HDG hosts a brief review
+          meeting covering design details, budget, and schedule. You’ll receive
+          an Order Acknowledgment and Deposit Receipt, marking the start of
+          production.
+        </p>
+      ),
+    },
+    {
+      number: "08",
+      title: "Procurement & Installation Coordination",
+      content: (
+        <p className="text-lg text-gray-700 leading-relaxed">
+          After orders are placed and vendor timelines confirmed, HDG provides
+          an estimated installation date, aligned with the Ālia delivery
+          schedule and unit-release sequence.
+        </p>
+      ),
+    },
+    {
+      number: "09",
+      title: "Invoice Schedule",
+      content: (
+        <>
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Your Purchasing Agreement outlines the payment structure:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 mb-4 pl-6 space-y-1">
+            <li>
+              <strong>50% Deposit</strong> – Due upon proposal approval.
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#005670] mt-1">•</span>
-              <span>Nalu Furniture Collections</span>
+            <li>
+              <strong>25% Progress Payment</strong> – Six months before
+              production completion.
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#005670] mt-1">•</span>
-              <span>Foundation Collections</span>
+            <li>
+              <strong>25% Final Payment</strong> – Thirty days prior to
+              installation.
             </li>
           </ul>
-            <p className="text-lg text-gray-700 leading-relaxed mb-6">
-            During this meeting, HDG presents the overall design philosophy, collection options, pricing,
-            customization possibilities, and project process. Clients may then decide how they wish to move
-            forward:
-            </p>
-
-            <p className="text-lg font-semibold text-[#005670] mb-4">Options</p>
-
-            <ul className="space-y-4 text-base text-gray-700">
-            <li className="flex items-start gap-3">
-                <span className="text-[#005670] font-bold">1.</span>
-                <span>
-                <span className="font-bold text-[#005670]">
-                    Place a Deposit to Hold 2025 Pricing by December 15, 2025:
-                </span>{' '}
-                Locking in current pricing while finalizing design decisions.
-                </span>
-            </li>
-            <li className="flex items-start gap-3">
-                <span className="text-[#005670] font-bold">2.</span>
-                <span>
-                <span className="font-bold text-[#005670]">Place a Design Fee to Hold Place in Line:</span>{' '}
-                Securing a confirmed design start position in HDG's calendar.
-                </span>
-            </li>
-            <li className="flex items-start gap-3">
-                <span className="text-[#005670] font-bold">3.</span>
-                <span>
-                Take time to consider options and contact HDG when ready to proceed.
-                </span>
-            </li>
-            </ul>
-
-        </>
-      ),
-    },
-    {
-      number: '03',
-      title: 'Client Portal Access and Onboarding',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Once a client decides to move forward and places either deposit, HDG will send an invitation to
-            the client's personal HDG Project Portal.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed mb-6">
-            This portal serves as the central workspace for all information, communication, documents,
-            selections, approvals, and project timelines.
-          </p>
-
-          <div className="bg-[#005670]/5 border-l-4 border-[#005670] rounded-r-xl p-5 mb-6">
-            <p className="text-base text-[#005670] mb-4 font-bold">
-              When first activated, the client's portal opens in "Welcome Mode," which includes:
-            </p>
-            <ul className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>HDG collection look books and furniture catalog</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Material and finish library</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Our Process overview and FAQs</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Contact information for the HDG project team</span>
-              </li>
-              <li className="flex items-start gap-2 md:col-span-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Design Preferences Questionnaire</span>
-              </li>
-            </ul>
-          </div>
-
-          <p className="text-base text-[#005670] italic font-bold mb-6 bg-[#005670]/5 p-4 rounded-xl">
-            After completing the questionnaire, HDG will reach out to schedule the Design Intake Meeting.
-          </p>
-
-          <div className="bg-gradient-to-br from-[#005670]/5 to-[#007a9a]/5 border-l-4 border-[#005670] rounded-r-xl p-5">
-            <p className="text-base text-[#005670] mb-4 font-bold">
-              Once the deposit is received, the Design Phase section unlocks, providing access to:
-            </p>
-            <ul className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Unit-specific floor plans and layouts</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Selections and pricing proposals</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Communication threads for design approvals</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#005670] mt-0.5">•</span>
-                <span>Project timeline and dashboard</span>
-              </li>
-            </ul>
-          </div>
-        </>
-      ),
-    },
-    {
-      number: '04',
-      title: 'Design Intake Meeting',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            A Henderson team member schedules a call or in-person meeting in Hawaii to review the
-            questionnaire and confirm design intent.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            At this stage, the client is formally introduced to their Henderson Design Team, who will remain
-            their primary point of contact throughout the process.
-          </p>
           <p className="text-lg text-gray-700 leading-relaxed">
-            Clients also receive full access to the Design Phase of the HDG software, customized for their
-            unit or floor plan.
+            All payments and milestones are tracked through the portal for full
+            transparency.
           </p>
         </>
       ),
     },
     {
-      number: '05',
-      title: 'Curated Design Preparation',
+      number: "10",
+      title: "White-Glove Delivery & Installation",
       content: (
         <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Within one to two months of the intake meeting, Henderson prepares a curated design tailored to
-            each client's expectations, budget, and aesthetic.
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Installation dates are confirmed 90 days in advance. Once the unit
+            is released, your project manager coordinates all delivery and
+            installation logistics — including furnishings, wallcoverings,
+            window treatments, and lighting.
           </p>
-          <div className="inline-block bg-[#005670] text-white px-5 py-2 rounded-full">
-            <p className="text-sm font-bold">Timeline: 1–2 months</p>
-          </div>
-        </>
-      ),
-    },
-    {
-      number: '06',
-      title: 'Presentation of Curated Design',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Henderson's concierge contacts the client to schedule a design presentation.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            During this meeting, clients can explore their floor plan and review proposed furnishings.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed">
-            Clients may approve the design as presented or request revisions for a follow-up meeting.
+          <p className="text-lg text-gray-700 leading-relaxed mb-4">
+            Installation typically takes 6–8 business days.{" "}
+            <em>
+              Clients are asked not to be present during installation to
+              maintain efficiency and safety.
+            </em>
           </p>
         </>
       ),
     },
     {
-      number: '07',
-      title: 'Finalize and Present the Purchase Agreement',
+      number: "11",
+      title: "Client Walk-Through & Handover",
       content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Once selections are confirmed in the design software by clicking "Confirm My Order," a final
-            meeting is scheduled to review the complete design, budget, and timeline.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed">
-            The client then receives an order acknowledgment and a deposit receipt.
-          </p>
-        </>
-      ),
-    },
-    {
-      number: '08',
-      title: 'Procurement, Delivery, and Installation Coordination',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            After orders are placed and vendor timelines are confirmed, Henderson provides an estimated
-            installation date.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed">
-            Final installation dates align with the Ālia delivery schedule, with installations occurring in
-            the order units are released.
-          </p>
-        </>
-      ),
-    },
-    {
-      number: '09',
-      title: 'Invoice Schedule',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-6">
-            Once the furniture package is finalized, clients receive a Purchasing Agreement outlining the
-            payment schedule:
-          </p>
-          <div className="space-y-4 text-base text-gray-700">
-            <div className="bg-white border-l-4 border-[#005670] rounded-r-xl p-4 shadow-sm">
-              <span className="font-bold text-[#005670] block mb-2">50% Deposit:</span>
-              <span>Due upon approval of the furnishings proposal (if a 30% deposit was previously placed to hold 2025 pricing, an additional 20% will be due to place the order).</span>
-            </div>
-            <div className="bg-white border-l-4 border-[#005670] rounded-r-xl p-4 shadow-sm">
-              <span className="font-bold text-[#005670] block mb-2">25% Progress Payment:</span>
-              <span>Due six months prior to completion of production and shipping.</span>
-            </div>
-            <div className="bg-white border-l-4 border-[#005670] rounded-r-xl p-4 shadow-sm">
-              <span className="font-bold text-[#005670] block mb-2">25% Final Payment:</span>
-              <span>Due 30 days prior to installation.</span>
-            </div>
-          </div>
-          <div className="mt-6 bg-[#005670]/5 p-4 rounded-xl">
-            <p className="text-base text-[#005670] font-bold">
-              All payments are tracked within the design software for full transparency.
-            </p>
-          </div>
-        </>
-      ),
-    },
-    {
-      number: '10',
-      title: 'White-Glove Delivery and Installation',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Installation dates are confirmed 90 days in advance.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Once Henderson receives notice that a unit has been turned over, our concierge coordinates all
-            delivery and installation logistics.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            Installation typically requires six to eight business days and includes work by external trades
-            such as wallcovering, window coverings, closet systems, and decorative fixtures, all managed by
-            Henderson Design Group.
-          </p>
-          <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-xl p-5">
-            <p className="text-base text-amber-800 font-bold">
-              Important: Clients are asked not to be present during installation to ensure efficiency and
-              safety.
-            </p>
-          </div>
-        </>
-      ),
-    },
-    {
-      number: '11',
-      title: 'Client Walk-Through and Handover',
-      content: (
-        <>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            The Henderson concierge schedules a reveal to present the completed unit, review design details,
-            and answer any questions.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed mb-5">
-            At this time, the client receives their Care and Maintenance Binder for all furnishings.
-          </p>
-          <p className="text-lg text-gray-700 leading-relaxed">
-            Your concierge remains your ongoing point of contact for any future assistance or warranty
-            support.
-          </p>
-        </>
+        <p className="text-lg text-gray-700 leading-relaxed">
+          Your project manager hosts the final reveal — presenting your
+          completed unit, reviewing design details, and answering questions.
+          You’ll receive your Care & Maintenance Binder and continued access to
+          your project manager for any future service or warranty needs.
+        </p>
       ),
     },
   ];
@@ -311,10 +187,12 @@ const ProcessPage = () => {
       {/* Header */}
       <div className="max-w-5xl mx-auto text-center mb-20">
         <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
-          <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">The Journey</p>
+          <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">
+            The Journey
+          </p>
         </div>
         <h1 className="text-5xl md:text-6xl font-bold text-[#005670] mb-6 leading-tight">
-          Client Process
+          Our Process
         </h1>
         <p className="text-xl text-gray-700 mb-3">
           A seamless journey from introduction to installation
@@ -328,16 +206,17 @@ const ProcessPage = () => {
       {/* Steps */}
       <div className="max-w-5xl mx-auto space-y-12">
         {steps.map((step, i) => (
-          <div key={i} className="bg-white rounded-2xl shadow-lg border-2 border-[#005670]/10 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+          <div
+            key={i}
+            className="bg-white rounded-2xl shadow-lg border-2 border-[#005670]/10 overflow-hidden hover:shadow-xl transition-shadow duration-300"
+          >
             <div className="flex items-start gap-6 p-8">
-              {/* Number Badge */}
               <div className="flex-shrink-0">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] text-white flex items-center justify-center text-xl font-bold shadow-lg">
                   {step.number}
                 </div>
               </div>
-              
-              {/* Content */}
+
               <div className="flex-1">
                 <h2 className="text-2xl md:text-3xl font-bold text-[#005670] mb-4 leading-snug">
                   {step.title}
@@ -356,9 +235,12 @@ const ProcessPage = () => {
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-6 h-6 text-white" />
           </div>
-          <p className="text-base text-[#005670] font-bold mb-2">Updated October 30, 2025</p>
+          <p className="text-base text-[#005670] font-bold mb-2">
+            Updated October 30, 2025
+          </p>
           <p className="text-sm text-gray-600">
-            Typical process duration: 10–12 months from engagement to installation
+            Typical process duration: 10–12 months from engagement to
+            installation
           </p>
         </div>
       </div>
