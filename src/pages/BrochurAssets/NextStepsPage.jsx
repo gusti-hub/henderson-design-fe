@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Lock, FileText, MessageCircle, ArrowRight, X, Send, AlertCircle, ChevronDown } from "lucide-react";
-import { backendServer } from '../../utils/info';
+import { CheckCircle, Lock, FileText, MessageCircle, ArrowRight, X, Send, AlertCircle } from "lucide-react";
+import SchedulingComponent from "../../components/scheduling/SchedulingComponent";
 
 const NextStepsPage = () => {
   const navigate = useNavigate();
   const [selectedOption, setSelectedOption] = useState(null); // 'lock-price', 'design-fee', 'questions'
   const [showOutline, setShowOutline] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
+  const [showScheduling, setShowScheduling] = useState(false);
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -83,7 +83,6 @@ const NextStepsPage = () => {
     }
   };
 
-  // Agreement documents for Lock Pricing and Design Fee
   const agreements = {
     'lock-price': {
       title: 'Deposit to Hold 2025 Pricing Agreement',
@@ -223,55 +222,32 @@ Updated 10.30.25`
       return false;
     }
 
+    if (!selectedOption) {
+      setError("Please select a next step option first");
+      return false;
+    }
+
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  // Contact form submit → hanya lanjut ke scheduling
+  const handleFormSubmit = (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(`${backendServer}/api/next-steps/submit-option`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          selectedOption: selectedOption
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccess(true);
-        
-        setTimeout(() => {
-          navigate("/");
-        }, 3000);
-      } else {
-        setError(data.message || "Failed to submit. Please try again.");
-      }
-    } catch (err) {
-      console.error("Submission error:", err);
-      setError("Failed to submit. Please try again or contact support.");
-    } finally {
-      setLoading(false);
-    }
+    if (!validateForm()) return;
+    setShowScheduling(true);
   };
 
   const handleOptionClick = (option) => {
     setSelectedOption(option);
+    setError("");
+
     // Show outline for lock-price and design-fee, skip for questions
     if (option === 'lock-price' || option === 'design-fee') {
       setShowOutline(true);
+      setShowAgreement(false);
+    } else {
+      // questions → langsung form
+      setShowOutline(false);
       setShowAgreement(false);
     }
   };
@@ -279,7 +255,14 @@ Updated 10.30.25`
   const handleContinueToForm = () => {
     setShowOutline(false);
     setShowAgreement(false);
-    // Form will show because selectedOption is set and showOutline/showAgreement are false
+  };
+
+  const handleSchedulingSuccess = (appointmentData) => {
+    setSuccess(true);
+
+    setTimeout(() => {
+      navigate("/");
+    }, 3000);
   };
 
   const optionTitles = {
@@ -288,7 +271,7 @@ Updated 10.30.25`
     'questions': 'Schedule Consultation'
   };
 
-  // Success screen
+  // ✅ Success screen setelah scheduling
   if (success) {
     return (
       <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
@@ -298,19 +281,30 @@ Updated 10.30.25`
           </div>
           
           <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6">
-            Request Submitted Successfully!
+            All Set!
           </h1>
           
           <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            Thank you for your submission. Our team will contact you shortly with next steps and additional information.
+            Your appointment has been confirmed and we'll see you soon. Check your email for confirmation details.
           </p>
-          
         </div>
       </div>
     );
   }
 
-  // Agreement Modal (only shown when user clicks "View Agreement")
+  // ✅ Scheduling mode – hanya dipanggil setelah form valid
+  if (showScheduling && !success) {
+    return (
+      <SchedulingComponent
+        formData={formData}
+        selectedOption={selectedOption}
+        onBack={() => setShowScheduling(false)}
+        onSuccess={handleSchedulingSuccess}
+      />
+    );
+  }
+
+  // Agreement Modal (view agreement)
   if (showAgreement && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
     const agreement = agreements[selectedOption];
     
@@ -361,7 +355,7 @@ Updated 10.30.25`
     );
   }
 
-  // Outline screen (shown after selecting lock-price or design-fee)
+  // Outline screen (setelah pilih lock-price / design-fee)
   if (showOutline && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
     const outline = outlines[selectedOption];
     
@@ -378,7 +372,7 @@ Updated 10.30.25`
               {outline.title}
             </h1>
             <p className="text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-              Review the key details below before proceeding to schedule your consultation.
+              Review the key details below before proceeding to scheduling your consultation.
             </p>
             <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
           </div>
@@ -440,7 +434,7 @@ Updated 10.30.25`
               onClick={handleContinueToForm}
               className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-10 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
             >
-              <span>Continue to Schedule</span>
+              <span>Continue to Contact Form</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
@@ -449,7 +443,7 @@ Updated 10.30.25`
     );
   }
 
-  // Form screen (when option is selected and outline/agreement are not shown)
+  // Contact Form Screen
   if (selectedOption && !showOutline && !showAgreement) {
     return (
       <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
@@ -461,16 +455,16 @@ Updated 10.30.25`
             </div>
 
             <h1 className="text-4xl md:text-5xl font-bold text-[#005670] mb-6 leading-tight">
-              Schedule Your Consultation
+              Contact Information
             </h1>
             <p className="text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-              Please provide your contact information and our team will reach out to you shortly to discuss the next steps.
+              Please provide your contact information to proceed with scheduling your consultation.
             </p>
             <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-10">
+          <form onSubmit={handleFormSubmit} className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-10">
             {/* Error message */}
             {error && (
               <div className="mb-8 p-5 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-4">
@@ -565,7 +559,7 @@ Updated 10.30.25`
               />
             </div>
 
-            {/* Submit Button */}
+            {/* Buttons */}
             <div className="flex gap-5">
               <button
                 type="button"
@@ -575,13 +569,6 @@ Updated 10.30.25`
                   } else {
                     setSelectedOption(null);
                   }
-                  setFormData({
-                    name: "",
-                    email: "",
-                    unitNumber: "",
-                    phone: "",
-                    notes: ""
-                  });
                 }}
                 className="px-8 py-4 text-lg font-bold border-2 border-[#005670]/20 text-[#005670] rounded-xl hover:border-[#005670] hover:bg-[#005670]/5 transition-all duration-300 active:scale-95"
               >
@@ -590,20 +577,10 @@ Updated 10.30.25`
               
               <button
                 type="submit"
-                disabled={loading}
-                className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-10 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                className="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-10 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
               >
-                {loading ? (
-                  <>
-                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Submitting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    <span>Submit Request</span>
-                  </>
-                )}
+                <Send className="w-5 h-5" />
+                <span>Continue to Scheduling</span>
               </button>
             </div>
           </form>
