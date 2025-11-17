@@ -1,59 +1,82 @@
-import { useEffect } from 'react';
-import { Route, Routes, Navigate } from 'react-router-dom';
-import { AppProvider } from './context/CommonContext';
-import ProtectedRoute from './components/ProtectedRoute';
+// App.js - CORRECTED VERSION
+// NO BrowserRouter here because it's already in main.jsx!
+
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+
+// Import your components
 import BrochureLandingPage from './pages/BrochureLandingPage';
-import DesignerLogin from './pages/DesignerLogin';
-import ClientPortal from './pages/ClientPortal';
-import ClientRegistration from './pages/ClientRegistration';
+import PortalLogin from './components/PortalLogin';
+import ClientPortal from './components/ClientPortal';
 import AdminPanel from './pages/AdminPanel';
-import UserDashboard from './pages/UserDashboard';
-import AutoLogout from './utils/AutoLogout';
+
+// ✅ Protected Route untuk Client
+const ClientProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  
+  if (!token) {
+    return <Navigate to="/portal-login" replace />;
+  }
+  
+  if (role !== 'user') {
+    return <Navigate to="/portal-login" replace />;
+  }
+  
+  return children;
+};
+
+// ✅ Protected Route untuk Admin/Designer
+const AdminProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  
+  if (!token) {
+    return <Navigate to="/portal-login" replace />;
+  }
+  
+  if (role !== 'admin' && role !== 'designer') {
+    return <Navigate to="/portal-login" replace />;
+  }
+  
+  return children;
+};
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem('token');
-  const userRole = localStorage.getItem('role');
-
   return (
-    <AppProvider>
-      <AutoLogout />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<BrochureLandingPage />} />
-        <Route path="/designer-login" element={<DesignerLogin />} />
-        <Route path="/client-portal" element={<ClientPortal />} />
-        <Route path="/register" element={<ClientRegistration />} />
-        
-        {/* Protected Routes */}
-        <Route 
-          path="/admin-panel/*" 
-          element={
-            <ProtectedRoute 
-              element={<AdminPanel />} 
-              allowedRoles={['admin']} 
-            />
-          } 
-        />
-        <Route 
-          path="/dashboard/*" 
-          element={
-            <ProtectedRoute 
-              element={<UserDashboard />} 
-              allowedRoles={['user']} 
-            />
-          } 
-        />
-
-        {/* Redirect old login route to new designer login */}
-        <Route 
-          path="/login" 
-          element={<Navigate to="/designer-login" replace />} 
-        />
-
-        {/* Catch all - redirect to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AppProvider>
+    // ⚠️ NO <BrowserRouter> or <Router> here!
+    // Just <Routes> because Router is already in main.jsx
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<BrochureLandingPage />} />
+      <Route path="/portal-login" element={<PortalLogin />} />
+      
+      {/* Backward compatibility */}
+      <Route path="/designer-login" element={<Navigate to="/portal-login" replace />} />
+      
+      {/* Protected Client Route */}
+      <Route 
+        path="/client-portal" 
+        element={
+          <ClientProtectedRoute>
+            <ClientPortal />
+          </ClientProtectedRoute>
+        } 
+      />
+      
+      {/* Protected Admin Route */}
+      <Route 
+        path="/admin-panel" 
+        element={
+          <AdminProtectedRoute>
+            <AdminPanel />
+          </AdminProtectedRoute>
+        } 
+      />
+      
+      {/* Catch all - redirect to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

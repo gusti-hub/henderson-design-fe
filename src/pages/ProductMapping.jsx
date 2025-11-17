@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Upload } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Loader2,
+  Upload
+} from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
@@ -14,7 +21,7 @@ const ProductMapping = () => {
   const [selectedMapping, setSelectedMapping] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const itemsPerPage = 10;
   const [searchTerm, setSearchTerm] = useState('');
   const [floorPlans, setFloorPlans] = useState([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -32,89 +39,26 @@ const ProductMapping = () => {
 
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    fetchMappings();
-    fetchProducts();
-    fetchFloorPlans();
-  }, [currentPage]);
-
-  const handleBulkUpload = async (e) => {
-    e.preventDefault();
-    if (!bulkFile) {
-      setBulkErrors(['Please select a file']);
-      return;
-    }
-
-    setBulkSubmitLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', bulkFile);
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${backendServer}/api/location-mappings/bulk`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to process bulk upload');
-      }
-
-      await fetchMappings();
-      handleCloseBulkModal();
-    } catch (error) {
-      setBulkErrors([error.message]);
-    } finally {
-      setBulkSubmitLoading(false);
-    }
-  };
-
-  const handleCloseBulkModal = () => {
-    setIsBulkModalOpen(false);
-    setBulkFile(null);
-    setBulkErrors([]);
-  };
-
-  const validateCSV = (file) => {
-    Papa.parse(file, {
-      header: true,
-      complete: (results) => {
-        const requiredHeaders = ['locationId', 'locationName', 'floorPlanId', 'allowedProductIds'];
-        const headers = results.meta.fields;
-        
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        if (missingHeaders.length > 0) {
-          setBulkErrors([`Missing required columns: ${missingHeaders.join(', ')}`]);
-          return;
-        }
-        
-        setBulkErrors([]);
-      },
-      error: (error) => {
-        setBulkErrors([`Error parsing CSV: ${error.message}`]);
-      }
-    });
-  };
-
-
   const filteredProducts = useMemo(() => {
-    return products.filter(product => 
+    return products.filter(product =>
       product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
       product.product_id.toLowerCase().includes(productSearchTerm.toLowerCase())
     );
   }, [products, productSearchTerm]);
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
+    fetchMappings();
+    fetchProducts();
+    fetchFloorPlans();
+  }, [currentPage]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
       setCurrentPage(1);
       fetchMappings();
     }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
+    return () => clearTimeout(timer);
   }, [searchTerm]);
 
   const fetchMappings = async () => {
@@ -123,17 +67,13 @@ const ProductMapping = () => {
       const token = localStorage.getItem('token');
       const response = await fetch(
         `${backendServer}/api/location-mappings?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
       setMappings(data.mappings);
       setTotalPages(Math.ceil(data.total / itemsPerPage));
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (err) {
+      console.error('Error', err);
     } finally {
       setLoading(false);
     }
@@ -142,73 +82,70 @@ const ProductMapping = () => {
   const fetchFloorPlans = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${backendServer}/api/clients/floor-plans`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`${backendServer}/api/clients/floor-plans`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await response.json();
+      const data = await res.json();
       setFloorPlans(data);
-    } catch (error) {
-      console.error('Error fetching floor plans:', error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${backendServer}/api/products/basic-info`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`${backendServer}/api/products/basic-info`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await response.json();
+      const data = await res.json();
       setProducts(data.products);
-    } catch (error) {
-      console.error('Error fetching products:', error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const validateForm = () => {
-    const newErrors = {};
-    if (!formData.locationId) newErrors.locationId = 'Location ID is required';
-    if (!formData.locationName) newErrors.locationName = 'Location name is required';
-    if (!formData.floorPlanId) newErrors.floorPlanId = 'Floor plan ID is required';
-    if (!formData.allowedProductIds.length) newErrors.allowedProductIds = 'Select at least one product';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const newErr = {};
+    if (!formData.locationId) newErr.locationId = 'Required';
+    if (!formData.locationName) newErr.locationName = 'Required';
+    if (!formData.floorPlanId) newErr.floorPlanId = 'Required';
+    if (!formData.allowedProductIds.length)
+      newErr.allowedProductIds = 'Select at least one product';
+    setErrors(newErr);
+    return Object.keys(newErr).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     setSubmitLoading(true);
+
     try {
       const token = localStorage.getItem('token');
-      const url = modalMode === 'create' 
-        ? `${backendServer}/api/location-mappings`
-        : `${backendServer}/api/location-mappings/${selectedMapping._id}`;
+      const url =
+        modalMode === 'create'
+          ? `${backendServer}/api/location-mappings`
+          : `${backendServer}/api/location-mappings/${selectedMapping._id}`;
 
-      const response = await fetch(url, {
+      const res = await fetch(url, {
         method: modalMode === 'create' ? 'POST' : 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to save mapping');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to save');
       }
 
       await fetchMappings();
       handleCloseModal();
-    } catch (error) {
-      setErrors({ ...errors, form: error.message });
+    } catch (err) {
+      setErrors({ ...errors, form: err.message });
     } finally {
       setSubmitLoading(false);
     }
@@ -226,308 +163,432 @@ const ProductMapping = () => {
     setErrors({});
   };
 
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+    if (!bulkFile) {
+      setBulkErrors(['Please select a CSV file']);
+      return;
+    }
+
+    setBulkSubmitLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const fd = new FormData();
+      fd.append('file', bulkFile);
+
+      const res = await fetch(`${backendServer}/api/location-mappings/bulk`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Bulk processing failed');
+      }
+
+      await fetchMappings();
+      handleCloseBulk();
+    } catch (err) {
+      setBulkErrors([err.message]);
+    } finally {
+      setBulkSubmitLoading(false);
+    }
+  };
+
+  const handleCloseBulk = () => {
+    setIsBulkModalOpen(false);
+    setBulkFile(null);
+    setBulkErrors([]);
+  };
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-light" style={{ color: '#005670' }}>
+    <div className="space-y-6">
+      
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
           Location Product Mapping
-        </h2>
+        </h1>
+
         <div className="flex gap-2">
           <button
             onClick={() => setIsBulkModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#005670' }}
+            className="flex items-center gap-2 px-4 py-2.5 
+                       bg-gradient-to-r from-[#005670] to-[#007a9a] 
+                       text-white rounded-xl hover:shadow-lg transition-all text-sm font-semibold"
           >
             <Upload className="w-4 h-4" />
-            Bulk Create
+            Bulk Upload
           </button>
+
           <button
             onClick={() => {
               setModalMode('create');
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#005670' }}
+            className="flex items-center gap-2 px-4 py-2.5 
+                       bg-gradient-to-r from-[#005670] to-[#007a9a] 
+                       text-white rounded-xl hover:shadow-lg transition-all text-sm font-semibold"
           >
             <Plus className="w-4 h-4" />
             Add Mapping
           </button>
         </div>
+      </div>
+
+      {/* SEARCH BOX */}
+      <SearchFilter
+        value={searchTerm}
+        onSearch={setSearchTerm}
+        placeholder="Search by location or floor plan..."
+      />
+
+      {/* TABLE */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 animate-spin text-[#005670]" />
         </div>
-
-      <div className="mb-6">
-        <SearchFilter
-          value={searchTerm}
-          onSearch={setSearchTerm}
-          placeholder="Search by location or floor plan..."
-        />
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <table className="min-w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floor Plan</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {loading ? (
-              <tr>
-                <td colSpan="5" className="px-6 py-4 text-center">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                </td>
+      ) : mappings.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
+          <p className="text-gray-500 font-medium">No mappings found</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Location ID</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Location Name</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Floor Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Products</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase">Actions</th>
               </tr>
-            ) : mappings.map((mapping) => (
-              <tr key={mapping._id}>
-                <td className="px-6 py-4">{mapping.locationId}</td>
-                <td className="px-6 py-4">{mapping.locationName}</td>
-                <td className="px-6 py-4">{mapping.floorPlanId}</td>
-                <td className="px-6 py-4">{mapping.allowedProductIds.length} products</td>
-                <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedMapping(mapping);
-                        setFormData({
-                          locationId: mapping.locationId,
-                          locationName: mapping.locationName,
-                          floorPlanId: mapping.floorPlanId,
-                          allowedProductIds: mapping.allowedProductIds.map(product => product._id) // Convert to array of IDs
-                        });
-                        setModalMode('edit');
-                        setIsModalOpen(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (window.confirm('Are you sure you want to delete this mapping?')) {
-                          const token = localStorage.getItem('token');
-                          await fetch(`${backendServer}/api/location-mappings/${mapping._id}`, {
-                            method: 'DELETE',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            }
+            </thead>
+
+            <tbody className="divide-y divide-gray-100">
+              {mappings.map((m) => (
+                <tr key={m._id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">{m.locationId}</td>
+                  <td className="px-4 py-3">{m.locationName}</td>
+                  <td className="px-4 py-3">{m.floorPlanId}</td>
+                  <td className="px-4 py-3">{m.allowedProductIds.length} products</td>
+
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1.5">
+
+                      {/* EDIT */}
+                      <button
+                        onClick={() => {
+                          setSelectedMapping(m);
+                          setFormData({
+                            locationId: m.locationId,
+                            locationName: m.locationName,
+                            floorPlanId: m.floorPlanId,
+                            allowedProductIds: m.allowedProductIds.map(p => p._id)
                           });
-                          fetchMappings();
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
-        />
-      </div>
+                          setModalMode('edit');
+                          setIsModalOpen(true);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
 
+                      {/* DELETE */}
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Delete this mapping?')) {
+                            const token = localStorage.getItem('token');
+                            await fetch(`${backendServer}/api/location-mappings/${m._id}`, {
+                              method: 'DELETE',
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            fetchMappings();
+                          }
+                        }}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                    </div>
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* PAGINATION */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 p-4 border-t border-gray-200">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+                    page === currentPage
+                      ? 'bg-gradient-to-r from-[#005670] to-[#007a9a] text-white shadow-md'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===========================
+          BULK UPLOAD MODAL
+      ============================ */}
       {isBulkModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
-                Bulk Create Mappings
-              </h3>
-              <button onClick={handleCloseBulkModal}>
-                <X className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+
+            {/* HEADER */}
+            <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Bulk Create Mappings</h3>
+              <button
+                onClick={handleCloseBulk}
+                className="p-2 hover:bg-white/20 rounded-xl"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {bulkErrors.length > 0 && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {bulkErrors.map((error, index) => (
-                  <div key={index}>{error}</div>
-                ))}
-              </div>
-            )}
+            {/* BODY */}
+            <div className="p-6 space-y-4">
 
-            <form onSubmit={handleBulkUpload} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Upload CSV File
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    setBulkFile(file);
-                    if (file) validateCSV(file);
-                  }}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  CSV should contain: locationId, locationName, floorPlanId, allowedProductIds (comma-separated)
-                </p>
-              </div>
+              {bulkErrors.length > 0 && (
+                <div className="p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+                  {bulkErrors.map((err, i) => (
+                    <div key={i}>{err}</div>
+                  ))}
+                </div>
+              )}
 
-              <div className="flex justify-end gap-2 mt-6">
-                <button
-                  type="submit"
-                  disabled={bulkSubmitLoading || bulkErrors.length > 0}
-                  className="px-4 py-2 text-white rounded-lg flex items-center gap-2"
-                  style={{ backgroundColor: '#005670' }}
-                >
-                  {bulkSubmitLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    'Upload'
-                  )}
-                </button>
-              </div>
-            </form>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setBulkFile(e.target.files[0])}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+
+              <p className="text-xs text-gray-500">
+                CSV must include: locationId, locationName, floorPlanId, allowedProductIds
+              </p>
+
+            </div>
+
+            {/* FOOTER */}
+            <div className="px-6 pb-6 flex justify-end">
+              <button
+                onClick={handleBulkUpload}
+                disabled={bulkSubmitLoading}
+                className="px-6 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] 
+                           text-white rounded-xl hover:shadow-lg text-sm font-semibold flex items-center gap-2"
+              >
+                {bulkSubmitLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Upload'
+                )}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
 
+      {/* ===========================
+          ADD / EDIT MODAL
+      ============================ */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+
+            {/* HEADER */}
+            <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
+              <h3 className="text-xl font-bold">
                 {modalMode === 'create' ? 'Add New Mapping' : 'Edit Mapping'}
               </h3>
-              <button onClick={handleCloseModal}>
-                <X className="w-6 h-6" />
+
+              <button
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-white/20 rounded-xl"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {errors.form && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {errors.form}
-              </div>
-            )}
+            {/* BODY */}
+            <div className="p-6 space-y-4">
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+              {errors.form && (
+                <div className="p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+                  {errors.form}
+                </div>
+              )}
+
+              {/* Location ID */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location ID <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={formData.locationId}
-                  onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                  onChange={(e) =>
+                    setFormData({ ...formData, locationId: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg 
+                             focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                 />
-                {errors.locationId && <p className="text-red-500 text-sm mt-1">{errors.locationId}</p>}
+                {errors.locationId && (
+                  <p className="text-red-500 text-sm mt-1">{errors.locationId}</p>
+                )}
               </div>
 
+              {/* Location Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={formData.locationName}
-                  onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
+                  onChange={(e) =>
+                    setFormData({ ...formData, locationName: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg 
+                             focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                 />
-                {errors.locationName && <p className="text-red-500 text-sm mt-1">{errors.locationName}</p>}
+                {errors.locationName && (
+                  <p className="text-red-500 text-sm mt-1">{errors.locationName}</p>
+                )}
               </div>
 
+              {/* Floor Plan */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Floor Plan ID</label>
-                <select
-                    value={formData.floorPlanId}
-                    onChange={(e) => setFormData({ ...formData, floorPlanId: e.target.value })}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                >
-                    <option value="">Select Floor Plan</option>
-                    {floorPlans.map((plan) => (
-                    <option key={plan} value={plan}>
-                        {plan}
-                    </option>
-                    ))}
-                </select>
-                {errors.floorPlanId && <p className="text-red-500 text-sm mt-1">{errors.floorPlanId}</p>}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Floor Plan ID <span className="text-red-500">*</span>
+                </label>
 
-                <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Allowed Products</label>
-                
-                {/* Add search input */}
+                <select
+                  value={formData.floorPlanId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, floorPlanId: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg 
+                             focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
+                >
+                  <option value="">Select Floor Plan</option>
+                  {floorPlans.map((plan, idx) => (
+                    <option key={idx} value={plan}>
+                      {plan}
+                    </option>
+                  ))}
+                </select>
+
+                {errors.floorPlanId && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.floorPlanId}
+                  </p>
+                )}
+              </div>
+
+              {/* Allowed Products */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Allowed Products <span className="text-red-500">*</span>
+                </label>
+
+                {/* Search product input */}
                 <div className="mb-2">
-                    <input
+                  <input
                     type="text"
                     placeholder="Search products..."
                     value={productSearchTerm}
                     onChange={(e) => setProductSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                    />
-                </div>
-                
-                <div className="border rounded max-h-60 overflow-y-auto p-2">
-                    {filteredProducts.map(product => (
-                    <div key={product._id} className="flex items-center py-2 hover:bg-gray-50">
-                        <input
-                        type="checkbox"
-                        id={`product-${product._id}`}
-                        value={product._id}
-                        checked={formData.allowedProductIds.includes(product._id)}
-                        onChange={(e) => {
-                            const productId = e.target.value;
-                            setFormData(prev => ({
-                            ...prev,
-                            allowedProductIds: e.target.checked
-                                ? [...prev.allowedProductIds, productId]
-                                : prev.allowedProductIds.filter(id => id !== productId)
-                            }));
-                        }}
-                        className="h-4 w-4 text-[#005670] border-gray-300 rounded focus:ring-[#005670]"
-                        />
-                        <label 
-                        htmlFor={`product-${product._id}`}
-                        className="ml-2 block text-sm text-gray-900 cursor-pointer"
-                        >
-                        {product.name} ({product.product_id})
-                        </label>
-                    </div>
-                    ))}
-                    {filteredProducts.length === 0 && (
-                    <div className="text-gray-500 text-sm py-2 text-center">
-                        No products found
-                    </div>
-                    )}
-                </div>
-                {errors.allowedProductIds && (
-                    <p className="text-red-500 text-sm mt-1">{errors.allowedProductIds}</p>
-                )}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg 
+                               focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
+                  />
                 </div>
 
-              <div className="flex justify-end gap-2 mt-6">
-                <button
-                  type="submit"
-                  disabled={submitLoading}
-                  className="px-4 py-2 text-white rounded-lg flex items-center gap-2"
-                  style={{ backgroundColor: '#005670' }}
-                >
-                  {submitLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {modalMode === 'create' ? 'Creating...' : 'Saving...'}
-                    </>
+                <div className="border border-gray-200 rounded-xl max-h-60 overflow-y-auto p-2">
+                  {filteredProducts.length === 0 ? (
+                    <div className="text-center text-gray-500 py-3 text-sm">
+                      No products found
+                    </div>
                   ) : (
-                    modalMode === 'create' ? 'Create' : 'Save Changes'
+                    filteredProducts.map((product) => (
+                      <label
+                        key={product._id}
+                        className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.allowedProductIds.includes(product._id)}
+                          onChange={() => {
+                            const id = product._id;
+                            setFormData((prev) => ({
+                              ...prev,
+                              allowedProductIds: prev.allowedProductIds.includes(id)
+                                ? prev.allowedProductIds.filter((x) => x !== id)
+                                : [...prev.allowedProductIds, id]
+                            }));
+                          }}
+                          className="h-4 w-4 text-[#005670] rounded border-gray-300 focus:ring-[#005670]"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {product.name} ({product.product_id})
+                        </span>
+                      </label>
+                    ))
                   )}
-                </button>
+                </div>
+
+                {errors.allowedProductIds && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.allowedProductIds}
+                  </p>
+                )}
               </div>
-            </form>
+            </div>
+
+            {/* FOOTER */}
+            <div className="px-6 pb-6 flex justify-end">
+              <button
+                onClick={handleSubmit}
+                disabled={submitLoading}
+                className="px-6 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] 
+                           text-white rounded-xl hover:shadow-lg text-sm font-semibold flex items-center gap-2"
+              >
+                {submitLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {modalMode === 'create' ? 'Creating...' : 'Saving...'}
+                  </>
+                ) : modalMode === 'create' ? (
+                  'Create Mapping'
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
+
     </div>
   );
 };

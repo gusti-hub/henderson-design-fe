@@ -140,16 +140,12 @@ const ClientPortal = () => {
         return {
           icon: CheckCircle2,
           color: 'emerald',
-          bgGradient: 'from-green-600 to-emerald-600',
-          bgLight: 'from-green-50 to-emerald-50',
-          border: 'border-green-400',
-          text: 'text-green-800',
-          badge: 'bg-green-600',
-          iconColor: 'text-white',
-          label: 'Completed',
-          checkmarkBg: 'bg-green-600',
-          checkmarkRing: 'ring-2 ring-green-300',
-          shadow: 'shadow-lg'
+          bgGradient: 'from-emerald-500 to-teal-600',
+          bgLight: 'from-emerald-50 to-teal-50',
+          border: 'border-emerald-200',
+          text: 'text-emerald-700',
+          badge: 'bg-emerald-600',
+          label: 'Completed'
         };
       case 'in-progress':
         return {
@@ -160,10 +156,8 @@ const ClientPortal = () => {
           border: 'border-blue-300',
           text: 'text-blue-700',
           badge: 'bg-blue-600',
-          iconColor: 'text-white',
           label: 'In Progress',
-          pulse: true,
-          shadow: 'shadow-md'
+          pulse: true
         };
       case 'pending':
         return {
@@ -174,22 +168,18 @@ const ClientPortal = () => {
           border: 'border-amber-300',
           text: 'text-amber-700',
           badge: 'bg-amber-600',
-          iconColor: 'text-white',
-          label: 'Pending',
-          shadow: 'shadow-md'
+          label: 'Pending'
         };
       default:
         return {
           icon: Circle,
           color: 'gray',
-          bgGradient: 'from-gray-300 to-gray-400',
+          bgGradient: 'from-gray-400 to-gray-500',
           bgLight: 'from-gray-50 to-gray-100',
           border: 'border-gray-200',
           text: 'text-gray-600',
           badge: 'bg-gray-400',
-          iconColor: 'text-gray-400',
-          label: 'Not Started',
-          shadow: 'shadow-sm'
+          label: 'Not Started'
         };
     }
   };
@@ -269,7 +259,7 @@ const ClientPortal = () => {
           <div className="relative">
             <div className="flex items-center gap-3 mb-4">
               <Sparkles className="w-8 h-8" />
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Welcome back, {clientData.name}!</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold">Welcome back, {clientData.name}!</h1>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-white/90">
               <div className="flex items-center gap-2">
@@ -298,12 +288,12 @@ const ClientPortal = () => {
           {/* Header with Progress */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Your Project Journey</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Project Journey</h2>
               <div className="text-right">
                 <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-[#005670] to-[#007a9a] bg-clip-text text-transparent">
                   {progressPercentage}%
                 </div>
-                <p className="text-xs text-gray-500 mt-1 font-medium">Complete</p>
+                <p className="text-xs text-gray-500 mt-1">Complete</p>
               </div>
             </div>
 
@@ -334,8 +324,8 @@ const ClientPortal = () => {
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Sparkles className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Journey Starting Soon</h3>
-              <p className="text-gray-600 max-w-md mx-auto text-lg leading-relaxed">
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Journey Starting Soon</h3>
+              <p className="text-gray-600 max-w-md mx-auto text-lg">
                 Your design journey will begin shortly. Our team is preparing your personalized project timeline.
               </p>
             </div>
@@ -373,49 +363,27 @@ const ClientPortal = () => {
                       <div className="flex items-start gap-4">
                         {/* Status Icon */}
                         <div className={`
-                          flex-shrink-0 rounded-xl flex items-center justify-center
-                          ${milestone.status === 'completed' ? 'w-16 h-16' : 'w-14 h-14'}
+                          flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-md
                           bg-gradient-to-br ${config.bgGradient}
-                          ${config.shadow}
                           ${config.pulse ? 'animate-pulse' : ''}
-                          ${milestone.status === 'completed' ? config.checkmarkRing : ''}
-                          transition-all duration-300
                         `}>
-                          <Icon 
-                            className={`${config.iconColor}`} 
-                            size={milestone.status === 'completed' ? 36 : 28}
-                            strokeWidth={2.5}
-                            fill={milestone.status === 'completed' ? 'currentColor' : 'none'}
-                          />
+                          <Icon className="w-6 h-6 text-white" />
                         </div>
 
                         {/* Content */}
                         <div className="flex-grow min-w-0">
                           {/* Phase Number & Status Badge */}
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className={`text-xs font-bold ${config.text} tracking-wide uppercase`}>
+                            <span className={`text-xs font-bold ${config.text} tracking-wide`}>
                               PHASE {milestone.phase}
                             </span>
-                            {milestone.status === 'completed' && (
-                              <span className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full shadow-md flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                Done
-                              </span>
-                            )}
-                            {milestone.status === 'in-progress' && (
-                              <span className={`px-3 py-1 ${config.badge} text-white text-xs font-bold rounded-full shadow-sm`}>
-                                {config.label}
-                              </span>
-                            )}
-                            {milestone.status === 'pending' && (
-                              <span className={`px-3 py-1 ${config.badge} text-white text-xs font-bold rounded-full shadow-sm`}>
-                                {config.label}
-                              </span>
-                            )}
+                            <span className={`px-3 py-1 ${config.badge} text-white text-xs font-bold rounded-full shadow-sm`}>
+                              {config.label}
+                            </span>
                           </div>
 
                           {/* Title */}
-                          <h3 className="font-bold text-lg text-gray-900 mb-1 tracking-tight leading-snug">
+                          <h3 className="font-bold text-lg text-gray-900 mb-1">
                             {milestone.title}
                           </h3>
 
@@ -428,11 +396,9 @@ const ClientPortal = () => {
                           {milestone.status !== 'not-started' && (
                             <div className="flex items-center gap-4 mt-3 flex-wrap">
                               {milestone.actualDate && (
-                                <div className="flex items-center gap-1.5 text-xs font-medium">
-                                  <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
-                                    <CheckCircle className="w-3.5 h-3.5 text-white" />
-                                  </div>
-                                  <span className="text-green-700">Completed {formatDate(milestone.actualDate)}</span>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                  <span>Completed {formatDate(milestone.actualDate)}</span>
                                 </div>
                               )}
                               {!milestone.actualDate && milestone.estimatedDate && (
@@ -537,24 +503,24 @@ const ClientPortal = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Payment Status</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Payment Status</h2>
             </div>
             
             <div className="space-y-4">
               <div className="flex justify-between items-center pb-4 border-b border-gray-100">
-                <span className="text-gray-600 font-medium">Down Payment</span>
+                <span className="text-gray-600">Down Payment</span>
                 <span className="text-2xl font-bold text-emerald-600">
                   ${clientData.paymentInfo?.paidDownPayment?.toLocaleString() || '0'}
                 </span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-gray-100">
-                <span className="text-gray-600 font-medium">Total Amount</span>
+                <span className="text-gray-600">Total Amount</span>
                 <span className="text-xl font-bold text-gray-900">
                   ${clientData.paymentInfo?.totalAmount?.toLocaleString() || '0'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 font-medium">Status</span>
+                <span className="text-gray-600">Status</span>
                 <span className={`px-4 py-2 rounded-full text-sm font-bold ${
                   clientData.paymentInfo?.downPaymentStatus === 'paid' 
                     ? 'bg-emerald-100 text-emerald-700'
@@ -572,10 +538,10 @@ const ClientPortal = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
                 <Mail className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Need Assistance?</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Need Assistance?</h2>
             </div>
             
-            <p className="text-gray-600 mb-6 leading-relaxed">
+            <p className="text-gray-600 mb-6">
               Our team is here to help you every step of the way.
             </p>
             

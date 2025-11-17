@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Lock, FileText, MessageCircle, ArrowRight, X, Send, AlertCircle } from "lucide-react";
+import { CheckCircle, Lock, FileText, MessageCircle, ArrowRight, X, Send, AlertCircle, LogIn, Eye } from "lucide-react";
 import SchedulingComponent from "../../components/scheduling/SchedulingComponent";
 
 const NextStepsPage = () => {
   const navigate = useNavigate();
-  const [selectedOption, setSelectedOption] = useState(null); // 'lock-price', 'design-fee', 'questions'
+  const [selectedOption, setSelectedOption] = useState(null);
   const [showOutline, setShowOutline] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
   const [showScheduling, setShowScheduling] = useState(false);
@@ -21,7 +21,6 @@ const NextStepsPage = () => {
     notes: ""
   });
 
-  // Outlines for Lock Pricing and Design Fee
   const outlines = {
     'lock-price': {
       title: 'Deposit to Hold 2025 Pricing',
@@ -230,7 +229,6 @@ Updated 10.30.25`
     return true;
   };
 
-  // Contact form submit → hanya lanjut ke scheduling
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -241,12 +239,10 @@ Updated 10.30.25`
     setSelectedOption(option);
     setError("");
 
-    // Show outline for lock-price and design-fee, skip for questions
     if (option === 'lock-price' || option === 'design-fee') {
       setShowOutline(true);
       setShowAgreement(false);
     } else {
-      // questions → langsung form
       setShowOutline(false);
       setShowAgreement(false);
     }
@@ -259,7 +255,6 @@ Updated 10.30.25`
 
   const handleSchedulingSuccess = (appointmentData) => {
     setSuccess(true);
-
     setTimeout(() => {
       navigate("/");
     }, 3000);
@@ -271,7 +266,6 @@ Updated 10.30.25`
     'questions': 'Schedule Consultation'
   };
 
-  // ✅ Success screen setelah scheduling
   if (success) {
     return (
       <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
@@ -292,7 +286,6 @@ Updated 10.30.25`
     );
   }
 
-  // ✅ Scheduling mode – hanya dipanggil setelah form valid
   if (showScheduling && !success) {
     return (
       <SchedulingComponent
@@ -304,14 +297,12 @@ Updated 10.30.25`
     );
   }
 
-  // Agreement Modal (view agreement)
   if (showAgreement && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
     const agreement = agreements[selectedOption];
     
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
           <div className="flex items-center justify-between p-8 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center">
@@ -330,7 +321,6 @@ Updated 10.30.25`
             </button>
           </div>
 
-          {/* Scrollable content */}
           <div className="p-8 max-h-[60vh] overflow-y-auto text-gray-800 leading-relaxed">
             <div className="whitespace-pre-line text-base">
               {agreement.content.split('\n\n').map((block, i) => (
@@ -341,7 +331,6 @@ Updated 10.30.25`
             </div>
           </div>
 
-          {/* Footer */}
           <div className="p-8 border-t-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
             <button
               onClick={() => setShowAgreement(false)}
@@ -355,14 +344,12 @@ Updated 10.30.25`
     );
   }
 
-  // Outline screen (setelah pilih lock-price / design-fee)
   if (showOutline && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
     const outline = outlines[selectedOption];
     
     return (
       <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="text-center mb-16">
             <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
               <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">{optionTitles[selectedOption]}</p>
@@ -377,7 +364,6 @@ Updated 10.30.25`
             <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
           </div>
 
-          {/* Outline Content */}
           <div className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-10 mb-8">
             {outline.sections.map((section, index) => (
               <div key={index} className={`${index !== outline.sections.length - 1 ? 'mb-8 pb-8 border-b-2 border-gray-100' : 'mb-0'}`}>
@@ -401,7 +387,6 @@ Updated 10.30.25`
             ))}
           </div>
 
-          {/* View Agreement Button (Optional) */}
           <div className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-8 mb-8">
             <div className="flex items-center justify-between gap-6">
               <div>
@@ -417,7 +402,6 @@ Updated 10.30.25`
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-5">
             <button
               onClick={() => {
@@ -443,12 +427,10 @@ Updated 10.30.25`
     );
   }
 
-  // Contact Form Screen
   if (selectedOption && !showOutline && !showAgreement) {
     return (
       <div className="min-h-screen pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="text-center mb-16">
             <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
               <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">{optionTitles[selectedOption]}</p>
@@ -463,9 +445,7 @@ Updated 10.30.25`
             <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleFormSubmit} className="bg-white rounded-2xl shadow-xl border-2 border-[#005670]/10 p-10">
-            {/* Error message */}
             {error && (
               <div className="mb-8 p-5 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-4">
                 <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
@@ -473,7 +453,6 @@ Updated 10.30.25`
               </div>
             )}
 
-            {/* Contact Information */}
             <div className="mb-10">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-1 bg-[#005670] rounded-full"></div>
@@ -544,7 +523,6 @@ Updated 10.30.25`
               </div>
             </div>
 
-            {/* Additional Notes */}
             <div className="mb-10">
               <label className="block text-base font-bold text-gray-700 mb-3">
                 Additional Notes (Optional)
@@ -559,7 +537,6 @@ Updated 10.30.25`
               />
             </div>
 
-            {/* Buttons */}
             <div className="flex gap-5">
               <button
                 type="button"
@@ -589,10 +566,8 @@ Updated 10.30.25`
     );
   }
 
-  // Main page with 3 options
   return (
     <div className="pt-32 pb-24 px-6 bg-gradient-to-b from-gray-50 to-white">
-      {/* Page hero */}
       <div className="max-w-6xl mx-auto text-center mb-20">
         <div className="inline-block bg-[#005670]/5 px-8 py-3 rounded-full mb-6">
           <p className="text-sm font-bold text-[#005670] tracking-widest uppercase">Next Steps</p>
@@ -605,10 +580,31 @@ Updated 10.30.25`
         <div className="w-24 h-1 bg-[#005670] mx-auto mt-6 rounded-full"></div>
       </div>
 
-      {/* Three options */}
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8 items-stretch">
+      {/* ✅ Client Portal Access Notice */}
+      <div className="max-w-4xl mx-auto mb-12">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <Eye className="w-6 h-6 text-blue-600" />
+            </div>
+            <div className="flex-grow">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Already Completed Your Payment?</h3>
+              <p className="text-gray-700 mb-4 leading-relaxed">
+                If you've already made your down payment and completed your consultation, you can access your client portal to track your project progress and view all the details of your journey with us.
+              </p>
+              <button
+                onClick={() => navigate('/portal-login')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-bold shadow-lg"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>Access Client Portal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Option 1: Lock 2025 Pricing */}
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8 items-stretch">
         <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] mb-6 mx-auto">
             <Lock className="w-8 h-8 text-white" />
@@ -628,7 +624,6 @@ Updated 10.30.25`
           </button>
         </div>
 
-        {/* Option 2: Design Hold Fee */}
         <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] mb-6 mx-auto">
             <FileText className="w-8 h-8 text-white" />
@@ -648,7 +643,6 @@ Updated 10.30.25`
           </button>
         </div>
 
-        {/* Option 3: Still Have Questions */}
         <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] mb-6 mx-auto">
             <MessageCircle className="w-8 h-8 text-white" />

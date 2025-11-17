@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Globe, Menu, X } from 'lucide-react';
+import { ArrowRight, Globe, Menu, X, LogIn } from 'lucide-react';
 import AboutPage from './BrochurAssets/AboutPage';
 import CollectionPage from './BrochurAssets/CollectionPage';
 import ContactPage from './BrochurAssets/ContactPage';
@@ -28,7 +28,7 @@ const translations = {
     environment: 'Environment',
     questionnaire: 'Questionnaire',
     contact: 'Contact',
-    designerAccess: 'Designer Access',
+    portalLogin: 'Portal Login',
     selectLanguage: 'Select Language',
     home: 'Home',
     menu: 'Menu',
@@ -48,7 +48,7 @@ const translations = {
     environment: '環境',
     questionnaire: 'アンケート',
     contact: 'お問い合わせ',
-    designerAccess: 'デザイナーアクセス',
+    portalLogin: 'ポータルログイン',
     selectLanguage: '言語を選択',
     home: 'ホーム',
     menu: 'メニュー',
@@ -106,7 +106,6 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
 
             {showLangMenu && (
               <>
-                {/* Backdrop untuk menutup menu */}
                 <div 
                   className="fixed inset-0 z-40" 
                   onClick={() => setShowLangMenu(false)}
@@ -135,14 +134,14 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
             )}
           </div>
 
-          {/* Designer Access - hide on small mobile */}
+          {/* Portal Login Button */}
           <button
-            onClick={() => navigate('/designer-login')}
+            onClick={() => navigate('/portal-login')}
             className="hidden sm:flex items-center gap-2 text-xs md:text-sm font-semibold tracking-wide transition-all duration-300 px-3 md:px-4 py-2 rounded-lg border-2 text-white border-white/25 hover:border-white/50 hover:bg-white/10 active:scale-95"
           >
-            <span className="hidden md:inline">{t.designerAccess}</span>
-            <span className="md:hidden">Designer</span>
-            <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
+            <LogIn className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="hidden md:inline">{t.portalLogin}</span>
+            <span className="md:hidden">Login</span>
           </button>
         </div>
       </div>
@@ -201,7 +200,6 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
         {/* Mobile dropdown menu */}
         {showMobileMenu && (
           <>
-            {/* Backdrop */}
             <div 
               className="fixed inset-0 bg-black/50 z-30" 
               onClick={() => setShowMobileMenu(false)}
@@ -224,6 +222,15 @@ const Navigation = ({ activeTab, setActiveTab, language, setLanguage }) => {
                     {tab.label}
                   </button>
                 ))}
+                
+                {/* Mobile Portal Login */}
+                <button
+                  onClick={() => navigate('/portal-login')}
+                  className="sm:hidden w-full px-5 py-3.5 text-left text-base font-bold tracking-wide transition-all duration-300 rounded-xl text-white hover:bg-white/15 active:scale-95 flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>{t.portalLogin}</span>
+                </button>
               </div>
             </div>
           </>
@@ -247,7 +254,6 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
     { id: 'questionnaire', label: t.questionnaire }
   ];
 
-  // Untuk mobile, tampilkan 3 tombol pertama + tombol "More"
   const mobileVisibleTabs = footerTabs.slice(0, 3);
   const mobileHiddenTabs = footerTabs.slice(3);
 
@@ -260,7 +266,7 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
   return (
     <footer className="fixed bottom-0 left-0 w-full bg-[#005670] shadow-[0_-2px_20px_rgba(0,0,0,0.3)] border-t border-white/10 z-40">
       <div className="max-w-[1800px] mx-auto px-4 md:px-8 py-2 md:py-3">
-        {/* Desktop navigation - tampilkan semua */}
+        {/* Desktop navigation */}
         <nav className="hidden md:flex items-stretch justify-center bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border-2 border-white/25 shadow-xl max-w-6xl mx-auto">
           {footerTabs.map((tab, index) => (
             <button
@@ -281,7 +287,7 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
           ))}
         </nav>
 
-        {/* Mobile navigation - tampilkan 3 tombol + More */}
+        {/* Mobile navigation */}
         <nav className="md:hidden relative">
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-1.5 border-2 border-white/25 shadow-xl">
             <div className="grid grid-cols-4 gap-1">
@@ -299,7 +305,6 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
                 </button>
               ))}
               
-              {/* Tombol More */}
               <button
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
                 className={`px-2 py-2.5 text-xs font-bold tracking-wide uppercase transition-all duration-300 rounded-lg ${
@@ -313,10 +318,8 @@ const Footer = ({ setActiveTab, language, activeTab }) => {
             </div>
           </div>
 
-          {/* More menu dropdown */}
           {showMoreMenu && (
             <>
-              {/* Backdrop */}
               <div 
                 className="fixed inset-0 z-30" 
                 onClick={() => setShowMoreMenu(false)}
