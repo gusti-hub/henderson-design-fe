@@ -105,10 +105,10 @@ const PortalLogin = () => {
           });
 
           if (clientResponse.ok) {
-            const clientData = await clientResponse.json();
-            
+            const clientData = await clientResponse.json();            
+            console.log(clientData.data.paymentInfo.downPaymentStatus)
             // Check if down payment is paid
-            if (clientData.paymentInfo && clientData.paymentInfo.downPaymentStatus === 'paid') {
+            if (clientData.data.paymentInfo && clientData.data.paymentInfo.downPaymentStatus === 'paid') {
               // Paid → Client Portal
               navigate('/client-portal');
             } else {
@@ -160,17 +160,22 @@ const PortalLogin = () => {
         <div className="p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="text-[#005670] text-3xl tracking-widest font-light mb-2">
-              HENDERSON
-            </div>
-            <div className="text-[#005670] text-sm tracking-wider font-light mb-6">
-              DESIGN GROUP
-            </div>
-            <h2 className="text-2xl font-light tracking-wide text-[#005670] mb-2">
+            <img
+              src="/images/HDG-Logo.png"
+              alt="Henderson Design Group"
+              className="h-16 md:h-20 w-auto mx-auto object-contain"
+              style={{
+                filter:
+                  "brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)"
+              }}
+            />
+
+            <h2 className="text-2xl font-light tracking-wide text-[#005670] mt-4 mb-2">
               Portal Login
             </h2>
             <p className="text-gray-600 text-sm">Access your account</p>
           </div>
+
 
           {/* Portal Type Info */}
           <div className="mb-6 grid grid-cols-2 gap-3">
