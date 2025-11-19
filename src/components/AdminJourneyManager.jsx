@@ -1,5 +1,5 @@
-// AdminJourneyManager.jsx - Senior Friendly Design
-import React, { useState, useEffect } from 'react';
+// AdminJourneyManager.jsx - Complete Admin Journey Management for 67 Steps
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   CheckCircle, 
   Circle, 
@@ -17,11 +17,20 @@ import {
   Paperclip,
   Mail,
   Check,
-  Download
+  Download,
+  Upload,
+  Zap,
+  DollarSign,
+  Package,
+  Eye,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 const AdminJourneyManager = ({ clientId, clientName }) => {
+  const fileInputRef = useRef(null);
+  
   const [journey, setJourney] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,6 +39,13 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
   const [expandedSteps, setExpandedSteps] = useState(new Set());
   const [activeChat, setActiveChat] = useState(null);
   const [chatMessages, setChatMessages] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [editingStep, setEditingStep] = useState(null);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [contractData, setContractData] = useState({});
+  const [emailStep, setEmailStep] = useState(null);
 
   useEffect(() => {
     fetchJourney();
@@ -75,7 +91,7 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
       });
 
       if (response.ok) {
-        setSuccess('Journey created successfully!');
+        setSuccess('Journey created successfully with 67 steps!');
         await fetchJourney();
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -114,6 +130,9 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
       if (response.ok) {
         setSuccess(sendEmail ? 'Step updated and email sent!' : 'Step updated successfully!');
         await fetchJourney();
+        setEditingStep(null);
+        setShowContractModal(false);
+        setShowEmailModal(false);
         setTimeout(() => setSuccess(''), 3000);
       } else {
         const errorData = await response.json();
@@ -161,32 +180,6 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
     }
   };
 
-  const handleToggleSubStep = async (stepNumber, subStepIndex, currentCompleted) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${backendServer}/api/journeys/client/${clientId}/step/${stepNumber}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            subStepIndex, 
-            subStepCompleted: !currentCompleted 
-          })
-        }
-      );
-
-      if (response.ok) {
-        await fetchJourney();
-      }
-    } catch (error) {
-      console.error('Error toggling substep:', error);
-    }
-  };
-
   const toggleStepExpanded = (stepNumber) => {
     const newExpanded = new Set(expandedSteps);
     if (newExpanded.has(stepNumber)) {
@@ -213,15 +206,78 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
         const data = await response.json();
         setChatMessages(prev => ({ ...prev, [stepNumber]: data.messages || [] }));
         setActiveChat(stepNumber);
+        
+        // Mark as read
+        await fetch(
+          `${backendServer}/api/journey-chat/client/${clientId}/step/${stepNumber}/read`,
+          {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+          }
+        );
       }
     } catch (error) {
       console.error('Error loading chat:', error);
     }
   };
 
-  const sendChatMessage = async (stepNumber, message, attachments = []) => {
+  // ✅ FILE UPLOAD HANDLER
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const MAX_SIZE = 5 * 1024 * 1024;
+    
+    const validFiles = [];
+    const invalidFiles = [];
+    
+    files.forEach(file => {
+      if (file.size > MAX_SIZE) {
+        invalidFiles.push(file.name);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (invalidFiles.length > 0) {
+      alert(`Files exceed 5MB limit:\n${invalidFiles.join('\n')}`);
+    }
+    
+    if (validFiles.length + selectedFiles.length > 5) {
+      alert('Maximum 5 attachments per message');
+      return;
+    }
+    
+    const filePromises = validFiles.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve({
+            filename: file.name,
+            mimetype: file.type,
+            size: file.size,
+            data: e.target.result.split(',')[1]
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    Promise.all(filePromises).then(files => {
+      setSelectedFiles(prev => [...prev, ...files]);
+    });
+  };
+
+  const removeSelectedFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // ✅ SEND MESSAGE WITH ATTACHMENTS
+  const sendChatMessage = async (stepNumber, message) => {
+    if (!message.trim() && selectedFiles.length === 0) return;
+
     try {
+      setUploadingFiles(true);
       const token = localStorage.getItem('token');
+      
       const response = await fetch(
         `${backendServer}/api/journey-chat/client/${clientId}/step/${stepNumber}/message`,
         {
@@ -230,30 +286,144 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ message, attachments })
+          body: JSON.stringify({ 
+            message: message || '(Attachment)',
+            attachments: selectedFiles
+          })
         }
       );
 
       if (response.ok) {
         const data = await response.json();
         setChatMessages(prev => ({ ...prev, [stepNumber]: data.chat.messages }));
+        setSelectedFiles([]);
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.message || 'Failed to send message'}`);
       }
     } catch (error) {
       console.error('Error sending message:', error);
       setError('Failed to send message');
+    } finally {
+      setUploadingFiles(false);
     }
+  };
+
+  // ✅ DOWNLOAD ATTACHMENT
+  const downloadAttachment = async (stepNumber, messageId, attachmentId, filename) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(
+        `${backendServer}/api/journey-chat/client/${clientId}/step/${stepNumber}/message/${messageId}/attachment/${attachmentId}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('Failed to download attachment');
+    }
+  };
+
+  // ✅ DOWNLOAD DOCUMENT
+  const downloadDocument = async (stepNumber, documentIndex, filename) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(
+        `${backendServer}/api/journeys/client/${clientId}/step/${stepNumber}/document/${documentIndex}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || `document_step_${stepNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Failed to download document');
+    }
+  };
+
+  // ✅ TRIGGER CONTRACT GENERATION
+  const handleGenerateContract = async (stepNumber, isProposal = false) => {
+    const step = journey.steps.find(s => s.step === stepNumber);
+    if (!step) return;
+
+    // Show modal for contract data input
+    setContractData({
+      stepNumber,
+      isProposal,
+      amount: '',
+      downPayment: '',
+      proposalAmount: ''
+    });
+    setShowContractModal(true);
+  };
+
+  const submitContractGeneration = async () => {
+    const { stepNumber, isProposal, amount, downPayment, proposalAmount } = contractData;
+    
+    const updates = {
+      status: 'in-progress'
+    };
+    
+    if (isProposal) {
+      updates.proposalAmount = parseFloat(proposalAmount);
+    } else {
+      updates.contractAmount = parseFloat(amount);
+      updates.downPaymentAmount = parseFloat(downPayment);
+    }
+    
+    await handleUpdateStep(stepNumber, updates, false);
+  };
+
+  // ✅ TRIGGER EMAIL SEND
+  const handleSendEmail = (step) => {
+    setEmailStep(step);
+    setShowEmailModal(true);
+  };
+
+  const confirmSendEmail = async () => {
+    if (!emailStep) return;
+    
+    await handleUpdateStep(emailStep.step, { status: emailStep.status }, true);
   };
 
   const getStepIcon = (status) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="w-7 h-7 text-green-600" />;
+        return <CheckCircle className="w-6 h-6 text-green-600" />;
       case 'in-progress':
-        return <Clock className="w-7 h-7 text-blue-600" />;
+        return <Clock className="w-6 h-6 text-blue-600" />;
       case 'pending':
-        return <Circle className="w-7 h-7 text-yellow-600" />;
+        return <Circle className="w-6 h-6 text-yellow-600" />;
+      case 'blocked':
+        return <AlertCircle className="w-6 h-6 text-red-600" />;
       default:
-        return <Circle className="w-7 h-7 text-gray-400" />;
+        return <Circle className="w-6 h-6 text-gray-400" />;
     }
   };
 
@@ -262,22 +432,37 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
       case 'completed': return 'bg-green-100 text-green-800 border-green-300';
       case 'in-progress': return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'blocked': return 'bg-red-100 text-red-800 border-red-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
   const getPhaseColor = (phase) => {
     const colors = {
-      'Introduction': 'from-blue-500 to-cyan-600',
-      'Contract': 'from-purple-500 to-pink-600',
-      'Design': 'from-amber-500 to-orange-600',
-      'Proposal': 'from-green-500 to-emerald-600',
-      'Production Prep': 'from-indigo-500 to-blue-600',
-      'Manufacturing': 'from-red-500 to-rose-600',
-      'Shipping': 'from-teal-500 to-cyan-600',
-      'Delivery': 'from-violet-500 to-purple-600'
+      'Portal Activation & Design Setup': 'from-blue-500 to-cyan-600',
+      'Design Meetings & Presentations': 'from-purple-500 to-pink-600',
+      'Proposal Contract & 50% Funding': 'from-amber-500 to-orange-600',
+      'Vendor Order & Production': 'from-green-500 to-emerald-600',
+      '25% Progress Payment': 'from-indigo-500 to-blue-600',
+      'Final 25% Balance': 'from-red-500 to-rose-600',
+      'Delivery Installation & Reveal': 'from-violet-500 to-purple-600'
     };
     return colors[phase] || 'from-gray-500 to-gray-600';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   if (loading) {
@@ -297,7 +482,7 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
             No Journey Created
           </h3>
           <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            Initialize journey tracking for {clientName} to enable progress monitoring.
+            Initialize journey tracking for {clientName} to enable progress monitoring with 67 steps.
           </p>
           <button
             onClick={handleCreateJourney}
@@ -312,7 +497,7 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
             ) : (
               <>
                 <Plus className="w-6 h-6" />
-                <span>Initialize Journey Tracking</span>
+                <span>Initialize Journey (67 Steps)</span>
               </>
             )}
           </button>
@@ -323,6 +508,9 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
 
   const completedSteps = journey.steps.filter(s => s.status === 'completed').length;
   const progressPercentage = (completedSteps / journey.steps.length) * 100;
+  const pendingClientActions = journey.steps.filter(s => 
+    s.clientAction && (s.status === 'pending' || s.status === 'in-progress')
+  ).length;
 
   // Group steps by phase
   const stepsByPhase = journey.steps.reduce((acc, step) => {
@@ -333,41 +521,51 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
 
   return (
     <div className="space-y-8">
-      {/* SENIOR-FRIENDLY HEADER */}
+      {/* HEADER */}
       <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] rounded-2xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-4xl font-bold">Journey Management</h2>
-          {journey && (
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-lg font-medium transition-all"
-            >
-              🔄 Refresh
-            </button>
-          )}
+          <div>
+            <h2 className="text-4xl font-bold mb-2">Journey Management</h2>
+            <p className="text-xl text-white/90">Client: {clientName}</p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-lg font-medium transition-all"
+          >
+            🔄 Refresh
+          </button>
         </div>
-        <p className="text-xl text-white/90 mb-6">Client: {clientName}</p>
-        {journey && (
-          <div className="mt-6">
-            <div className="flex justify-between text-lg mb-3">
-              <span className="font-medium">Progress</span>
-              <span className="font-bold text-2xl">{completedSteps} / {journey.steps.length} steps</span>
+        
+        {/* PROGRESS */}
+        <div className="mt-6">
+          <div className="flex justify-between text-lg mb-3">
+            <span className="font-medium">Overall Progress</span>
+            <span className="font-bold text-2xl">{completedSteps} / {journey.steps.length} steps</span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-6">
+            <div 
+              className="bg-white h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
+              style={{ width: `${progressPercentage}%` }}
+            >
+              <span className="text-[#005670] font-bold text-sm">
+                {Math.round(progressPercentage)}%
+              </span>
             </div>
-            <div className="w-full bg-white/20 rounded-full h-6">
-              <div 
-                className="bg-white h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
-                style={{ width: `${progressPercentage}%` }}
-              >
-                <span className="text-[#005670] font-bold text-sm">
-                  {Math.round(progressPercentage)}%
-                </span>
-              </div>
-            </div>
+          </div>
+        </div>
+
+        {/* CLIENT ACTIONS ALERT */}
+        {pendingClientActions > 0 && (
+          <div className="mt-6 bg-amber-500 rounded-xl p-4 flex items-center gap-3">
+            <AlertCircle className="w-6 h-6" />
+            <span className="font-bold">
+              ⚠️ {pendingClientActions} step(s) require client action
+            </span>
           </div>
         )}
       </div>
 
-      {/* NOTIFICATIONS - LARGE & CLEAR */}
+      {/* NOTIFICATIONS */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-lg">
           <div className="flex items-start gap-4">
@@ -396,12 +594,19 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
       <div className="space-y-8">
         {Object.entries(stepsByPhase).map(([phase, steps]) => (
           <div key={phase} className="bg-white rounded-2xl shadow-xl border-2 border-gray-200">
-            {/* PHASE HEADER - LARGE */}
+            {/* PHASE HEADER */}
             <div className={`p-6 bg-gradient-to-r ${getPhaseColor(phase)} rounded-t-2xl`}>
               <h3 className="text-2xl font-bold text-white mb-2">{phase}</h3>
-              <p className="text-lg text-white/90">
-                {steps.filter(s => s.status === 'completed').length} of {steps.length} completed
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-lg text-white/90">
+                  {steps.filter(s => s.status === 'completed').length} of {steps.length} completed
+                </p>
+                {steps.some(s => s.clientAction && (s.status === 'pending' || s.status === 'in-progress')) && (
+                  <span className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold text-sm">
+                    👤 Client Actions Required
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* PHASE STEPS */}
@@ -414,40 +619,180 @@ const AdminJourneyManager = ({ clientId, clientName }) => {
                   onToggle={() => toggleStepExpanded(step.step)}
                   onUpdate={handleUpdateStep}
                   onComplete={handleCompleteStep}
-                  onToggleSubStep={handleToggleSubStep}
+                  onGenerateContract={handleGenerateContract}
+                  onSendEmail={handleSendEmail}
                   saving={saving}
                   getStepIcon={getStepIcon}
                   getStatusColor={getStatusColor}
                   chatMessages={chatMessages[step.step] || []}
-                  onSendMessage={(msg, att) => sendChatMessage(step.step, msg, att)}
+                  onSendMessage={sendChatMessage}
                   isActiveChat={activeChat === step.step}
+                  editingStep={editingStep}
+                  setEditingStep={setEditingStep}
+                  formatDate={formatDate}
+                  formatFileSize={formatFileSize}
+                  downloadAttachment={downloadAttachment}
+                  downloadDocument={downloadDocument}
+                  selectedFiles={selectedFiles}
+                  setSelectedFiles={setSelectedFiles}
+                  handleFileSelect={handleFileSelect}
+                  removeSelectedFile={removeSelectedFile}
+                  uploadingFiles={uploadingFiles}
+                  fileInputRef={fileInputRef}
                 />
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      {/* ✅ CONTRACT GENERATION MODAL */}
+      {showContractModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              Generate {contractData.isProposal ? 'Production Proposal' : 'Design Contract'}
+            </h3>
+            
+            {contractData.isProposal ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Total Proposal Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={contractData.proposalAmount}
+                    onChange={(e) => setContractData({...contractData, proposalAmount: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]"
+                    placeholder="e.g., 100000"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">
+                    Payment: 50% now, 25% progress, 25% final
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Total Contract Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={contractData.amount}
+                    onChange={(e) => setContractData({...contractData, amount: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]"
+                    placeholder="e.g., 50000"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Down Payment ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={contractData.downPayment}
+                    onChange={(e) => setContractData({...contractData, downPayment: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]"
+                    placeholder="e.g., 15000"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={submitContractGeneration}
+                disabled={saving}
+                className="flex-1 px-6 py-3 bg-[#005670] text-white rounded-lg hover:opacity-90 disabled:opacity-50 font-bold"
+              >
+                {saving ? 'Generating...' : '🤖 Generate PDF'}
+              </button>
+              <button
+                onClick={() => setShowContractModal(false)}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ EMAIL CONFIRMATION MODAL */}
+      {showEmailModal && emailStep && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              📧 Send Email Notification
+            </h3>
+            
+            <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-300">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Step {emailStep.step}:</strong> {emailStep.title}
+              </p>
+              <p className="text-sm text-gray-600">
+                Template: <span className="font-bold text-blue-700">{emailStep.emailTemplate || 'Default'}</span>
+              </p>
+            </div>
+            
+            <p className="text-sm text-gray-700 mb-6">
+              This will send an email notification to <strong>{clientName}</strong> about this step update.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={confirmSendEmail}
+                disabled={saving}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 font-bold"
+              >
+                {saving ? 'Sending...' : '✉️ Send Email'}
+              </button>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// SENIOR-FRIENDLY STEP ITEM COMPONENT
+// ==========================================
+// STEP ITEM COMPONENT
+// ==========================================
 const StepItem = ({ 
   step, 
   expanded, 
   onToggle, 
   onUpdate, 
-  onComplete, 
-  onToggleSubStep,
+  onComplete,
+  onGenerateContract,
+  onSendEmail,
   saving,
   getStepIcon,
   getStatusColor,
   chatMessages,
   onSendMessage,
-  isActiveChat
+  isActiveChat,
+  editingStep,
+  setEditingStep,
+  formatDate,
+  formatFileSize,
+  downloadAttachment,
+  downloadDocument,
+  selectedFiles,
+  handleFileSelect,
+  removeSelectedFile,
+  uploadingFiles,
+  fileInputRef
 }) => {
-  const [editMode, setEditMode] = useState(false);
-  const [chatMode, setChatMode] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [formData, setFormData] = useState({
     status: step.status,
@@ -455,30 +800,24 @@ const StepItem = ({
     notes: step.notes || ''
   });
 
+  const isEditing = editingStep === step.step;
+  const unreadCount = chatMessages.filter(m => !m.read && m.sender === 'client').length;
+  const hasDocuments = step.generatedDocuments && step.generatedDocuments.length > 0;
+
   const handleSave = (sendEmail) => {
     onUpdate(step.step, formData, sendEmail);
-    setEditMode(false);
-  };
-
-  const handleComplete = () => {
-    onComplete(step.step, formData.notes);
-    setEditMode(false);
   };
 
   const handleSendChat = () => {
-    if (chatMessage.trim()) {
-      onSendMessage(chatMessage, []);
+    if (chatMessage.trim() || selectedFiles.length > 0) {
+      onSendMessage(step.step, chatMessage);
       setChatMessage('');
     }
   };
 
-  const hasSubSteps = step.subSteps && step.subSteps.length > 0;
-  const completedSubSteps = hasSubSteps ? step.subSteps.filter(s => s.completed).length : 0;
-  const unreadCount = chatMessages.filter(m => !m.read && m.sender === 'client').length;
-
   return (
     <div className="p-6 hover:bg-gray-50 transition-colors">
-      {/* STEP HEADER - EXTRA LARGE */}
+      {/* STEP HEADER */}
       <div 
         className="flex items-center gap-6 cursor-pointer"
         onClick={onToggle}
@@ -489,42 +828,61 @@ const StepItem = ({
         
         <div className="flex-grow min-w-0">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <span className="text-2xl font-bold text-gray-900">
+            <span className="text-xl font-bold text-gray-900">
               Step {step.step}
             </span>
-            <span className={`px-4 py-2 rounded-xl text-base font-bold border-2 ${getStatusColor(step.status)}`}>
+            <span className={`px-4 py-1 rounded-xl text-sm font-bold border-2 ${getStatusColor(step.status)}`}>
               {step.status.replace('-', ' ').toUpperCase()}
             </span>
+            
+            {/* AUTOMATION BADGES */}
+            {step.autoGenerate && (
+              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                🤖 Auto-Generate
+              </span>
+            )}
             {step.email && (
-              <span className="px-3 py-1 rounded-lg text-sm font-bold bg-blue-100 text-blue-800 border-2 border-blue-300">
+              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
                 📧 Email
               </span>
             )}
             {step.clientAction && (
-              <span className="px-3 py-1 rounded-lg text-sm font-bold bg-purple-100 text-purple-800 border-2 border-purple-300">
+              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
                 👤 Client Action
               </span>
             )}
-            {hasSubSteps && (
-              <span className="text-base text-gray-600 font-medium">
-                ({completedSubSteps}/{step.subSteps.length} tasks)
+            {step.autoTrigger && (
+              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-green-100 text-green-800 border border-green-300">
+                ⚡ Auto-Trigger
               </span>
             )}
+            
             {unreadCount > 0 && (
               <span className="px-3 py-1 rounded-full bg-red-500 text-white text-sm font-bold">
                 {unreadCount} new
               </span>
             )}
+            
+            {hasDocuments && (
+              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-green-100 text-green-800 border border-green-300">
+                📄 {step.generatedDocuments.length} doc(s)
+              </span>
+            )}
           </div>
-          <h4 className="text-xl font-bold text-gray-900 mb-1">{step.title}</h4>
-          <p className="text-lg text-gray-600 leading-relaxed">{step.description}</p>
+          
+          <h4 className="text-lg font-bold text-gray-900 mb-1">{step.title}</h4>
+          <p className="text-base text-gray-600 leading-relaxed">{step.description}</p>
+          
+          <div className="mt-2 text-sm text-gray-500">
+            <span className="font-semibold">Action by:</span> {step.actionBy}
+          </div>
         </div>
 
         <div className="flex-shrink-0">
           {expanded ? (
-            <ChevronUp className="w-8 h-8 text-gray-600" />
+            <ChevronUp className="w-7 h-7 text-gray-600" />
           ) : (
-            <ChevronDown className="w-8 h-8 text-gray-600" />
+            <ChevronDown className="w-7 h-7 text-gray-600" />
           )}
         </div>
       </div>
@@ -532,338 +890,317 @@ const StepItem = ({
       {/* EXPANDED DETAILS */}
       {expanded && (
         <div className="mt-6 pl-16 space-y-6">
-          {/* TAB NAVIGATION */}
-          <div className="flex gap-4 border-b-2 border-gray-200 pb-2">
+          
+          {/* ✅ QUICK ACTION BUTTONS */}
+          <div className="flex gap-3 flex-wrap pb-6 border-b-2 border-gray-200">
+            {/* Edit Button */}
             <button
-              onClick={() => { setEditMode(true); setChatMode(false); }}
-              className={`px-6 py-3 text-lg font-bold rounded-t-xl transition-all ${
-                editMode && !chatMode
-                  ? 'bg-[#005670] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              onClick={() => setEditingStep(isEditing ? null : step.step)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 font-bold text-sm"
             >
-              ✏️ Edit Step
+              {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+              {isEditing ? 'Cancel Edit' : 'Edit Step'}
             </button>
-            <button
-              onClick={() => { setChatMode(true); setEditMode(false); }}
-              className={`px-6 py-3 text-lg font-bold rounded-t-xl transition-all ${
-                chatMode
-                  ? 'bg-[#005670] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💬 Chat {unreadCount > 0 && `(${unreadCount})`}
-            </button>
-            <button
-              onClick={() => { setEditMode(false); setChatMode(false); }}
-              className={`px-6 py-3 text-lg font-bold rounded-t-xl transition-all ${
-                !editMode && !chatMode
-                  ? 'bg-[#005670] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              👁️ View
-            </button>
+            
+            {/* Generate Contract Button (Steps 9 & 36) */}
+            {(step.step === 9 || step.step === 36) && (
+              <button
+                onClick={() => onGenerateContract(step.step, step.step === 36)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:opacity-90 font-bold text-sm"
+              >
+                <Zap className="w-4 h-4" />
+                Generate {step.step === 9 ? 'Contract' : 'Proposal'}
+              </button>
+            )}
+            
+            {/* Send Email Button */}
+            {step.email && (
+              <button
+                onClick={() => onSendEmail(step)}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 font-bold text-sm"
+              >
+                <Mail className="w-4 h-4" />
+                Send Email
+              </button>
+            )}
+            
+            {/* Complete Button */}
+            {step.status !== 'completed' && (
+              <button
+                onClick={() => onComplete(step.step, formData.notes)}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 font-bold text-sm"
+              >
+                <Check className="w-4 h-4" />
+                Mark Complete
+              </button>
+            )}
           </div>
 
-          {/* CHAT MODE */}
-          {chatMode && (
-            <ChatPanel 
-              messages={chatMessages}
-              onSendMessage={handleSendChat}
-              chatMessage={chatMessage}
-              setChatMessage={setChatMessage}
-            />
-          )}
-
-          {/* EDIT MODE */}
-          {editMode && !chatMode && (
-            <EditPanel
-              formData={formData}
-              setFormData={setFormData}
-              onSave={handleSave}
-              onComplete={handleComplete}
-              onCancel={() => setEditMode(false)}
-              saving={saving}
-              step={step}
-            />
-          )}
-
-          {/* VIEW MODE */}
-          {!editMode && !chatMode && (
-            <ViewPanel
-              step={step}
-              hasSubSteps={hasSubSteps}
-              onToggleSubStep={onToggleSubStep}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// CHAT PANEL COMPONENT
-const ChatPanel = ({ messages, onSendMessage, chatMessage, setChatMessage }) => {
-  return (
-    <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
-      <h4 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-        <MessageSquare className="w-7 h-7" />
-        Communication Thread
-      </h4>
-
-      {/* MESSAGES */}
-      <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-        {messages.length === 0 ? (
-          <p className="text-lg text-gray-500 text-center py-8">
-            No messages yet. Start the conversation!
-          </p>
-        ) : (
-          messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`p-4 rounded-xl ${
-                msg.sender === 'admin'
-                  ? 'bg-blue-100 border-2 border-blue-300 ml-8'
-                  : 'bg-white border-2 border-gray-300 mr-8'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-lg">
-                  {msg.sender === 'admin' ? '👤 Admin' : '👨‍💼 Client'}: {msg.senderName}
-                </span>
-                <span className="text-sm text-gray-600">
-                  {new Date(msg.sentAt).toLocaleString()}
-                </span>
+          {/* ✅ EDIT MODE */}
+          {isEditing && (
+            <div className="bg-white rounded-2xl p-6 border-2 border-blue-300 space-y-6">
+              <h4 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Edit className="w-5 h-5" />
+                Edit Step Details
+              </h4>
+              
+              <div>
+                <label className="block text-base font-bold text-gray-900 mb-3">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]"
+                >
+                  <option value="not-started">Not Started</option>
+                  <option value="pending">Pending</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="blocked">Blocked</option>
+                </select>
               </div>
-              <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap">
-                {msg.message}
+
+              <div>
+                <label className="block text-base font-bold text-gray-900 mb-3">Estimated Date</label>
+                <input
+                  type="date"
+                  value={formData.estimatedDate}
+                  onChange={(e) => setFormData({ ...formData, estimatedDate: e.target.value })}
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-base font-bold text-gray-900 mb-3">Notes for Client</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows="4"
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]"
+                  placeholder="Add notes that the client will see..."
+                />
+              </div>
+
+              <div className="flex gap-4 flex-wrap">
+                <button
+                  onClick={() => handleSave(false)}
+                  disabled={saving}
+                  className="inline-flex items-center gap-3 px-6 py-3 bg-[#005670] text-white text-base rounded-xl hover:opacity-90 disabled:opacity-50 font-bold"
+                >
+                  <Save className="w-5 h-5" />
+                  Save Changes
+                </button>
+
+                <button
+                  onClick={() => handleSave(true)}
+                  disabled={saving || !step.email}
+                  className="inline-flex items-center gap-3 px-6 py-3 bg-blue-600 text-white text-base rounded-xl hover:opacity-90 disabled:opacity-50 font-bold"
+                >
+                  <Mail className="w-5 h-5" />
+                  Save & Email
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ GENERATED DOCUMENTS */}
+          {hasDocuments && (
+            <div className="bg-green-50 rounded-2xl p-6 border-2 border-green-300">
+              <h5 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Generated Documents
+              </h5>
+              <div className="space-y-3">
+                {step.generatedDocuments.map((doc, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => downloadDocument(step.step, idx, doc.filename)}
+                    className="w-full flex items-center gap-3 p-4 bg-white rounded-lg hover:shadow-md transition-shadow border-2 border-green-200"
+                  >
+                    <FileText className="w-6 h-6 text-green-600 flex-shrink-0" />
+                    <div className="flex-grow text-left">
+                      <p className="font-bold text-gray-900">{doc.filename}</p>
+                      <p className="text-sm text-gray-600">
+                        {doc.type === 'contract' ? 'Contract' : doc.type === 'proposal' ? 'Proposal' : 'Document'} • 
+                        Generated {formatDate(doc.generatedAt)}
+                      </p>
+                    </div>
+                    <Download className="w-6 h-6 text-green-600" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TIMELINE */}
+          {(step.estimatedDate || step.actualDate) && (
+            <div className="bg-blue-50 rounded-2xl p-6 border-2 border-blue-200">
+              <h5 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Timeline
+              </h5>
+              <div className="space-y-3">
+                {step.estimatedDate && (
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Estimated Date:</p>
+                    <p className="text-lg font-bold text-gray-900">{formatDate(step.estimatedDate)}</p>
+                  </div>
+                )}
+                {step.actualDate && (
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Completed On:</p>
+                    <p className="text-lg font-bold text-green-700">{formatDate(step.actualDate)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* NOTES */}
+          {step.notes && !isEditing && (
+            <div className="bg-amber-50 rounded-2xl p-6 border-2 border-amber-200">
+              <h5 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Notes for Client
+              </h5>
+              <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                {step.notes}
               </p>
-              {msg.attachments && msg.attachments.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {msg.attachments.map((att, attIdx) => (
-                    <button
-                      key={attIdx}
-                      className="px-3 py-2 bg-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-100"
+            </div>
+          )}
+
+          {/* ✅ CHAT WITH ATTACHMENTS */}
+          {isActiveChat && (
+            <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
+              <h4 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
+                <MessageSquare className="w-6 h-6" />
+                Communication Thread
+              </h4>
+
+              {/* MESSAGES */}
+              <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+                {chatMessages.length === 0 ? (
+                  <p className="text-base text-gray-500 text-center py-8">
+                    No messages yet. Start the conversation!
+                  </p>
+                ) : (
+                  chatMessages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-xl ${
+                        msg.sender === 'admin'
+                          ? 'bg-blue-100 border-2 border-blue-300 ml-8'
+                          : 'bg-white border-2 border-gray-300 mr-8'
+                      }`}
                     >
-                      <Paperclip className="w-4 h-4" />
-                      {att.filename}
-                    </button>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-base">
+                          {msg.sender === 'admin' ? '👤 Admin' : '👨‍💼 Client'}: {msg.senderName}
+                        </span>
+                        <span className="text-sm text-gray-600">
+                          {new Date(msg.sentAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                        {msg.message}
+                      </p>
+                      
+                      {/* ATTACHMENTS */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {msg.attachments.map((att, attIdx) => (
+                            <button
+                              key={attIdx}
+                              onClick={() => downloadAttachment(step.step, msg._id, att._id, att.filename)}
+                              className="w-full flex items-center gap-2 px-3 py-2 bg-white rounded-lg text-sm font-medium hover:bg-gray-100 border border-gray-300"
+                            >
+                              <Paperclip className="w-4 h-4" />
+                              <span className="flex-grow text-left truncate">{att.filename}</span>
+                              <span className="text-gray-500">{formatFileSize(att.size)}</span>
+                              <Download className="w-4 h-4" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* SELECTED FILES PREVIEW */}
+              {selectedFiles.length > 0 && (
+                <div className="mb-4 space-y-2 p-4 bg-blue-50 rounded-lg border border-blue-300">
+                  <p className="text-sm font-bold text-blue-900 mb-2">
+                    Selected Files ({selectedFiles.length}/5)
+                  </p>
+                  {selectedFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                      <Paperclip className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="flex-grow text-sm truncate">{file.filename}</span>
+                      <span className="text-xs text-gray-500">{formatFileSize(file.size)}</span>
+                      <button
+                        onClick={() => removeSelectedFile(idx)}
+                        className="p-1 hover:bg-red-100 rounded transition-colors"
+                      >
+                        <X className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
-            </div>
-          ))
-        )}
-      </div>
 
-      {/* SEND MESSAGE */}
-      <div className="flex gap-3">
-        <textarea
-          value={chatMessage}
-          onChange={(e) => setChatMessage(e.target.value)}
-          placeholder="Type your message to the client..."
-          rows="3"
-          className="flex-grow px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670] focus:border-transparent"
-        />
-        <button
-          onClick={onSendMessage}
-          disabled={!chatMessage.trim()}
-          className="px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2"
-        >
-          <Send className="w-6 h-6" />
-          <span className="text-lg font-bold">Send</span>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// EDIT PANEL COMPONENT
-const EditPanel = ({ formData, setFormData, onSave, onComplete, onCancel, saving, step }) => {
-  return (
-    <div className="bg-white rounded-2xl p-6 border-2 border-gray-200 space-y-6">
-      <div>
-        <label className="block text-xl font-bold text-gray-900 mb-3">
-          Status
-        </label>
-        <select
-          value={formData.status}
-          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670] focus:border-transparent"
-        >
-          <option value="not-started">Not Started</option>
-          <option value="pending">Pending</option>
-          <option value="in-progress">In Progress</option>
-          <option value="completed">Completed</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-xl font-bold text-gray-900 mb-3">
-          Estimated Date
-        </label>
-        <input
-          type="date"
-          value={formData.estimatedDate}
-          onChange={(e) => setFormData({ ...formData, estimatedDate: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670] focus:border-transparent"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xl font-bold text-gray-900 mb-3">
-          Notes for Client
-        </label>
-        <textarea
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          rows="4"
-          className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670] focus:border-transparent"
-          placeholder="Add notes that the client will see..."
-        />
-      </div>
-
-      <div className="flex gap-4 flex-wrap">
-        <button
-          onClick={() => onSave(false)}
-          disabled={saving}
-          className="inline-flex items-center gap-3 px-6 py-3 bg-[#005670] text-white text-lg rounded-xl hover:opacity-90 disabled:opacity-50 font-bold"
-        >
-          <Save className="w-6 h-6" />
-          Save Changes
-        </button>
-
-        <button
-          onClick={() => onSave(true)}
-          disabled={saving}
-          className="inline-flex items-center gap-3 px-6 py-3 bg-blue-600 text-white text-lg rounded-xl hover:opacity-90 disabled:opacity-50 font-bold"
-        >
-          <Mail className="w-6 h-6" />
-          Save & Email Client
-        </button>
-        
-        {step.status !== 'completed' && (
-          <button
-            onClick={onComplete}
-            disabled={saving}
-            className="inline-flex items-center gap-3 px-6 py-3 bg-green-600 text-white text-lg rounded-xl hover:opacity-90 disabled:opacity-50 font-bold"
-          >
-            <Check className="w-6 h-6" />
-            Mark Complete
-          </button>
-        )}
-
-        <button
-          onClick={onCancel}
-          className="px-6 py-3 bg-gray-200 text-gray-700 text-lg rounded-xl hover:bg-gray-300 font-bold"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// VIEW PANEL COMPONENT
-const ViewPanel = ({ step, hasSubSteps, onToggleSubStep }) => {
-  const formatDate = (date) => {
-    if (!date) return null;
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* SUB-STEPS */}
-      {hasSubSteps && (
-        <div className="bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
-          <h5 className="text-xl font-bold text-gray-900 mb-4">Sub-tasks:</h5>
-          <div className="space-y-3">
-            {step.subSteps.map((subStep, index) => (
-              <div 
-                key={index}
-                className="flex items-start gap-4 p-4 bg-white rounded-xl hover:shadow-md transition-shadow border-2 border-gray-200"
-              >
+              {/* SEND MESSAGE */}
+              <div className="flex gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleSubStep(step.step, index, subStep.completed);
-                  }}
-                  className="flex-shrink-0 mt-1"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFiles || selectedFiles.length >= 5}
+                  className="px-4 py-3 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 rounded-xl transition-all flex items-center gap-2 font-bold"
                 >
-                  {subStep.completed ? (
-                    <CheckCircle className="w-7 h-7 text-green-600" />
+                  <Paperclip className="w-5 h-5" />
+                </button>
+                
+                <textarea
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  placeholder="Type your message to the client..."
+                  rows="3"
+                  disabled={uploadingFiles}
+                  className="flex-grow px-4 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670] disabled:opacity-50"
+                />
+                
+                <button
+                  onClick={handleSendChat}
+                  disabled={(!chatMessage.trim() && selectedFiles.length === 0) || uploadingFiles}
+                  className="px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {uploadingFiles ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      <span className="text-base font-bold">Sending...</span>
+                    </>
                   ) : (
-                    <Circle className="w-7 h-7 text-gray-400" />
+                    <>
+                      <Send className="w-5 h-5" />
+                      <span className="text-base font-bold">Send</span>
+                    </>
                   )}
                 </button>
-                <div className="flex-grow">
-                  <p className={`text-lg font-medium ${subStep.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                    {subStep.sub}. {subStep.title}
-                  </p>
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {subStep.email && (
-                      <span className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-lg font-medium border border-blue-300">
-                        📧 Email
-                      </span>
-                    )}
-                    {subStep.clientAction && (
-                      <span className="text-sm px-3 py-1 bg-purple-100 text-purple-700 rounded-lg font-medium border border-purple-300">
-                        👤 Client Action
-                      </span>
-                    )}
-                    {subStep.completed && subStep.completedAt && (
-                      <span className="text-sm text-gray-600">
-                        ✓ {formatDate(subStep.completedAt)}
-                      </span>
-                    )}
-                  </div>
-                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* DATES */}
-      {(step.estimatedDate || step.actualDate) && (
-        <div className="bg-blue-50 rounded-2xl p-6 border-2 border-blue-200">
-          <h5 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar className="w-6 h-6" />
-            Timeline
-          </h5>
-          <div className="space-y-3">
-            {step.estimatedDate && (
-              <div>
-                <p className="text-base text-gray-600 font-medium">Estimated Date:</p>
-                <p className="text-xl font-bold text-gray-900">{formatDate(step.estimatedDate)}</p>
-              </div>
-            )}
-            {step.actualDate && (
-              <div>
-                <p className="text-base text-gray-600 font-medium">Completed On:</p>
-                <p className="text-xl font-bold text-green-700">{formatDate(step.actualDate)}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* NOTES */}
-      {step.notes && (
-        <div className="bg-amber-50 rounded-2xl p-6 border-2 border-amber-200">
-          <h5 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="w-6 h-6" />
-            Notes for Client
-          </h5>
-          <p className="text-lg text-gray-900 leading-relaxed whitespace-pre-wrap">
-            {step.notes}
-          </p>
+              
+              <p className="text-xs text-gray-500 mt-2">
+                Max 5 files, 5MB each • All file types supported
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

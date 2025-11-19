@@ -1,47 +1,122 @@
-// ClientPortal.jsx - Elegant & Interactive Design
-import React, { useState, useEffect } from 'react';
+// ClientPortalRedesign.jsx - Horizontal Phase-Based Design
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LogOut, 
   CheckCircle,
   Circle,
   Clock,
   Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  DollarSign,
-  FileText,
-  User,
   ChevronRight,
-  Sparkles,
-  ChevronDown,
-  ChevronUp,
+  ChevronLeft,
   MessageSquare,
   AlertCircle,
-  CheckCircle2,
   Send,
   Paperclip,
   Download,
-  CalendarClock,
   Home,
-  Package
+  Package,
+  FileText,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import QuestionnaireModal from './QuestionnaireModal';
 
-const ClientPortal = () => {
+const ClientPortalRedesign = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
   const [journeySteps, setJourneySteps] = useState([]);
-  const [expandedPhase, setExpandedPhase] = useState(null);
+  const [selectedPhase, setSelectedPhase] = useState(null);
+  const [expandedStep, setExpandedStep] = useState(null);
   const [activeChatStep, setActiveChatStep] = useState(null);
   const [chatMessages, setChatMessages] = useState({});
   const [chatInput, setChatInput] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [error, setError] = useState('');
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [checkingQuestionnaire, setCheckingQuestionnaire] = useState(true);
+  const [pendingActions, setPendingActions] = useState([]);
+  const [showPendingPanel, setShowPendingPanel] = useState(false);
+
+  // Group steps by phase
+  const groupStepsByPhase = (steps) => {
+    const phases = {};
+    steps.forEach(step => {
+      if (!phases[step.phase]) {
+        phases[step.phase] = [];
+      }
+      phases[step.phase].push(step);
+    });
+    return phases;
+  };
+
+  const phaseGroups = groupStepsByPhase(journeySteps);
+  const phaseNames = Object.keys(phaseGroups);
+
+  // Determine which phases are unlocked (accessible)
+  const getUnlockedPhases = () => {
+    const unlocked = [];
+    
+    for (let i = 0; i < phaseNames.length; i++) {
+      const phaseName = phaseNames[i];
+      const phaseSteps = phaseGroups[phaseName];
+      
+      // A phase is unlocked if:
+      // 1. It's the first phase
+      // 2. OR previous phase has at least one completed step
+      // 3. OR current phase has any progress (completed, in-progress, or pending)
+      
+      if (i === 0) {
+        unlocked.push(phaseName);
+      } else {
+        const previousPhase = phaseGroups[phaseNames[i - 1]];
+        const previousHasProgress = previousPhase.some(s => 
+          s.status === 'completed' || s.status === 'in-progress' || s.status === 'pending'
+        );
+        
+        const currentHasProgress = phaseSteps.some(s => 
+          s.status === 'completed' || s.status === 'in-progress' || s.status === 'pending'
+        );
+        
+        if (previousHasProgress || currentHasProgress) {
+          unlocked.push(phaseName);
+        } else {
+          break; // Stop at first locked phase
+        }
+      }
+    }
+    
+    return unlocked;
+  };
+
+  const unlockedPhases = getUnlockedPhases();
+
+  // Calculate phase progress
+  const getPhaseProgress = (phaseSteps) => {
+    const completed = phaseSteps.filter(s => s.status === 'completed').length;
+    const total = phaseSteps.length;
+    return { completed, total, percentage: Math.round((completed / total) * 100) };
+  };
+
+  // Get phase status
+  const getPhaseStatus = (phaseSteps) => {
+    const hasInProgress = phaseSteps.some(s => s.status === 'in-progress');
+    const hasPending = phaseSteps.some(s => s.status === 'pending');
+    const allCompleted = phaseSteps.every(s => s.status === 'completed');
+    
+    if (allCompleted) return 'completed';
+    if (hasInProgress) return 'in-progress';
+    if (hasPending) return 'pending';
+    return 'not-started';
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -57,78 +132,101 @@ const ClientPortal = () => {
   }, [navigate]);
 
   const fetchClientData = async (userId, token) => {
-  try {
-    setLoading(true);
-    
-    const clientResponse = await fetch(`${backendServer}/api/clients/${userId}`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    });
-
-    if (!clientResponse.ok) throw new Error('Unable to fetch client data');
-
-    const result = await clientResponse.json();
-    
-    // ✅ PERBAIKI: Extract data dari nested response
-    const clientData = result.data || result;
-    
-    console.log('📊 Client data:', clientData); // Debug log
-    
-    setClientData(clientData);
-
-    // ✅ PERBAIKI: Validasi data sebelum check questionnaire
-    if (clientData?.email && clientData?.unitNumber) {
-      await checkQuestionnaireStatus(clientData);
-    } else {
-      console.warn('⚠️ Missing email or unitNumber:', clientData);
-      setCheckingQuestionnaire(false);
-    }
-
     try {
-      const journeyResponse = await fetch(`${backendServer}/api/journeys/client/${userId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      setLoading(true);
+      
+      const clientResponse = await fetch(`${backendServer}/api/clients/${userId}`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
+        }
       });
 
-      if (journeyResponse.ok) {
-        const journeyData = await journeyResponse.json();
-        setJourneySteps(journeyData.steps || []);
-        
-        const currentPhase = journeyData.steps?.find(s => 
-          s.status === 'in-progress' || s.status === 'pending'
-        );
-        if (currentPhase) {
-          setExpandedPhase(currentPhase.step);
-        }
-      }
-    } catch (journeyError) {
-      console.log('Journey data not available yet');
-    }
+      if (!clientResponse.ok) throw new Error('Unable to fetch client data');
 
-    setLoading(false);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    setError(error.message);
-    setLoading(false);
-    setCheckingQuestionnaire(false); // ✅ Tambahkan
-  }
-};
+      const result = await clientResponse.json();
+      const clientData = result.data || result;
+      
+      setClientData(clientData);
+
+      if (clientData?.email && clientData?.unitNumber) {
+        await checkQuestionnaireStatus(clientData);
+      } else {
+        setCheckingQuestionnaire(false);
+      }
+
+      try {
+        const journeyResponse = await fetch(`${backendServer}/api/journeys/client/${userId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (journeyResponse.ok) {
+          const journeyData = await journeyResponse.json();
+          setJourneySteps(journeyData.steps || []);
+          
+          const actionsResponse = await fetch(
+            `${backendServer}/api/journeys/client/${userId}/pending-actions`,
+            { headers: { 'Authorization': `Bearer ${token}` }}
+          );
+          
+          if (actionsResponse.ok) {
+            const actionsData = await actionsResponse.json();
+            setPendingActions(actionsData.actions || []);
+          }
+          
+          // Auto-select current phase
+          const currentPhase = journeyData.steps?.find(s => 
+            s.status === 'in-progress' || s.status === 'pending'
+          );
+          if (currentPhase) {
+            setSelectedPhase(currentPhase.phase);
+          } else if (journeyData.steps && journeyData.steps.length > 0) {
+            // Find first phase with any progress
+            const grouped = {};
+            journeyData.steps.forEach(step => {
+              if (!grouped[step.phase]) grouped[step.phase] = [];
+              grouped[step.phase].push(step);
+            });
+            
+            const phases = Object.keys(grouped);
+            let lastUnlocked = phases[0];
+            
+            for (let i = 0; i < phases.length; i++) {
+              const hasProgress = grouped[phases[i]].some(s => 
+                s.status === 'completed' || s.status === 'in-progress' || s.status === 'pending'
+              );
+              if (hasProgress) {
+                lastUnlocked = phases[i];
+              } else {
+                break;
+              }
+            }
+            
+            setSelectedPhase(lastUnlocked);
+          }
+        }
+      } catch (journeyError) {
+        console.log('Journey data not available yet');
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError(error.message);
+      setLoading(false);
+      setCheckingQuestionnaire(false);
+    }
+  };
 
   const checkQuestionnaireStatus = async (clientData) => {
     try {
       setCheckingQuestionnaire(true);
       
-      // ✅ PERBAIKI: Langsung akses clientData.email (bukan clientData.data.email)
-      console.log('🔍 Checking questionnaire for:', clientData.email, clientData.unitNumber);
-      
       const response = await fetch(
         `${backendServer}/api/questionnaires/my-questionnaires?email=${clientData.email}&unitNumber=${clientData.unitNumber}`,
         {
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Cache-Control': 'no-cache'
           }
         }
       );
@@ -143,7 +241,6 @@ const ClientPortal = () => {
           setShowQuestionnaire(true);
         }
       } else {
-        console.log('⚠️ Questionnaire check failed:', response.status);
         setShowQuestionnaire(true);
       }
     } catch (error) {
@@ -166,12 +263,21 @@ const ClientPortal = () => {
     navigate('/');
   };
 
-  const togglePhase = async (stepNumber) => {
-    if (expandedPhase === stepNumber) {
-      setExpandedPhase(null);
+  const scrollToPhase = (direction) => {
+    const currentIndex = unlockedPhases.indexOf(selectedPhase);
+    const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if (newIndex >= 0 && newIndex < unlockedPhases.length) {
+      setSelectedPhase(unlockedPhases[newIndex]);
+      setExpandedStep(null);
+    }
+  };
+
+  const toggleStep = async (stepNumber) => {
+    if (expandedStep === stepNumber) {
+      setExpandedStep(null);
       setActiveChatStep(null);
     } else {
-      setExpandedPhase(stepNumber);
+      setExpandedStep(stepNumber);
       await loadChat(stepNumber);
     }
   };
@@ -206,10 +312,59 @@ const ClientPortal = () => {
     }
   };
 
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const MAX_SIZE = 5 * 1024 * 1024;
+    
+    const validFiles = [];
+    const invalidFiles = [];
+    
+    files.forEach(file => {
+      if (file.size > MAX_SIZE) {
+        invalidFiles.push(file.name);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (invalidFiles.length > 0) {
+      alert(`Files exceed 5MB limit:\n${invalidFiles.join('\n')}`);
+    }
+    
+    if (validFiles.length + selectedFiles.length > 5) {
+      alert('Maximum 5 attachments per message');
+      return;
+    }
+    
+    const filePromises = validFiles.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve({
+            filename: file.name,
+            mimetype: file.type,
+            size: file.size,
+            data: e.target.result.split(',')[1]
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    Promise.all(filePromises).then(files => {
+      setSelectedFiles(prev => [...prev, ...files]);
+    });
+  };
+
+  const removeSelectedFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const sendChatMessage = async (stepNumber) => {
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() && selectedFiles.length === 0) return;
 
     try {
+      setUploadingFiles(true);
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       
@@ -222,8 +377,8 @@ const ClientPortal = () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ 
-            message: chatInput,
-            attachments: []
+            message: chatInput || '(Attachment)',
+            attachments: selectedFiles
           })
         }
       );
@@ -232,56 +387,75 @@ const ClientPortal = () => {
         const data = await response.json();
         setChatMessages(prev => ({ ...prev, [stepNumber]: data.chat.messages }));
         setChatInput('');
+        setSelectedFiles([]);
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.message || 'Failed to send message'}`);
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      alert('Failed to send message');
+    } finally {
+      setUploadingFiles(false);
     }
   };
 
-  const getDisplayMilestones = () => {
-    if (journeySteps.length > 0) {
-      return journeySteps.map(step => ({
-        phase: step.step,
-        title: step.title,
-        description: step.description,
-        status: step.status,
-        estimatedDate: step.estimatedDate,
-        actualDate: step.actualDate,
-        notes: step.notes,
-        updatedBy: step.updatedBy,
-        updatedAt: step.updatedAt,
-        subSteps: step.subSteps || [],
-        email: step.email,
-        clientAction: step.clientAction,
-        phaseGroup: step.phase
-      }));
+  const downloadAttachment = async (stepNumber, messageId, attachmentId, filename) => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      const response = await fetch(
+        `${backendServer}/api/journey-chat/client/${userId}/step/${stepNumber}/message/${messageId}/attachment/${attachmentId}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('Failed to download attachment');
     }
-    
-    return [
-      { phase: 1, title: "Initial Client Contact & Portal Setup", status: 'not-started', description: "Introduction, portal setup, and client information gathering", phaseGroup: "Introduction" },
-      { phase: 2, title: "First Meeting Scheduling", status: 'not-started', description: "Client schedules initial consultation meeting", phaseGroup: "Introduction" },
-      { phase: 3, title: "Initial Consultation & Pricing Review", status: 'not-started', description: "HDG meets client to review pricing", phaseGroup: "Introduction" },
-      { phase: 4, title: "Contract Preparation & Delivery", status: 'not-started', description: "Contract and funding instructions preparation", phaseGroup: "Contract" },
-      { phase: 5, title: "Client Contract Execution & Payment", status: 'not-started', description: "Client signs contract and submits payment", phaseGroup: "Contract" },
-      { phase: 6, title: "Contract Confirmation & Design Meeting Setup", status: 'not-started', description: "Confirm receipt and schedule design meeting", phaseGroup: "Contract" },
-      { phase: 7, title: "Design Meeting 1 & Presentation Prep", status: 'not-started', description: "First design meeting and preparation", phaseGroup: "Design" },
-      { phase: 8, title: "Presentation 1 & Revisions", status: 'not-started', description: "First design presentation and revisions", phaseGroup: "Design" },
-      { phase: 9, title: "Presentation 2 & Revisions", status: 'not-started', description: "Second design presentation (as needed)", phaseGroup: "Design" },
-      { phase: 10, title: "Presentation 3 & Revisions", status: 'not-started', description: "Third design presentation (as needed)", phaseGroup: "Design" },
-      { phase: 11, title: "Final Design Approval", status: 'not-started', description: "Client approves final design", phaseGroup: "Design" },
-      { phase: 12, title: "Final Proposal Preparation & Delivery", status: 'not-started', description: "Final proposal preparation", phaseGroup: "Proposal" },
-      { phase: 13, title: "Client Proposal Execution & Payment", status: 'not-started', description: "Client signs and pays proposal", phaseGroup: "Proposal" },
-      { phase: 14, title: "Proposal Payment Confirmation", status: 'not-started', description: "Confirmation of proposal receipt", phaseGroup: "Proposal" },
-      { phase: 15, title: "Vendor Orders & Production Start", status: 'not-started', description: "Vendor order processing", phaseGroup: "Production Prep" },
-      { phase: 16, title: "Production Start Notification", status: 'not-started', description: "Notify client of production start", phaseGroup: "Production Prep" },
-      { phase: 17, title: "Production Management & First Progress Payment", status: 'not-started', description: "Production oversight and payment", phaseGroup: "Manufacturing" },
-      { phase: 18, title: "First Progress Payment Confirmation", status: 'not-started', description: "Confirm 25% payment receipt", phaseGroup: "Manufacturing" },
-      { phase: 19, title: "Vendor Final Payment & Shipping", status: 'not-started', description: "Final vendor payment and shipping", phaseGroup: "Manufacturing" },
-      { phase: 20, title: "Final Balance Invoice & Payment", status: 'not-started', description: "Final payment processing", phaseGroup: "Shipping" },
-      { phase: 21, title: "Final Payment Confirmation", status: 'not-started', description: "Confirm final payment receipt", phaseGroup: "Shipping" },
-      { phase: 22, title: "Delivery Coordination & Installation", status: 'not-started', description: "Delivery and installation", phaseGroup: "Delivery" },
-      { phase: 23, title: "Final Walkthrough Scheduling", status: 'not-started', description: "Schedule final walkthrough", phaseGroup: "Delivery" }
-    ];
+  };
+
+  const downloadDocument = async (stepNumber, documentIndex, filename) => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      const response = await fetch(
+        `${backendServer}/api/journeys/client/${userId}/step/${stepNumber}/document/${documentIndex}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || `document_step_${stepNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Failed to download document');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -294,28 +468,30 @@ const ClientPortal = () => {
     });
   };
 
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   const getStatusConfig = (status) => {
     switch (status) {
       case 'completed':
         return {
-          icon: CheckCircle2,
+          icon: CheckCircle,
           color: 'emerald',
-          bgColor: 'bg-emerald-50',
-          borderColor: 'border-emerald-300',
-          textColor: 'text-emerald-800',
-          badgeColor: 'bg-emerald-100 text-emerald-800',
-          iconColor: 'text-emerald-600',
+          bgColor: 'bg-emerald-500',
+          textColor: 'text-emerald-600',
+          lightBg: 'bg-emerald-50',
           label: 'Completed'
         };
       case 'in-progress':
         return {
           icon: Clock,
           color: 'blue',
-          bgColor: 'bg-blue-50',
-          borderColor: 'border-blue-300',
-          textColor: 'text-blue-800',
-          badgeColor: 'bg-blue-100 text-blue-800',
-          iconColor: 'text-blue-600',
+          bgColor: 'bg-blue-500',
+          textColor: 'text-blue-600',
+          lightBg: 'bg-blue-50',
           label: 'In Progress',
           pulse: true
         };
@@ -323,22 +499,18 @@ const ClientPortal = () => {
         return {
           icon: AlertCircle,
           color: 'amber',
-          bgColor: 'bg-amber-50',
-          borderColor: 'border-amber-300',
-          textColor: 'text-amber-800',
-          badgeColor: 'bg-amber-100 text-amber-800',
-          iconColor: 'text-amber-600',
+          bgColor: 'bg-amber-500',
+          textColor: 'text-amber-600',
+          lightBg: 'bg-amber-50',
           label: 'Pending'
         };
       default:
         return {
           icon: Circle,
           color: 'gray',
-          bgColor: 'bg-white',
-          borderColor: 'border-gray-300',
-          textColor: 'text-gray-700',
-          badgeColor: 'bg-gray-100 text-gray-700',
-          iconColor: 'text-gray-400',
+          bgColor: 'bg-gray-400',
+          textColor: 'text-gray-500',
+          lightBg: 'bg-gray-50',
           label: 'Not Started'
         };
     }
@@ -349,9 +521,7 @@ const ClientPortal = () => {
       <div className="min-h-screen bg-gradient-to-br from-[#005670] via-[#007a9a] to-[#005670] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg font-medium">
-            {checkingQuestionnaire ? 'Loading your information...' : 'Loading your project...'}
-          </p>
+          <p className="text-white text-lg font-medium">Loading your project...</p>
         </div>
       </div>
     );
@@ -377,11 +547,13 @@ const ClientPortal = () => {
     );
   }
 
-  const displayMilestones = getDisplayMilestones();
   const isJourneyInitialized = journeySteps.length > 0;
-  const completedMilestones = displayMilestones.filter(m => m.status === 'completed').length;
-  const totalMilestones = displayMilestones.length;
-  const progressPercentage = Math.round((completedMilestones / totalMilestones) * 100);
+  const completedMilestones = journeySteps.filter(m => m.status === 'completed').length;
+  const totalMilestones = journeySteps.length;
+  const progressPercentage = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+  const selectedPhaseSteps = selectedPhase ? phaseGroups[selectedPhase] : [];
+  const phaseProgress = selectedPhase ? getPhaseProgress(selectedPhaseSteps) : { completed: 0, total: 0, percentage: 0 };
 
   return (
     <>
@@ -393,25 +565,25 @@ const ClientPortal = () => {
       )}
 
       <div className="min-h-screen bg-gray-50">
-        {/* ELEGANT HEADER */}
+        {/* HEADER */}
         <header className="bg-[#005670] shadow-lg sticky top-0 z-50 border-b border-white/10">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
+            <div className="flex items-center justify-between py-6"> {/* ← from py-4 to py-6 */}
               <div className="flex items-center gap-4">
                 <img 
                   src="/images/HDG-Logo.png" 
                   alt="Henderson Design Group" 
-                  className="h-10 w-auto brightness-0 invert"
+                  className="h-12 w-auto brightness-0 invert" /* ← h-10 → h-12 */
                 />
                 <div className="hidden sm:block border-l border-white/30 pl-4">
-                  <p className="text-xs text-white/70 tracking-widest uppercase">Ālia Collections</p>
-                  <p className="text-sm text-white font-medium">Client Portal</p>
+                  <p className="text-xs text-white/70 tracking-widest uppercase font-semibold">Ālia Collections</p>
+                  <p className="text-sm text-white font-semibold">Client Portal</p> {/* ← semi-bold */}
                 </div>
               </div>
 
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm border border-white/20 text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm border border-white/20 text-sm font-semibold" /* ← font-semibold */
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -420,194 +592,318 @@ const ClientPortal = () => {
           </div>
         </header>
 
-        {/* MAIN CONTENT */}
-        <main className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
-          {/* WELCOME SECTION - Elegant & Compact */}
-          <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-2xl p-8 mb-8 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
+
+        {/* WELCOME BANNER */}
+        <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6">
             <div className="relative">
-              <div className="flex items-center gap-3 mb-4">
-                <Sparkles className="w-7 h-7" />
-                <h1 className="text-3xl lg:text-4xl font-bold">Welcome, {clientData.name}!</h1>
-              </div>
-              <div className="flex flex-wrap items-center gap-4 text-base text-white">
-                <div className="flex items-center gap-2">
-                  <Home className="w-5 h-5" />
-                  <span className="font-semibold">Unit {clientData.unitNumber}</span>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-3">
+                  <Home className="w-6 h-6 text-white" />
+                  <h1 className="text-2xl lg:text-3xl font-bold text-white">Welcome, {clientData.name}!</h1>
                 </div>
-                <div className="w-1.5 h-1.5 bg-white/60 rounded-full hidden sm:block"></div>
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  <span>{clientData.floorPlan}</span>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-white/90">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    <span className="font-semibold">Unit {clientData.unitNumber}</span>
+                  </div>
+                  <div className="w-1.5 h-1.5 bg-white/60 rounded-full hidden sm:block"></div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    <span>{clientData.floorPlan}</span>
+                  </div>
+                  {clientData.clientCode && (
+                    <>
+                      <div className="w-1.5 h-1.5 bg-white/60 rounded-full hidden sm:block"></div>
+                      <div className="flex items-center gap-2">
+                        <span>Code: <span className="font-semibold">{clientData.clientCode}</span></span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                {clientData.clientCode && (
-                  <>
-                    <div className="w-1.5 h-1.5 bg-white/60 rounded-full hidden sm:block"></div>
-                    <div className="flex items-center gap-2">
-                      <span>Code: <span className="font-semibold">{clientData.clientCode}</span></span>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* JOURNEY SECTION - Clean & Interactive */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-200">
-            {/* HEADER WITH PROGRESS */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Your Project Journey</h2>
-                <div className="text-right">
-                  <div className="text-4xl font-bold text-[#005670]">
-                    {progressPercentage}%
-                  </div>
-                  <p className="text-sm text-gray-600 mt-0.5 font-medium">Complete</p>
-                </div>
-              </div>
+        {/* FLOATING PENDING ACTIONS BUTTON */}
+        {pendingActions.length > 0 && (
+          <button
+            onClick={() => setShowPendingPanel(!showPendingPanel)}
+            className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform animate-bounce"
+          >
+            <div className="relative">
+              <Zap className="w-6 h-6 text-white" />
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center">
+                {pendingActions.length}
+              </span>
+            </div>
+          </button>
+        )}
 
-              {/* ELEGANT PROGRESS BAR */}
-              <div className="relative">
-                <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                  <div 
-                    className="h-full bg-gradient-to-r from-[#005670] to-[#00a8cc] transition-all duration-1000 ease-out relative"
-                    style={{ width: `${progressPercentage}%` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
-                  </div>
+        {/* PENDING ACTIONS PANEL */}
+        {showPendingPanel && pendingActions.length > 0 && (
+          <div className="fixed bottom-24 right-6 z-40 w-80 bg-white rounded-2xl shadow-2xl p-4 border-2 border-amber-500">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                Action Required
+              </h3>
+              <button onClick={() => setShowPendingPanel(false)}>
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {pendingActions.map((action, idx) => (
+                <div 
+                  key={idx}
+                  onClick={() => {
+                    setSelectedPhase(action.phase);
+                    setExpandedStep(action.step);
+                    setShowPendingPanel(false);
+                  }}
+                  className="p-3 bg-amber-50 rounded-lg border border-amber-200 cursor-pointer hover:bg-amber-100 transition-colors"
+                >
+                  <p className="text-xs font-bold text-amber-900">STEP {action.step}</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1">{action.title}</p>
+                  <p className="text-xs text-gray-600 mt-1">{action.phase}</p>
                 </div>
-                <div className="flex justify-between items-center mt-3">
-                  <span className="text-sm text-gray-700 font-medium">
-                    <span className="font-bold text-[#005670]">{completedMilestones}</span> of {totalMilestones} steps
-                  </span>
-                  <span className="text-sm text-gray-600 font-medium">
-                    {totalMilestones - completedMilestones} remaining
-                  </span>
-                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* OVERALL PROGRESS */}
+        <div className="bg-white border-b border-gray-200 shadow-md">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-gray-900">Your Project Journey</h2>
+              <div className="text-right">
+                <div className="text-4xl font-bold text-[#005670]">{progressPercentage}%</div>
+                <p className="text-xs text-gray-600 mt-0.5 font-medium">Complete</p>
               </div>
             </div>
-
-            {/* JOURNEY NOT INITIALIZED */}
-            {!isJourneyInitialized && (
-              <div className="text-center py-12 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-300 mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Sparkles className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Journey Starting Soon</h3>
-                <p className="text-sm text-gray-700 max-w-md mx-auto font-medium">
-                  Your design journey will begin shortly. Our team is preparing your personalized project timeline.
-                </p>
+            <div className="relative">
+              <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#005670] to-[#00a8cc] transition-all duration-1000 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
               </div>
-            )}
+              <div className="flex justify-between items-center mt-3">
+                <span className="text-sm text-gray-700 font-medium">
+                  <span className="font-bold text-[#005670]">{completedMilestones}</span> of {totalMilestones} steps completed
+                </span>
+                <span className="text-sm text-gray-600 font-medium">
+                  {totalMilestones - completedMilestones} remaining
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            {/* STEP CARDS - Compact & Clear */}
-            <div className="space-y-3">
-              {displayMilestones.map((milestone, index) => {
-                const config = getStatusConfig(milestone.status);
-                const Icon = config.icon;
-                const isExpanded = expandedPhase === milestone.phase;
-                const hasDetails = milestone.notes || milestone.estimatedDate || milestone.actualDate;
-                const hasSubSteps = milestone.subSteps && milestone.subSteps.length > 0;
-                const hasChatMessages = chatMessages[milestone.phase]?.length > 0;
-                const unreadCount = chatMessages[milestone.phase]?.filter(m => !m.read && m.sender === 'admin').length || 0;
-                const isLast = index === displayMilestones.length - 1;
+        {/* MAIN CONTENT */}
+        <main className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+          {!isJourneyInitialized ? (
+            <div className="text-center py-12 bg-white rounded-2xl shadow-lg">
+              <Package className="w-16 h-16 text-[#005670] mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Journey Starting Soon</h3>
+              <p className="text-gray-600">Your design journey will begin shortly.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* PHASE NAVIGATION */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <button
+                    onClick={() => scrollToPhase('prev')}
+                    disabled={unlockedPhases.indexOf(selectedPhase) === 0}
+                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-700" />
+                  </button>
+                  
+                  <div className="flex-grow overflow-x-auto hide-scrollbar">
+                    <div className="flex gap-3" ref={scrollContainerRef}>
+                      {unlockedPhases.map((phase, index) => {
+                        const steps = phaseGroups[phase];
+                        const progress = getPhaseProgress(steps);
+                        const status = getPhaseStatus(steps);
+                        const config = getStatusConfig(status);
+                        const Icon = config.icon;
+                        const isSelected = selectedPhase === phase;
+                        const phaseNumber = phaseNames.indexOf(phase) + 1;
 
-                return (
-                  <div key={milestone.phase} className="relative">
-                    {/* CONNECTING LINE */}
-                    {!isLast && (
-                      <div className="absolute left-[21px] top-[60px] w-0.5 h-6 bg-gray-200"></div>
-                    )}
+                        return (
+                          <button
+                            key={phase}
+                            onClick={() => {
+                              setSelectedPhase(phase);
+                              setExpandedStep(null);
+                            }}
+                            className={`
+                              flex-shrink-0 w-56 p-4 rounded-xl border-2 transition-all
+                              ${isSelected 
+                                ? 'border-[#005670] bg-gradient-to-br from-[#005670] to-[#007a9a] text-white shadow-xl scale-105' 
+                                : 'border-gray-200 bg-white hover:border-[#005670] hover:shadow-lg'
+                              }
+                            `}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <span className={`text-xs font-bold tracking-wider ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                                PHASE {phaseNumber}
+                              </span>
+                              <div className={`
+                                w-9 h-9 rounded-full flex items-center justify-center shadow-sm
+                                ${isSelected ? 'bg-white/20' : config.lightBg}
+                                ${config.pulse && !isSelected ? 'animate-pulse' : ''}
+                              `}>
+                                <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : config.textColor}`} />
+                              </div>
+                            </div>
+                            
+                            <h3 className={`text-sm font-bold text-left mb-3 line-clamp-2 leading-tight ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                              {phase}
+                            </h3>
+                            
+                            <div className="space-y-2">
+                              <div className={`h-2 rounded-full overflow-hidden ${isSelected ? 'bg-white/30' : 'bg-gray-200'}`}>
+                                <div 
+                                  className={`h-full transition-all duration-500 ${isSelected ? 'bg-white' : config.bgColor}`}
+                                  style={{ width: `${progress.percentage}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                                  {progress.completed}/{progress.total} Steps
+                                </span>
+                                <span className={`text-sm font-bold ${isSelected ? 'text-white' : config.textColor}`}>
+                                  {progress.percentage}%
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      
+                      {/* LOCKED PHASES INDICATOR */}
+                      {unlockedPhases.length < phaseNames.length && (
+                        <div className="flex-shrink-0 w-56 p-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 opacity-60">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-bold text-gray-400">
+                              PHASE {unlockedPhases.length + 1}
+                            </span>
+                            <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                          <h3 className="text-sm font-bold text-gray-400 mb-3 line-clamp-2">
+                            {phaseNames[unlockedPhases.length]}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            Complete previous phases to unlock
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                    {/* STEP CARD */}
-                    <div 
-                      className={`
-                        relative rounded-xl transition-all duration-300 border
-                        ${isExpanded ? 'shadow-lg' : 'shadow hover:shadow-md'}
-                        ${milestone.status !== 'not-started' ? `${config.bgColor} ${config.borderColor}` : 'bg-white border-gray-200'}
-                      `}
-                    >
-                      {/* MAIN CARD CONTENT */}
+                  <button
+                    onClick={() => scrollToPhase('next')}
+                    disabled={unlockedPhases.indexOf(selectedPhase) === unlockedPhases.length - 1}
+                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                {/* PHASE INFO */}
+                <div className="flex items-center justify-between p-5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 shadow-sm">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedPhase}</h2>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {phaseProgress.completed} of {phaseProgress.total} steps completed
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-5xl font-bold text-[#005670]">{phaseProgress.percentage}%</div>
+                    <p className="text-xs text-gray-600 mt-1 font-medium">Complete</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* STEPS IN SELECTED PHASE */}
+              <div className="space-y-3">
+                {selectedPhaseSteps.map((step) => {
+                  const config = getStatusConfig(step.status);
+                  const Icon = config.icon;
+                  const isExpanded = expandedStep === step.step;
+                  const hasDetails = step.notes || step.estimatedDate || step.actualDate || step.generatedDocuments?.length > 0;
+                  const hasChatMessages = chatMessages[step.step]?.length > 0;
+                  const unreadCount = chatMessages[step.step]?.filter(m => !m.read && m.sender === 'admin').length || 0;
+
+                  return (
+                    <div key={step.step} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                      {/* STEP HEADER */}
                       <div 
-                        onClick={() => (hasDetails || hasSubSteps || hasChatMessages) && togglePhase(milestone.phase)}
-                        className={`p-4 ${(hasDetails || hasSubSteps || hasChatMessages) ? 'cursor-pointer' : ''}`}
+                        onClick={() => (hasDetails || hasChatMessages) && toggleStep(step.step)}
+                        className={`p-4 ${(hasDetails || hasChatMessages) ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
                       >
                         <div className="flex items-start gap-4">
                           {/* STATUS ICON */}
                           <div className={`
-                            flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center shadow-sm border border-white
-                            bg-gradient-to-br from-white to-gray-50
-                            ${config.pulse ? 'animate-pulse' : ''}
+                            flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
+                            ${config.bgColor} ${config.pulse ? 'animate-pulse' : ''}
                           `}>
-                            <Icon className={`w-5 h-5 ${config.iconColor}`} />
+                            <Icon className="w-5 h-5 text-[#005670]" />
                           </div>
 
                           {/* CONTENT */}
                           <div className="flex-grow min-w-0">
-                            {/* BADGES */}
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <span className={`text-xs font-bold ${config.textColor} tracking-wide`}>
-                                STEP {milestone.phase}
-                              </span>
-                              <span className={`px-3 py-1 ${config.badgeColor} text-xs font-bold rounded-full`}>
+                              <span className="text-xs font-bold text-gray-500">STEP {step.step}</span>
+                              <span className={`px-2 py-1 ${config.lightBg} ${config.textColor} text-xs font-bold rounded`}>
                                 {config.label.toUpperCase()}
                               </span>
-                              {milestone.phaseGroup && (
-                                <span className="text-xs text-gray-700 font-semibold px-2.5 py-1 bg-gray-100 rounded-full border border-gray-300">
-                                  {milestone.phaseGroup}
+                              {step.clientAction && (step.status === 'pending' || step.status === 'in-progress') && (
+                                <span className="text-xs px-2 py-1 bg-amber-500 text-white font-bold rounded animate-pulse">
+                                  👤 ACTION REQUIRED
                                 </span>
                               )}
                               {unreadCount > 0 && (
-                                <span className="px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                                <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
                                   {unreadCount} New
                                 </span>
                               )}
                             </div>
 
-                            {/* TITLE */}
-                            <h3 className="font-bold text-lg text-gray-900 mb-2 leading-snug">
-                              {milestone.title}
-                            </h3>
+                            <h3 className="font-bold text-gray-900 mb-1">{step.title}</h3>
+                            <p className="text-sm text-gray-600">{step.description}</p>
 
-                            {/* DESCRIPTION */}
-                            <p className="text-sm text-gray-700 leading-relaxed mb-3">
-                              {milestone.description}
-                            </p>
-
-                            {/* QUICK INFO */}
-                            {milestone.status !== 'not-started' && (
-                              <div className="flex items-center gap-4 flex-wrap">
-                                {milestone.actualDate && (
-                                  <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                                    <span>Done {formatDate(milestone.actualDate)}</span>
-                                  </div>
+                            {step.status !== 'not-started' && (
+                              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                {step.actualDate && (
+                                  <span className="text-xs text-emerald-700 font-medium flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3" />
+                                    {formatDate(step.actualDate)}
+                                  </span>
                                 )}
-                                {!milestone.actualDate && milestone.estimatedDate && (
-                                  <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                                    <CalendarClock className="w-4 h-4 text-blue-600" />
-                                    <span>By {formatDate(milestone.estimatedDate)}</span>
-                                  </div>
-                                )}
-                                {milestone.notes && (
-                                  <div className="flex items-center gap-1.5 text-sm text-blue-700 font-semibold">
-                                    <MessageSquare className="w-4 h-4" />
-                                    <span>Team message</span>
-                                  </div>
-                                )}
-                                {hasSubSteps && (
-                                  <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                                    <FileText className="w-4 h-4" />
-                                    <span>{milestone.subSteps.filter(s => s.completed).length}/{milestone.subSteps.length} tasks</span>
-                                  </div>
+                                {!step.actualDate && step.estimatedDate && (
+                                  <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    By {formatDate(step.estimatedDate)}
+                                  </span>
                                 )}
                               </div>
                             )}
                           </div>
 
                           {/* EXPAND BUTTON */}
-                          {(hasDetails || hasSubSteps || hasChatMessages) && (
-                            <button className="flex-shrink-0 w-8 h-8 rounded-lg bg-white hover:bg-gray-100 flex items-center justify-center transition-colors shadow-sm border border-gray-200">
+                          {(hasDetails || hasChatMessages) && (
+                            <button className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors">
                               {isExpanded ? (
                                 <ChevronUp className="w-5 h-5 text-gray-600" />
                               ) : (
@@ -619,143 +915,63 @@ const ClientPortal = () => {
                       </div>
 
                       {/* EXPANDED DETAILS */}
-                      {isExpanded && (hasDetails || hasSubSteps || hasChatMessages) && (
-                        <div className="px-4 pb-4 pt-2 border-t border-gray-200">
-                          <div className="bg-white/50 rounded-lg p-4 space-y-4">
-                            {/* SUB-STEPS */}
-                            {hasSubSteps && (
+                      {isExpanded && (hasDetails || hasChatMessages) && (
+                        <div className="px-4 pb-4 border-t border-gray-200">
+                          <div className="pt-4 space-y-4">
+                            
+                            {/* DOCUMENTS */}
+                            {step.generatedDocuments && step.generatedDocuments.length > 0 && (
                               <div>
-                                <h4 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
-                                  <FileText className="w-5 h-5" />
-                                  Tasks in this Step
-                                </h4>
+                                <h4 className="text-sm font-bold text-gray-900 mb-2">Documents</h4>
                                 <div className="space-y-2">
-                                  {milestone.subSteps.map((subStep, idx) => (
-                                    <div 
-                                      key={idx}
-                                      className={`
-                                        flex items-start gap-3 p-3 rounded-lg border
-                                        ${subStep.completed 
-                                          ? 'bg-green-50 border-green-300' 
-                                          : 'bg-white border-gray-300'}
-                                      `}
+                                  {step.generatedDocuments.map((doc, docIdx) => (
+                                    <button
+                                      key={docIdx}
+                                      onClick={() => downloadDocument(step.step, docIdx, doc.filename)}
+                                      className="w-full flex items-center gap-2 p-2 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors text-left"
                                     >
-                                      <div className="flex-shrink-0 mt-0.5">
-                                        {subStep.completed ? (
-                                          <CheckCircle className="w-5 h-5 text-green-600" />
-                                        ) : (
-                                          <Circle className="w-5 h-5 text-gray-400" />
-                                        )}
-                                      </div>
-                                      <div className="flex-grow">
-                                        <p className={`text-sm font-semibold ${subStep.completed ? 'text-gray-600 line-through' : 'text-gray-900'}`}>
-                                          {subStep.title}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                          {subStep.email && (
-                                            <span className="text-xs px-2.5 py-1 bg-blue-100 text-blue-800 rounded font-bold border border-blue-300">
-                                              📧 Email
-                                            </span>
-                                          )}
-                                          {subStep.clientAction && (
-                                            <span className="text-xs px-2.5 py-1 bg-purple-100 text-purple-800 rounded font-bold border border-purple-300">
-                                              👤 Your Action
-                                            </span>
-                                          )}
-                                          {subStep.completed && subStep.completedAt && (
-                                            <span className="text-xs text-gray-600 font-medium">
-                                              ✓ {formatDate(subStep.completedAt)}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
+                                      <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                      <span className="flex-grow text-sm font-semibold text-gray-900">{doc.filename}</span>
+                                      <Download className="w-4 h-4 text-blue-600" />
+                                    </button>
                                   ))}
                                 </div>
                               </div>
                             )}
 
-                            {/* TIMELINE */}
-                            {(milestone.estimatedDate || milestone.actualDate) && (
-                              <div>
-                                <h4 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
-                                  <Calendar className="w-5 h-5" />
-                                  Timeline
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  {milestone.estimatedDate && (
-                                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-300">
-                                      <p className="text-xs text-blue-800 font-bold mb-1">Estimated Date</p>
-                                      <p className="text-base font-bold text-gray-900">{formatDate(milestone.estimatedDate)}</p>
-                                    </div>
-                                  )}
-                                  {milestone.actualDate && (
-                                    <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-300">
-                                      <p className="text-xs text-emerald-800 font-bold mb-1">Completed On</p>
-                                      <p className="text-base font-bold text-gray-900">{formatDate(milestone.actualDate)}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
                             {/* TEAM NOTES */}
-                            {milestone.notes && (
+                            {step.notes && (
                               <div>
-                                <h4 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
-                                  <MessageSquare className="w-5 h-5" />
-                                  Message from Our Team
-                                </h4>
-                                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border-l-4 border-blue-500">
-                                  <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap font-medium">
-                                    {milestone.notes}
-                                  </p>
-                                  {milestone.updatedBy && (
-                                    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-blue-200">
-                                      <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center">
-                                        <User className="w-5 h-5 text-white" />
-                                      </div>
-                                      <div>
-                                        <p className="text-sm font-bold text-gray-900">{milestone.updatedBy.name}</p>
-                                        <p className="text-xs text-gray-600 font-medium">
-                                          {milestone.updatedAt && `Updated ${formatDate(milestone.updatedAt)}`}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
+                                <h4 className="text-sm font-bold text-gray-900 mb-2">Team Message</h4>
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{step.notes}</p>
                                 </div>
                               </div>
                             )}
 
-                            {/* CHAT SECTION */}
-                            {activeChatStep === milestone.phase && (
+                            {/* CHAT */}
+                            {activeChatStep === step.step && (
                               <div>
-                                <h4 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
-                                  <MessageSquare className="w-5 h-5" />
-                                  Conversation
-                                </h4>
-
-                                {/* MESSAGES */}
-                                <div className="space-y-2.5 mb-3 max-h-80 overflow-y-auto p-3 bg-gray-50 rounded-lg border border-gray-300">
-                                  {(!chatMessages[milestone.phase] || chatMessages[milestone.phase].length === 0) ? (
-                                    <p className="text-sm text-gray-600 text-center py-8 font-medium">
-                                      No messages yet. Start a conversation!
-                                    </p>
+                                <h4 className="text-sm font-bold text-gray-900 mb-2">Conversation</h4>
+                                
+                                <div className="space-y-2 mb-3 max-h-64 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                                  {(!chatMessages[step.step] || chatMessages[step.step].length === 0) ? (
+                                    <p className="text-sm text-gray-500 text-center py-4">No messages yet</p>
                                   ) : (
-                                    chatMessages[milestone.phase].map((msg, idx) => (
+                                    chatMessages[step.step].map((msg, idx) => (
                                       <div
                                         key={idx}
-                                        className={`p-3 rounded-lg shadow-sm border ${
+                                        className={`p-2 rounded-lg text-sm ${
                                           msg.sender === 'client'
-                                            ? 'bg-blue-50 border-blue-300 ml-8'
-                                            : 'bg-white border-gray-300 mr-8'
+                                            ? 'bg-blue-100 ml-6'
+                                            : 'bg-white border border-gray-200 mr-6'
                                         }`}
                                       >
-                                        <div className="flex items-center justify-between mb-2">
-                                          <span className="font-bold text-sm text-gray-900">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="font-bold text-xs">
                                             {msg.sender === 'client' ? '👤 You' : '🏢 HDG'}
                                           </span>
-                                          <span className="text-xs text-gray-600 font-medium">
+                                          <span className="text-xs text-gray-500">
                                             {new Date(msg.sentAt).toLocaleString('en-US', {
                                               month: 'short',
                                               day: 'numeric',
@@ -764,18 +980,19 @@ const ClientPortal = () => {
                                             })}
                                           </span>
                                         </div>
-                                        <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
-                                          {msg.message}
-                                        </p>
+                                        <p className="text-gray-900 whitespace-pre-wrap">{msg.message}</p>
+                                        
                                         {msg.attachments && msg.attachments.length > 0 && (
-                                          <div className="mt-2 flex flex-wrap gap-2">
+                                          <div className="mt-2 space-y-1">
                                             {msg.attachments.map((att, attIdx) => (
                                               <button
                                                 key={attIdx}
-                                                className="px-3 py-1.5 bg-white rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-gray-50 shadow-sm border border-gray-300"
+                                                onClick={() => downloadAttachment(step.step, msg._id, att._id, att.filename)}
+                                                className="w-full flex items-center gap-2 px-2 py-1 bg-white rounded text-xs hover:bg-gray-50"
                                               >
-                                                <Paperclip className="w-3.5 h-3.5" />
-                                                {att.filename}
+                                                <Paperclip className="w-3 h-3" />
+                                                <span className="flex-grow text-left truncate">{att.filename}</span>
+                                                <Download className="w-3 h-3" />
                                               </button>
                                             ))}
                                           </div>
@@ -785,22 +1002,56 @@ const ClientPortal = () => {
                                   )}
                                 </div>
 
-                                {/* SEND MESSAGE */}
+                                {selectedFiles.length > 0 && (
+                                  <div className="mb-2 space-y-1 p-2 bg-blue-50 rounded-lg">
+                                    {selectedFiles.map((file, idx) => (
+                                      <div key={idx} className="flex items-center gap-2 p-1 bg-white rounded text-xs">
+                                        <Paperclip className="w-3 h-3 text-blue-600" />
+                                        <span className="flex-grow truncate">{file.filename}</span>
+                                        <button onClick={() => removeSelectedFile(idx)}>
+                                          <X className="w-3 h-3 text-red-600" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
                                 <div className="flex gap-2">
+                                  <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                  />
+                                  
+                                  <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploadingFiles || selectedFiles.length >= 5}
+                                    className="p-2 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 rounded-lg transition-all"
+                                  >
+                                    <Paperclip className="w-4 h-4" />
+                                  </button>
+                                  
                                   <textarea
                                     value={chatInput}
                                     onChange={(e) => setChatInput(e.target.value)}
                                     placeholder="Type your message..."
                                     rows="2"
-                                    className="flex-grow px-3 py-2.5 text-sm text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670] focus:border-transparent resize-none"
+                                    disabled={uploadingFiles}
+                                    className="flex-grow px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670] resize-none"
                                   />
+                                  
                                   <button
-                                    onClick={() => sendChatMessage(milestone.phase)}
-                                    disabled={!chatInput.trim()}
-                                    className="px-5 py-2.5 bg-[#005670] text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm font-semibold text-sm"
+                                    onClick={() => sendChatMessage(step.step)}
+                                    disabled={(!chatInput.trim() && selectedFiles.length === 0) || uploadingFiles}
+                                    className="px-3 py-2 bg-[#005670] text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-all"
                                   >
-                                    <Send className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Send</span>
+                                    {uploadingFiles ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                    ) : (
+                                      <Send className="w-4 h-4" />
+                                    )}
                                   </button>
                                 </div>
                               </div>
@@ -809,79 +1060,11 @@ const ClientPortal = () => {
                         </div>
                       )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* BOTTOM CARDS - Compact & Clean */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* PAYMENT INFO */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-sm">
-                  <DollarSign className="w-6 h-6 text-white" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900">Payment Status</h2>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center pb-4 border-b border-gray-300">
-                  <span className="text-sm text-gray-700 font-semibold">Down Payment</span>
-                  <span className="text-2xl font-bold text-emerald-600">
-                    ${clientData.paymentInfo?.paidDownPayment?.toLocaleString() || '0'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pb-4 border-b border-gray-300">
-                  <span className="text-sm text-gray-700 font-semibold">Total Amount</span>
-                  <span className="text-xl font-bold text-gray-900">
-                    ${clientData.paymentInfo?.totalAmount?.toLocaleString() || '0'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700 font-semibold">Status</span>
-                  <span className={`px-4 py-2 rounded-lg text-sm font-bold border ${
-                    clientData.paymentInfo?.downPaymentStatus === 'paid' 
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                      : 'bg-amber-50 text-amber-800 border-amber-300'
-                  }`}>
-                    {clientData.paymentInfo?.downPaymentStatus === 'paid' ? '✓ Paid' : 'Pending'}
-                  </span>
-                </div>
+                  );
+                })}
               </div>
             </div>
-
-            {/* CONTACT SUPPORT */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center shadow-sm">
-                  <Mail className="w-6 h-6 text-white" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900">Need Help?</h2>
-              </div>
-              
-              <p className="text-sm text-gray-700 mb-5 leading-relaxed font-medium">
-                Our team is here to assist you every step of the way.
-              </p>
-              
-              <div className="space-y-3">
-                <a 
-                  href="mailto:info@henderson.house"
-                  className="flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl hover:shadow-md transition-all group border border-gray-300"
-                >
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-gray-200">
-                    <Mail className="w-5 h-5 text-[#005670]" />
-                  </div>
-                  <div className="flex-grow">
-                    <p className="font-bold text-sm text-gray-900 group-hover:text-[#005670] transition-colors">Email Us</p>
-                    <p className="text-xs text-gray-700 font-medium">aloha@henderson.house</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-[#005670] transition-colors" />
-                </a>
-              </div>
-            </div>
-          </div>
+          )}
         </main>
 
         {/* FOOTER */}
@@ -890,20 +1073,19 @@ const ClientPortal = () => {
             <p>&copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.</p>
           </div>
         </footer>
-
-        {/* ANIMATIONS */}
-        <style jsx>{`
-          @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-          }
-          .animate-shimmer {
-            animation: shimmer 2s infinite;
-          }
-        `}</style>
       </div>
+
+      <style jsx>{`
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </>
   );
 };
 
-export default ClientPortal;
+export default ClientPortalRedesign;
