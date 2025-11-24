@@ -60,7 +60,12 @@ const NextStepsPage = () => {
         },
         {
           heading: 'Fee Amount',
-          content: 'One hundred percent (100%) due upon signing. Fee is non-refundable. (Refer to Design Fee Schedule by unit type and bedroom count.)'
+          content: 'One hundred percent (100%) due upon signing. Fee is non-refundable.',
+          priceTable: [
+            { collection: 'Nalu Foundation Collection', bedrooms: { '1': '$2,500', '2': '$3,500', '3': '$4,500' } },
+            { collection: 'Nalu Collection', bedrooms: { '1': '$5,000', '2': '$7,500', '3': '$10,000' } },
+            { collection: 'Lani', bedrooms: { '1': '$10,000', '2': '$15,000', '3': '$20,000' } }
+          ]
         },
         {
           heading: 'What This Does',
@@ -301,43 +306,105 @@ Updated 10.30.25`
     const agreement = agreements[selectedOption];
     
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="flex items-center justify-between p-8 border-b-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-8 border-b-2 border-gray-200 bg-gradient-to-r from-[#005670]/5 to-white flex-shrink-0">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center shadow-lg">
+                <FileText className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{agreement.title}</h3>
-                <p className="text-sm text-gray-500 font-semibold">Full Agreement Terms & Conditions</p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-1">{agreement.title}</h3>
+                <p className="text-sm text-gray-600 font-semibold tracking-wide">FULL AGREEMENT TERMS & CONDITIONS</p>
               </div>
             </div>
             <button 
               onClick={() => setShowAgreement(false)}
-              className="w-12 h-12 rounded-full border-2 border-[#005670]/20 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95"
+              className="w-12 h-12 rounded-full border-2 border-gray-300 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95 flex-shrink-0"
             >
-              <X className="w-6 h-6 text-[#005670]" />
+              <X className="w-6 h-6 text-gray-600 hover:text-[#005670]" />
             </button>
           </div>
 
-          <div className="p-8 max-h-[60vh] overflow-y-auto text-gray-800 leading-relaxed">
-            <div className="whitespace-pre-line text-base">
-              {agreement.content.split('\n\n').map((block, i) => (
-                <p key={i} className="mb-5">
-                  {block}
-                </p>
-              ))}
+          {/* Content Area with improved typography */}
+          <div className="p-10 overflow-y-auto flex-grow" style={{ scrollbarWidth: 'thin' }}>
+            <div className="max-w-4xl mx-auto">
+              {agreement.content.split('\n\n').map((block, i) => {
+                // Check if this is a heading (numbered sections like "1. Purpose")
+                const isHeading = /^\d+\.\s+[A-Z]/.test(block.trim());
+                // Check if this is the main title
+                const isMainTitle = block.includes('HENDERSON DESIGN GROUP') || block.includes('AGREEMENT');
+                // Check if this is a bullet point line
+                const isBullet = block.trim().startsWith('-');
+                // Check if this is the updated date
+                const isDate = block.includes('UPDATED') || block.includes('Updated');
+                
+                if (isMainTitle) {
+                  return (
+                    <div key={i} className="mb-8 text-center">
+                      {block.split('\n').map((line, j) => (
+                        <h2 key={j} className="text-xl font-bold text-[#005670] leading-relaxed">
+                          {line}
+                        </h2>
+                      ))}
+                    </div>
+                  );
+                }
+                
+                if (isHeading) {
+                  return (
+                    <div key={i} className="mt-8 mb-4">
+                      <h3 className="text-xl font-bold text-[#005670] leading-relaxed border-b-2 border-[#005670]/20 pb-2">
+                        {block}
+                      </h3>
+                    </div>
+                  );
+                }
+                
+                if (isBullet) {
+                  return (
+                    <div key={i} className="ml-6 mb-3">
+                      <p className="text-base text-gray-700 leading-relaxed">
+                        {block}
+                      </p>
+                    </div>
+                  );
+                }
+                
+                if (isDate) {
+                  return (
+                    <div key={i} className="mt-8 pt-6 border-t-2 border-gray-200 text-center">
+                      <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">
+                        {block}
+                      </p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <p key={i} className="mb-5 text-base text-gray-700 leading-relaxed">
+                    {block}
+                  </p>
+                );
+              })}
             </div>
           </div>
 
-          <div className="p-8 border-t-2 border-[#005670]/10 bg-gradient-to-r from-gray-50 to-white">
-            <button
-              onClick={() => setShowAgreement(false)}
-              className="w-full px-8 py-4 text-lg font-bold bg-[#005670] text-white rounded-xl hover:bg-[#004150] transition-all duration-300 active:scale-95"
-            >
-              Close Agreement
-            </button>
+          {/* Footer */}
+          <div className="p-8 border-t-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
+            <div className="flex items-center justify-between gap-6 max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <AlertCircle className="w-5 h-5 text-[#005670]" />
+                <span>Please read all terms carefully before proceeding</span>
+              </div>
+              <button
+                onClick={() => setShowAgreement(false)}
+                className="px-8 py-4 text-lg font-bold bg-[#005670] text-white rounded-xl hover:bg-[#004150] transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl whitespace-nowrap"
+              >
+                Close Agreement
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -370,7 +437,33 @@ Updated 10.30.25`
                 <h3 className="text-2xl font-bold text-[#005670] mb-4">{section.heading}</h3>
                 
                 {section.content && (
-                  <p className="text-lg text-gray-700 leading-relaxed">{section.content}</p>
+                  <p className="text-lg text-gray-700 leading-relaxed mb-4">{section.content}</p>
+                )}
+                
+                {/* Price Table for Design Fee */}
+                {section.priceTable && (
+                  <div className="overflow-x-auto mb-4">
+                    <table className="w-full border-2 border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-100 border-b-2 border-gray-300">
+                          <th className="border-r-2 border-gray-300 px-6 py-4 text-left text-gray-900 font-bold text-base"></th>
+                          <th className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-900 font-bold text-base">1 Bedroom</th>
+                          <th className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-900 font-bold text-base">2 Bedroom</th>
+                          <th className="px-6 py-4 text-center text-gray-900 font-bold text-base">3 Bedroom</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section.priceTable.map((row, i) => (
+                          <tr key={i} className={`border-b-2 border-gray-300 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            <td className="border-r-2 border-gray-300 px-6 py-4 font-bold text-gray-900">{row.collection}</td>
+                            <td className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-800">{row.bedrooms['1']}</td>
+                            <td className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-800">{row.bedrooms['2']}</td>
+                            <td className="px-6 py-4 text-center text-gray-800">{row.bedrooms['3']}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
                 
                 {section.bullets && (

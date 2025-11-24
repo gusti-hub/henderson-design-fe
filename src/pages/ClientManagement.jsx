@@ -85,6 +85,18 @@ const ClientManagement = () => {
     }
   }, [currentPage, itemsPerPage, searchTerm, statusFilter]);
 
+  useEffect(() => {
+    if (activeModal === 'journey') {
+      document.body.style.overflow = 'hidden';   // 🔒 disable scroll luar
+    } else {
+      document.body.style.overflow = 'auto';     // 🔓 enable scroll kembali
+    }
+
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [activeModal]);
+
   const fetchFloorPlans = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -142,7 +154,7 @@ const ClientManagement = () => {
 
   const validateForm = useCallback(() => {
     const newErrors = {};
-    if (!formData.clientCode) newErrors.clientCode = 'Required';
+    // if (!formData.clientCode) newErrors.clientCode = 'Required';
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.email) newErrors.email = 'Required';
     if (!formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
@@ -162,7 +174,7 @@ const ClientManagement = () => {
       clientCode: '',
       name: '',
       email: '',
-      password: '',
+      password: '12345678',
       unitNumber: '',
       propertyType: '',
       floorPlan: '',
@@ -863,13 +875,13 @@ const FormModal = React.memo(
             {errors.form && <Alert type="error" message={errors.form} />}
 
             <div className="grid md:grid-cols-2 gap-4">
-              <Input
+              {/* <Input
                 label="Client Code"
                 value={formData.clientCode}
                 onChange={(v) => setFormData((prev) => ({ ...prev, clientCode: v }))}
                 error={errors.clientCode}
                 required
-              />
+              /> */}
               <Input
                 label="Full Name"
                 value={formData.name}
@@ -918,19 +930,28 @@ const FormModal = React.memo(
                 <DollarSign className="w-5 h-5" /> Payment Information
               </h4>
               <div className="grid md:grid-cols-2 gap-4">
-                <Input
-                  label="Total Amount ($)"
-                  type="number"
-                  value={formData.totalAmount}
-                  onChange={(v) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      totalAmount: parseFloat(v) || 0
-                    }))
-                  }
-                  min="0"
-                  step="0.01"
-                />
+              <Input
+                label="Total Amount ($)"
+                type="text"
+                value={formData.totalAmount === 0 ? "" : formData.totalAmount}
+                onChange={(v) => {
+                  // Hilangkan semua leading zero
+                  let cleaned = v.replace(/^0+(?=\d)/, "");
+
+                  // Hanya boleh angka dan titik
+                  cleaned = cleaned.replace(/[^0-9.]/g, "");
+
+                  // Konversi ke number jika valid
+                  const numericValue = cleaned === "" ? 0 : parseFloat(cleaned);
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    totalAmount: isNaN(numericValue) ? 0 : numericValue
+                  }));
+                }}
+                placeholder="0"
+              />
+
                 <Input
                   label="DP Percentage (%)"
                   type="number"
@@ -1408,7 +1429,7 @@ const PaymentDetailsModal = React.memo(({ selectedClient, getBadge, onClose }) =
 const JourneyModal = React.memo(({ selectedClient, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl max-w-7xl w-full max-h-[90vh] overflow-auto shadow-2xl">
+      <div className="bg-white rounded-3xl w-[90vw] h-[95vh] max-w-none shadow-2xl overflow-hidden">
         <div className="sticky top-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center rounded-t-3xl z-10">
           <div>
             <h2 className="text-3xl font-bold flex items-center gap-3">
@@ -1469,23 +1490,67 @@ const Modal = ({ title, children, onClose, headerClass = 'from-[#005670] to-[#00
 );
 
 
-const Input = React.memo(({ label, value, onChange, error, type = 'text', required = false, ...props }) => (
-  <div>
-    {label && (
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-    )}
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition-all"
-      {...props}
-    />
-    {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-  </div>
-));
+const Input = React.memo(
+  ({ label, value, onChange, error, type = 'text', required = false, ...props }) => {
+    const [showPassword, setShowPassword] = React.useState(false);
+    const isPassword = type === 'password';
+
+    return (
+      <div>
+        {label && (
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {label} {required && <span className="text-red-500">*</span>}
+          </label>
+        )}
+
+        <div className="relative">
+          <input
+            type={isPassword ? (showPassword ? 'text' : 'password') : type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition-all pr-12"
+            {...props}
+          />
+
+          {/* Eye Button */}
+          {isPassword && (
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#005670]"
+            >
+              {showPassword ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                    d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c1.676 0 
+                    3.27-.365 4.695-1.022M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 
+                    0 8.773 3.162 10.065 7.5a10.52 10.52 0 01-4.293 5.774M6.228 
+                    6.228L3 3m3.228 3.228l5.772 5.772m0 0l3.772 3.772M12 
+                    12l3.772 3.772" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                    d="M2.036 12C3.284 7.943 7.274 4.5 12 
+                    4.5c4.726 0 8.716 3.443 9.964 7.5C20.716 
+                    16.057 16.726 19.5 12 19.5c-4.726 
+                    0-8.716-3.443-9.964-7.5z" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
+
+        {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+      </div>
+    );
+  }
+);
+
 
 const Select = React.memo(({ label, value, onChange, options, error, required = false }) => (
   <div>
