@@ -446,7 +446,7 @@ Updated 10.30.25`
                     <table className="w-full border-2 border-gray-300">
                       <thead>
                         <tr className="bg-gray-100 border-b-2 border-gray-300">
-                          <th className="border-r-2 border-gray-300 px-6 py-4 text-left text-gray-900 font-bold text-base"></th>
+                          <th className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-900 font-bold text-base">Collection</th>
                           <th className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-900 font-bold text-base">1 Bedroom</th>
                           <th className="border-r-2 border-gray-300 px-6 py-4 text-center text-gray-900 font-bold text-base">2 Bedroom</th>
                           <th className="px-6 py-4 text-center text-gray-900 font-bold text-base">3 Bedroom</th>
