@@ -1426,32 +1426,37 @@ const PaymentDetailsModal = React.memo(({ selectedClient, getBadge, onClose }) =
   );
 });
 
+// ClientManagement.jsx - FULL SCREEN JourneyModal
+
 const JourneyModal = React.memo(({ selectedClient, onClose }) => {
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-[90vw] h-[95vh] max-w-none shadow-2xl overflow-hidden">
-        <div className="sticky top-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center rounded-t-3xl z-10">
-          <div>
-            <h2 className="text-3xl font-bold flex items-center gap-3">
-              <Sparkles className="w-8 h-8" /> Journey Manager
-            </h2>
-            <p className="text-white/80 text-sm mt-1">
-              {selectedClient?.name} • Unit {selectedClient?.unitNumber}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-3 hover:bg-white/20 rounded-xl transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+      {/* HEADER - Fixed */}
+      <div className="flex-shrink-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white px-6 py-5 flex justify-between items-center shadow-lg">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-3">
+            <Sparkles className="w-6 h-6" /> Journey Manager
+          </h2>
+          <p className="text-white/90 text-sm mt-1">
+            {selectedClient?.name} • Unit {selectedClient?.unitNumber}
+          </p>
         </div>
-        <div className="p-6">
-          <AdminJourneyManager
-            clientId={selectedClient?._id}
-            clientName={selectedClient?.name}
-          />
-        </div>
+        <button
+          onClick={onClose}
+          className="p-3 hover:bg-white/20 rounded-xl transition-colors"
+          title="Close"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* CONTENT - Full height scrollable */}
+      <div className="flex-1 overflow-hidden bg-gray-50">
+        <AdminJourneyManager
+          clientId={selectedClient?._id}
+          clientName={selectedClient?.name}
+          onClose={onClose}
+        />
       </div>
     </div>
   );
