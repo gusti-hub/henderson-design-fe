@@ -257,7 +257,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Step_${stepNumber}_${Date.now()}.pdf`;
+        a.download = `Step_${stepNumber}_${Date.now()}.docx`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
