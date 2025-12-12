@@ -1,16 +1,25 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  Plus, Pencil, Trash2, X, Loader2, Check, XIcon, Eye, DollarSign, Receipt,
-  Search, Filter, Sparkles, FileText, AlertCircle, Calendar, MapPin, Mail, Phone,
-  User, Building2, CreditCard, CheckCircle, Clock
+  Plus, Pencil, Trash2, X, Loader2, Check, XIcon, Eye, FileText,
+  Search, Filter, Sparkles, AlertCircle, Mail, Phone,
+  User, Building2, CheckCircle, Clock
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import AdminJourneyManager from '../components/AdminJourneyManager';
 
+// ==================== PRICING TABLE ====================
+const PRICING_TABLE = {
+  'Nalu Foundation Collection': { '1': 2500, '2': 3500, '3': 4500 },
+  'Nalu Collection': { '1': 5000, '2': 7500, '3': 10000 },
+  'Lani': { '1': 10000, '2': 15000, '3': 20000 }
+};
+
+const COLLECTIONS = Object.keys(PRICING_TABLE);
+const BEDROOM_OPTIONS = ['1', '2', '3'];
+
 // ==================== MAIN COMPONENT ====================
 
 const ClientManagement = () => {
-  // ==================== STATE ====================
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -22,40 +31,26 @@ const ClientManagement = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
-  // Modal States
-  const [activeModal, setActiveModal] = useState(null); // 'form' | 'approval' | 'payment' | 'paymentDetails' | 'journey'
-  const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit' | 'view'
+  const [activeModal, setActiveModal] = useState(null);
+  const [modalMode, setModalMode] = useState('create');
   const [selectedClient, setSelectedClient] = useState(null);
   
-  // Form Data
   const [formData, setFormData] = useState({
-    clientCode: '',
     name: '',
     email: '',
     password: '',
     unitNumber: '',
     floorPlan: '',
-    totalAmount: 0,
-    propertyType:  '',
-    downPaymentPercentage: 30
+    propertyType: 'Lock 2025 Pricing',
+    collection: '',
+    bedroomCount: '',
+    calculatedAmount: 0
   });
   const [errors, setErrors] = useState({});
   const [showPasswordField, setShowPasswordField] = useState(false);
 
-  // Approval Data
   const [approvalMode, setApprovalMode] = useState('approve');
   const [approvalData, setApprovalData] = useState({ clientCode: '', floorPlan: '', rejectionReason: '' });
-
-  // Payment Data
-  const [paymentData, setPaymentData] = useState({
-    amount: 0,
-    date: new Date().toISOString().split('T')[0],
-    method: '',
-    reference: '',
-    notes: ''
-  });
-
-  // ==================== API CALLS (memoized) ====================
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -87,11 +82,10 @@ const ClientManagement = () => {
 
   useEffect(() => {
     if (activeModal === 'journey') {
-      document.body.style.overflow = 'hidden';   // 🔒 disable scroll luar
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'auto';     // 🔓 enable scroll kembali
+      document.body.style.overflow = 'auto';
     }
-
     return () => {
       document.body.style.overflow = 'auto';
     };
@@ -125,22 +119,17 @@ const ClientManagement = () => {
     }
   }, []);
 
-  // ==================== EFFECTS ====================
-
-  // Initial load
   useEffect(() => {
     fetchClients();
     fetchFloorPlans();
     fetchPendingCount();
   }, [fetchClients, fetchFloorPlans, fetchPendingCount]);
 
-  // Refetch on page / status change (kecuali kalau modal terbuka, jangan ganggu)
   useEffect(() => {
     if (activeModal) return;
     fetchClients();
   }, [currentPage, statusFilter, activeModal, fetchClients]);
 
-  // Refetch on search (debounce) – juga di-block kalau modal sedang terbuka
   useEffect(() => {
     if (activeModal) return;
     const timer = setTimeout(() => {
@@ -150,17 +139,25 @@ const ClientManagement = () => {
     return () => clearTimeout(timer);
   }, [searchTerm, activeModal, fetchClients]);
 
-  // ==================== HELPERS ====================
+  useEffect(() => {
+    if (formData.collection && formData.bedroomCount) {
+      const amount = PRICING_TABLE[formData.collection][formData.bedroomCount] || 0;
+      setFormData(prev => ({ ...prev, calculatedAmount: amount }));
+    } else {
+      setFormData(prev => ({ ...prev, calculatedAmount: 0 }));
+    }
+  }, [formData.collection, formData.bedroomCount]);
 
   const validateForm = useCallback(() => {
     const newErrors = {};
-    // if (!formData.clientCode) newErrors.clientCode = 'Required';
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.email) newErrors.email = 'Required';
     if (!formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
     if (!formData.unitNumber) newErrors.unitNumber = 'Required';
     if (!formData.floorPlan) newErrors.floorPlan = 'Required';
     if (!formData.propertyType) newErrors.propertyType = 'Required';
+    if (!formData.collection) newErrors.collection = 'Required';
+    if (!formData.bedroomCount) newErrors.bedroomCount = 'Required';
     if (modalMode === 'create' && !formData.password) newErrors.password = 'Required';
     if (showPasswordField && modalMode === 'edit' && formData.password?.length < 6) {
       newErrors.password = 'Min 6 characters';
@@ -171,24 +168,17 @@ const ClientManagement = () => {
 
   const resetFormState = useCallback(() => {
     setFormData({
-      clientCode: '',
       name: '',
       email: '',
-      password: '12345678',
+      password: '',
       unitNumber: '',
-      propertyType: '',
       floorPlan: '',
-      totalAmount: 0,
-      downPaymentPercentage: 30
+      propertyType: 'Lock 2025 Pricing',
+      collection: '',
+      bedroomCount: '',
+      calculatedAmount: 0
     });
     setApprovalData({ clientCode: '', floorPlan: '', rejectionReason: '' });
-    setPaymentData({
-      amount: 0,
-      date: new Date().toISOString().split('T')[0],
-      method: '',
-      reference: '',
-      notes: ''
-    });
     setErrors({});
     setShowPasswordField(false);
   }, []);
@@ -205,15 +195,15 @@ const ClientManagement = () => {
 
     if (client && mode === 'edit') {
       setFormData({
-        clientCode: client.clientCode || '',
         name: client.name || '',
         email: client.email || '',
         unitNumber: client.unitNumber || '',
         floorPlan: client.floorPlan || '',
-        propertyType: client.propertyType || '',
+        propertyType: client.propertyType || 'Lock 2025 Pricing',
         password: '',
-        totalAmount: client.paymentInfo?.totalAmount || 0,
-        downPaymentPercentage: client.paymentInfo?.downPaymentPercentage || 30
+        collection: '',
+        bedroomCount: '',
+        calculatedAmount: client.paymentInfo?.totalAmount || 0
       });
     } else if (mode === 'create') {
       resetFormState();
@@ -231,26 +221,6 @@ const ClientManagement = () => {
       rejectionReason: ''
     });
     setActiveModal('approval');
-  }, []);
-
-  const openPaymentModal = useCallback((client) => {
-    setSelectedClient(client);
-    const requiredDP =
-      (client.paymentInfo?.totalAmount || 0) *
-      ((client.paymentInfo?.downPaymentPercentage || 30) / 100);
-    setPaymentData({
-      amount: requiredDP,
-      date: new Date().toISOString().split('T')[0],
-      method: '',
-      reference: '',
-      notes: ''
-    });
-    setActiveModal('payment');
-  }, []);
-
-  const openPaymentDetailsModal = useCallback((client) => {
-    setSelectedClient(client);
-    setActiveModal('paymentDetails');
   }, []);
 
   const openJourneyModal = useCallback((client) => {
@@ -296,8 +266,6 @@ const ClientManagement = () => {
     );
   }, []);
 
-  // ==================== HANDLERS ====================
-
   const handleFormSubmit = useCallback(
     async (e) => {
       e.preventDefault();
@@ -311,9 +279,20 @@ const ClientManagement = () => {
             ? `${backendServer}/api/clients`
             : `${backendServer}/api/clients/${selectedClient._id}`;
 
-        const submitData = { ...formData };
-        if (!showPasswordField && modalMode === 'edit') {
-          delete submitData.password;
+        const submitData = {
+          name: formData.name,
+          email: formData.email,
+          unitNumber: formData.unitNumber,
+          floorPlan: formData.floorPlan,
+          propertyType: formData.propertyType,
+        };
+
+        if (modalMode === 'create') {
+          submitData.password = formData.password;
+          submitData.collection = formData.collection;
+          submitData.bedroomCount = formData.bedroomCount;
+        } else if (showPasswordField && formData.password) {
+          submitData.password = formData.password;
         }
 
         const res = await fetch(url, {
@@ -333,6 +312,10 @@ const ClientManagement = () => {
         await fetchClients();
         await fetchPendingCount();
         closeModal();
+        
+        if (modalMode === 'create') {
+          alert('✅ Client created and journey initialized successfully!');
+        }
       } catch (error) {
         console.error(error);
         setErrors((prev) => ({ ...prev, form: error.message }));
@@ -386,49 +369,6 @@ const ClientManagement = () => {
     [approvalMode, approvalData, selectedClient, fetchClients, fetchPendingCount, closeModal]
   );
 
-  const handlePaymentSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      setFormLoading(true);
-
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(
-          `${backendServer}/api/clients/${selectedClient._id}/record-payment`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              amount: paymentData.amount,
-              paymentDate: paymentData.date,
-              paymentMethod: paymentData.method,
-              transactionReference: paymentData.reference,
-              notes: paymentData.notes
-            })
-          }
-        );
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.message || 'Failed to record payment');
-        }
-
-        await fetchClients();
-        closeModal();
-        alert('Payment recorded successfully!');
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to record payment');
-      } finally {
-        setFormLoading(false);
-      }
-    },
-    [selectedClient, paymentData, fetchClients, closeModal]
-  );
-
   const handleDelete = useCallback(
     async (clientId) => {
       if (!window.confirm('Are you sure?')) return;
@@ -448,47 +388,13 @@ const ClientManagement = () => {
     [fetchClients, fetchPendingCount]
   );
 
-  const handleInitializeJourney = useCallback(
-    async (clientId) => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${backendServer}/api/journeys/client/${clientId}`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (res.ok) {
-          alert('Journey initialized!');
-          const client = clients.find((c) => c._id === clientId);
-          if (client) {
-            setSelectedClient(client);
-            setActiveModal('journey');
-          }
-        } else {
-          const body = await res.json().catch(() => ({}));
-          alert(body.message || 'Failed to initialize journey');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to initialize journey');
-      }
-    },
-    [clients]
-  );
-
   const paginationPages = useMemo(
     () => Array.from({ length: totalPages }, (_, i) => i + 1),
     [totalPages]
   );
 
-  // ==================== RENDER ====================
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Client Management</h1>
@@ -510,7 +416,6 @@ const ClientManagement = () => {
         </button>
       </div>
 
-      {/* Search & Filter */}
       <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
@@ -539,7 +444,6 @@ const ClientManagement = () => {
         </div>
       </div>
 
-      {/* Clients Table / State */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-10 h-10 animate-spin text-[#005670]" />
@@ -555,15 +459,11 @@ const ClientManagement = () => {
           getBadge={getBadge}
           onOpenFormModal={openFormModal}
           onOpenApprovalModal={openApprovalModal}
-          onOpenPaymentModal={openPaymentModal}
           onDeleteClient={handleDelete}
-          onInitializeJourney={handleInitializeJourney}
-          onOpenPaymentDetails={openPaymentDetailsModal}
           onOpenJourneyModal={openJourneyModal}
         />
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2">
           {paginationPages.map((page) => (
@@ -582,7 +482,6 @@ const ClientManagement = () => {
         </div>
       )}
 
-      {/* Modals */}
       {activeModal === 'form' && (
         <FormModal
           modalMode={modalMode}
@@ -612,26 +511,6 @@ const ClientManagement = () => {
         />
       )}
 
-      {activeModal === 'payment' && (
-        <PaymentModal
-          selectedClient={selectedClient}
-          paymentData={paymentData}
-          setPaymentData={setPaymentData}
-          formLoading={formLoading}
-          closeModal={closeModal}
-          handlePaymentSubmit={handlePaymentSubmit}
-        />
-      )}
-
-
-      {activeModal === 'paymentDetails' && selectedClient && (
-        <PaymentDetailsModal
-          selectedClient={selectedClient}
-          getBadge={getBadge}
-          onClose={closeModal}
-        />
-      )}
-
       {activeModal === 'journey' && selectedClient && (
         <JourneyModal selectedClient={selectedClient} onClose={closeModal} />
       )}
@@ -639,7 +518,7 @@ const ClientManagement = () => {
   );
 };
 
-// ==================== CHILD COMPONENTS ====================
+// ==================== CLIENT TABLE ====================
 
 const ClientTable = React.memo(
   ({
@@ -647,10 +526,7 @@ const ClientTable = React.memo(
     getBadge,
     onOpenFormModal,
     onOpenApprovalModal,
-    onOpenPaymentModal,
     onDeleteClient,
-    onInitializeJourney,
-    onOpenPaymentDetails,
     onOpenJourneyModal
   }) => {
     return (
@@ -670,7 +546,6 @@ const ClientTable = React.memo(
             <tbody className="divide-y divide-gray-100">
               {clients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50 transition-colors">
-                  {/* Client */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0">
@@ -683,7 +558,6 @@ const ClientTable = React.memo(
                     </div>
                   </td>
 
-                  {/* Contact */}
                   <td className="px-4 py-3">
                     <div className="space-y-1">
                       <p className="text-sm text-gray-900 flex items-center gap-1.5">
@@ -699,7 +573,6 @@ const ClientTable = React.memo(
                     </div>
                   </td>
 
-                  {/* Property */}
                   <td className="px-4 py-3">
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
@@ -710,7 +583,6 @@ const ClientTable = React.memo(
                     </div>
                   </td>
 
-                  {/* Payment */}
                   <td className="px-4 py-3">
                     <div className="space-y-1">
                       {client.paymentInfo?.totalAmount ? (
@@ -719,12 +591,7 @@ const ClientTable = React.memo(
                             ${client.paymentInfo.totalAmount.toLocaleString()}
                           </p>
                           <p className="text-xs text-gray-500">
-                            DP: $
-                            {(
-                              (client.paymentInfo.totalAmount *
-                                (client.paymentInfo.downPaymentPercentage || 30)) /
-                              100
-                            ).toLocaleString()}
+                            Paid: ${(client.paymentInfo.amountPaid || 0).toLocaleString()}
                           </p>
                         </>
                       ) : (
@@ -733,7 +600,6 @@ const ClientTable = React.memo(
                     </div>
                   </td>
 
-                  {/* Status */}
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1.5">
                       {getBadge(
@@ -746,7 +612,6 @@ const ClientTable = React.memo(
                     </div>
                   </td>
 
-                  {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       {client.registrationType === 'self-registered' ? (
@@ -783,42 +648,13 @@ const ClientTable = React.memo(
                             size="sm"
                           />
 
-                          {client.paymentInfo?.downPaymentStatus === 'paid' ? (
-                            <>
-                              <ActionButton
-                                icon={Sparkles}
-                                color="purple"
-                                onClick={() => onInitializeJourney(client._id)}
-                                title="Initialize Journey"
-                                size="sm"
-                              />
-                              <ActionButton
-                                icon={FileText}
-                                color="cyan"
-                                onClick={() => onOpenJourneyModal(client)}
-                                title="Manage Journey"
-                                size="sm"
-                              />
-                            </>
-                          ) : (
-                            <ActionButton
-                              icon={DollarSign}
-                              color="green"
-                              onClick={() => onOpenPaymentModal(client)}
-                              title="Record Payment"
-                              size="sm"
-                            />
-                          )}
-
-                          {client.paymentInfo?.totalAmount > 0 && (
-                            <ActionButton
-                              icon={Receipt}
-                              color="indigo"
-                              onClick={() => onOpenPaymentDetails(client)}
-                              title="Payment Details"
-                              size="sm"
-                            />
-                          )}
+                          <ActionButton
+                            icon={FileText}
+                            color="cyan"
+                            onClick={() => onOpenJourneyModal(client)}
+                            title="Manage Journey"
+                            size="sm"
+                          />
 
                           <ActionButton
                             icon={Trash2}
@@ -875,13 +711,6 @@ const FormModal = React.memo(
             {errors.form && <Alert type="error" message={errors.form} />}
 
             <div className="grid md:grid-cols-2 gap-4">
-              {/* <Input
-                label="Client Code"
-                value={formData.clientCode}
-                onChange={(v) => setFormData((prev) => ({ ...prev, clientCode: v }))}
-                error={errors.clientCode}
-                required
-              /> */}
               <Input
                 label="Full Name"
                 value={formData.name}
@@ -925,58 +754,42 @@ const FormModal = React.memo(
               />
             </div>
 
-            <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200">
-              <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" /> Payment Information
-              </h4>
-              <div className="grid md:grid-cols-2 gap-4">
-              <Input
-                label="Total Amount ($)"
-                type="text"
-                value={formData.totalAmount === 0 ? "" : formData.totalAmount}
-                onChange={(v) => {
-                  // Hilangkan semua leading zero
-                  let cleaned = v.replace(/^0+(?=\d)/, "");
-
-                  // Hanya boleh angka dan titik
-                  cleaned = cleaned.replace(/[^0-9.]/g, "");
-
-                  // Konversi ke number jika valid
-                  const numericValue = cleaned === "" ? 0 : parseFloat(cleaned);
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    totalAmount: isNaN(numericValue) ? 0 : numericValue
-                  }));
-                }}
-                placeholder="0"
-              />
-
-                <Input
-                  label="DP Percentage (%)"
-                  type="number"
-                  value={formData.downPaymentPercentage}
-                  onChange={(v) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      downPaymentPercentage: parseInt(v) || 30
-                    }))
-                  }
-                  min="0"
-                  max="100"
-                />
-              </div>
-              {formData.totalAmount > 0 && (
-                <div className="mt-3 p-3 bg-white rounded-xl">
-                  <p className="text-sm">
-                    Required DP:{' '}
-                    <strong className="text-[#005670]">
-                      ${((formData.totalAmount * formData.downPaymentPercentage) / 100).toLocaleString()}
-                    </strong>
-                  </p>
+            {modalMode === 'create' && (
+              <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200">
+                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" /> Pricing Information
+                </h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Select
+                    label="Collection"
+                    value={formData.collection}
+                    onChange={(v) => setFormData(prev => ({ ...prev, collection: v }))}
+                    options={COLLECTIONS.map(c => ({ value: c, label: c }))}
+                    error={errors.collection}
+                    required
+                  />
+                  <Select
+                    label="Bedroom Count"
+                    value={formData.bedroomCount}
+                    onChange={(v) => setFormData(prev => ({ ...prev, bedroomCount: v }))}
+                    options={BEDROOM_OPTIONS.map(b => ({ value: b, label: `${b} Bedroom` }))}
+                    error={errors.bedroomCount}
+                    required
+                  />
                 </div>
-              )}
-            </div>
+                
+                {formData.calculatedAmount > 0 && (
+                  <div className="mt-4 p-4 bg-white rounded-xl border-2 border-emerald-300">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-700">Total Amount:</span>
+                      <span className="text-2xl font-black text-emerald-600">
+                        ${formData.calculatedAmount.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {modalMode === 'create' ? (
               <Input
@@ -1030,7 +843,7 @@ const FormModal = React.memo(
                     <Loader2 className="w-5 h-5 animate-spin" /> Saving...
                   </>
                 ) : modalMode === 'create' ? (
-                  '✨ Create'
+                  '✨ Create & Initialize'
                 ) : (
                   '💾 Save'
                 )}
@@ -1162,300 +975,33 @@ const ApprovalModal = React.memo(
   }
 );
 
-function PaymentModal({
-  selectedClient,
-  paymentData,
-  setPaymentData,
-  formLoading,
-  closeModal,
-  handlePaymentSubmit
-}) {
-
-  if (!selectedClient) return null;
-
-  const requiredDP =
-    (selectedClient?.paymentInfo?.totalAmount || 0) *
-    ((selectedClient?.paymentInfo?.downPaymentPercentage || 30) / 100);
-
-  return (
-    <Modal title="💰 Record Down Payment" onClose={closeModal}>
-      {/* Client Info */}
-      <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-1">
-        <p className="text-sm"><strong>Client:</strong> {selectedClient?.name}</p>
-        <p className="text-sm"><strong>Unit:</strong> {selectedClient?.unitNumber}</p>
-        <p className="text-sm">
-          <strong>Required DP:</strong>{' '}
-          <strong className="text-[#005670]">${requiredDP.toLocaleString()}</strong>
-        </p>
-      </div>
-
-      {/* FORM */}
-      <form 
-        onSubmit={(e) => { 
-          e.preventDefault(); 
-          handlePaymentSubmit(e); 
-        }} 
-        className="space-y-4 pb-24"
-      >
-        <Input 
-          label="Payment Amount ($)"
-          type="number"
-          value={paymentData.amount}
-          onChange={(v) =>
-            setPaymentData(prev => ({ ...prev, amount: parseFloat(v) || 0 }))
-          }
-          required
-        />
-
-        <Input 
-          label="Payment Date"
-          type="date"
-          value={paymentData.date}
-          onChange={(v) =>
-            setPaymentData(prev => ({ ...prev, date: v }))
-          }
-          required
-        />
-
-        <Select 
-          label="Payment Method"
-          value={paymentData.method}
-          onChange={(v) =>
-            setPaymentData(prev => ({ ...prev, method: v }))
-          }
-          options={[
-            { value: 'bank-transfer', label: 'Bank Transfer' },
-            { value: 'credit-card', label: 'Credit Card' },
-            { value: 'check', label: 'Check' },
-            { value: 'cash', label: 'Cash' },
-            { value: 'wire-transfer', label: 'Wire Transfer' },
-            { value: 'other', label: 'Other' }
-          ]}
-          required
-        />
-
-        <Input 
-          label="Transaction Reference"
-          value={paymentData.reference}
-          onChange={(v) =>
-            setPaymentData(prev => ({ ...prev, reference: v }))
-          }
-          placeholder="Optional"
-        />
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-          <textarea
-            value={paymentData.notes}
-            onChange={(e) =>
-              setPaymentData(prev => ({ ...prev, notes: e.target.value }))
-            }
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl"
-            rows="3"
-          />
-        </div>
-
-        {/* STICKY FOOTER */}
-        <div className="sticky bottom-0 left-0 bg-white py-4 border-t mt-6 
-                        flex justify-end gap-3 z-50">
-
-          <button 
-            type="button"
-            onClick={closeModal}
-            className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700"
-          >
-            Cancel
-          </button>
-
-          <button 
-            type="submit"
-            className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700"
-          >
-            Record Payment
-          </button>
-
-        </div>
-
-      </form>
-    </Modal>
-  );
-}
-
-
-
-
-const PaymentDetailsModal = React.memo(({ selectedClient, getBadge, onClose }) => {
-  const client = selectedClient;
-  if (!client) return null;
-
-  const requiredDP =
-    (client.paymentInfo?.totalAmount || 0) *
-    ((client.paymentInfo?.downPaymentPercentage || 30) / 100);
-  const amountPaid = client.paymentInfo?.amountPaid || 0;
-  const balance = (client.paymentInfo?.totalAmount || 0) - amountPaid;
-
-  return (
-    <Modal title="📊 Payment Details" onClose={onClose} size="large">
-      {/* Client Info */}
-      <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-xl">
-        <div>
-          <p className="text-sm text-gray-600">Client</p>
-          <p className="font-bold">{client.name}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-600">Unit</p>
-          <p className="font-bold">{client.unitNumber}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-600">Code</p>
-          <p className="font-bold">{client.clientCode || '-'}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-600">Floor Plan</p>
-          <p className="font-bold">{client.floorPlan || '-'}</p>
-        </div>
-      </div>
-
-      {/* Payment Summary */}
-      <div className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-200 mb-6">
-        <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <DollarSign className="w-5 h-5" /> Payment Summary
-        </h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Total Amount:</span>
-            <span className="font-bold">${(client.paymentInfo?.totalAmount || 0).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">
-              Required DP ({client.paymentInfo?.downPaymentPercentage || 30}%):
-            </span>
-            <span className="font-bold">${requiredDP.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Amount Paid:</span>
-            <span className="font-bold text-emerald-600">
-              ${amountPaid.toLocaleString()}
-            </span>
-          </div>
-          <div className="flex justify-between pt-3 border-t border-blue-300">
-            <span className="text-gray-600">Remaining Balance:</span>
-            <span className="font-bold text-red-600">${balance.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Status:</span>
-            {getBadge(client.paymentInfo?.downPaymentStatus, 'payment')}
-          </div>
-        </div>
-      </div>
-
-      {/* Payment History */}
-      <div>
-        <h4 className="font-bold text-gray-900 mb-4">📋 Payment History</h4>
-        {client.paymentInfo?.payments?.length > 0 ? (
-          <div className="space-y-3">
-            {client.paymentInfo.payments
-              .slice()
-              .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
-              .map((payment, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-bold text-lg">
-                        ${(payment.amount || 0).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {new Date(payment.paymentDate).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
-                      ✓ Paid
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm mt-3">
-                    <div>
-                      <span className="text-gray-600">Method:</span>{' '}
-                      <span className="font-medium capitalize">
-                        {(payment.paymentMethod || '-').replace('-', ' ')}
-                      </span>
-                    </div>
-                    {payment.transactionReference && (
-                      <div>
-                        <span className="text-gray-600">Ref:</span>{' '}
-                        <span className="font-medium">{payment.transactionReference}</span>
-                      </div>
-                    )}
-                  </div>
-                  {payment.notes && (
-                    <p className="text-sm text-gray-600 mt-2 pt-2 border-t">
-                      <strong>Notes:</strong> {payment.notes}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Recorded by: {payment.recordedBy || 'System'} •{' '}
-                    {payment.recordedAt &&
-                      new Date(payment.recordedAt).toLocaleString()}
-                  </p>
-                </div>
-              ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <Receipt className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-            <p>No payment history</p>
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-end mt-6">
-        <button
-          onClick={onClose}
-          className="px-6 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-medium"
-        >
-          Close
-        </button>
-      </div>
-    </Modal>
-  );
-});
-
-// ClientManagement.jsx - FULL SCREEN JourneyModal
-
 const JourneyModal = React.memo(({ selectedClient, onClose }) => {
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* HEADER - Fixed */}
-      <div className="flex-shrink-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white px-6 py-5 flex justify-between items-center shadow-lg">
+    <div className="fixed inset-0 bg-white z-[9999] flex flex-col">
+      <div className="flex-shrink-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white px-6 py-3 flex justify-between items-center shadow-lg">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <Sparkles className="w-6 h-6" /> Journey Manager
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Sparkles className="w-5 h-5" /> Journey Manager
           </h2>
-          <p className="text-white/90 text-sm mt-1">
+          <p className="text-white/90 text-xs mt-0.5">
             {selectedClient?.name} • Unit {selectedClient?.unitNumber}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="p-3 hover:bg-white/20 rounded-xl transition-colors"
+          className="p-2 hover:bg-white/20 rounded-lg transition-colors"
           title="Close"
         >
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* CONTENT - Full height scrollable */}
       <div className="flex-1 overflow-hidden bg-gray-50">
         <AdminJourneyManager
           clientId={selectedClient?._id}
           clientName={selectedClient?.name}
           onClose={onClose}
+          hideHeader={true}
         />
       </div>
     </div>
@@ -1476,9 +1022,8 @@ const Modal = ({ title, children, onClose, headerClass = 'from-[#005670] to-[#00
         shadow-2xl
         animate-[slideUp_0.3s_ease-out]
       `}
-      onClick={(e) => e.stopPropagation()}  // ⛔ prevent bubbling
+      onClick={(e) => e.stopPropagation()}
     >
-      {/* HEADER */}
       <div className={`bg-gradient-to-r ${headerClass} text-white p-6 flex justify-between items-center rounded-t-3xl`}>
         <h3 className="text-2xl font-bold">{title}</h3>
         <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
@@ -1486,14 +1031,12 @@ const Modal = ({ title, children, onClose, headerClass = 'from-[#005670] to-[#00
         </button>
       </div>
 
-      {/* CONTENT */}
       <div className="p-6 overflow-y-auto flex-1">
         {children}
       </div>
     </div>
   </div>
 );
-
 
 const Input = React.memo(
   ({ label, value, onChange, error, type = 'text', required = false, ...props }) => {
@@ -1517,7 +1060,6 @@ const Input = React.memo(
             {...props}
           />
 
-          {/* Eye Button */}
           {isPassword && (
             <button
               type="button"
@@ -1556,7 +1098,6 @@ const Input = React.memo(
   }
 );
 
-
 const Select = React.memo(({ label, value, onChange, options, error, required = false }) => (
   <div>
     {label && (
@@ -1585,9 +1126,7 @@ const ActionButton = React.memo(({ icon: Icon, color, onClick, title, size = 'md
     green: 'text-emerald-600 hover:bg-emerald-50',
     red: 'text-red-600 hover:bg-red-50',
     blue: 'text-blue-600 hover:bg-blue-50',
-    purple: 'text-purple-600 hover:bg-purple-50',
     cyan: 'text-cyan-600 hover:bg-cyan-50',
-    indigo: 'text-indigo-600 hover:bg-indigo-50'
   };
 
   const sizes = {
@@ -1651,26 +1190,6 @@ const ViewMode = React.memo(({ client }) => (
         </p>
       </div>
     </div>
-
-    {client?.questionnaire && (
-      <div className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-200">
-        <h4 className="text-lg font-bold mb-4">📋 Questionnaire</h4>
-        <div className="space-y-3 text-sm">
-          {client.questionnaire.designStyle?.length > 0 && (
-            <div>
-              <span className="font-semibold">Design:</span>{' '}
-              {client.questionnaire.designStyle.join(', ')}
-            </div>
-          )}
-          {client.questionnaire.colorPalette?.length > 0 && (
-            <div>
-              <span className="font-semibold">Colors:</span>{' '}
-              {client.questionnaire.colorPalette.join(', ')}
-            </div>
-          )}
-        </div>
-      </div>
-    )}
   </div>
 ));
 

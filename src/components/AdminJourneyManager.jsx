@@ -1,4 +1,4 @@
-// AdminJourneyManager.jsx - FIXED SCROLL ISSUE
+// AdminJourneyManager.jsx - REDESIGNED UI
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -31,10 +31,20 @@ import {
   Image,
   BedDouble,
   Tv,
+  Play,
+  Pause,
+  CheckCheck,
+  XCircle,
+  Calendar,
+  StickyNote,
+  Sparkles,
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import InvoiceManagement from './InvoiceManagement';
+import InvoiceManagementInline from './InvoiceManagementInline';
+import AgreementManagementInline from './AgreementManagementInline';
 
-const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
+const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true }) => {
   const fileInputRef = useRef(null);
   const stageScrollRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -63,9 +73,10 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
   const [selectedStage, setSelectedStage] = useState(null);
   const [allStages, setAllStages] = useState([]);
 
-  // questionnaire state (digunakan di step 11)
+  // questionnaire state
   const [loadingQuestionnaire, setLoadingQuestionnaire] = useState(false);
   const [viewingQuestionnaire, setViewingQuestionnaire] = useState(null);
+
 
   useEffect(() => {
     fetchJourney();
@@ -236,21 +247,57 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
     }
   };
 
-  const handleGeneratePdf = async (stepNumber) => {
-    try {
-      setGeneratingPdf(true);
-      const token = localStorage.getItem('token');
+// AdminJourneyManager.jsx - UPDATE handleGeneratePdf function
 
+// REPLACE your existing handleGeneratePdf with this:
+
+const handleGeneratePdf = async (stepNumber) => {
+  try {
+    setGeneratingPdf(true);
+    setError('');
+    const token = localStorage.getItem('token');
+
+    // For invoice steps (15, 43, 58, 67), generate invoice and open in new tab
+    if ([15, 43, 58, 67].includes(stepNumber)) {
+      // Generate invoice (saves to DB)
       const response = await fetch(
-        `${backendServer}/api/journeys/client/${clientId}/step/${stepNumber}/generate-pdf`,
+        `${backendServer}/api/invoices/generate/${clientId}/${stepNumber}?bypassSequentialCheck=true`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ bypassSequentialCheck: true })
         }
       );
+
+      if (response.ok) {
+        const data = await response.json();
+        const invoiceNumber = data.invoice.invoiceNumber;
+        
+        setSuccess(`Invoice ${invoiceNumber} generated! Opening in new tab...`);
+        
+        // Open invoice HTML in new tab
+        const invoiceUrl = `${window.location.origin}/invoice/${clientId}/${invoiceNumber}`;
+        window.open(invoiceUrl, '_blank', 'noopener,noreferrer');
+        
+        fetchJourney(); // Refresh to show generated document
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to generate invoice');
+      }
+    } else {
+      // For other steps, download DOCX as before
+      const url = `${backendServer}/api/journeys/client/${clientId}/step/${stepNumber}/generate-pdf`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (response.ok) {
         const blob = await response.blob();
@@ -263,18 +310,21 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        setSuccess(`PDF generated for Step ${stepNumber}!`);
+        setSuccess(`Document generated for Step ${stepNumber}!`);
+        fetchJourney();
         setTimeout(() => setSuccess(''), 3000);
       } else {
-        throw new Error('Failed to generate PDF');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to generate document');
       }
-    } catch (error) {
-      setError('Failed to generate PDF: ' + error.message);
-      setTimeout(() => setError(''), 5000);
-    } finally {
-      setGeneratingPdf(false);
     }
-  };
+  } catch (error) {
+    setError('Failed to generate: ' + error.message);
+    setTimeout(() => setError(''), 5000);
+  } finally {
+    setGeneratingPdf(false);
+  }
+};
 
   const toggleStepExpanded = async (stepNumber) => {
     const newExpanded = new Set(expandedSteps);
@@ -286,14 +336,13 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
       newExpanded.add(stepNumber);
       await loadChat(stepNumber);
 
-    if (stepNumber === 11) {
-      await loadQuestionnaire(stepNumber);
-    }
+      if (stepNumber === 11) {
+        await loadQuestionnaire(stepNumber);
+      }
     }
 
     setExpandedSteps(newExpanded);
   };
-
 
   const loadChat = async (stepNumber) => {
     try {
@@ -316,19 +365,18 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
   };
 
   const loadQuestionnaire = async (stepNumber) => {
-    if (stepNumber !== 11) return; // Only for step 11
-    
+    if (stepNumber !== 11) return;
+
     setLoadingQuestionnaire(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
         `${backendServer}/api/questionnaires/client/${clientId}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (response.ok) {
         const data = await response.json();
-                console.log(data.questionnaire);
         if (data.questionnaire) {
           setViewingQuestionnaire(data.questionnaire);
         }
@@ -517,30 +565,30 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-6 h-6 text-emerald-500" />;
       case 'in-progress':
-        return <Clock className="w-5 h-5 text-blue-600" />;
+        return <Play className="w-6 h-6 text-blue-500" />;
       case 'pending':
-        return <AlertCircle className="w-5 h-5 text-yellow-600" />;
+        return <Pause className="w-6 h-6 text-amber-500" />;
       case 'cancelled':
-        return <X className="w-5 h-5 text-red-600" />;
+        return <XCircle className="w-6 h-6 text-red-500" />;
       default:
-        return <Circle className="w-5 h-5 text-gray-400" />;
+        return <Circle className="w-6 h-6 text-gray-300" />;
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-emerald-500';
       case 'in-progress':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-blue-500';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-amber-500';
       case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-red-500';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-gray-300';
     }
   };
 
@@ -604,138 +652,211 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-blue-50/30">
       {/* COMPACT HEADER */}
-      <div className="bg-white border-b flex-shrink-0 sticky top-0 z-10 shadow-sm">
-        {/* Title Bar */}
-        <div className="px-6 py-3 flex justify-between items-center border-b">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Journey Manager</h2>
-            <p className="text-sm text-gray-600">{clientName}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchJourney}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 text-sm font-medium"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-              title="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Compact Progress */}
-        <div className="px-6 py-3 bg-gradient-to-r from-blue-50 to-cyan-50">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-bold text-gray-900">
-                  Overall Progress
-                </span>
-                <span className="text-sm font-bold text-[#005670]">
-                  {completedSteps} / {journey.steps.length}
-                </span>
+      {!hideHeader && (
+        <div className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-10 shadow-sm">
+          {/* Overall Progress Bar */}
+          <div className="px-6 py-3 bg-gradient-to-r from-[#005670] via-blue-600 to-cyan-500">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-xs font-bold text-white/90">
+                    Overall Progress
+                  </span>
+                  <span className="text-xs font-black text-white">
+                    {completedSteps} of {journey.steps.length} Steps
+                  </span>
+                </div>
+                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-white h-2 rounded-full transition-all duration-700 ease-out shadow-lg"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-[#005670] to-[#007a9a] h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                />
+              <div className="flex gap-3 items-center">
+
+                
+                <div className="flex flex-col items-end">
+                  <div className="text-3xl font-black text-white drop-shadow-lg">
+                    {Math.round(progressPercentage)}%
+                  </div>
+                  <div className="text-[10px] text-white/80 font-medium">Complete</div>
+                </div>
               </div>
             </div>
-            <div className="text-3xl font-bold text-[#005670]">
-              {Math.round(progressPercentage)}%
-            </div>
           </div>
-        </div>
 
-        {/* Stage Navigation */}
-        <div className="px-6 py-3 bg-white">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => scrollStage('prev')}
-              className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+          {/* Stage Navigation */}
+          <div className="px-6 py-2.5 bg-white border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => scrollStage('prev')}
+                className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0 transition-all"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
 
-            <div
-              ref={stageScrollRef}
-              className="flex gap-2 overflow-x-auto hide-scrollbar flex-1"
-            >
-              {allStages.map((stage, idx) => {
-                const progress = getStageProgress(stage);
-                const isSelected = selectedStage === stage;
+              <div
+                ref={stageScrollRef}
+                className="flex gap-2 overflow-x-auto hide-scrollbar flex-1"
+              >
+                {allStages.map((stage, idx) => {
+                  const progress = getStageProgress(stage);
+                  const isSelected = selectedStage === stage;
 
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedStage(stage)}
-                    className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all
-                      ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-[#005670] to-[#007a9a] text-white shadow-lg scale-105'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                  >
-                    <div className="text-left">
-                      <div className="font-bold mb-0.5">{stage}</div>
-                      <div className="flex items-center gap-2 text-xs opacity-90">
-                        <span>
-                          {progress.completed}/{progress.total}
-                        </span>
-                        <span className="font-bold">
-                          {progress.percentage}%
-                        </span>
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedStage(stage)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all
+                        ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-[#005670] to-[#007a9a] text-white shadow-lg scale-105'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
+                        }`}
+                    >
+                      <div className="text-left">
+                        <div className="font-black mb-0.5">{stage}</div>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          <span>
+                            {progress.completed}/{progress.total}
+                          </span>
+                          <span className="font-black">
+                            {progress.percentage}%
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <button
-              onClick={() => scrollStage('next')}
-              className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Notifications */}
-        {error && (
-          <div className="mx-6 my-2 bg-red-50 border-l-4 border-red-500 p-2 rounded-r-lg">
-            <div className="flex gap-2 items-center">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-              <p className="text-red-800 text-sm flex-1">{error}</p>
-              <button onClick={() => setError('')}>
-                <X className="w-4 h-4 text-red-600" />
+              <button
+                onClick={() => scrollStage('next')}
+                className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0 transition-all"
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
-        )}
 
-        {success && (
-          <div className="mx-6 my-2 bg-green-50 border-l-4 border-green-500 p-2 rounded-r-lg">
-            <div className="flex gap-2 items-center">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <p className="text-green-800 text-sm">{success}</p>
+          {/* Notifications */}
+          {error && (
+            <div className="mx-6 my-2 bg-red-50 border-l-4 border-red-500 p-2.5 rounded-r-lg">
+              <div className="flex gap-2 items-center">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <p className="text-red-800 text-xs font-medium flex-1">{error}</p>
+                <button onClick={() => setError('')}>
+                  <X className="w-4 h-4 text-red-600" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {success && (
+            <div className="mx-6 my-2 bg-green-50 border-l-4 border-green-500 p-2.5 rounded-r-lg">
+              <div className="flex gap-2 items-center">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <p className="text-green-800 text-xs font-medium">{success}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* When header is hidden, show compact progress + stages */}
+      {hideHeader && (
+        <div className="bg-white border-b border-gray-200 flex-shrink-0">
+          {/* Compact Progress */}
+          <div className="px-4 py-2 bg-gradient-to-r from-[#005670] via-blue-600 to-cyan-500">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <div className="w-full bg-white/20 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-white h-1.5 rounded-full transition-all duration-700"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-xl font-black text-white">
+                {Math.round(progressPercentage)}%
+              </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* SCROLLABLE CONTENT - FIXED: Added proper overflow handling */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="space-y-3 pb-20">
+          {/* Compact Stage Navigation */}
+          <div className="px-4 py-2 bg-white">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => scrollStage('prev')}
+                className="p-1 hover:bg-gray-100 rounded-lg"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              <div
+                ref={stageScrollRef}
+                className="flex gap-1.5 overflow-x-auto hide-scrollbar flex-1"
+              >
+                {allStages.map((stage, idx) => {
+                  const progress = getStageProgress(stage);
+                  const isSelected = selectedStage === stage;
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedStage(stage)}
+                      className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all
+                        ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-[#005670] to-[#007a9a] text-white shadow-md'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                    >
+                      {stage} • {progress.percentage}%
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => scrollStage('next')}
+                className="p-1 hover:bg-gray-100 rounded-lg"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Compact Notifications */}
+          {error && (
+            <div className="mx-4 mb-2 bg-red-50 border-l-4 border-red-500 p-2 rounded-r-lg">
+              <div className="flex gap-2 items-center">
+                <AlertCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
+                <p className="text-red-800 text-xs flex-1">{error}</p>
+                <button onClick={() => setError('')}>
+                  <X className="w-3.5 h-3.5 text-red-600" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {success && (
+            <div className="mx-4 mb-2 bg-green-50 border-l-4 border-green-500 p-2 rounded-r-lg">
+              <div className="flex gap-2 items-center">
+                <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                <p className="text-green-800 text-xs">{success}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SCROLLABLE CONTENT */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-5xl mx-auto space-y-3 pb-10">
           {selectedStageSteps.map((step) => {
             const isEditing = editingStep === step.step;
             const isLocked =
@@ -746,414 +867,242 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
             return (
               <div
                 key={step.step}
-                className="bg-white rounded-xl shadow-sm p-4 border-2 border-gray-100 hover:shadow-md transition-all relative"
+                className={`bg-white rounded-2xl shadow-md hover:shadow-xl transition-all relative overflow-hidden
+                  ${isEditing ? 'ring-4 ring-blue-300' : ''}
+                  ${!canEdit && !isLocked ? 'opacity-60' : ''}`}
               >
                 {/* Overlay for locked steps */}
                 {!canEdit && !isLocked && (
-                  <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center z-20">
-                    <div className="bg-white p-4 rounded-xl shadow-2xl border-2 border-orange-400">
-                      <p className="text-base font-bold text-orange-800 flex items-center gap-2">
-                        <Lock className="w-5 h-5" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/70 to-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl border-4 border-amber-400 animate-pulse">
+                      <p className="text-lg font-black text-amber-800 flex items-center gap-3 mb-3">
+                        <Lock className="w-6 h-6" />
                         Complete Step {step.step - 1} First
                       </p>
+                      
+                      {/* Special: Invoice generation bypass for steps 15, 43, 58, 67 */}
+                      {[15, 43, 58, 67].includes(step.step) && step.docAutoGenerated && (
+                        <div className="mt-4 pt-4 border-t border-amber-300">
+                          <p className="text-sm text-amber-700 mb-2 font-semibold">Generate invoice without completing steps:</p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGeneratePdf(step.step);
+                            }}
+                            disabled={generatingPdf}
+                            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                          >
+                            <FileText className="w-4 h-4" />
+                            {generatingPdf ? 'Generating...' : `Generate Invoice (Step ${step.step})`}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    {getStatusIcon(step.status)}
-                  </div>
+                {/* Status Color Bar */}
+                <div className={`h-2 ${getStatusColor(step.status)}`} />
 
-                  <div className="flex-grow min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-base font-bold">
-                        Step {step.step}
-                      </span>
-
-                      <span
-                        className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${getStatusColor(
-                          step.status
-                        )}`}
-                      >
-                        {step.status.toUpperCase()}
-                      </span>
-
-                      {isLocked && (
-                        <span className="px-2 py-0.5 rounded-lg bg-gray-200 text-gray-700 flex items-center gap-1 text-xs">
-                          <Lock className="w-3 h-3" />
-                          LOCKED
-                        </span>
-                      )}
-
-                      {step.docAutoGenerated && (
-                        <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-700 flex items-center gap-1 text-xs font-bold">
-                          <FileText className="w-3 h-3" />
-                          AUTO PDF
-                        </span>
-                      )}
+                <div className="p-6">
+                  <div className="flex gap-5">
+                    {/* Left: Icon & Step Number */}
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        {getStatusIcon(step.status)}
+                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full px-2 py-0.5 shadow-md">
+                          <span className="text-xs font-black text-gray-700">
+                            #{step.step}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <h3 className="text-sm font-bold mb-2">
-                      {step.adminDescription}
-                    </h3>
+                    {/* Right: Content */}
+                    <div className="flex-grow min-w-0">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-xl font-black text-gray-900 mb-2">
+                            {step.adminDescription}
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {/* Status Badge */}
+                            <StatusBadge status={step.status} />
 
-                    {/* Generated Documents */}
-                    {step.generatedDocuments?.length > 0 && (
-                      <div className="mb-3 bg-purple-50 border border-purple-200 rounded-lg p-2">
-                        <p className="text-xs font-bold text-purple-900 mb-1">
-                          Generated Documents:
-                        </p>
-
-                        <div className="space-y-1">
-                          {step.generatedDocuments.map((doc, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() =>
-                                downloadDocument(
-                                  step.step,
-                                  idx,
-                                  doc.filename
-                                )
-                              }
-                              className="flex items-center gap-2 text-xs text-purple-700 hover:text-purple-900 hover:underline"
-                            >
-                              <File className="w-3 h-3" />
-                              {doc.filename}
-                              <Download className="w-3 h-3" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* EDIT MODE */}
-                    {isEditing ? (
-                      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-3 mt-2">
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          <div>
-                            <label className="block font-bold mb-1 text-xs">
-                              Status
-                            </label>
-                            <select
-                              value={editData.status}
-                              onChange={(e) =>
-                                setEditData({
-                                  ...editData,
-                                  status: e.target.value,
-                                })
-                              }
-                              className="w-full px-2 py-1.5 border rounded text-sm"
-                            >
-                              <option value="not-started">Not Started</option>
-                              <option value="pending">Pending</option>
-                              <option value="in-progress">In Progress</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block font-bold mb-1 text-xs">
-                              Deadline
-                            </label>
-                            <input
-                              type="date"
-                              value={editData.deadline}
-                              onChange={(e) =>
-                                setEditData({
-                                  ...editData,
-                                  deadline: e.target.value,
-                                })
-                              }
-                              className="w-full px-2 py-1.5 border rounded text-sm"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block font-bold mb-1 text-xs">
-                              Complete Date
-                            </label>
-                            <input
-                              type="date"
-                              value={editData.completeDate}
-                              onChange={(e) =>
-                                setEditData({
-                                  ...editData,
-                                  completeDate: e.target.value,
-                                })
-                              }
-                              disabled={editData.status !== 'completed'}
-                              className="w-full px-2 py-1.5 border rounded disabled:bg-gray-100 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mb-2">
-                          <label className="block font-bold mb-1 text-xs">
-                            Notes
-                          </label>
-                          <textarea
-                            value={editData.notes}
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                notes: e.target.value,
-                              })
-                            }
-                            rows="2"
-                            className="w-full px-2 py-1.5 border rounded text-sm"
-                          />
-                        </div>
-
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={cancelEditing}
-                            type="button"
-                            className="px-3 py-1.5 bg-gray-300 rounded-lg font-bold text-sm hover:bg-gray-400"
-                          >
-                            Cancel
-                          </button>
-
-                          <button
-                            onClick={() => handleSaveStep(step.step)}
-                            disabled={saving}
-                            type="button"
-                            className="px-3 py-1.5 bg-[#005670] text-white rounded-lg font-bold text-sm flex items-center gap-1"
-                          >
-                            <Save className="w-4 h-4" />
-                            {saving ? 'Saving...' : 'Save'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      // VIEW MODE
-                      <div className="mt-2 flex gap-2 flex-wrap">
-                        {!isLocked && canEdit && (
-                          <button
-                            onClick={() => startEditing(step)}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-xs flex items-center gap-1"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            Edit
-                          </button>
-                        )}
-
-                        {step.docAutoGenerated && (
-                          <button
-                            onClick={() => handleGeneratePdf(step.step)}
-                            disabled={generatingPdf}
-                            className="px-3 py-1.5 bg-purple-600 text-white rounded-lg font-bold text-xs flex items-center gap-1 disabled:opacity-50"
-                          >
-                            <FileText className="w-3 h-3" />
-                            {generatingPdf ? 'Generating...' : 'Generate PDF'}
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => toggleStepExpanded(step.step)}
-                          className="px-3 py-1.5 bg-gray-200 rounded-lg font-bold text-xs flex items-center gap-1"
-                        >
-                          {isExpanded ? (
-                            <>
-                              <ChevronUp className="w-3 h-3" />
-                              Hide
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="w-3 h-3" />
-                              Chat
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* QUESTIONNAIRE + CHAT (Step 11) */}
-                    {isExpanded && step.step === 11 && (
-                      <div className="mt-3 space-y-3">
-                        {/* Questionnaire */}
-                        {loadingQuestionnaire ? (
-                          <div className="bg-gray-50 rounded-lg p-6 text-center">
-                            <RefreshCw className="w-6 h-6 animate-spin text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-600">
-                              Loading questionnaire...
-                            </p>
-                          </div>
-                        ) : viewingQuestionnaire ? (
-                          <QuestionnaireView
-                            questionnaire={viewingQuestionnaire}
-                          />
-                        ) : (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                            <div className="flex items-center gap-2 text-amber-800">
-                              <AlertCircle className="w-5 h-5" />
-                              <p className="font-medium">
-                                No questionnaire submitted yet
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Chat Section */}
-                        {activeChat === step.step && (
-                          <div className="mt-3 bg-gray-50 rounded-lg p-3">
-                            <h4 className="font-bold mb-2 text-sm flex items-center gap-1">
-                              <MessageSquare className="w-4 h-4" />
-                              Conversation
-                            </h4>
-
-                            <div className="space-y-2 mb-2 max-h-60 overflow-y-auto">
-                              {!chatMessages[step.step] ||
-                              chatMessages[step.step].length === 0 ? (
-                                <p className="text-center py-4 text-gray-500 text-xs">
-                                  No messages yet
-                                </p>
-                              ) : (
-                                <>
-                                  {chatMessages[step.step].map((msg, idx) => (
-                                    <div
-                                      key={idx}
-                                      className={`p-2 rounded-lg text-xs ${
-                                        msg.sender === 'admin'
-                                          ? 'bg-blue-100 ml-4'
-                                          : 'bg-white border border-gray-200 mr-4'
-                                      }`}
-                                    >
-                                      <div className="flex justify-between mb-1">
-                                        <span className="font-bold text-xs">
-                                          {msg.sender === 'admin'
-                                            ? '👨‍💼 Admin'
-                                            : '👤 Client'}
-                                        </span>
-
-                                        <span className="text-xs text-gray-500">
-                                          {new Date(
-                                            msg.sentAt
-                                          ).toLocaleString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: 'numeric',
-                                            minute: '2-digit',
-                                          })}
-                                        </span>
-                                      </div>
-
-                                      <p className="mb-1 whitespace-pre-wrap">
-                                        {msg.message}
-                                      </p>
-
-                                      {msg.attachments?.length > 0 && (
-                                        <div className="mt-1 space-y-1">
-                                          {msg.attachments.map(
-                                            (att, attIdx) => (
-                                              <button
-                                                key={attIdx}
-                                                onClick={() =>
-                                                  downloadAttachment(
-                                                    step.step,
-                                                    msg._id,
-                                                    att._id,
-                                                    att.filename
-                                                  )
-                                                }
-                                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                                              >
-                                                <Paperclip className="w-3 h-3" />
-                                                {att.filename}
-                                                <Download className="w-3 h-3" />
-                                              </button>
-                                            )
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-
-                                  <div ref={chatEndRef} />
-                                </>
-                              )}
-                            </div>
-
-                            {/* Selected Files */}
-                            {selectedFiles.length > 0 && (
-                              <div className="mb-2 space-y-1">
-                                {selectedFiles.map((file, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="flex items-center justify-between bg-blue-50 p-2 rounded text-xs"
-                                  >
-                                    <span className="flex items-center gap-1">
-                                      <Paperclip className="w-3 h-3" />
-                                      {file.filename} ({formatFileSize(file.size)}
-                                      )
-                                    </span>
-
-                                    <button
-                                      onClick={() => removeSelectedFile(idx)}
-                                      className="text-red-600 hover:text-red-800"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
+                            {isLocked && (
+                              <span className="px-3 py-1 rounded-full bg-gray-200 text-gray-700 flex items-center gap-1.5 text-sm font-bold">
+                                <Lock className="w-4 h-4" />
+                                LOCKED
+                              </span>
                             )}
 
-                            {/* Chat Input */}
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-grow px-2 py-1.5 border rounded text-sm"
-                                placeholder="Type message..."
-                                onKeyPress={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    sendChatMessage(step.step);
-                                  }
-                                }}
-                              />
+                            {step.docAutoGenerated && (
+                              <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 flex items-center gap-1.5 text-sm font-bold">
+                                <FileText className="w-4 h-4" />
+                                AUTO PDF
+                              </span>
+                            )}
 
-                              <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileSelect}
-                                multiple
-                                className="hidden"
-                              />
+                            {/* Deadline */}
+                            {step.deadlineDate && (
+                              <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 flex items-center gap-1.5 text-sm font-semibold">
+                                <Calendar className="w-4 h-4" />
+                                {new Date(step.deadlineDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                              <button
-                                onClick={() =>
-                                  fileInputRef.current?.click()
-                                }
-                                className="px-2 py-1.5 bg-gray-200 hover:bg-gray-300 rounded"
-                                title="Attach files"
-                              >
-                                <Paperclip className="w-4 h-4" />
-                              </button>
-
-                              <button
-                                onClick={() => sendChatMessage(step.step)}
-                                disabled={
-                                  (!chatInput.trim() &&
-                                    selectedFiles.length === 0) ||
-                                  uploadingFiles
-                                }
-                                className="px-3 py-1.5 bg-[#005670] text-white rounded disabled:opacity-50"
-                              >
-                                {uploadingFiles ? (
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                              </button>
+                      {/* Notes Display */}
+                      {step.notes && !isEditing && (
+                        <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-xl">
+                          <div className="flex items-start gap-2">
+                            <StickyNote className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-amber-900 mb-1">Notes:</p>
+                              <p className="text-sm text-amber-800">{step.notes}</p>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      )}
+
+                      {/* Generated Documents */}
+                      {step.generatedDocuments?.length > 0 && (
+                        <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                          <p className="text-sm font-bold text-purple-900 mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Generated Documents:
+                          </p>
+                          <div className="space-y-2">
+                            {step.generatedDocuments.map((doc, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() =>
+                                  downloadDocument(step.step, idx, doc.filename)
+                                }
+                                className="flex items-center gap-2 text-sm text-purple-700 hover:text-purple-900 hover:underline font-medium"
+                              >
+                                <File className="w-4 h-4" />
+                                {doc.filename}
+                                <Download className="w-4 h-4 ml-auto" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* EDIT MODE */}
+                      {isEditing ? (
+                        <EditStepForm
+                          editData={editData}
+                          setEditData={setEditData}
+                          saving={saving}
+                          onSave={() => handleSaveStep(step.step)}
+                          onCancel={cancelEditing}
+                        />
+                      ) : (
+                        // VIEW MODE - Action Buttons
+                        <div className="flex gap-2 flex-wrap">
+                          {!isLocked && canEdit && (
+                            <ActionButton
+                              icon={Edit2}
+                              label="Edit Status"
+                              color="blue"
+                              onClick={() => startEditing(step)}
+                            />
+                          )}
+
+                          {step.docAutoGenerated && (
+                            <ActionButton
+                              icon={FileText}
+                              label={generatingPdf ? 'Generating...' : 'Generate PDF'}
+                              color="purple"
+                              onClick={() => handleGeneratePdf(step.step)}
+                              disabled={generatingPdf}
+                            />
+                          )}
+
+                          <ActionButton
+                            icon={isExpanded ? ChevronUp : ChevronDown}
+                            label={isExpanded ? 'Hide Details' : 'Show Details'}
+                            color="gray"
+                            onClick={() => toggleStepExpanded(step.step)}
+                          />
+                        </div>
+                      )}
+
+                      {/* EXPANDED CONTENT */}
+                      {isExpanded && (
+                        <div className="mt-6 space-y-4">
+                          {/* Questionnaire for Step 11 */}
+                          {step.step === 11 && (
+                            <>
+                              {loadingQuestionnaire ? (
+                                <div className="bg-gray-50 rounded-xl p-8 text-center">
+                                  <RefreshCw className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-3" />
+                                  <p className="text-gray-600 font-medium">
+                                    Loading questionnaire...
+                                  </p>
+                                </div>
+                              ) : viewingQuestionnaire ? (
+                                <QuestionnaireView
+                                  questionnaire={viewingQuestionnaire}
+                                />
+                              ) : (
+                                <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-5">
+                                  <div className="flex items-center gap-3 text-amber-800">
+                                    <AlertCircle className="w-6 h-6" />
+                                    <p className="font-semibold">
+                                      No questionnaire submitted yet
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Invoice Management for Step 2 */}
+                          {step.step === 15 && (
+                            <InvoiceManagementInline
+                              clientId={clientId}
+                              clientName={clientName}
+                              currentStep={step.step}
+                              onInvoiceGenerated={() => fetchJourney()}
+                            />
+                          )}
+
+                          {step.step === 16 && (
+                            <AgreementManagementInline
+                              clientId={clientId}
+                              clientName={clientName}
+                              currentStep={step.step}
+                              onAgreementGenerated={() => fetchJourney()}
+                            />
+                          )}
+
+                          {/* Chat Section */}
+                          {activeChat === step.step && (
+                            <ChatSection
+                              stepNumber={step.step}
+                              chatMessages={chatMessages}
+                              chatInput={chatInput}
+                              setChatInput={setChatInput}
+                              selectedFiles={selectedFiles}
+                              uploadingFiles={uploadingFiles}
+                              fileInputRef={fileInputRef}
+                              chatEndRef={chatEndRef}
+                              onFileSelect={handleFileSelect}
+                              onRemoveFile={removeSelectedFile}
+                              onSendMessage={sendChatMessage}
+                              onDownloadAttachment={downloadAttachment}
+                              formatFileSize={formatFileSize}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1162,7 +1111,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
         </div>
       </div>
 
-      {/* CSS helper untuk hide-scrollbar */}
+      {/* CSS */}
       <style>
         {`
           .hide-scrollbar::-webkit-scrollbar {
@@ -1178,7 +1127,344 @@ const AdminJourneyManager = ({ clientId, clientName, onClose }) => {
   );
 };
 
-// ====================== QuestionnaireView ======================
+// ==================== CHILD COMPONENTS ====================
+
+const StatusBadge = ({ status }) => {
+  const configs = {
+    completed: {
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-700',
+      icon: CheckCheck,
+      label: 'Completed',
+    },
+    'in-progress': {
+      bg: 'bg-blue-100',
+      text: 'text-blue-700',
+      icon: Play,
+      label: 'In Progress',
+    },
+    pending: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
+      icon: Pause,
+      label: 'Pending',
+    },
+    cancelled: {
+      bg: 'bg-red-100',
+      text: 'text-red-700',
+      icon: XCircle,
+      label: 'Cancelled',
+    },
+    'not-started': {
+      bg: 'bg-gray-100',
+      text: 'text-gray-700',
+      icon: Circle,
+      label: 'Not Started',
+    },
+  };
+
+  const config = configs[status] || configs['not-started'];
+  const Icon = config.icon;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold ${config.bg} ${config.text}`}
+    >
+      <Icon className="w-4 h-4" />
+      {config.label}
+    </span>
+  );
+};
+
+const ActionButton = ({ icon: Icon, label, color, onClick, disabled }) => {
+  const colors = {
+    blue: 'bg-blue-600 hover:bg-blue-700 text-white',
+    purple: 'bg-purple-600 hover:bg-purple-700 text-white',
+    gray: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${colors[color]}`}
+    >
+      <Icon className="w-4 h-4" />
+      {label}
+    </button>
+  );
+};
+
+const EditStepForm = ({ editData, setEditData, saving, onSave, onCancel }) => {
+  return (
+    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-2xl p-6 mt-4">
+      <h4 className="font-black text-gray-900 mb-4 text-lg flex items-center gap-2">
+        <Edit2 className="w-5 h-5 text-blue-600" />
+        Edit Step Status
+      </h4>
+
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block font-bold mb-2 text-sm text-gray-700">
+            Status *
+          </label>
+          <select
+            value={editData.status}
+            onChange={(e) =>
+              setEditData({ ...editData, status: e.target.value })
+            }
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="not-started">Not Started</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block font-bold mb-2 text-sm text-gray-700">
+            Deadline
+          </label>
+          <input
+            type="date"
+            value={editData.deadline}
+            onChange={(e) =>
+              setEditData({ ...editData, deadline: e.target.value })
+            }
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block font-bold mb-2 text-sm text-gray-700">
+            Completion Date
+          </label>
+          <input
+            type="date"
+            value={editData.completeDate}
+            onChange={(e) =>
+              setEditData({ ...editData, completeDate: e.target.value })
+            }
+            disabled={editData.status !== 'completed'}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl font-medium disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <label className="block font-bold mb-2 text-sm text-gray-700">
+          Notes
+        </label>
+        <textarea
+          value={editData.notes}
+          onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
+          rows="3"
+          placeholder="Add notes about this step..."
+          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+        />
+      </div>
+
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={onCancel}
+          type="button"
+          className="px-6 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-bold text-gray-800 transition-all"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={onSave}
+          disabled={saving}
+          type="button"
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+        >
+          <Save className="w-5 h-5" />
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ChatSection = ({
+  stepNumber,
+  chatMessages,
+  chatInput,
+  setChatInput,
+  selectedFiles,
+  uploadingFiles,
+  fileInputRef,
+  chatEndRef,
+  onFileSelect,
+  onRemoveFile,
+  onSendMessage,
+  onDownloadAttachment,
+  formatFileSize,
+}) => {
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-5 border-2 border-gray-200">
+      <h4 className="font-black mb-4 text-lg flex items-center gap-2 text-gray-900">
+        <MessageSquare className="w-5 h-5 text-blue-600" />
+        Conversation
+      </h4>
+
+      {/* Messages */}
+      <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
+        {!chatMessages[stepNumber] || chatMessages[stepNumber].length === 0 ? (
+          <p className="text-center py-8 text-gray-500 font-medium">
+            No messages yet. Start the conversation!
+          </p>
+        ) : (
+          <>
+            {chatMessages[stepNumber].map((msg, idx) => (
+              <div
+                key={idx}
+                className={`p-4 rounded-xl ${
+                  msg.sender === 'admin'
+                    ? 'bg-blue-100 ml-8 border-2 border-blue-200'
+                    : 'bg-white mr-8 border-2 border-gray-200'
+                }`}
+              >
+                <div className="flex justify-between mb-2">
+                  <span className="font-bold text-sm flex items-center gap-2">
+                    {msg.sender === 'admin' ? (
+                      <>
+                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-black">
+                          A
+                        </div>
+                        Admin
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs font-black">
+                          C
+                        </div>
+                        Client
+                      </>
+                    )}
+                  </span>
+
+                  <span className="text-xs text-gray-500 font-medium">
+                    {new Date(msg.sentAt).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+
+                <p className="mb-2 whitespace-pre-wrap text-gray-800">
+                  {msg.message}
+                </p>
+
+                {msg.attachments?.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {msg.attachments.map((att, attIdx) => (
+                      <button
+                        key={attIdx}
+                        onClick={() =>
+                          onDownloadAttachment(
+                            stepNumber,
+                            msg._id,
+                            att._id,
+                            att.filename
+                          )
+                        }
+                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                        {att.filename}
+                        <Download className="w-4 h-4 ml-auto" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </>
+        )}
+      </div>
+
+      {/* Selected Files Preview */}
+      {selectedFiles.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {selectedFiles.map((file, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between bg-blue-50 p-3 rounded-xl border border-blue-200"
+            >
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <Paperclip className="w-4 h-4 text-blue-600" />
+                {file.filename} ({formatFileSize(file.size)})
+              </span>
+
+              <button
+                onClick={() => onRemoveFile(idx)}
+                className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-lg transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          className="flex-grow px-4 py-3 border-2 border-gray-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Type your message..."
+          onKeyPress={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              onSendMessage(stepNumber);
+            }
+          }}
+        />
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={onFileSelect}
+          multiple
+          className="hidden"
+        />
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl transition-all"
+          title="Attach files"
+        >
+          <Paperclip className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={() => onSendMessage(stepNumber)}
+          disabled={
+            (!chatInput.trim() && selectedFiles.length === 0) || uploadingFiles
+          }
+          className="px-5 py-3 bg-gradient-to-r from-[#005670] to-[#007a9a] hover:from-[#004560] hover:to-[#006080] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-bold transition-all shadow-md hover:shadow-lg"
+        >
+          {uploadingFiles ? (
+            <RefreshCw className="w-5 h-5 animate-spin" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ==================== QuestionnaireView (unchanged) ====================
 
 const QuestionnaireView = ({ questionnaire }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -1203,102 +1489,67 @@ const QuestionnaireView = ({ questionnaire }) => {
   );
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden shadow-lg">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="font-bold text-white flex items-center gap-2">
-              <ClipboardList className="w-5 h-5" />
+            <h4 className="font-black text-white flex items-center gap-3 text-xl">
+              <ClipboardList className="w-6 h-6" />
               Client Questionnaire Results
             </h4>
-            <p className="text-white/80 text-xs mt-1">
-              Submitted:{' '}
-              {new Date(
-                questionnaire.submittedAt
-              ).toLocaleDateString()}
+            <p className="text-white/90 text-sm mt-2 font-medium">
+              Submitted: {new Date(questionnaire.submittedAt).toLocaleDateString()}
             </p>
           </div>
-          <span className="px-3 py-1 bg-white/20 rounded-full text-white text-xs font-bold">
+          <span className="px-4 py-2 bg-white/20 rounded-full text-white text-sm font-black">
             {questionnaire.status?.toUpperCase()}
           </span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 bg-gray-50">
-        <div className="flex gap-2 p-2">
-          <button
+      <div className="border-b-2 border-gray-200 bg-gray-50">
+        <div className="flex gap-2 p-3">
+          <TabButton
+            icon={Home}
+            label="Overview"
+            active={activeTab === 'overview'}
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'overview'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-600 hover:bg-white/50'
-            }`}
-          >
-            <Home className="w-4 h-4 inline mr-1" />
-            Overview
-          </button>
-          <button
+          />
+          <TabButton
+            icon={Palette}
+            label="Design"
+            active={activeTab === 'design'}
             onClick={() => setActiveTab('design')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'design'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-600 hover:bg-white/50'
-            }`}
-          >
-            <Palette className="w-4 h-4 inline mr-1" />
-            Design
-          </button>
-          <button
+          />
+          <TabButton
+            icon={Activity}
+            label="Functional"
+            active={activeTab === 'functional'}
             onClick={() => setActiveTab('functional')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'functional'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-600 hover:bg-white/50'
-            }`}
-          >
-            <Activity className="w-4 h-4 inline mr-1" />
-            Functional
-          </button>
-          <button
+          />
+          <TabButton
+            icon={Heart}
+            label={`Liked (${likedImagesList.length})`}
+            active={activeTab === 'images'}
             onClick={() => setActiveTab('images')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'images'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-gray-600 hover:bg-white/50'
-            }`}
-          >
-            <Heart className="w-4 h-4 inline mr-1" />
-            Liked ({likedImagesList.length})
-          </button>
+          />
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4 max-h-[500px] overflow-y-auto">
-        {/* Overview Tab */}
+      <div className="p-6 max-h-[500px] overflow-y-auto">
         {activeTab === 'overview' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Section icon={Home} title="Home Use & Lifestyle">
               <Field label="Primary Use" value={questionnaire.primary_use} />
-              <Field
-                label="Occupancy"
-                value={questionnaire.occupancy}
-                isArray
-              />
-              <Field
-                label="Lifestyle"
-                value={questionnaire.lifestyle}
-                isArray
-              />
+              <Field label="Occupancy" value={questionnaire.occupancy} isArray />
+              <Field label="Lifestyle" value={questionnaire.lifestyle} isArray />
             </Section>
 
             <Section icon={Users} title="Entertaining">
-              <Field
-                label="Frequency"
-                value={questionnaire.entertaining}
-              />
+              <Field label="Frequency" value={questionnaire.entertaining} />
               <Field
                 label="Style"
                 value={questionnaire.entertaining_style}
@@ -1319,10 +1570,7 @@ const QuestionnaireView = ({ questionnaire }) => {
                 label="Collection Interest"
                 value={questionnaire.collection_interest}
               />
-              <Field
-                label="Move-in Timeline"
-                value={questionnaire.move_in}
-              />
+              <Field label="Move-in Timeline" value={questionnaire.move_in} />
               <Field
                 label="Must Haves"
                 value={questionnaire.must_haves}
@@ -1337,9 +1585,8 @@ const QuestionnaireView = ({ questionnaire }) => {
           </div>
         )}
 
-        {/* Design Tab */}
         {activeTab === 'design' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Section icon={Palette} title="Design Style">
               <Field
                 label="Preferred Styles"
@@ -1369,19 +1616,15 @@ const QuestionnaireView = ({ questionnaire }) => {
           </div>
         )}
 
-        {/* Functional Tab */}
         {activeTab === 'functional' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Section icon={BedDouble} title="Bedroom Preferences">
               <Field
                 label="Bedroom Use"
                 value={questionnaire.bedroom_use}
                 isLongText
               />
-              <Field
-                label="Master Bed Size"
-                value={questionnaire.bed_size}
-              />
+              <Field label="Master Bed Size" value={questionnaire.bed_size} />
               <Field
                 label="Guest Bed Configuration"
                 value={questionnaire.guest_bed}
@@ -1402,11 +1645,7 @@ const QuestionnaireView = ({ questionnaire }) => {
             </Section>
 
             <Section icon={Activity} title="Dining & Lifestyle">
-              <Field
-                label="Dining Preferences"
-                value={questionnaire.dining}
-                isArray
-              />
+              <Field label="Dining Preferences" value={questionnaire.dining} isArray />
               <Field label="Pets" value={questionnaire.pets} />
               {questionnaire.pets === 'Yes' && (
                 <Field
@@ -1419,31 +1658,30 @@ const QuestionnaireView = ({ questionnaire }) => {
           </div>
         )}
 
-        {/* Liked Images Tab */}
         {activeTab === 'images' && (
           <div>
             {likedImagesList.length > 0 ? (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-4">
                 {likedImagesList.map((image) => (
                   <div
                     key={image.id}
-                    className="relative aspect-[4/3] overflow-hidden rounded-lg border-2 border-indigo-200"
+                    className="relative aspect-[4/3] overflow-hidden rounded-xl border-2 border-indigo-200 shadow-md hover:shadow-xl transition-all"
                   >
                     <img
                       src={image.src}
                       alt={`Design ${image.id}`}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-2 right-2 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                      <Heart className="w-4 h-4 fill-white text-white" />
+                    <div className="absolute top-3 right-3 w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                      <Heart className="w-5 h-5 fill-white text-white" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Heart className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">No designs selected</p>
+              <div className="text-center py-12 text-gray-500">
+                <Heart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <p className="font-medium">No designs selected</p>
               </div>
             )}
           </div>
@@ -1453,14 +1691,27 @@ const QuestionnaireView = ({ questionnaire }) => {
   );
 };
 
-// Helper Components
+const TabButton = ({ icon: Icon, label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`px-5 py-3 rounded-xl font-bold transition-all ${
+      active
+        ? 'bg-white text-indigo-600 shadow-md scale-105'
+        : 'text-gray-600 hover:bg-white/50'
+    }`}
+  >
+    <Icon className="w-5 h-5 inline mr-2" />
+    {label}
+  </button>
+);
+
 const Section = ({ icon: Icon, title, children }) => (
-  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-    <h5 className="font-bold text-gray-900 mb-3 flex items-center gap-2 text-sm">
-      <Icon className="w-4 h-4 text-indigo-600" />
+  <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-5 border-2 border-gray-200">
+    <h5 className="font-black text-gray-900 mb-4 flex items-center gap-2">
+      <Icon className="w-5 h-5 text-indigo-600" />
       {title}
     </h5>
-    <div className="space-y-2">{children}</div>
+    <div className="space-y-3">{children}</div>
   </div>
 );
 
@@ -1471,22 +1722,24 @@ const Field = ({ label, value, isArray = false, isLongText = false }) => {
 
   return (
     <div className="text-sm">
-      <span className="font-semibold text-gray-700">{label}:</span>
+      <span className="font-bold text-gray-700">{label}:</span>
       {isArray ? (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-2">
           {value.map((item, idx) => (
             <span
               key={idx}
-              className="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs"
+              className="inline-block px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold"
             >
               {item}
             </span>
           ))}
         </div>
       ) : isLongText ? (
-        <p className="mt-1 text-gray-600 whitespace-pre-wrap">{value}</p>
+        <p className="mt-2 text-gray-600 whitespace-pre-wrap font-medium">
+          {value}
+        </p>
       ) : (
-        <span className="ml-2 text-gray-600">{value}</span>
+        <span className="ml-2 text-gray-600 font-medium">{value}</span>
       )}
     </div>
   );

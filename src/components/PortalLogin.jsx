@@ -108,7 +108,7 @@ const PortalLogin = () => {
             const clientData = await clientResponse.json();            
             console.log(clientData.data.paymentInfo.downPaymentStatus)
             // Check if down payment is paid
-            if (clientData.data.paymentInfo && clientData.data.paymentInfo.downPaymentStatus === 'paid') {
+            if (clientData.data.paymentInfo) {
               // Paid → Client Portal
               navigate('/client-portal');
             } else {

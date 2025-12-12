@@ -9,7 +9,16 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalSteps = 9;
+  const totalSteps = 12;
+
+  // Helper function to check if a checkbox array contains a value
+  const checkboxIncludes = (fieldId, value) => {
+    const fieldValue = formData[fieldId];
+    if (Array.isArray(fieldValue)) {
+      return fieldValue.includes(value);
+    }
+    return false;
+  };
 
   const inspirationImages = [
     { id: 1, src: '/images/collections/1.jpg', title: 'Design 1' },
@@ -29,319 +38,593 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
   const questionSections = [
     {
       title: 'Home Use & Lifestyle',
-      description: 'Tell us how you plan to use your residence',
+      description: 'Tell us about your Ālia residence',
       questions: [
         {
-          id: 'primary_use',
-          label: 'How will you primarily use this residence?',
-          type: 'radio',
+          id: 'purpose_of_residence',
+          label: 'Purpose of your Ālia residence',
+          type: 'checkbox',
           options: [
-            'Primary residence',
-            'Second home/vacation home',
-            'Investment property for rental',
-            'Mixed use (personal & rental)'
+            'Full-time home',
+            'Second home / part-time residence',
+            'Investment/Rental Property',
+            'Occasional vacation stay'
           ],
           required: true
         },
         {
-          id: 'occupancy',
-          label: 'Who will be living in or using this home?',
+          id: 'who_will_use',
+          label: 'Who will primarily use the home?',
           type: 'checkbox',
           options: [
-            'Just me',
+            'Individual',
             'Couple',
-            'Family with young children',
-            'Family with teenagers',
-            'Adult children visit',
+            'Family with children',
+            'Extended family / multi-generational',
             'Frequent guests',
-            'Multi-generational'
+            'Renters'
           ],
           required: true
         },
         {
-          id: 'lifestyle',
-          label: 'How would you describe your lifestyle?',
+          id: 'family_members_count',
+          label: 'How many family members?',
+          type: 'text',
+          placeholder: 'Enter number',
+          showIfCheckbox: { field: 'who_will_use', value: 'Family with children' }
+        },
+        {
+          id: 'children_ages',
+          label: 'Ages of child(ren)?',
+          type: 'text',
+          placeholder: 'e.g., 5, 8, 12',
+          showIfCheckbox: { field: 'who_will_use', value: 'Family with children' }
+        },
+        {
+          id: 'living_envision',
+          label: 'How do you envision living here?',
           type: 'checkbox',
           options: [
-            'Active and outdoors-oriented',
-            'Entertaining and social',
-            'Quiet and relaxing',
-            'Work-from-home focused',
-            'Health and wellness focused',
-            'Art and culture enthusiast'
+            'Everyday living',
+            'Weekend retreat',
+            'Lock-and-leave lifestyle',
+            'Guest-ready showcase'
           ],
           required: true
+        },
+        {
+          id: 'home_feeling',
+          label: 'What do you want your home to feel like? (Select up to 3)',
+          type: 'checkbox',
+          options: [
+            'Calm & Restorative',
+            'Modern & Minimal',
+            'Natural & Organic',
+            'Warm & Inviting',
+            'Relaxed & Effortless Luxury',
+            'Luxurious & Polished',
+            'Artistic & Expressive',
+            'Functional & Simple'
+          ],
+          required: true,
+          maxSelect: 3
         }
       ]
     },
     {
-      title: 'Entertaining & Social Life',
-      description: 'Share your entertaining style',
+      title: 'Entertaining & Daily Use',
+      description: 'Share your lifestyle needs',
       questions: [
         {
-          id: 'entertaining',
-          label: 'How often do you entertain guests?',
-          type: 'radio',
+          id: 'work_from_home',
+          label: 'Work from home:',
+          type: 'checkbox',
           options: [
-            'Frequently (weekly)',
-            'Regularly (monthly)',
-            'Occasionally (few times a year)',
+            'Home office needed',
+            'Dedicated desk needed'
+          ]
+        },
+        {
+          id: 'entertain_frequency',
+          label: 'Do you entertain at home?',
+          type: 'checkbox',
+          options: [
+            'Often',
+            'Occasionally',
             'Rarely'
           ],
           required: true
         },
         {
-          id: 'entertaining_style',
-          label: 'What type of entertaining do you prefer?',
+          id: 'gathering_types',
+          label: 'Preferred type of gatherings (select all that apply):',
           type: 'checkbox',
           options: [
-            'Intimate dinners (4-6 people)',
-            'Larger gatherings (8+ people)',
-            'Casual get-togethers',
-            'Formal dinner parties',
-            'Outdoor barbecues',
-            'Cocktail parties'
+            'Dinner parties',
+            'Small groups / casual drinks',
+            'Family visits',
+            'Outdoor lounging'
+          ]
+        },
+        {
+          id: 'outdoor_lanai_use',
+          label: 'Outdoor / lanai use (select all that apply):',
+          type: 'checkbox',
+          options: [
+            'Morning coffee',
+            'Dining area',
+            'Reading & relaxation'
           ]
         }
       ]
     },
     {
-      title: 'Design Style & Aesthetic',
-      description: 'Define your design preferences',
+      title: 'Design Aesthetic & Color Preferences',
+      description: 'Define your design vision',
       questions: [
         {
-          id: 'design_style',
-          label: 'Which design styles appeal to you? (Select all that apply)',
+          id: 'unit_options',
+          label: 'Options for your unit:',
           type: 'checkbox',
           options: [
-            'Modern/Contemporary',
-            'Coastal/Beach',
-            'Tropical/Hawaiian',
-            'Minimalist',
-            'Traditional',
-            'Transitional (blend of traditional and modern)',
-            'Mid-century modern',
-            'Bohemian/Eclectic',
-            'Industrial',
-            'Scandinavian'
+            'Pre-designed & curated by Kobayashi & Henderson Design Group – a ready-to-go, fully approved furniture plan for your unit for either the Nalu or Lani Collections',
+            'Custom design your unit – work with us to create a personalized design from scratch'
           ],
           required: true
         },
         {
-          id: 'color_preference',
-          label: 'What color palettes do you prefer?',
+          id: 'preferred_collection',
+          label: 'Preferred Collection:',
           type: 'checkbox',
           options: [
-            'Neutral tones (whites, beiges, grays)',
-            'Warm tones (earth tones, terracotta, warm woods)',
-            'Cool tones (blues, greens, silvers)',
-            'Bold and vibrant colors',
-            'Dark and moody',
-            'Light and airy',
-            'Natural materials and textures'
+            'Lani Collection',
+            'Nalu Collection',
+            'Nalu Foundation',
+            'Combination of Lani & Nalu Collections'
           ],
           required: true
         },
         {
-          id: 'atmosphere',
-          label: 'What atmosphere do you want to create?',
+          id: 'style_direction',
+          label: 'Overall style direction:',
           type: 'checkbox',
           options: [
-            'Calm and serene',
-            'Energizing and vibrant',
-            'Cozy and warm',
-            'Elegant and sophisticated',
-            'Casual and relaxed',
-            'Luxurious and refined',
-            'Natural and organic'
+            'Light, airy, coastal calm',
+            'Warm, textural, island contemporary',
+            'Refined essentials with natural balance',
+            'Custom mix / undecided'
           ],
           required: true
+        },
+        {
+          id: 'main_upholstery_color',
+          label: 'Main upholstery color palette preference(s):',
+          type: 'checkbox',
+          options: [
+            'Dark (charcoal, deep taupe)',
+            'Medium (taupe, sand)',
+            'Light (ivory, cream)'
+          ],
+          required: true
+        },
+        {
+          id: 'accent_fabric_color',
+          label: 'Accent fabric color palette preference(s):',
+          type: 'checkbox',
+          options: [
+            'Warm neutrals (ivory, sand, taupe)',
+            'Cool neutrals (stone, gray, driftwood)',
+            'Earth tones (terracotta, olive, clay)',
+            'Ocean-inspired (aqua, teal, mist blue)',
+            'Soft natural pastels (sage, blush, clay)',
+            'Deep & moody (indigo, navy, charcoal)',
+            'Vibrant accents (sunflower yellow, gold, mustard)',
+            'Lush greens (forest, emerald, moss)',
+            'Warm & lively (coral, tangerine, apricot)',
+            'Mixed / Multiple palettes (check any that apply)'
+          ],
+          required: true
+        },
+        {
+          id: 'metal_tone',
+          label: 'Metal tone preference:',
+          type: 'checkbox',
+          options: [
+            'Brass',
+            'Dark Bronze'
+          ],
+          required: true
+        },
+        {
+          id: 'tone_preference',
+          label: 'Do you like tone-on-tone harmony or contrast?',
+          type: 'checkbox',
+          options: [
+            'Subtle and blended',
+            'Complementary contrast'
+          ],
+          required: true
+        },
+        {
+          id: 'colors_to_avoid',
+          label: 'Any specific colors, tones, or finishes to avoid?',
+          type: 'text',
+          placeholder: 'List any colors or finishes you prefer to avoid...'
         }
       ]
     },
     {
-      title: 'Visual Design Preferences',
-      description: 'Select designs that resonate with you',
+      title: 'Visual Inspiration',
+      description: 'Select designs that inspire you',
       isImageSelection: true
     },
     {
-      title: 'Functional Requirements',
-      description: 'Tell us about your practical needs',
+      title: 'Bedrooms & Comfort',
+      description: 'Customize your sleeping spaces',
       questions: [
         {
-          id: 'bedroom_use',
-          label: 'How will you use each bedroom?',
+          id: 'bed_sizes',
+          label: 'Preferred bed size(s) (check any that apply to your floor plan):',
+          type: 'checkbox',
+          options: [
+            'Eastern King',
+            'Queen',
+            'Full',
+            'Twin'
+          ],
+          required: true
+        },
+        {
+          id: 'mattress_firmness',
+          label: 'Mattress firmness:',
+          type: 'checkbox',
+          options: [
+            'Plush',
+            'Medium',
+            'Firm',
+            'Prefer to order/manage on your own'
+          ],
+          required: true
+        },
+        {
+          id: 'bedding_type',
+          label: 'Bedding (check any that apply):',
+          type: 'checkbox',
+          options: [
+            'Coverlet & Sheet Set',
+            'Duvet & Sheet Set',
+            'Two set for each bedroom (Duvet & Sheets)',
+            'Two set for each bedroom (Coverlet & Sheets)',
+            'Prefer to order/manage on your own'
+          ]
+        },
+        {
+          id: 'bedding_material_color',
+          label: 'Bedding Material & Color Options:',
+          type: 'checkbox',
+          options: [
+            'Down',
+            'Down Alternative',
+            'Cotton',
+            'Linen',
+            'Ivory',
+            'White'
+          ]
+        },
+        {
+          id: 'lighting_mood',
+          label: 'Lighting mood:',
+          type: 'checkbox',
+          options: [
+            'Bright & functional',
+            'Soft & ambient'
+          ],
+          required: true
+        }
+      ]
+    },
+    {
+      title: 'Art, Accessories & Finishing Touches',
+      description: 'Complete your interior design',
+      questions: [
+        {
+          id: 'art_style',
+          label: 'Art Style / Type Preference (Select all that apply):',
+          type: 'checkbox',
+          options: [
+            'Giclée / Print reproductions',
+            'Photography',
+            'Island-inspired / Coastal',
+            'Abstract / Modern',
+            'Traditional / Classic',
+            'Sculptural'
+          ]
+        },
+        {
+          id: 'art_coverage',
+          label: 'Art Coverage / Quantity Preference (Select one):',
+          type: 'checkbox',
+          options: [
+            'Minimal – a few statement pieces only',
+            'Moderate – balanced, curated selection throughout the space',
+            'Prefer to order/manage on your own'
+          ],
+          required: true
+        },
+        {
+          id: 'accessories_styling',
+          label: 'Accessories & styling preference (Select one):',
+          type: 'checkbox',
+          options: [
+            'Minimal – a few statement pieces only',
+            'Moderate – balanced, curated selection throughout the space',
+            'Prefer to order/manage on your own'
+          ],
+          required: true
+        },
+        {
+          id: 'decorative_pillows',
+          label: 'Decorative pillow preferences (Select one):',
+          type: 'checkbox',
+          options: [
+            'Curated by Henderson Design Group',
+            'Prefer to order/manage on your own'
+          ],
+          required: true
+        }
+      ]
+    },
+    {
+      title: 'Additional / Misc Design-Related Questions',
+      description: 'Special zones and considerations',
+      questions: [
+        {
+          id: 'special_zones',
+          label: 'Special zone requirements (select all that apply):',
+          type: 'checkbox',
+          options: [
+            'Meditation or yoga area',
+            'Art or craft zone',
+            'Fitness equipment',
+            'Pet area'
+          ]
+        },
+        {
+          id: 'existing_furniture',
+          label: 'Existing furniture to incorporate:',
+          type: 'checkbox',
+          options: [
+            'Yes',
+            'No'
+          ],
+          required: true
+        },
+        {
+          id: 'existing_furniture_details',
+          label: 'Please list items and sizes:',
           type: 'textarea',
-          placeholder: 'E.g., Master for us, Guest room 1 for family visits, Guest room 2 as office...',
-          required: true
+          placeholder: 'List furniture items and their dimensions...',
+          rows: 3,
+          showIfCheckbox: { field: 'existing_furniture', value: 'Yes' }
         },
         {
-          id: 'work_from_home',
-          label: 'Do you need a dedicated workspace?',
-          type: 'radio',
-          options: [
-            'Yes, full home office setup',
-            'Yes, small desk area',
-            'No, not needed'
-          ],
-          required: true
-        },
-        {
-          id: 'dining',
-          label: 'How do you prefer to dine?',
-          type: 'checkbox',
-          options: [
-            'Formal dining table for entertaining',
-            'Casual island/breakfast bar seating',
-            'Outdoor dining',
-            'Combination of formal and casual'
-          ],
-          required: true
+          id: 'additional_notes',
+          label: 'Anything else you\'d like us to know about your daily life, aesthetic, or how you plan to live in your Ālia home?',
+          type: 'textarea',
+          placeholder: 'Share any additional information that will help us design your perfect home...',
+          rows: 5
         }
       ]
     },
     {
-      title: 'Bedroom Preferences',
-      description: 'Your comfort is our priority',
+      title: 'Add-On Services: Customized Closet Solutions',
+      description: 'Optional closet customization (Additional Design Fees apply)',
       questions: [
         {
-          id: 'bed_size',
-          label: 'Preferred bed size for master bedroom?',
-          type: 'radio',
-          options: ['King', 'California King', 'Queen'],
-          required: true
-        },
-        {
-          id: 'guest_bed',
-          label: 'Preferred bed configuration for guest rooms?',
+          id: 'closet_use',
+          label: 'Closet use & priority:',
           type: 'checkbox',
           options: [
-            'Queen beds',
-            'Twin beds (can be separated or combined)',
-            'Day beds',
-            'Sofa beds',
-            'Flexible based on design'
+            'Minimal wardrobe',
+            'Full wardrobe',
+            'Multi-user / shared closet',
+            'Guest closet'
           ]
         },
         {
-          id: 'tv_preference',
-          label: 'Television placement preferences?',
+          id: 'organization_style',
+          label: 'Organization style:',
           type: 'checkbox',
           options: [
-            'Living room - must have',
-            'Master bedroom - must have',
-            'Guest bedrooms',
-            'No TVs preferred',
-            'Hidden/concealed when not in use'
+            'Visible open layout',
+            'Fully enclosed cabinetry',
+            'Combination'
+          ]
+        },
+        {
+          id: 'closet_additional_needs',
+          label: 'Additional needs:',
+          type: 'checkbox',
+          options: [
+            'Shoe storage',
+            'Jewelry / accessory drawers',
+            'Built-in safe',
+            'Luggage storage',
+            'Drawers'
+          ]
+        },
+        {
+          id: 'closet_finish',
+          label: 'Finish Options:',
+          type: 'checkbox',
+          options: [
+            'Light Oak',
+            'Medium Teak',
+            'Dark Teak'
+          ]
+        },
+        {
+          id: 'closet_locations',
+          label: 'Location(s):',
+          type: 'checkbox',
+          options: [
+            'Primary Bedroom Closet Only',
+            'All Bedroom Closets'
           ]
         }
       ]
     },
     {
-      title: 'Additional Preferences',
-      description: 'Fine-tune your design vision',
+      title: 'Add-On Services: Window Coverings',
+      description: 'Optional window treatment (Additional Design Fees apply)',
       questions: [
-        {
-          id: 'artwork',
-          label: 'What are your preferences for artwork and accessories?',
-          type: 'radio',
-          options: [
-            'Curated art collection - I want HDG to select',
-            'Minimal artwork',
-            'I will provide my own art',
-            'Mix of HDG selections and my pieces'
-          ],
-          required: true
-        },
         {
           id: 'window_treatment',
-          label: 'Window treatment preferences?',
+          label: 'Window treatment preference:',
           type: 'checkbox',
           options: [
-            'Blackout shades for bedrooms',
-            'Sheer curtains for light filtering',
-            'Natural woven shades',
-            'Motorized/automated',
-            'Minimal - maximize views',
-            'Privacy is important'
-          ],
-          required: true
+            'Sheer layer in Living Areas (for filtered light)',
+            'Blackout layer In Bedrooms (for sleep privacy)',
+            'Dual-layer Sheer & Blackout in Bedrooms'
+          ]
+        },
+        {
+          id: 'window_operation',
+          label: 'Operation:',
+          type: 'checkbox',
+          options: [
+            'Manual',
+            'Motorized (Rechargeable battery with remote control)'
+          ]
+        },
+        {
+          id: 'light_quality',
+          label: 'Desired light quality:',
+          type: 'checkbox',
+          options: [
+            'Soft, diffused natural light',
+            'Total darkness for bedrooms',
+            'Balance of privacy and light'
+          ]
+        },
+        {
+          id: 'shade_material',
+          label: 'Preferred material for shades / curtains:',
+          type: 'checkbox',
+          options: [
+            'Synthetic solar material',
+            'Linen/Fabric material',
+            'Woven material'
+          ]
+        },
+        {
+          id: 'shade_style',
+          label: 'Preferred style:',
+          type: 'checkbox',
+          options: [
+            'Roller Shades',
+            'Drapery Panels',
+            'Combination of roller and drapery panels'
+          ]
+        },
+        {
+          id: 'window_locations',
+          label: 'Location(s):',
+          type: 'checkbox',
+          options: [
+            'Living Room',
+            'Dining Area',
+            'Primary Bedroom',
+            'Guest Bedroom 1',
+            'Guest Bedroom 2',
+            'Guest Bedroom 3',
+            'Other area'
+          ]
+        },
+        {
+          id: 'window_other_area',
+          label: 'Other area:',
+          type: 'text',
+          placeholder: 'Specify other area',
+          showIfCheckbox: { field: 'window_locations', value: 'Other area' }
         }
       ]
     },
     {
-      title: 'Lifestyle Considerations',
-      description: 'Help us personalize your space',
+      title: 'Add-On Services: Audio/Visual',
+      description: 'Optional AV setup (Additional Design Fees apply)',
       questions: [
         {
-          id: 'pets',
-          label: 'Do you have pets?',
-          type: 'radio',
-          options: ['Yes', 'No'],
-          required: true
-        },
-        {
-          id: 'pet_details',
-          label: 'If yes, please describe (type, size, special needs)',
-          type: 'textarea',
-          placeholder: 'E.g., Medium dog, cat, need durable fabrics...',
-          showIf: { pets: 'Yes' }
-        },
-        {
-          id: 'activities',
-          label: 'What activities are important to you in Hawaii?',
+          id: 'av_usage',
+          label: 'AV usage level:',
           type: 'checkbox',
           options: [
-            'Beach and ocean activities',
-            'Hiking and outdoor exploration',
-            'Golf',
-            'Dining and culinary experiences',
-            'Cultural activities',
-            'Relaxation and spa',
-            'Fitness and wellness',
-            'Water sports'
+            'Minimal (Single Room, TV + soundbar)',
+            'Standard (Multi Room, TV, streaming, sound system)'
+          ]
+        },
+        {
+          id: 'av_areas',
+          label: 'Areas to equip:',
+          type: 'checkbox',
+          options: [
+            'Living Room',
+            'Primary Bedroom',
+            'Guest Bedroom 1',
+            'Guest Bedroom 2',
+            'Guest Bedroom 3'
           ]
         }
       ]
     },
     {
-      title: 'Budget & Special Requests',
-      description: 'Final details to complete your profile',
+      title: 'Add-On Services: Greenery/Plants',
+      description: 'Optional plant and planter selection (Additional Design Fees apply)',
       questions: [
         {
-          id: 'collection_interest',
-          label: 'Which collection are you most interested in?',
-          type: 'radio',
+          id: 'plant_type',
+          label: 'Plant type preference:',
+          type: 'checkbox',
           options: [
-            'Lani Collections (Complete bespoke furnishing)',
-            'Nalu Collections (Elevated design with quality finishes)',
-            'Foundation Collections (Streamlined essentials)',
-            'Custom Design',
-            'Mix between collections',
-            'Not sure yet - need guidance'
-          ],
-          required: true
+            'Real',
+            'Faux / artificial'
+          ]
         },
         {
-          id: 'move_in',
-          label: 'When do you plan to move in/use the residence?',
-          type: 'text',
-          placeholder: 'E.g., January 2027, as soon as ready...',
-          required: true
-        },
+          id: 'plant_areas',
+          label: 'Areas to include Plants/Planters (select all that apply):',
+          type: 'checkbox',
+          options: [
+            'Living Room',
+            'Primary Bedroom',
+            'Guest Bedroom 1',
+            'Guest Bedroom 2',
+            'Guest Bedroom 3',
+            'Kitchen / Dining',
+            'Bathroom',
+            'Entry / Hallway',
+            'Outdoor / Balcony'
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Add-On Services: Kitchen & Household Essentials',
+      description: 'Optional kitchen package (Additional Design Fees apply)',
+      questions: [
         {
-          id: 'must_haves',
-          label: 'What are your absolute must-haves?',
-          type: 'textarea',
-          placeholder: 'List any non-negotiable items, features, or requirements...',
-          rows: 4
-        },
-        {
-          id: 'special_requests',
-          label: 'Any other special requests or considerations?',
-          type: 'textarea',
-          placeholder: 'Anything else we should know about your vision, lifestyle, or requirements...',
-          rows: 5
+          id: 'kitchen_essentials',
+          label: 'Kitchen & Household Essentials Package (Select items you want included):',
+          type: 'checkbox',
+          options: [
+            'Kitchenware (pots, pans, utensils, knives)',
+            'Dishware (plates, bowls, serving dishes)',
+            'Glassware (drinking glasses, wine glasses, mugs)',
+            'Appliances (coffee maker, toaster, blender, etc.)',
+            'Cookware / Bakeware (mixing bowls, baking sheets, cookware sets)',
+            'Storage / Organization (containers, racks, organizers)',
+            'Cleaning & Utility Items (iron & ironing board, vacuum, mop, broom)'
+          ]
         }
       ]
     }
@@ -473,7 +756,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
         clientName: userData.name,
         unitNumber: userData.unitNumber,
         email: userData.email,
-        likedDesigns: likedImages, // ✅ CRITICAL: Include liked images
+        likedDesigns: likedImages,
         isFirstTimeComplete: true
       };
 
@@ -518,7 +801,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
         <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] p-6 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-white">Welcome! Complete Your Profile</h2>
+              <h2 className="text-2xl font-bold text-white">Alia Home Design & Lifestyle Intake</h2>
               <p className="text-white/80 text-sm mt-1">Step {currentStep} of {totalSteps}</p>
             </div>
           </div>
@@ -543,7 +826,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Tip:</strong> Select designs that match your aesthetic preferences. 
+                  <strong>Tip:</strong> Select designs that inspire you and match your aesthetic preferences. 
                   You've selected {likedImages.length} design{likedImages.length !== 1 ? 's' : ''}.
                 </p>
               </div>
@@ -579,9 +862,19 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
           ) : (
             <div className="space-y-6">
               {currentSection.questions?.map((question) => {
+                // Handle showIf (for radio buttons)
                 if (question.showIf) {
                   const [conditionKey, conditionValue] = Object.entries(question.showIf)[0];
                   if (formData[conditionKey] !== conditionValue) {
+                    return null;
+                  }
+                }
+
+                // Handle showIfCheckbox (for checkbox arrays)
+                if (question.showIfCheckbox) {
+                  const { field, value } = question.showIfCheckbox;
+                  const fieldValue = formData[field];
+                  if (!Array.isArray(fieldValue) || !fieldValue.includes(value)) {
                     return null;
                   }
                 }
@@ -637,18 +930,37 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
 
                     {question.type === 'checkbox' && (
                       <div className="space-y-2">
-                        {question.options?.map((opt, i) => (
-                          <label key={i} className="flex items-start gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                            <input
-                              type="checkbox"
-                              value={opt}
-                              checked={(formData[question.id] || []).includes(opt)}
-                              onChange={(e) => handleInputChange(question.id, e.target.value, 'checkbox')}
-                              className="mt-1 w-5 h-5 text-[#005670] rounded"
-                            />
-                            <span className="text-gray-700">{opt}</span>
-                          </label>
-                        ))}
+                        {question.options?.map((opt, i) => {
+                          const isChecked = (formData[question.id] || []).includes(opt);
+                          const currentSelections = formData[question.id] || [];
+                          const isDisabled = question.maxSelect && 
+                                            currentSelections.length >= question.maxSelect && 
+                                            !isChecked;
+                          
+                          return (
+                            <label 
+                              key={i} 
+                              className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg transition-colors ${
+                                isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                value={opt}
+                                checked={isChecked}
+                                disabled={isDisabled}
+                                onChange={(e) => handleInputChange(question.id, e.target.value, 'checkbox')}
+                                className="mt-1 w-5 h-5 text-[#005670] rounded"
+                              />
+                              <span className="text-gray-700">{opt}</span>
+                            </label>
+                          );
+                        })}
+                        {question.maxSelect && (
+                          <p className="text-sm text-gray-500 mt-2">
+                            Selected: {(formData[question.id] || []).length} / {question.maxSelect}
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -689,7 +1001,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-semibold"
+                className="flex items-center gap-2 px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-semibold disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>

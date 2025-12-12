@@ -9,6 +9,9 @@ import BrochureLandingPage from './pages/BrochureLandingPage';
 import PortalLogin from './components/PortalLogin';
 import ClientPortal from './components/ClientPortal';
 import AdminPanel from './pages/AdminPanel';
+import InvoiceHTML from './components/InvoiceHTML';
+import QuickBooksConnect from './components/QuickBooksConnect';
+import AgreementViewer from './components/AgreementViewer';
 
 // ✅ Protected Route untuk Client
 const ClientProtectedRoute = ({ children }) => {
@@ -73,6 +76,14 @@ function App() {
           </AdminProtectedRoute>
         } 
       />
+      <Route 
+        path="/invoice/:clientId/:invoiceNumber" 
+        element={<InvoiceHTML />} 
+      />
+
+      <Route path="/admin/quickbooks" element={<QuickBooksConnect />} />
+      <Route path="/agreement/:clientId/:agreementNumber" element={<AgreementViewer />} />
+      
       
       {/* Catch all - redirect to home */}
       <Route path="*" element={<Navigate to="/" replace />} />

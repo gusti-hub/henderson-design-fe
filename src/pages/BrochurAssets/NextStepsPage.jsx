@@ -8,6 +8,7 @@ const NextStepsPage = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [showOutline, setShowOutline] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
+  const [currentAgreementIndex, setCurrentAgreementIndex] = useState(0);
   const [showScheduling, setShowScheduling] = useState(false);
 
   const [error, setError] = useState("");
@@ -88,120 +89,268 @@ const NextStepsPage = () => {
   };
 
   const agreements = {
-    'lock-price': {
-      title: 'Deposit to Hold 2025 Pricing Agreement',
-      content: `HENDERSON DESIGN GROUP
+    'lock-price': [
+      {
+        title: 'Deposit to Hold 2025 Pricing Agreement',
+        content: `HENDERSON DESIGN GROUP
 DEPOSIT TO HOLD 2025 PRICING AGREEMENT – ĀLIA FURNISHING PROGRAM
 
+Effective Date: __________________________
+Client Name: ____________________________
+Unit / Residence: _________________________
 
 1. Purpose
-This Agreement outlines the terms under which Henderson Design Group (HDG) will hold 2025 pricing for the Client's selected furnishing package under the Ālia program. The Deposit secures current pricing for the selected HDG collection and establishes preliminary scheduling and resource allocation for future design and production.
+
+This Agreement outlines the terms under which Henderson Design Group ("HDG") will hold 2025 pricing for the Client's selected furnishing package under the Ālia program.
+
+The deposit secures current pricing for the selected HDG collection and establishes preliminary scheduling and resource allocation for future design and production.
 
 2. Deposit and Payment Terms
-The Client agrees to pay HDG a deposit equal to thirty percent (30%) of the total selected furnishing package. The 30% deposit is based on the collection typical and unit size. The deposit must be received by December 15, 2025, to guarantee 2025 pricing.
 
-An additional twenty percent (20%) deposit or 50% total of the final design will be due upon final design approval. The remaining fifty percent (50%) or balance will follow the delivery and installation payment schedule provided by HDG.
+The Client agrees to pay HDG a deposit equal to thirty percent (30%) of the total selected furnishing package based on the chosen Collection (Lani, Nalu, Foundation) and Unit size (1-bedroom, 2-bedroom, or 3-bedroom).
 
-If the Client later proceeds to the design phase under a separate Design Fee Agreement, this deposit will be applied toward the total package balance.
+The deposit must be received by December 15, 2025, to guarantee 2025 pricing.
+
+Upon final design and budget approval, the Client shall make an additional payment, bringing the total payment to fifty percent (50%) of the final design budget price. The initial 30% deposit will be credited towards this fifty percent (50%) payment, as per the mutually agreed design budget. The remaining fifty percent (50%) balance will follow the delivery and installation payment schedule provided by HDG.
 
 3. Scope of Agreement
-The Deposit to Hold Pricing includes:
-- Locking in current pricing for the selected HDG collection (Lani, Nalu, or Foundation).
-- Reserving materials and production allocation in the manufacturing schedule.
-- Preliminary scheduling in HDG's 2026 design calendar.
 
-This deposit does include or cover design services. Design services are initiated upon receipt of the deposit.
+The Deposit to Hold Pricing includes:
+• Locking in current pricing for the selected HDG collection (Lani, Nalu, or Foundation).
+• Reserving materials and production allocation in the manufacturing schedule.
+• Preliminary placement within HDG's 2026 design calendar.
 
 4. Schedule
-Upon receipt of this deposit, HDG will reserve pricing and assign a tentative project window within the 2026 design phase. Confirmation of the design start date will occur once the Design Fee Agreement is signed and the design phase is scheduled.
+
+Upon receipt of the deposit, HDG will reserve pricing and assign a tentative project window within the 2026 design phase.
+
+A confirmed design start date will be issued once the Design Agreement is signed (and funded) and the design phase is officially scheduled.
 
 5. Refund and Cancellation Policy
-If the Client cancels prior to final design approval, the deposit will be refundable less an administrative fee of ten percent (10%) of the deposit amount and less any Design Services performed.
+
+If the Client cancels prior to design approval, the deposit will be refundable less a ten percent (10%) administrative fee.
 
 Once design selections are approved or production scheduling has begun, the deposit becomes non-refundable.
 
-Deposit (Hold 2025 Pricing) not applied toward a signed Design Agreement within six (6) months of this effective date may expire at HDG's discretion.
+Deposits not applied toward a signed Proposal within twelve (12) months of the Effective Date may expire at HDG's discretion.
 
 6. Credit Toward Final Payment
+
 All deposit payments made under this Agreement will be fully credited toward the Client's total furnishing package cost once production is initiated.
 
 7. Ownership of Materials
-All drawings, layouts, and specifications provided by HDG remain the property of HDG until full payment of the furnishing package is received. No design or concept materials may be used, shared or reproduced without written consent from HDG.
+
+All drawings, layouts, and specifications provided by HDG remain the exclusive property of HDG until the furnishing package is paid in full. No design or concept materials may be used, shared, or reproduced without written consent from HDG.
 
 8. Liability and Limitations
-HDG will exercise reasonable professional care in performing all services and communications under this Agreement. The Client acknowledges that schedules, material lead times, and manufacturer timelines may vary. HDG is not responsible for delays caused by third parties, construction progress, force majeure or shipping logistics outside of its control.
+
+HDG will exercise reasonable professional care in performing all services under this Agreement. The Client acknowledges that schedules, material lead times, and manufacturer timelines may vary. HDG is not responsible for delays caused by third parties, construction progress, building access, or shipping logistics outside its control.
 
 9. Governing Law
-This Agreement is governed by and shall be construed in accordance with the laws of the State of Hawaii.
+
+This Agreement shall be governed by the laws of the State of Hawaii.
 
 10. Acceptance
+
 By signing below, both parties acknowledge and agree to the terms of this Agreement.
 
-UPDATED 10.30.25`
-    },
+Client Signature: ________________________________   Date: ____________
+Printed Name: __________________________________
+
+Henderson Design Group Representative: __________________________   Date: ____________
+Printed Name: __________________________________
+
+Exhibit A – Deposit Summary
+Deposit Amount: $________________________
+Collection Type: __________________________
+Payment Method: _________________________
+Date Received: __________________________
+
+Exhibit B – Deliverables
+Pricing lock, materials allocation, and production scheduling for the selected HDG furnishing collection.
+
+Exhibit C – Schedule
+Deposit Received: ________________________
+Design Start Window: ______________________
+Estimated Production Window: _____________`
+      },
+      {
+        title: 'Design Agreement – Lock In',
+        content: `HENDERSON DESIGN GROUP
+DESIGN AGREEMENT – ĀLIA FURNISHING PROGRAM
+
+Effective Date: __________________________
+Client Name: ____________________________
+Unit / Residence: _________________________
+
+1. Purpose
+
+The Client has already secured 2025 pricing and a design-calendar position through the previously executed Deposit to Hold Pricing Agreement.
+
+This Design Agreement authorizes Henderson Design Group ("HDG") to begin the design phase for the Client's residence and outlines the scope, process, and payment terms for the design work.
+
+2. Design Fee and Payment Terms
+
+The Client agrees to pay HDG a non-refundable design fee, due in full at signing. This fee covers all design services outlined in Section 3.
+
+[PRICING_TABLE]
+Collection | 1 Bedroom | 2 Bedroom | 3 Bedroom
+Nalu Foundation Collection | $2,500 | $3,500 | $4,500
+Nalu Collection | $5,000 | $7,500 | $10,000
+Lani | $10,000 | $15,000 | $20,000
+[/PRICING_TABLE]
+
+Payment is required before HDG begins design preparation, assigns design resources, or sets confirmed meeting dates.
+
+If the Client proceeds to production, 100% of the design fee will be credited toward the total furnishing package price. This credit remains valid for six (6) months from the final design presentation date.
+
+3. Scope of Services
+
+The Design Fee includes:
+• Design intake meeting
+• Review of floor plan and unit layout
+• Furniture layout and package selection (Lani, Nalu, or Foundation)
+• Material, fabric, and finish selections
+• One round of revisions
+• A final design presentation and furnishing proposal for approval
+
+Additional revisions, custom designs, add-on sourcing, or in-person consultations may be billed separately at HDG's standard hourly rates.
+
+4. Schedule
+
+Because the Client has already secured a place in HDG's 2026 design calendar, HDG will now assign a confirmed design start date upon execution of this Agreement and receipt of payment.
+
+A Project Manager will be assigned as the Client's primary point of contact. Intake meeting and presentation dates will be scheduled according to HDG's 2026 design calendar.
+
+5. Credit Toward Production
+
+If the Client approves the design proposal, the full design fee will be applied as a credit toward the total furnishing package cost.
+
+If the Client does not approve the design proposal within six (6) months of design, the credit expires.
+
+6. Cancellation and Refunds
+
+The design fee is non-refundable. If the Client chooses not to proceed after design begins, HDG may, at its discretion, apply the fee toward future design services for the same property.
+
+7. Ownership of Design Materials
+
+All drawings, layouts, specifications, and renderings remain the exclusive property of HDG until the furnishing package is paid in full.
+
+The Client may not reuse, reproduce, or implement the design without HDG's written approval.
+
+8. Liability and Limitations
+
+HDG will exercise reasonable care in performing all services.
+
+9. Governing Law
+
+This Agreement is governed by the laws of the State of Hawaii.
+
+10. Acceptance
+
+Client Signature: ____________________________   Date: ____________
+Printed Name: ______________________________
+
+HDG Representative: ___________________________   Date: ____________
+Printed Name: ______________________________
+
+Exhibit A – Design Fee Summary
+Design Fee Amount: $________________________
+Package Type: _____________________________
+Payment Method: ___________________________
+Date Received: _____________________________
+
+Exhibit B – Deliverables
+Design intake, layout development, material/finish selections, one revision, and final design presentation.
+
+Exhibit C – Schedule
+Confirmed Design Start: _______________________
+Estimated Completion: ________________________`
+      }
+    ],
     'design-fee': {
-      title: 'Design Fee Agreement',
+      title: 'Design Agreement – Hold',
       content: `HENDERSON DESIGN GROUP
-DESIGN FEE AGREEMENT – ĀLIA FURNISHING PROGRAM
+DESIGN AGREEMENT – ĀLIA FURNISHING PROGRAM
+
+Effective Date: __________________________
+Client Name: ____________________________
+Unit / Residence: _________________________
 
 1. Purpose
 
-This Agreement outlines the terms under which Henderson Design Group (HDG) will hold 2025 pricing for the Client's selected furnishing package under the Ālia program. The Deposit secures current pricing for the selected HDG collection and establishes preliminary scheduling and resource allocation for future design and production.
+This Agreement authorizes Henderson Design Group ("HDG") to provide design services for the Client's Ālia residence and reserves the Client's place in HDG's upcoming design calendar.
 
-2. Deposit and Payment Terms
+Execution of this Agreement secures design capacity and scheduling priority for 2026.
 
-The Client agrees to pay HDG a deposit equal to thirty percent (30%) of the total selected furnishing package. The 30% deposit is based on the collection typical and unit size. The deposit must be received by December 15, 2025, to guarantee 2025 pricing.
+2. Design Fee and Payment Terms
 
-An additional twenty percent (20%) deposit or 50% total of the final design will be due upon final design approval. The remaining fifty percent (50%) or balance will follow the delivery and installation payment schedule provided by HDG.
+The Client agrees to pay HDG a non-refundable design fee, due in full at signing.
 
-If the Client later proceeds to the design phase under a separate Design Fee Agreement, this deposit will be applied toward the total package balance.
+Payment is required before HDG confirms a design start date, allocates design resources, or schedules intake and presentation meetings.
 
-3. Scope of Agreement
+If the Client proceeds to production, 100% of the design fee will be credited toward the total furnishing package price. This credit is valid for six (6) months from the date of final design presentation.
 
-The Deposit to Hold Pricing includes:
+3. Scope of Services
 
-Locking in current pricing for the selected HDG collection (Lani, Nalu, or Foundation).
+The Design Fee includes:
+• Design intake meeting
+• Review of floor plan and unit layout
+• Furniture layout and collection recommendations
+• Material, fabric, and finish selections
+• One round of revisions
+• A final design presentation and furnishing proposal for approval
 
-Reserving materials and production allocation in the manufacturing schedule.
-
-Preliminary scheduling in HDG's 2026 design calendar.
-
-UPDATED 10.30.25
-This deposit does not include or cover design services. Design services are initiated upon receipt of the deposit.
+Additional revisions, custom designs, add-on sourcing, or in-person consultations may be billed separately at HDG's standard hourly rates.
 
 4. Schedule
 
-Upon receipt of this deposit, HDG will reserve pricing and assign a tentative project window within the 2026 design phase. Confirmation of the design start date will occur once the Design Fee Agreement is signed and the design phase is scheduled.
+Upon receipt of the design fee, HDG will assign a design start position within the upcoming 2026 design phase.
 
-5. Refund and Cancellation Policy
+A Project Manager will be assigned as the Client's point of contact. Intake and presentation dates will be provided based on HDG's scheduling availability.
 
-If the Client cancels prior to final design approval, the deposit will be refundable less an administrative fee of ten percent (10%) of the deposit amount and less any Design Services performed.
+5. Credit Toward Production
 
-Once design selections are approved or production scheduling has begun, the deposit becomes non-refundable.
+The design fee will be credited in full toward the Client's total furnishing package should the Client approve the proposal within six (6) months of final design presentation.
 
-Deposit (Hold 2025 Pricing) not applied toward a signed Design Agreement within six (6) months of this effective date may expire at HDG's discretion.
+6. Cancellation and Refunds
 
-6. Credit Toward Final Payment
+The design fee is non-refundable. If the Client withdraws after design begins, HDG may, but is not obligated to, apply a portion of the fee to future design work for the same property.
 
-All deposit payments made under this Agreement will be fully credited toward the Client's total furnishing package cost once production is initiated.
+7. Ownership of Design Materials
 
-7. Ownership of Materials
+All drawings, layouts, specifications, and renderings remain the exclusive property of HDG until the furnishing package is paid in full.
 
-All drawings, layouts, and specifications provided by HDG remain the property of HDG until full payment of the furnishing package is received. No design or concept materials may be used, shared, or reproduced without written consent from HDG.
+Design work cannot be reproduced, shared, or implemented without HDG's written approval.
 
 8. Liability and Limitations
 
-HDG will exercise reasonable professional care in performing all services and communications under this Agreement. The Client acknowledges that schedules, material lead times, and manufacturer timelines may vary. HDG is not responsible for delays caused by third parties, construction progress, force majeure, or shipping logistics outside of its control.
+HDG will exercise reasonable care in performing all services.
 
 9. Governing Law
 
-This Agreement is governed by and shall be construed in accordance with the laws of the State of Hawaii.
+This Agreement is governed by the laws of the State of Hawaii.
 
 10. Acceptance
 
-By signing below, both parties acknowledge and agree to the terms of this Agreement.
+Client Signature: ____________________________   Date: ____________
+Printed Name: ______________________________
 
-Updated 10.30.25`
+HDG Representative: ___________________________   Date: ____________
+Printed Name: ______________________________
+
+Exhibit A – Design Fee Summary
+Design Fee Amount: $________________________
+Package Type: _____________________________
+Payment Method: ___________________________
+Date Received: _____________________________
+
+Exhibit B – Deliverables
+Design intake, layout development, material/finish selections, one revision, final proposal presentation.
+
+Exhibit C – Schedule
+Reserved Design Start: _______________________
+Estimated Completion: _______________________`
     }
   };
 
@@ -247,6 +396,7 @@ Updated 10.30.25`
     if (option === 'lock-price' || option === 'design-fee') {
       setShowOutline(true);
       setShowAgreement(false);
+      setCurrentAgreementIndex(0);
     } else {
       setShowOutline(false);
       setShowAgreement(false);
@@ -303,7 +453,12 @@ Updated 10.30.25`
   }
 
   if (showAgreement && (selectedOption === 'lock-price' || selectedOption === 'design-fee')) {
-    const agreement = agreements[selectedOption];
+    const agreementData = selectedOption === 'lock-price' 
+      ? agreements[selectedOption][currentAgreementIndex]
+      : agreements[selectedOption];
+    
+    const isLockPriceOption = selectedOption === 'lock-price';
+    const totalAgreements = isLockPriceOption ? agreements[selectedOption].length : 1;
     
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -315,12 +470,18 @@ Updated 10.30.25`
                 <FileText className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">{agreement.title}</h3>
-                <p className="text-sm text-gray-600 font-semibold tracking-wide">FULL AGREEMENT TERMS & CONDITIONS</p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-1">{agreementData.title}</h3>
+                <p className="text-sm text-gray-600 font-semibold tracking-wide">
+                  {isLockPriceOption && `AGREEMENT ${currentAgreementIndex + 1} OF ${totalAgreements} • `}
+                  FULL AGREEMENT TERMS & CONDITIONS
+                </p>
               </div>
             </div>
             <button 
-              onClick={() => setShowAgreement(false)}
+              onClick={() => {
+                setShowAgreement(false);
+                setCurrentAgreementIndex(0);
+              }}
               className="w-12 h-12 rounded-full border-2 border-gray-300 hover:border-[#005670] hover:bg-[#005670]/5 flex items-center justify-center transition-all duration-300 active:scale-95 flex-shrink-0"
             >
               <X className="w-6 h-6 text-gray-600 hover:text-[#005670]" />
@@ -328,66 +489,176 @@ Updated 10.30.25`
           </div>
 
           {/* Content Area with improved typography */}
-          <div className="p-10 overflow-y-auto flex-grow" style={{ scrollbarWidth: 'thin' }}>
-            <div className="max-w-4xl mx-auto">
-              {agreement.content.split('\n\n').map((block, i) => {
-                // Check if this is a heading (numbered sections like "1. Purpose")
-                const isHeading = /^\d+\.\s+[A-Z]/.test(block.trim());
-                // Check if this is the main title
-                const isMainTitle = block.includes('HENDERSON DESIGN GROUP') || block.includes('AGREEMENT');
-                // Check if this is a bullet point line
-                const isBullet = block.trim().startsWith('-');
-                // Check if this is the updated date
-                const isDate = block.includes('UPDATED') || block.includes('Updated');
+          <div className="p-10 overflow-y-auto flex-grow bg-gray-50" style={{ scrollbarWidth: 'thin' }}>
+            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm p-12 border border-gray-200">
+              {(() => {
+                const lines = agreementData.content.split('\n');
+                const result = [];
+                let i = 0;
                 
-                if (isMainTitle) {
-                  return (
-                    <div key={i} className="mb-8 text-center">
-                      {block.split('\n').map((line, j) => (
-                        <h2 key={j} className="text-xl font-bold text-[#005670] leading-relaxed">
-                          {line}
+                while (i < lines.length) {
+                  const line = lines[i];
+                  const trimmedLine = line.trim();
+                  
+                  // Skip empty lines
+                  if (!trimmedLine) {
+                    result.push(<div key={i} className="h-4"></div>);
+                    i++;
+                    continue;
+                  }
+                  
+                  // Check if this is the start of pricing table
+                  if (trimmedLine === '[PRICING_TABLE]') {
+                    // Collect all table rows
+                    const tableRows = [];
+                    i++; // Skip the marker
+                    
+                    while (i < lines.length && lines[i].trim() !== '[/PRICING_TABLE]') {
+                      const tableLine = lines[i].trim();
+                      if (tableLine && tableLine.includes('|')) {
+                        tableRows.push(tableLine);
+                      }
+                      i++;
+                    }
+                    
+                    // Render the complete table
+                    if (tableRows.length > 0) {
+                      const headerCells = tableRows[0].split('|').map(cell => cell.trim());
+                      const dataRows = tableRows.slice(1).map(row => row.split('|').map(cell => cell.trim()));
+                      
+                      result.push(
+                        <div key={`table-${i}`} className="my-6">
+                          <table className="w-full border-2 border-gray-300">
+                            <thead>
+                              <tr className="bg-gray-100 border-b-2 border-gray-300">
+                                {headerCells.map((cell, idx) => (
+                                  <th key={idx} className={`${idx !== headerCells.length - 1 ? 'border-r-2 border-gray-300' : ''} px-4 py-3 text-center text-gray-900 font-bold text-sm`}>
+                                    {cell}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dataRows.map((row, rowIdx) => (
+                                <tr key={rowIdx} className={`border-b border-gray-300 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                                  {row.map((cell, cellIdx) => (
+                                    <td key={cellIdx} className={`${cellIdx !== row.length - 1 ? 'border-r-2 border-gray-300' : ''} px-4 py-3 ${cellIdx === 0 ? 'font-bold' : 'text-center'} text-gray-800 text-sm`}>
+                                      {cell}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    }
+                    
+                    i++; // Skip the closing marker
+                    continue;
+                  }
+                  
+                  // Check if this is a main title (contains HENDERSON DESIGN GROUP or main agreement title)
+                  const isMainTitle = trimmedLine.includes('HENDERSON DESIGN GROUP') || 
+                                     (trimmedLine.includes('AGREEMENT') && trimmedLine.includes('ĀLIA')) ||
+                                     (trimmedLine.includes('VERSION') && trimmedLine.includes('—'));
+                  
+                  // Check if this is specifically "HENDERSON DESIGN GROUP" text that should be replaced with logo
+                  const isHDGTitle = trimmedLine === 'HENDERSON DESIGN GROUP';
+                  
+                  // Check if this is a numbered heading (1. Purpose, 2. Deposit, etc)
+                  const isNumberedHeading = /^\d+\.\s+[A-Z]/.test(trimmedLine);
+                  
+                  // Check if this is a field line (Effective Date:, Client Name:, etc)
+                  const isFieldLine = /^(Effective Date|Client Name|Unit|Residence|Collection Type|Payment Method|Date Received|Deposit Amount|Package Type|Design Fee Amount|Confirmed Design Start|Estimated|Reserved Design Start|Deposit Received|Design Start Window|Production Window)/.test(trimmedLine);
+                  
+                  // Check if this is a bullet point
+                  const isBullet = trimmedLine.startsWith('•');
+                  
+                  // Check if this is a signature line
+                  const isSignatureLine = trimmedLine.includes('Signature:') || 
+                                         trimmedLine.includes('Printed Name:') ||
+                                         trimmedLine.includes('Representative:');
+                  
+                  // Check if this is an Exhibit heading
+                  const isExhibitHeading = /^Exhibit [A-C]/.test(trimmedLine);
+                  
+                  if (isHDGTitle) {
+                    result.push(
+                      <div key={i} className="mb-6 text-center py-4">
+                        <img
+                          src="/images/HDG-Logo.png"
+                          alt="Henderson Design Group"
+                          className="h-12 w-auto object-contain mx-auto"
+                          style={{
+                            filter: 'brightness(0) saturate(100%) invert(23%) sepia(89%) saturate(1289%) hue-rotate(163deg) brightness(92%) contrast(101%)'
+                          }}
+                        />
+                      </div>
+                    );
+                  } else if (isMainTitle) {
+                    result.push(
+                      <div key={i} className="mb-8 text-center py-4">
+                        <h2 className="text-xl font-bold text-[#005670] leading-relaxed uppercase tracking-wide">
+                          {trimmedLine}
                         </h2>
-                      ))}
-                    </div>
-                  );
-                }
-                
-                if (isHeading) {
-                  return (
-                    <div key={i} className="mt-8 mb-4">
-                      <h3 className="text-xl font-bold text-[#005670] leading-relaxed border-b-2 border-[#005670]/20 pb-2">
-                        {block}
-                      </h3>
-                    </div>
-                  );
-                }
-                
-                if (isBullet) {
-                  return (
-                    <div key={i} className="ml-6 mb-3">
-                      <p className="text-base text-gray-700 leading-relaxed">
-                        {block}
+                      </div>
+                    );
+                  } else if (isNumberedHeading) {
+                    result.push(
+                      <div key={i} className="mt-10 mb-5">
+                        <h3 className="text-lg font-bold text-[#005670] leading-relaxed pb-2 border-b-2 border-[#005670]/30">
+                          {trimmedLine}
+                        </h3>
+                      </div>
+                    );
+                  } else if (isExhibitHeading) {
+                    result.push(
+                      <div key={i} className="mt-10 mb-4 pt-6 border-t-2 border-gray-300">
+                        <h3 className="text-lg font-bold text-[#005670] leading-relaxed">
+                          {trimmedLine}
+                        </h3>
+                      </div>
+                    );
+                  } else if (isFieldLine) {
+                    result.push(
+                      <div key={i} className="mb-3 font-mono text-sm">
+                        <p className="text-gray-700 leading-relaxed">
+                          {trimmedLine}
+                        </p>
+                      </div>
+                    );
+                  } else if (isBullet) {
+                    result.push(
+                      <div key={i} className="flex items-start gap-3 mb-3 ml-4">
+                        <span className="text-[#005670] font-bold mt-1">•</span>
+                        <p className="text-gray-700 leading-relaxed flex-1">
+                          {trimmedLine.substring(1).trim()}
+                        </p>
+                      </div>
+                    );
+                  } else if (isSignatureLine) {
+                    result.push(
+                      <div key={i} className="mb-3 mt-8">
+                        <p className="text-gray-700 leading-relaxed font-mono text-sm">
+                          {trimmedLine}
+                        </p>
+                      </div>
+                    );
+                  } else {
+                    // Regular paragraph
+                    result.push(
+                      <p key={i} className="mb-4 text-gray-700 leading-relaxed text-justify">
+                        {trimmedLine}
                       </p>
-                    </div>
-                  );
+                    );
+                  }
+                  
+                  i++;
                 }
                 
-                if (isDate) {
-                  return (
-                    <div key={i} className="mt-8 pt-6 border-t-2 border-gray-200 text-center">
-                      <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">
-                        {block}
-                      </p>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <p key={i} className="mb-5 text-base text-gray-700 leading-relaxed">
-                    {block}
-                  </p>
-                );
-              })}
+                return result;
+              })()}
             </div>
           </div>
 
@@ -398,12 +669,36 @@ Updated 10.30.25`
                 <AlertCircle className="w-5 h-5 text-[#005670]" />
                 <span>Please read all terms carefully before proceeding</span>
               </div>
-              <button
-                onClick={() => setShowAgreement(false)}
-                className="px-8 py-4 text-lg font-bold bg-[#005670] text-white rounded-xl hover:bg-[#004150] transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl whitespace-nowrap"
-              >
-                Close Agreement
-              </button>
+              
+              <div className="flex gap-4">
+                {isLockPriceOption && currentAgreementIndex === 0 && (
+                  <button
+                    onClick={() => setCurrentAgreementIndex(1)}
+                    className="px-8 py-4 text-lg font-bold bg-[#005670] text-white rounded-xl hover:bg-[#004150] transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl whitespace-nowrap"
+                  >
+                    Next Agreement →
+                  </button>
+                )}
+                
+                {isLockPriceOption && currentAgreementIndex === 1 && (
+                  <button
+                    onClick={() => setCurrentAgreementIndex(0)}
+                    className="px-8 py-4 text-lg font-bold border-2 border-[#005670] text-[#005670] rounded-xl hover:bg-[#005670]/5 transition-all duration-300 active:scale-95 whitespace-nowrap"
+                  >
+                    ← Previous Agreement
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => {
+                    setShowAgreement(false);
+                    setCurrentAgreementIndex(0);
+                  }}
+                  className="px-8 py-4 text-lg font-bold bg-[#005670] text-white rounded-xl hover:bg-[#004150] transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl whitespace-nowrap"
+                >
+                  Close Agreement
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -484,13 +779,20 @@ Updated 10.30.25`
             <div className="flex items-center justify-between gap-6">
               <div>
                 <h3 className="text-xl font-bold text-[#005670] mb-2">Full Agreement Terms</h3>
-                <p className="text-gray-600">View the complete legal agreement</p>
+                <p className="text-gray-600">
+                  {selectedOption === 'lock-price' 
+                    ? 'View the complete legal agreements (2 documents)'
+                    : 'View the complete legal agreement'}
+                </p>
               </div>
               <button
-                onClick={() => setShowAgreement(true)}
+                onClick={() => {
+                  setShowAgreement(true);
+                  setCurrentAgreementIndex(0);
+                }}
                 className="px-8 py-4 text-lg font-bold border-2 border-[#005670] text-[#005670] rounded-xl hover:bg-[#005670]/5 transition-all duration-300 active:scale-95 whitespace-nowrap"
               >
-                View Agreement
+                View Agreement{selectedOption === 'lock-price' ? 's' : ''}
               </button>
             </div>
           </div>
@@ -501,6 +803,7 @@ Updated 10.30.25`
                 setSelectedOption(null);
                 setShowOutline(false);
                 setShowAgreement(false);
+                setCurrentAgreementIndex(0);
               }}
               className="px-8 py-4 text-lg font-bold border-2 border-[#005670]/20 text-[#005670] rounded-xl hover:border-[#005670] hover:bg-[#005670]/5 transition-all duration-300 active:scale-95"
             >
