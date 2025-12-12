@@ -111,7 +111,7 @@ The Client agrees to pay HDG a deposit equal to thirty percent (30%) of the tota
 
 The deposit must be received by December 15, 2025, to guarantee 2025 pricing.
 
-Upon final design and budget approval, the Client shall make an additional payment, bringing the total payment to fifty percent (50%) of the final design budget price. The initial 30% deposit will be credited towards this fifty percent (50%) payment, as per the mutually agreed design budget. The remaining fifty percent (50%) balance will follow the delivery and installation payment schedule provided by HDG.
+Upon final design approval, the Client will make an additional payment that brings the total amount paid to fifty percent (50%) of the final design price. In other words, after the initial 30% deposit, the next payment will simply “top up” the total paid to reach 50%. The remaining fifty percent (50%) balance will follow the delivery and installation payment schedule provided by HDG.
 
 3. Scope of Agreement
 
