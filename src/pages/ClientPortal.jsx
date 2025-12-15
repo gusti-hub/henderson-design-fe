@@ -217,7 +217,7 @@ const ClientPortal = () => {
             {/* Step 1: Verify */}
             <div className={`flex items-center gap-2 ${step === 'verify' ? 'text-[#005670]' : verified ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'verify' ? 'bg-[#005670] text-white' : verified ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                {verified ? <CheckCircle className="w-6 h-6" /> : '1'}
+                {verified ? <CheckCircle size={24} color="#16a34a" /> : '1'}
               </div>
               <span className="font-medium hidden sm:inline text-sm">Verify</span>
             </div>
@@ -226,7 +226,7 @@ const ClientPortal = () => {
             {/* Step 2: Questionnaire */}
             <div className={`flex items-center gap-2 ${step === 'questionnaire' ? 'text-[#005670]' : (step === 'schedule' || step === 'confirmation') ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'questionnaire' ? 'bg-[#005670] text-white' : (step === 'schedule' || step === 'confirmation') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                {(step === 'schedule' || step === 'confirmation') ? <CheckCircle className="w-6 h-6" /> : <ClipboardList className="w-5 h-5" />}
+                {(step === 'schedule' || step === 'confirmation') ? <CheckCircle size={24} color="#16a34a" /> : <ClipboardList className="w-5 h-5" />}
               </div>
               <span className="font-medium hidden sm:inline text-sm">Questionnaire</span>
             </div>
@@ -235,7 +235,7 @@ const ClientPortal = () => {
             {/* Step 3: Schedule */}
             <div className={`flex items-center gap-2 ${step === 'schedule' ? 'text-[#005670]' : step === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'schedule' ? 'bg-[#005670] text-white' : step === 'confirmation' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                {step === 'confirmation' ? <CheckCircle className="w-6 h-6" /> : <Calendar className="w-5 h-5" />}
+                {step === 'confirmation' ? <CheckCircle size={24} color="#16a34a" /> : <Calendar className="w-5 h-5" />}
               </div>
               <span className="font-medium hidden sm:inline text-sm">Schedule</span>
             </div>
@@ -244,7 +244,7 @@ const ClientPortal = () => {
             {/* Step 4: Confirm */}
             <div className={`flex items-center gap-2 ${step === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step === 'confirmation' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                {step === 'confirmation' ? <CheckCircle className="w-6 h-6" /> : '4'}
+                {step === 'confirmation' ? <CheckCircle size={24} color="#16a34a" /> : '4'}
               </div>
               <span className="font-medium hidden sm:inline text-sm">Confirm</span>
             </div>

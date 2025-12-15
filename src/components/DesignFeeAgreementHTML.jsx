@@ -1,316 +1,242 @@
 // DesignFeeAgreementHTML.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect } from "react";
 
 const DesignFeeAgreementHTML = ({ agreementData }) => {
   useEffect(() => {
-    // Auto-trigger print dialog
-    const timer = setTimeout(() => {
-      window.print();
-    }, 500);
+    const timer = setTimeout(() => window.print(), 400);
     return () => clearTimeout(timer);
   }, []);
 
-  // Default data if not provided
   const data = agreementData || {
-    effectiveDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-    clientName: '[Client Name]',
-    unitNumber: '[Unit Number]',
-    invoiceNumber: '[Invoice Number]',
-    packageDescription: 'Client has a 1 bedroom unit and would like to proceed with a Nalu package.',
-    designFee: '5,000',
-    collectionType: 'Nalu'
+    effectiveDate: "11.30.25",
+    clientName: "Client Name",
+    unitNumber: "Unit Number",
+    invoiceNumber: "ALIA-DF-0001",
+    packageDescription:
+      "Client has a 1 bedroom unit and would like to proceed with a Nalu package.",
+    designFee: "5,000.00",
+    collectionType: "Nalu"
+  };
+
+  const p = {
+    margin: 0,
+    marginBottom: "6pt",
+    fontSize: "12pt",
+    lineHeight: "22.4pt",
+    fontFamily: "FreightSansProLight"
+  };
+
+  const title = {
+    ...p,
+    fontSize: "16pt",
+    textAlign: "center",
+    marginBottom: "8pt"
+  };
+
+  const subtitle = {
+    ...p,
+    fontSize: "14pt",
+    textAlign: "center",
+    marginBottom: "16pt"
+  };
+
+  const sectionHeader = {
+    ...p,
+    fontWeight: "bold",
+    marginTop: "6pt"
   };
 
   return (
-    <div style={{
-      fontFamily: 'Arial, sans-serif',
-      maxWidth: '8.5in',
-      margin: '0 auto',
-      padding: '0.5in',
-      backgroundColor: 'white',
-      fontSize: '11pt',
-      lineHeight: '1.6',
-      color: '#000'
-    }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <h1 style={{
-          fontSize: '18pt',
-          fontWeight: 'bold',
-          color: '#000',
-          marginBottom: '10px',
-          letterSpacing: '1px'
-        }}>
-          Henderson Design Group
-        </h1>
-        <h2 style={{
-          fontSize: '14pt',
-          fontWeight: 'bold',
-          marginBottom: '5px'
-        }}>
-          Design Agreement – Ālia Furniture Collections
-        </h2>
-        <p style={{ fontSize: '11pt', fontStyle: 'italic', color: '#666' }}>
-          (For Clients with 2025 Price Lock)
+    <div
+      style={{
+        paddingTop: "1in",
+        paddingLeft: "1in",
+        paddingRight: "1in",
+        paddingBottom: "1in",
+        background: "#fff",
+        fontFamily: "FreightSansProLight"
+      }}
+    >
+      {/* ---------- PAGE 1 ---------- */}
+      <div style={{ pageBreakAfter: "always" }}>
+        <p style={title}>Henderson Design Group</p>
+        <p style={subtitle}>
+          Design Fee Agreement – Ālia Furniture Collections
         </p>
-      </div>
 
-      {/* Client Information - HIGHLIGHTED */}
-      <div style={{
-        backgroundColor: '#FFFF00',
-        padding: '15px',
-        marginBottom: '20px',
-        border: '1px solid #000'
-      }}>
-        <p style={{ margin: '5px 0' }}><strong>Effective Date:</strong> {data.effectiveDate}</p>
-        <p style={{ margin: '5px 0' }}><strong>Client Name:</strong> {data.clientName}</p>
-        <p style={{ margin: '5px 0' }}><strong>Unit / Residence:</strong> {data.unitNumber}</p>
-        <p style={{ margin: '5px 0' }}><strong>Reference:</strong> Invoice #{data.invoiceNumber}</p>
-      </div>
+        <p style={p}><strong>Effective Date:</strong> {data.effectiveDate}</p>
+        <p style={p}><strong>Client Name:</strong> {data.clientName}</p>
+        <p style={p}><strong>Unit / Residence:</strong> {data.unitNumber}</p>
+        <p style={p}><strong>Reference:</strong> Invoice #{data.invoiceNumber}</p>
 
-      {/* Purpose */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Purpose:
-        </h3>
-        <p style={{ textAlign: 'justify' }}>
-          This Design Agreement authorizes Henderson Design Group ("HDG") to begin the design phase for the Client's residence and outlines the scope, process, and payment terms for the design work.
+        <p style={sectionHeader}>1. Purpose:</p>
+        <p style={p}>
+          This Design Fee Agreement authorizes Henderson Design Group (“HDG”) to
+          commence the interior design phase for the Client’s residence and
+          outlines the scope, process, and payment terms for design services
+          provided under the Ālia Furnishing Program.
         </p>
-      </div>
 
-      {/* Design Fee and Payment Terms */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Design Fee and Payment Terms:
-        </h3>
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          The Client agrees to pay HDG a non-refundable design fee, due in full at signing. This fee covers all design services outlined in Section 3.
+        <p style={sectionHeader}>2. Design Fee and Payment Terms:</p>
+        <p style={p}>
+          The Client agrees to pay HDG a non-refundable design fee in the amount
+          specified in Exhibit A. Payment is due in full upon execution of this
+          Agreement and prior to the commencement of any design work.
         </p>
-        
-        <p style={{
-          backgroundColor: '#FFFF00',
-          padding: '10px',
-          marginBottom: '10px'
-        }}>
+        <p style={p}>
           <strong>Description of Scope:</strong> {data.packageDescription}
         </p>
-
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          Agreement will specify only one of the following:
-        </p>
-
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          Payment is required before HDG begins design preparation, assigns design resources, or sets confirmed meeting dates.
-        </p>
-
-        <p style={{ textAlign: 'justify' }}>
-          If the Client proceeds to production, 100% of the design fee will be credited toward the total furnishing package price. This credit remains valid for six (6) months from the final design presentation date.
+        <p style={p}>
+          Design services will not begin until payment has been received and
+          confirmed by HDG.
         </p>
       </div>
 
-      {/* Scope of Services */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Scope of Services:
-        </h3>
-        <p style={{ marginBottom: '10px' }}>The Design Fee includes:</p>
-        <ul style={{ marginLeft: '30px', marginBottom: '10px' }}>
-          <li>A design intake meeting</li>
+      {/* ---------- PAGE 2 ---------- */}
+      <div style={{ pageBreakAfter: "always", paddingTop: "1.35in" }}>
+        <p style={sectionHeader}>3. Scope of Design Services:</p>
+        <p style={p}>The Design Fee includes the following services:</p>
+
+        <ul
+          style={{
+            paddingLeft: "0.5in",
+            fontFamily: "FreightSansProLight",
+            fontSize: "12pt",
+            lineHeight: "22.4pt"
+          }}
+        >
+          <li>Design intake meeting and requirements review</li>
           <li>Review of floor plan and unit layout</li>
-          <li>Furniture layout and package selection (Lani, Nalu, or Foundation)</li>
+          <li>Furniture layout and collection selection (Lani, Nalu, or Foundation)</li>
           <li>Material, fabric, and finish selections</li>
-          <li>One round of revisions</li>
-          <li>Preparation of a final design presentation and furnishing proposal with a line item budget</li>
+          <li>One (1) round of revisions</li>
+          <li>
+            Final design presentation and furnishing proposal with a line-item
+            budget
+          </li>
         </ul>
-        <p style={{ textAlign: 'justify' }}>
-          Additional revisions, custom designs, add-on sourcing, or in-person consultations may be billed separately at HDG's standard hourly rates.
+
+        <p style={p}>
+          Additional revisions, custom work, sourcing requests, or consultations
+          outside the scope above may be billed separately at HDG’s standard
+          rates.
+        </p>
+
+        <p style={sectionHeader}>4. Schedule:</p>
+        <p style={p}>
+          Upon receipt of the design fee, the Client secures placement within
+          HDG’s design calendar. A confirmed design start date will be scheduled
+          based on availability.
+        </p>
+        <p style={p}>
+          A Project Manager will be assigned as the Client’s primary point of
+          contact throughout the design phase.
         </p>
       </div>
 
-      {/* Schedule */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Schedule:
-        </h3>
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          Upon payment outlined in this agreement, Client secures a place in HDG's 2026 design calendar, HDG will now assign a confirmed design start date upon execution of this Agreement and receipt of payment.
+      {/* ---------- PAGE 3 ---------- */}
+      <div style={{ pageBreakAfter: "always", paddingTop: "1.35in" }}>
+        <p style={sectionHeader}>5. Credit Toward Production:</p>
+        <p style={p}>
+          If the Client proceeds to production, the design fee paid under this
+          Agreement will be credited in full toward the Client’s total furnishing
+          package cost.
         </p>
-        <p style={{ textAlign: 'justify' }}>
-          A Project Manager will be assigned as the Client's primary point of contact. Intake meeting and presentation dates will be scheduled according to HDG's 2026 design calendar.
+        <p style={p}>
+          This credit remains valid for six (6) months from the date of final
+          design presentation approval.
         </p>
-      </div>
 
-      {/* Credit Toward Production */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Credit Toward Production:
-        </h3>
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          If the Client moves forward to production, the full design fee will be applied as a credit toward the total furnishing package cost.
+        <p style={sectionHeader}>6. Cancellation and Refund Policy:</p>
+        <p style={p}>
+          The design fee is non-refundable. If the Client elects not to proceed
+          after design work has commenced, HDG may, at its discretion, apply the
+          fee toward future design services for the same property.
         </p>
-        <p style={{ textAlign: 'justify' }}>
-          If the Client does not proceed to production within six (6) months of design presentation approval, the credit expires.
-        </p>
-      </div>
 
-      {/* Cancellation and Refunds */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Cancellation and Refunds:
-        </h3>
-        <p style={{ textAlign: 'justify' }}>
-          The design fee is non-refundable. If the Client chooses not to proceed after design begins, HDG may, at its discretion, apply the fee toward future design services for the same property.
+        <p style={sectionHeader}>7. Ownership of Materials:</p>
+        <p style={p}>
+          All drawings, layouts, specifications, and design materials remain the
+          exclusive property of HDG until the furnishing package is paid in full.
         </p>
-      </div>
 
-      {/* Ownership of Materials */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Ownership of Materials:
-        </h3>
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          All drawings, layouts, specifications, and renderings remain the exclusive property of HDG until the furnishing package is paid in full.
+        <p style={sectionHeader}>8. Liability and Limitations:</p>
+        <p style={p}>
+          HDG will exercise reasonable care in performing all services but shall
+          not be liable for delays caused by third parties, construction progress,
+          building access restrictions, or material availability beyond its
+          control.
         </p>
-        <p style={{ textAlign: 'justify' }}>
-          The Client may not reuse, reproduce, or implement the design without HDG's written approval.
-        </p>
-      </div>
 
-      {/* Liability and Limitations */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Liability and Limitations:
-        </h3>
-        <p style={{ textAlign: 'justify', marginBottom: '10px' }}>
-          HDG will exercise reasonable care in performing all services.
+        <p style={sectionHeader}>9. Governing Law:</p>
+        <p style={p}>
+          This Agreement shall be governed by the laws of the State of Hawaii.
         </p>
-        <p style={{ textAlign: 'justify' }}>
-          HDG is not responsible for delays caused by third parties, construction progress, HOA/building access limitations, material availability, or shipping logistics outside its control.
-        </p>
-      </div>
 
-      {/* Governing Law */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Governing Law:
-        </h3>
-        <p style={{ textAlign: 'justify' }}>
-          This Agreement is governed by the laws of the State of Hawaii.
-        </p>
-      </div>
-
-      {/* Acceptance */}
-      <div style={{ marginBottom: '30px' }}>
-        <h3 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '10px' }}>
-          Acceptance:
-        </h3>
-        <p style={{ marginBottom: '20px' }}>
+        <p style={sectionHeader}>10. Acceptance:</p>
+        <p style={p}>
           By signing below, both parties agree to the terms of this Agreement:
         </p>
 
-        <div style={{ marginBottom: '40px' }}>
-          <p style={{ marginBottom: '30px' }}>
-            Client Signature: ______________________________________________
-          </p>
-          <p style={{ marginBottom: '30px' }}>
-            Date: ____________
-          </p>
-          <p>
-            Printed Name: ________________________________________________
-          </p>
-        </div>
+        <br /><br />
 
-        <div>
-          <p style={{ marginBottom: '30px' }}>
-            HDG Representative: _____________________________________________
-          </p>
-          <p style={{ marginBottom: '30px' }}>
-            Date: ____________
-          </p>
-          <p>
-            Printed Name: ____________________________________________________
-          </p>
-        </div>
+        <p style={p}>Client Signature: ______________________________________________</p>
+        <p style={p}>Date: ____________</p>
+        <p style={p}>Printed Name: ________________________________________________</p>
+
+        <br /><br />
+
+        <p style={p}>HDG Representative: ______________________________________________</p>
+        <p style={p}>Date: ____________</p>
+        <p style={p}>Printed Name: ____________________________________________________</p>
       </div>
 
-      {/* Page Break */}
-      <div style={{ pageBreakBefore: 'always' }} />
+      {/* ---------- PAGE 4 ---------- */}
+      <div style={{ paddingTop: "1.35in" }}>
+        <p style={sectionHeader}>Exhibit A – Design Fee Summary:</p>
+        <p style={p}><strong>Design Fee Amount:</strong> ${data.designFee}</p>
+        <p style={p}><strong>Collection Type:</strong> {data.collectionType}</p>
 
-      {/* Exhibit A */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{
-          fontSize: '13pt',
-          fontWeight: 'bold',
-          marginBottom: '15px',
-          textDecoration: 'underline'
-        }}>
-          Exhibit A – Design Fee Summary:
-        </h3>
-        
-        <div style={{
-          backgroundColor: '#FFFF00',
-          padding: '15px',
-          marginBottom: '15px'
-        }}>
-          <p style={{ marginBottom: '10px' }}>
-            <strong>Design Fee Amount:</strong> ${data.designFee}
-          </p>
-          <p style={{ marginBottom: '10px' }}>
-            <strong>Collection Type:</strong> {data.collectionType}
-          </p>
+        <p style={{ ...p, marginTop: "8pt" }}><strong>Payment Method:</strong></p>
+
+        <div style={{ marginLeft: "0.5in", marginTop: "6pt" }}>
+          <p style={p}>• Check or</p>
+          <p style={p}>• Wire Payment</p>
         </div>
 
-        <p style={{ marginBottom: '5px' }}><strong>Payment Method:</strong></p>
-        <p style={{ marginLeft: '20px', marginBottom: '5px' }}>Check or</p>
-        <p style={{ marginLeft: '20px', marginBottom: '15px' }}>Wire Payment</p>
-
-        <p>Date Received: __________________________</p>
-      </div>
-
-      {/* Exhibit B */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{
-          fontSize: '13pt',
-          fontWeight: 'bold',
-          marginBottom: '15px',
-          textDecoration: 'underline'
-        }}>
+        <p style={{ ...sectionHeader, marginTop: "20pt" }}>
           Exhibit B – Deliverables:
-        </h3>
-        <p>
-          Design intake, layout development, material/finish selections, one revision, and final design presentation.
         </p>
-      </div>
+        <p style={p}>
+          Design intake, layout development, material and finish selections,
+          one revision, and final design presentation.
+        </p>
 
-      {/* Exhibit C */}
-      <div>
-        <h3 style={{
-          fontSize: '13pt',
-          fontWeight: 'bold',
-          marginBottom: '15px',
-          textDecoration: 'underline'
-        }}>
+        <p style={{ ...sectionHeader, marginTop: "20pt" }}>
           Exhibit C – Schedule:
-        </h3>
-        <p style={{ marginBottom: '15px' }}>
-          Confirmed Design Start: ________________________
         </p>
-        <p>
-          Estimated Completion: ______________________
-        </p>
+        <p style={p}>Confirmed Design Start: ________________________</p>
+        <p style={p}>Estimated Completion: ________________________</p>
       </div>
 
-      {/* Print CSS */}
+      {/* PRINT + FONT CSS */}
       <style>
         {`
+          @font-face {
+            font-family: 'FreightSansProLight';
+            src: url('/fonts/freight-sans-pro-light-regular.ttf') format('truetype');
+          }
+
           @media print {
-            body {
-              margin: 0;
-              padding: 0;
-            }
             @page {
               size: letter;
-              margin: 0.5in;
+              margin: 0;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
           }
         `}

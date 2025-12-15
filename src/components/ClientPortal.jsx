@@ -567,7 +567,13 @@ const ClientPortal = () => {
                           relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center
                           ${config.bgColor} ${config.pulse ? 'animate-pulse' : ''}
                         `}>
-                          <Icon className="w-5 h-5 text-white" />
+                          <Icon
+                            className={`w-5 h-5 ${
+                              step.status === 'completed'
+                                ? 'text-emerald-600'
+                                : 'text-white'
+                            }`}
+                          />
                         </div>
 
                         {/* Content */}

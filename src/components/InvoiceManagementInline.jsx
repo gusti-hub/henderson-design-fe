@@ -13,8 +13,8 @@ const InvoiceManagementInline = ({ clientId, clientName, currentStep, onInvoiceG
 
   // Map step to invoice milestone
   const getInvoiceStepForCurrentStep = (step) => {
-    if (step === 2) return [15, 43, 58, 67]; // All invoice steps
-    if (step === 15) return [15];
+    if (step === 2) return [16, 43, 58, 67]; // All invoice steps
+    if (step === 16) return [16];
     if (step === 43) return [43];
     if (step === 58) return [58];
     if (step === 67) return [67];
@@ -187,7 +187,7 @@ const InvoiceManagementInline = ({ clientId, clientName, currentStep, onInvoiceG
 
   const getStepLabel = (stepNumber) => {
     const labels = {
-      15: '30% Deposit',
+      16: '30% Deposit',
       43: '20% Progress (50% Total)',
       58: '25% Progress (75% Total)',
       67: '25% Final (100% Complete)'
