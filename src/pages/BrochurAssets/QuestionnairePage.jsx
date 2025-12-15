@@ -13,10 +13,11 @@ const QuestionnairePage = ({ language }) => {
 
 
   const inspirationImages = [
-    { id: 1, src: '/images/collections/1.jpg', title: '' },
+{ id: 1, src: '/images/collections/1.jpg', title: '' },
     { id: 2, src: '/images/collections/2.jpg', title: '' },
     { id: 3, src: '/images/collections/3.jpg', title: '' },
     { id: 4, src: '/images/collections/4.jpg', title: '' },
+    { id: 5, src: '/images/collections/5.jpg', title: '' },
     { id: 7, src: '/images/collections/7.jpg', title: '' },
     { id: 8, src: '/images/collections/8.jpg', title: '' },
     { id: 10, src: '/images/collections/10.jpg', title: '' },
@@ -25,6 +26,13 @@ const QuestionnairePage = ({ language }) => {
     { id: 13, src: '/images/collections/13.jpg', title: '' },
     { id: 15, src: '/images/collections/15.jpg', title: '' },
     { id: 16, src: '/images/collections/16.jpg', title: '' },
+    { id: 17, src: '/images/collections/17.jpg', title: '' },
+    { id: 18, src: '/images/collections/18.jpg', title: '' },
+    { id: 19, src: '/images/collections/19.jpg', title: '' },
+    { id: 21, src: '/images/collections/21.jpg', title: '' },
+    { id: 26, src: '/images/collections/26.jpg', title: '' },
+    { id: 27, src: '/images/collections/27.jpg', title: '' },
+    { id: 28, src: '/images/collections/28.jpg', title: '' },
   ];
 
   const toggleLike = (imageId) => {

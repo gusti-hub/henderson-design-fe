@@ -1,4 +1,4 @@
-// InvoiceHTML.jsx - Final Version (Matches Screenshot 100%)
+// InvoiceHTML.jsx - Adjusted to match screenshot
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { backendServer } from "../utils/info";
@@ -56,10 +56,11 @@ const InvoiceHTML = () => {
   if (loading) return <div>Loading invoice...</div>;
   if (error || !invoiceData) return <div>{error}</div>;
 
+  // Calculate amounts like in screenshot
   const invoiceAmount = invoiceData.invoiceAmount || 0;
+  const designFee = invoiceData.designFee || 0;
   const taxAmount = invoiceData.taxAmount || 0;
-  const pennyAdjustment = 0.06;
-  const totalAmount = invoiceAmount + taxAmount + pennyAdjustment;
+  const totalAmount = invoiceAmount + taxAmount;
 
   return (
     <>
@@ -301,12 +302,11 @@ const InvoiceHTML = () => {
           </thead>
 
           <tbody>
-            {/* RETAINER ROW */}
+            {/* ROW 1: RETAINER - Hold Price */}
             <tr>
               <td style={{ padding: "10px 8px", fontWeight: "bold" }}>Retainer</td>
               <td style={{ padding: "10px 8px" }}>
-                Design Fee Invoice ({invoiceData.currentPercentage}%) -{" "}
-                {invoiceData.collection} Package - {invoiceData.bedroomCount} Bedroom
+                Hold Price {invoiceData.collection} Package {invoiceData.bedroomCount}
               </td>
               <td style={{ textAlign: "center" }}>1</td>
               <td style={{ textAlign: "right" }}>{formatCurrency(invoiceAmount)}</td>
@@ -315,22 +315,20 @@ const InvoiceHTML = () => {
               </td>
             </tr>
 
-            {/* SUB LINE 1 */}
+            {/* ROW 2: Design Fee (Sub-line tanpa Activity) */}
             <tr>
               <td></td>
               <td style={{ padding: "10px 8px" }}>
-                Design Fee{" "}
-                <span style={{ background: "yellow" }}>Nalu</span> Package{" "}
-                {invoiceData.bedroomCount} Bedroom (Non-Refundable)
+                Design Fee {invoiceData.collection} Package {invoiceData.bedroomCount} (Non-Refundable)
               </td>
               <td style={{ textAlign: "center" }}>1</td>
-              <td style={{ textAlign: "right" }}>{formatCurrency(invoiceAmount)}</td>
+              <td style={{ textAlign: "right" }}>{formatCurrency(designFee)}</td>
               <td style={{ textAlign: "right", fontWeight: "600" }}>
-                {formatCurrency(invoiceAmount)}
+                {formatCurrency(designFee)}
               </td>
             </tr>
 
-            {/* SUB LINE 2 */}
+            {/* ROW 3: Taxes (Sub-line tanpa Activity) */}
             <tr>
               <td></td>
               <td style={{ padding: "10px 8px" }}>Taxes (Non-Refundable)</td>
@@ -339,19 +337,6 @@ const InvoiceHTML = () => {
               <td style={{ textAlign: "right", fontWeight: "600" }}>
                 {formatCurrency(taxAmount)}
               </td>
-            </tr>
-
-            {/* SUB LINE 3 */}
-            <tr>
-              <td></td>
-              <td style={{ padding: "10px 8px" }}>
-                <span style={{ background: "yellow" }}>
-                  Verification Penny Adjustment
-                </span>
-              </td>
-              <td style={{ textAlign: "center" }}>1</td>
-              <td style={{ textAlign: "right" }}>0.06</td>
-              <td style={{ textAlign: "right", fontWeight: "600" }}>0.06</td>
             </tr>
           </tbody>
         </table>

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Eye, Trash2, RefreshCw, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
-const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreementGenerated }) => {
+const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreementGenerated, propertyType }) => {
   const [agreements, setAgreements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(null);
@@ -13,6 +13,10 @@ const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreem
   useEffect(() => {
     fetchAgreements();
   }, [clientId]);
+
+  // Determine agreement type based on propertyType
+  const isLock2025Pricing = propertyType === 'Lock 2025 Pricing';
+  const designFeeLabel = isLock2025Pricing ? 'Design Fee Agreement' : 'Design Hold Fee Agreement';
 
   const fetchAgreements = async () => {
     try {
@@ -58,7 +62,10 @@ const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreem
         const data = await response.json();
         const agreementNumber = data.agreement.agreementNumber;
         
-        setSuccess(`${agreementType === 'design-fee' ? 'Design Fee Agreement' : 'Deposit to Hold'} generated!`);
+        const successMessage = agreementType === 'design-fee' 
+          ? `${designFeeLabel} generated!`
+          : 'Deposit to Hold generated!';
+        setSuccess(successMessage);
         
         // Open agreement HTML in new tab
         const agreementUrl = `${window.location.origin}/agreement/${clientId}/${agreementNumber}`;
@@ -116,7 +123,10 @@ const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreem
   };
 
   const getAgreementTypeName = (type) => {
-    return type === 'design-fee' ? 'Design Fee Agreement' : 'Deposit to Hold';
+    if (type === 'design-fee') {
+      return designFeeLabel; // Returns either "Design Fee Agreement" or "Design Hold Fee Agreement"
+    }
+    return 'Deposit to Hold';
   };
 
   const getAgreementTypeColor = (type) => {
@@ -147,8 +157,17 @@ const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreem
             Agreement Management
           </h4>
           <p className="text-sm text-gray-600 font-medium mt-1">
-            Generate Design Fee Agreement and Deposit to Hold documents
+            {isLock2025Pricing 
+              ? `Generate ${designFeeLabel} and Deposit to Hold documents`
+              : `Generate ${designFeeLabel} document`
+            }
           </p>
+          {!isLock2025Pricing && (
+            <p className="text-xs text-amber-600 font-bold mt-1 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              Design Hold Fee (No 2025 Price Lock)
+            </p>
+          )}
         </div>
       </div>
 
@@ -172,8 +191,8 @@ const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreem
       )}
 
       {/* Generate Buttons */}
-      <div className="grid md:grid-cols-2 gap-4 mb-6">
-        {/* Design Fee Agreement Button */}
+      <div className={`grid gap-4 mb-6 ${isLock2025Pricing ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+        {/* Design Fee Agreement Button (label changes based on propertyType) */}
         <button
           onClick={() => handleGenerateAgreement('design-fee')}
           disabled={generating === 'design-fee'}
@@ -195,39 +214,41 @@ const AgreementManagementInline = ({ clientId, clientName, currentStep, onAgreem
               {generating === 'design-fee' 
                 ? 'Generating...' 
                 : designFeeAgreements.length > 0
-                ? 'Design Fee Agreement ✓'
-                : 'Design Fee Agreement'}
+                ? `${designFeeLabel} ✓`
+                : designFeeLabel}
             </span>
           </div>
         </button>
 
-        {/* Deposit to Hold Button */}
-        <button
-          onClick={() => handleGenerateAgreement('deposit-hold')}
-          disabled={generating === 'deposit-hold'}
-          className={`p-4 rounded-xl border-2 transition-all ${
-            depositAgreements.length > 0
-              ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-purple-500 text-white hover:shadow-lg'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            {generating === 'deposit-hold' ? (
-              <RefreshCw className="w-5 h-5 animate-spin" />
-            ) : depositAgreements.length > 0 ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <FileText className="w-5 h-5" />
-            )}
-            <span className="font-bold">
-              {generating === 'deposit-hold' 
-                ? 'Generating...' 
-                : depositAgreements.length > 0
-                ? 'Deposit to Hold ✓'
-                : 'Deposit to Hold'}
-            </span>
-          </div>
-        </button>
+        {/* Deposit to Hold Button - ONLY for Lock 2025 Pricing */}
+        {isLock2025Pricing && (
+          <button
+            onClick={() => handleGenerateAgreement('deposit-hold')}
+            disabled={generating === 'deposit-hold'}
+            className={`p-4 rounded-xl border-2 transition-all ${
+              depositAgreements.length > 0
+                ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-purple-500 text-white hover:shadow-lg'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              {generating === 'deposit-hold' ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : depositAgreements.length > 0 ? (
+                <CheckCircle className="w-5 h-5" />
+              ) : (
+                <FileText className="w-5 h-5" />
+              )}
+              <span className="font-bold">
+                {generating === 'deposit-hold' 
+                  ? 'Generating...' 
+                  : depositAgreements.length > 0
+                  ? 'Deposit to Hold ✓'
+                  : 'Deposit to Hold'}
+              </span>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Generated Agreements List */}

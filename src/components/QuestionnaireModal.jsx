@@ -25,14 +25,22 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
     { id: 2, src: '/images/collections/2.jpg', title: 'Design 2' },
     { id: 3, src: '/images/collections/3.jpg', title: 'Design 3' },
     { id: 4, src: '/images/collections/4.jpg', title: 'Design 4' },
-    { id: 7, src: '/images/collections/7.jpg', title: 'Design 5' },
-    { id: 8, src: '/images/collections/8.jpg', title: 'Design 6' },
-    { id: 10, src: '/images/collections/10.jpg', title: 'Design 7' },
-    { id: 11, src: '/images/collections/11.jpg', title: 'Design 8' },
-    { id: 12, src: '/images/collections/12.jpg', title: 'Design 9' },
-    { id: 13, src: '/images/collections/13.jpg', title: 'Design 10' },
-    { id: 15, src: '/images/collections/15.jpg', title: 'Design 11' },
-    { id: 16, src: '/images/collections/16.jpg', title: 'Design 12' },
+    { id: 5, src: '/images/collections/5.jpg', title: 'Design 5' },
+    { id: 7, src: '/images/collections/7.jpg', title: 'Design 6' },
+    { id: 8, src: '/images/collections/8.jpg', title: 'Design 7' },
+    { id: 10, src: '/images/collections/10.jpg', title: 'Design 8' },
+    { id: 11, src: '/images/collections/11.jpg', title: 'Design 9' },
+    { id: 12, src: '/images/collections/12.jpg', title: 'Design 10' },
+    { id: 13, src: '/images/collections/13.jpg', title: 'Design 11' },
+    { id: 15, src: '/images/collections/15.jpg', title: 'Design 12' },
+    { id: 16, src: '/images/collections/16.jpg', title: 'Design 13' },
+    { id: 17, src: '/images/collections/17.jpg', title: 'Design 14' },
+    { id: 18, src: '/images/collections/18.jpg', title: 'Design 15' },
+    { id: 19, src: '/images/collections/19.jpg', title: 'Design 16' },
+    { id: 21, src: '/images/collections/21.jpg', title: 'Design 17' },
+    { id: 26, src: '/images/collections/26.jpg', title: 'Design 18' },
+    { id: 27, src: '/images/collections/27.jpg', title: 'Design 19' },
+    { id: 28, src: '/images/collections/28.jpg', title: 'Design 20' },
   ];
 
   const questionSections = [
@@ -252,11 +260,6 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
           placeholder: 'List any colors or finishes you prefer to avoid...'
         }
       ]
-    },
-    {
-      title: 'Visual Inspiration',
-      description: 'Select designs that inspire you',
-      isImageSelection: true
     },
     {
       title: 'Bedrooms & Comfort',
@@ -627,6 +630,11 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
           ]
         }
       ]
+    },
+    {
+      title: 'Visual Inspiration',
+      description: 'Select designs that inspire you',
+      isImageSelection: true
     }
   ];
 

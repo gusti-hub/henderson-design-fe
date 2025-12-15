@@ -325,7 +325,7 @@ const AdminPanel = () => {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 flex flex-col overflow-auto">
           {/* Header */}
           <header className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
             <div className="px-6 py-4">
@@ -344,7 +344,7 @@ const AdminPanel = () => {
           </header>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="flex-1 p-6">
             <div className="max-w-[1600px] mx-auto">
               {renderContent()}
             </div>

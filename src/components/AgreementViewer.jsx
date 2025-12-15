@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import DesignFeeAgreementHTML from './DesignFeeAgreementHTML';
+import DesignHoldFeeAgreementHTML from './DesignHoldFeeAgreementHTML'; // ADD THIS IMPORT
 import DepositToHoldHTML from './DepositToHoldHTML';
 
 const AgreementViewer = () => {
@@ -30,7 +31,8 @@ const AgreementViewer = () => {
         setAgreementData({
           ...data.agreement,
           clientName: data.client.name,
-          unitNumber: data.client.unitNumber
+          unitNumber: data.client.unitNumber,
+          propertyType: data.client.propertyType // ADD THIS - Get propertyType from client
         });
       } else {
         setError('Agreement not found');
@@ -102,14 +104,30 @@ const AgreementViewer = () => {
     bedroomCount: agreementData.bedroomCount
   };
 
-  // Render appropriate agreement based on type
+  // ====================================================================
+  // UPDATED SECTION: Render appropriate agreement based on type
+  // ====================================================================
   if (agreementData.agreementType === 'design-fee') {
-    return <DesignFeeAgreementHTML agreementData={{
-      ...data,
-      designFee: agreementData.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      collectionType: agreementData.collection
-    }} />;
-  } else {
+    // Check propertyType to determine which design fee template to use
+    const isLock2025Pricing = agreementData.propertyType === 'Lock 2025 Pricing';
+    
+    if (isLock2025Pricing) {
+      // Lock 2025 Pricing → Design Fee Agreement
+      return <DesignFeeAgreementHTML agreementData={{
+        ...data,
+        designFee: agreementData.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        collectionType: agreementData.collection
+      }} />;
+    } else {
+      // Design Hold Fee → Design Hold Fee Agreement
+      return <DesignHoldFeeAgreementHTML agreementData={{
+        ...data,
+        designFee: agreementData.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        collectionType: agreementData.collection
+      }} />;
+    }
+  } else if (agreementData.agreementType === 'deposit-hold') {
+    // Deposit to Hold Agreement (only for Lock 2025 Pricing)
     return <DepositToHoldHTML depositData={{
       ...data,
       depositAmount: `${agreementData.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} (inclusive of $5,000 Design Fee)`,
