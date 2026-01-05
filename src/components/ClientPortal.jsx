@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Download,
   X,
-  ChevronDown,
-  ChevronUp,
   Zap,
   MapPin,
   Hash,
@@ -18,11 +16,73 @@ import {
   FileText,
   Calendar,
   Info,
-  User as UserIcon
+  User as UserIcon,
+  Lock,
+  Sparkles,
+  ChevronLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import QuestionnaireModal from './QuestionnaireModal';
+
+// ============================================================================
+// PHASE CONFIGURATION - CLIENT FACING (4 PHASES ONLY)
+// ============================================================================
+const CLIENT_PHASES = [
+  {
+    id: 1,
+    name: "Introduction & Onboarding",
+    label: "Getting Started",
+    description: "I've met HDG, reviewed options, and decided to move forward.",
+    color: "teal",  // Changed from green to teal (brand color)
+    icon: Sparkles,
+    stages: ["Inquiry and Intake", "Welcome Portal Access", "Deposit and Agreements"],
+  },
+  {
+    id: 2,
+    name: "Design & Approval",
+    label: "Design Development",
+    description: "We are shaping and confirming the design.",
+    color: "purple",
+    icon: Layers,
+    stages: [
+      "Design Kickoff - Internal Prep",
+      "Design Round 1 - Presentation", 
+      "Design Round 2 - Revisions",
+      "Final Design Approval"
+    ],
+  },
+  {
+    id: 3,
+    name: "Production & Planning",
+    label: "Production & Scheduling",
+    description: "Design is locked. Your project is being built and scheduled.",
+    color: "blue",
+    icon: Clock,
+    stages: [
+      "Progress Payment for Procurement to 50%",
+      "Procurement Prep & Vendor Quotes",
+      "Order Placement & Vendor Deposits",
+      "Production - In Progress",
+      "Progress Payment to 75%",
+      "Logistics & Export",
+      "Arrival QC & Delivery Scheduling"
+    ],
+  },
+  {
+    id: 4,
+    name: "Delivery & Completion",
+    label: "Delivery & Handover",
+    description: "Execution, completion, and closeout.",
+    color: "amber",
+    icon: CheckCircle,
+    stages: [
+      "Final Payment Balance Due for Release of Product",
+      "Installation & Punch List",
+      "Reveal & Closeout"
+    ],
+  }
+];
 
 const ClientPortal = () => {
   const navigate = useNavigate();
@@ -31,56 +91,98 @@ const ClientPortal = () => {
   const [clientData, setClientData] = useState(null);
   const [journeySteps, setJourneySteps] = useState([]);
   const [allJourneySteps, setAllJourneySteps] = useState([]);
-  const [allStages, setAllStages] = useState([]);
-  const [expandedStep, setExpandedStep] = useState(null);
   const [error, setError] = useState('');
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [checkingQuestionnaire, setCheckingQuestionnaire] = useState(true);
   const [pendingActions, setPendingActions] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
+  const [selectedPhase, setSelectedPhase] = useState(null);
 
-  const groupStepsByStage = (steps) => {
-    const stages = {};
-    steps.forEach(step => {
-      if (!stages[step.stage]) {
-        stages[step.stage] = [];
+  // ============================================================================
+  // PHASE MAPPING LOGIC
+  // ============================================================================
+  
+  const mapStepsToPhases = (visibleSteps, allSteps) => {
+    const phases = CLIENT_PHASES.map(phase => ({
+      ...phase,
+      steps: [],
+      allStepsInPhase: [],  // Track ALL steps for status calculation
+      status: 'not-started',
+      progress: 0
+    }));
+
+    // First, map ALL steps (including non-visible) to determine phase status
+    allSteps.forEach(step => {
+      const phaseIndex = phases.findIndex(phase => 
+        phase.stages.some(stage => 
+          step.stage?.toLowerCase().includes(stage.toLowerCase()) ||
+          stage.toLowerCase().includes(step.stage?.toLowerCase())
+        )
+      );
+
+      if (phaseIndex !== -1) {
+        phases[phaseIndex].allStepsInPhase.push(step);
       }
-      stages[step.stage].push(step);
     });
-    return stages;
-  };
 
-  const stageGroups = groupStepsByStage(journeySteps);
+    // Then, map VISIBLE steps for display
+    visibleSteps.forEach(step => {
+      const phaseIndex = phases.findIndex(phase => 
+        phase.stages.some(stage => 
+          step.stage?.toLowerCase().includes(stage.toLowerCase()) ||
+          stage.toLowerCase().includes(step.stage?.toLowerCase())
+        )
+      );
 
-  const getStageProgress = (stageSteps) => {
-    if (!stageSteps || stageSteps.length === 0) {
-      return { completed: 0, total: 0, percentage: 0 };
-    }
-    const completed = stageSteps.filter(s => s.status === 'completed').length;
-    const total = stageSteps.length;
-    return { completed, total, percentage: Math.round((completed / total) * 100) };
-  };
-
-  const getStageStatus = (stageName) => {
-    const stageSteps = stageGroups[stageName] || [];
-    
-    if (stageSteps.length === 0) {
-      const backendSteps = allJourneySteps.filter(s => s.stage === stageName);
-      if (backendSteps.length > 0) {
-        const hasActivity = backendSteps.some(s => s.status === 'in-progress' || s.status === 'completed');
-        if (hasActivity) return 'in-progress';
+      if (phaseIndex !== -1) {
+        phases[phaseIndex].steps.push(step);
       }
-      return 'not-started';
+    });
+
+    // Calculate status and progress
+    phases.forEach((phase, index) => {
+      const allPhaseSteps = phase.allStepsInPhase;
+      const visiblePhaseSteps = phase.steps;
+      
+      // If phase has NO steps at all (even non-visible), mark as locked
+      if (allPhaseSteps.length === 0) {
+        phase.status = 'locked';
+        phase.progress = 0;
+        return;
+      }
+
+      // Calculate progress from VISIBLE steps only (what user can see)
+      const completedVisible = visiblePhaseSteps.filter(s => s.status === 'completed').length;
+      const totalVisible = visiblePhaseSteps.length;
+      phase.progress = totalVisible > 0 ? Math.round((completedVisible / totalVisible) * 100) : 0;
+
+      // Determine phase status based on ALL steps (including hidden for accuracy)
+      const completedAll = allPhaseSteps.filter(s => s.status === 'completed').length;
+      const totalAll = allPhaseSteps.length;
+      
+      if (completedAll === totalAll && totalAll > 0) {
+        phase.status = 'completed';
+      } else if (completedAll > 0 || allPhaseSteps.some(s => s.status === 'in-progress')) {
+        phase.status = 'in-progress';
+      } else if (index === 0 || phases[index - 1].status === 'completed') {
+        phase.status = 'available';
+      } else {
+        phase.status = 'locked';
+      }
+    });
+
+    // Auto-select first active phase
+    const firstActivePhase = phases.findIndex(p => p.status !== 'completed' && p.status !== 'locked');
+    if (firstActivePhase !== -1 && selectedPhase === null) {
+      setSelectedPhase(firstActivePhase);
     }
-    
-    const hasInProgress = stageSteps.some(s => s.status === 'in-progress');
-    const allCompleted = stageSteps.every(s => s.status === 'completed');
-    
-    if (allCompleted) return 'completed';
-    if (hasInProgress) return 'in-progress';
-    if (stageSteps.some(s => s.status === 'completed')) return 'in-progress';
-    return 'not-started';
+
+    return phases;
   };
+
+  // ============================================================================
+  // DATA FETCHING
+  // ============================================================================
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -129,9 +231,6 @@ const ClientPortal = () => {
           
           setAllJourneySteps(journeyData.steps);
           
-          const stages = [...new Set(journeyData.steps.map(s => s.stage))];
-          setAllStages(stages);
-          
           const visibleSteps = journeyData.steps.filter(s => s.clientVisible).map(step => ({
             ...step,
             title: step.clientDescription || step.adminDescription
@@ -177,45 +276,28 @@ const ClientPortal = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('📋 Questionnaire check response:', data);
         
-        // ✅ FIX 1: Check hasCompletedQuestionnaire dari API response
         if (data.hasCompletedQuestionnaire) {
-          console.log('✅ Questionnaire already completed');
           setShowQuestionnaire(false);
           return;
         }
         
-        // ✅ FIX 2: Fallback check - cek apakah ada questionnaire dengan submittedAt
         if (data.questionnaires && data.questionnaires.length > 0) {
           const questionnaire = data.questionnaires[0];
           
-          // Check jika submittedAt ada (berarti sudah submit)
-          if (questionnaire.submittedAt) {
-            console.log('✅ Questionnaire has submittedAt:', questionnaire.submittedAt);
-            setShowQuestionnaire(false);
-            return;
-          }
-          
-          // Check jika isFirstTimeComplete true
-          if (questionnaire.isFirstTimeComplete) {
-            console.log('✅ Questionnaire isFirstTimeComplete');
+          if (questionnaire.submittedAt || questionnaire.isFirstTimeComplete) {
             setShowQuestionnaire(false);
             return;
           }
         }
         
-        // Jika semua check gagal, berarti belum diisi
-        console.log('⚠️ Questionnaire not completed, showing form');
         setShowQuestionnaire(true);
         
       } else {
-        // API error, assume perlu isi questionnaire
-        console.log('⚠️ API error, showing questionnaire');
         setShowQuestionnaire(true);
       }
     } catch (error) {
-      console.error('❌ Error checking questionnaire:', error);
+      console.error('Error checking questionnaire:', error);
       setShowQuestionnaire(true);
     } finally {
       setCheckingQuestionnaire(false);
@@ -232,10 +314,6 @@ const ClientPortal = () => {
   const handleLogout = () => {
     localStorage.clear();
     navigate('/');
-  };
-
-  const toggleStep = (stepNumber) => {
-    setExpandedStep(expandedStep === stepNumber ? null : stepNumber);
   };
 
   const downloadDocument = async (stepNumber, documentIndex, filename) => {
@@ -267,74 +345,69 @@ const ClientPortal = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
   const formatDateOnly = (dateString) => {
     if (!dateString) return null;
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
-      month: 'long',
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
   };
 
-  const getStatusConfig = (status) => {
-    switch (status) {
-      case 'completed':
-        return {
-          icon: CheckCircle,
-          color: 'emerald',
-          bgColor: 'bg-emerald-500',
-          textColor: 'text-emerald-600',
-          lightBg: 'bg-emerald-50',
-          borderColor: 'border-emerald-200',
-          label: 'Completed'
-        };
-      case 'in-progress':
-        return {
-          icon: Clock,
-          color: 'blue',
-          bgColor: 'bg-blue-500',
-          textColor: 'text-blue-600',
-          lightBg: 'bg-blue-50',
-          borderColor: 'border-blue-200',
-          label: 'In Progress',
-          pulse: true
-        };
-      default:
-        return {
-          icon: Circle,
-          color: 'gray',
-          bgColor: 'bg-gray-400',
-          textColor: 'text-gray-500',
-          lightBg: 'bg-gray-50',
-          borderColor: 'border-gray-200',
-          label: 'Not Started'
-        };
-    }
+  const getColorClasses = (color) => {
+    const colors = {
+      teal: {
+        bg: 'bg-[#005670]',
+        bgLight: 'bg-[#007a9a]',
+        text: 'text-[#005670]',
+        textWhite: 'text-white',
+        light: 'bg-[#e6f4f7]',
+        border: 'border-[#007a9a]',
+        ring: 'ring-[#005670]',
+        darkBg: 'bg-[#004558]',
+        textOnLight: 'text-[#004558]'
+      },
+      purple: {
+        bg: 'bg-purple-600',
+        bgLight: 'bg-purple-500',
+        text: 'text-purple-600',
+        textWhite: 'text-white',
+        light: 'bg-purple-50',
+        border: 'border-purple-200',
+        ring: 'ring-purple-500',
+        darkBg: 'bg-purple-700',
+        textOnLight: 'text-purple-700'
+      },
+      blue: {
+        bg: 'bg-blue-600',
+        bgLight: 'bg-blue-500',
+        text: 'text-blue-600',
+        textWhite: 'text-white',
+        light: 'bg-blue-50',
+        border: 'border-blue-200',
+        ring: 'ring-blue-500',
+        darkBg: 'bg-blue-700',
+        textOnLight: 'text-blue-700'
+      },
+      amber: {
+        bg: 'bg-amber-600',
+        bgLight: 'bg-amber-500',
+        text: 'text-amber-600',
+        textWhite: 'text-white',
+        light: 'bg-amber-50',
+        border: 'border-amber-200',
+        ring: 'ring-amber-500',
+        darkBg: 'bg-amber-700',
+        textOnLight: 'text-amber-700'
+      }
+    };
+    return colors[color] || colors.blue;
   };
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
 
   if (loading || checkingQuestionnaire) {
     return (
@@ -371,10 +444,32 @@ const ClientPortal = () => {
     );
   }
 
+  const phases = mapStepsToPhases(journeySteps, allJourneySteps);
+  const overallProgress = phases.reduce((acc, p) => acc + p.progress, 0) / phases.length || 0;
   const isJourneyInitialized = journeySteps.length > 0;
-  const completedMilestones = journeySteps.filter(m => m.status === 'completed').length;
-  const totalMilestones = journeySteps.length;
-  const progressPercentage = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+  const currentPhase = selectedPhase !== null ? phases[selectedPhase] : null;
+  
+  // Helper functions for currentPhase colors (explicit for Tailwind)
+  const getCurrentPhaseBg = () => {
+    if (!currentPhase) return 'bg-blue-600';
+    switch(currentPhase.color) {
+      case 'teal': return 'bg-[#005670]';
+      case 'purple': return 'bg-purple-600';
+      case 'blue': return 'bg-blue-600';
+      case 'amber': return 'bg-amber-600';
+      default: return 'bg-blue-600';
+    }
+  };
+  const getCurrentPhaseBgLight = () => {
+    if (!currentPhase) return 'bg-blue-500';
+    switch(currentPhase.color) {
+      case 'teal': return 'bg-[#007a9a]';
+      case 'purple': return 'bg-purple-500';
+      case 'blue': return 'bg-blue-500';
+      case 'amber': return 'bg-amber-500';
+      default: return 'bg-blue-500';
+    }
+  };
 
   return (
     <>
@@ -427,59 +522,66 @@ const ClientPortal = () => {
           </div>
         </header>
 
-        {/* HERO SECTION */}
-        <div className="bg-gradient-to-br from-[#005670] to-[#007a9a]">
+        {/* HERO SECTION - REDESIGNED */}
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-start justify-between gap-6 flex-wrap">
-              {/* Welcome Section */}
-              <div className="flex-1 min-w-[280px]">
-                <h1 className="text-3xl font-bold text-white mb-2">Welcome back, {clientData.name}</h1>
-                <p className="text-white/80 mb-4">Track your design journey</p>
-                
-                {/* Progress Bar */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">Overall Progress</span>
-                    <span className="text-2xl font-bold text-white">{progressPercentage}%</span>
-                  </div>
-                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-white rounded-full transition-all duration-500"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-white/70 mt-2">{completedMilestones} of {totalMilestones} steps completed</p>
-                </div>
-              </div>
-
-              {/* Client Info Cards */}
-              <div className="flex gap-3 flex-wrap">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 min-w-[100px]">
-                  <div className="flex items-center gap-2 mb-1">
-                    <MapPin className="w-4 h-4 text-white/70" />
-                    <p className="text-xs text-white/70 font-medium">Unit</p>
-                  </div>
-                  <p className="text-lg font-bold text-white">{clientData.unitNumber}</p>
+            {/* Welcome Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="flex items-start justify-between gap-6 flex-wrap">
+                <div className="flex-1 min-w-[280px]">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-1">Welcome back, {clientData.name}</h1>
+                  <p className="text-gray-600 text-base">Track your design journey with Henderson Design Group</p>
                 </div>
 
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 min-w-[120px]">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Layers className="w-4 h-4 text-white/70" />
-                    <p className="text-xs text-white/70 font-medium">Floor Plan</p>
-                  </div>
-                  <p className="text-lg font-bold text-white">{clientData.floorPlan}</p>
-                </div>
-
-                {clientData.clientCode && (
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 min-w-[100px]">
+                <div className="flex gap-3 flex-wrap">
+                  <div className="bg-gray-50 rounded-xl p-4 min-w-[110px] border border-gray-200">
                     <div className="flex items-center gap-2 mb-1">
-                      <Hash className="w-4 h-4 text-white/70" />
-                      <p className="text-xs text-white/70 font-medium">Code</p>
+                      <MapPin className="w-4 h-4 text-[#005670]" />
+                      <p className="text-xs text-gray-600 font-semibold">Unit</p>
                     </div>
-                    <p className="text-lg font-bold text-white">{clientData.clientCode}</p>
+                    <p className="text-xl font-bold text-gray-900">{clientData.unitNumber}</p>
                   </div>
-                )}
+
+                  <div className="bg-gray-50 rounded-xl p-4 min-w-[130px] border border-gray-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Layers className="w-4 h-4 text-[#005670]" />
+                      <p className="text-xs text-gray-600 font-semibold">Floor Plan</p>
+                    </div>
+                    <p className="text-xl font-bold text-gray-900">{clientData.floorPlan}</p>
+                  </div>
+
+                  {clientData.clientCode && (
+                    <div className="bg-gray-50 rounded-xl p-4 min-w-[110px] border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Hash className="w-4 h-4 text-[#005670]" />
+                        <p className="text-xs text-gray-600 font-semibold">Code</p>
+                      </div>
+                      <p className="text-xl font-bold text-gray-900">{clientData.clientCode}</p>
+                    </div>
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* Progress Card */}
+            <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-2xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-base font-semibold text-white">Overall Project Progress</span>
+                <span className="text-4xl font-bold text-white">{Math.round(overallProgress)}%</span>
+              </div>
+              <div className="h-3 bg-white/20 rounded-full overflow-hidden shadow-inner">
+                <div 
+                  className="h-full bg-white rounded-full transition-all duration-500 shadow-sm"
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
+              <p className="text-white/80 text-sm mt-3">
+                {overallProgress < 25 ? "Just getting started! 🚀" :
+                 overallProgress < 50 ? "Making great progress! 💪" :
+                 overallProgress < 75 ? "More than halfway there! 🎯" :
+                 overallProgress < 100 ? "Almost done! 🎉" :
+                 "Project complete! ✨"}
+              </p>
             </div>
           </div>
         </div>
@@ -506,7 +608,8 @@ const ClientPortal = () => {
                   <button
                     key={idx}
                     onClick={() => {
-                      setExpandedStep(action.step);
+                      const phaseIndex = phases.findIndex(p => p.steps.some(s => s.step === action.step));
+                      setSelectedPhase(phaseIndex);
                       setShowPendingPanel(false);
                     }}
                     className="w-full p-3 bg-amber-50 rounded-lg border border-amber-200 hover:border-amber-400 transition-all text-left group"
@@ -530,8 +633,8 @@ const ClientPortal = () => {
           </div>
         )}
 
-        {/* MAIN CONTENT - VERTICAL TIMELINE */}
-        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* MAIN CONTENT - HORIZONTAL PHASES */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!isJourneyInitialized ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
               <div className="w-16 h-16 bg-[#005670]/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -541,244 +644,367 @@ const ClientPortal = () => {
               <p className="text-gray-600">Your personalized design journey will begin shortly.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              {/* Journey Timeline */}
-              <div className="relative">
-                {journeySteps.map((step, index) => {
-                  const config = getStatusConfig(step.status);
-                  const Icon = config.icon;
-                  const isExpanded = expandedStep === step.step;
-                  const isLast = index === journeySteps.length - 1;
-                  const hasDetails = step.notes || step.deadlineDate || step.completedDate || step.generatedDocuments?.length > 0 || step.description;
+            <div>
+              {/* HORIZONTAL PHASE SELECTOR */}
+              <div className="mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {phases.map((phase, index) => {
+                    const PhaseIcon = phase.icon;
+                    const colors = getColorClasses(phase.color);
+                    const isSelected = selectedPhase === index;
+                    const isLocked = phase.status === 'locked';
+                    const isCompleted = phase.status === 'completed';
 
-                  return (
-                    <div key={step.step} className="relative">
-                      {/* Timeline Line */}
-                      {!isLast && (
-                        <div className={`absolute left-5 top-12 w-0.5 h-full ${
-                          step.status === 'completed' ? 'bg-blue-500' : 'bg-gray-300'
-                        }`} style={{ height: 'calc(100% + 16px)' }} />
-                      )}
+                    // Get explicit class names based on phase color
+                    const getBgLight = () => {
+                      switch(phase.color) {
+                        case 'teal': return 'bg-[#e6f4f7]';
+                        case 'purple': return 'bg-purple-50';
+                        case 'blue': return 'bg-blue-50';
+                        case 'amber': return 'bg-amber-50';
+                        default: return 'bg-blue-50';
+                      }
+                    };
+                    const getBorder = () => {
+                      switch(phase.color) {
+                        case 'teal': return 'border-[#007a9a]';
+                        case 'purple': return 'border-purple-200';
+                        case 'blue': return 'border-blue-200';
+                        case 'amber': return 'border-amber-200';
+                        default: return 'border-blue-200';
+                      }
+                    };
+                    const getRing = () => {
+                      switch(phase.color) {
+                        case 'teal': return 'ring-[#005670]';
+                        case 'purple': return 'ring-purple-500';
+                        case 'blue': return 'ring-blue-500';
+                        case 'amber': return 'ring-amber-500';
+                        default: return 'ring-blue-500';
+                      }
+                    };
+                    const getBg = () => {
+                      switch(phase.color) {
+                        case 'teal': return 'bg-[#005670]';
+                        case 'purple': return 'bg-purple-600';
+                        case 'blue': return 'bg-blue-600';
+                        case 'amber': return 'bg-amber-600';
+                        default: return 'bg-blue-600';
+                      }
+                    };
+                    const getText = () => {
+                      switch(phase.color) {
+                        case 'teal': return 'text-[#005670]';
+                        case 'purple': return 'text-purple-600';
+                        case 'blue': return 'text-blue-600';
+                        case 'amber': return 'text-amber-600';
+                        default: return 'text-blue-600';
+                      }
+                    };
+                    const getBgLight500 = () => {
+                      switch(phase.color) {
+                        case 'teal': return 'bg-[#007a9a]';
+                        case 'purple': return 'bg-purple-500';
+                        case 'blue': return 'bg-blue-500';
+                        case 'amber': return 'bg-amber-500';
+                        default: return 'bg-blue-500';
+                      }
+                    };
 
-                      {/* Step Content */}
-                      <div className="flex gap-4 pb-6">
-                        {/* Status Icon */}
+                    return (
+                      <button
+                        key={phase.id}
+                        onClick={() => !isLocked && setSelectedPhase(index)}
+                        disabled={isLocked}
+                        className={`
+                          relative p-5 rounded-xl text-left transition-all cursor-pointer
+                          ${isSelected 
+                            ? `${getBgLight()} border-3 ${getBorder()} shadow-xl scale-[1.02] ring-2 ${getRing()} ring-opacity-30` 
+                            : isLocked
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200'
+                            : isCompleted
+                            ? `bg-white ${getText()} hover:shadow-md border-2 ${getBorder()}`
+                            : `bg-white border-2 border-gray-200 hover:shadow-md hover:${getBorder()}`
+                          }
+                        `}
+                      >
+                        {/* Phase Number Badge */}
                         <div className={`
-                          relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center
-                          ${config.bgColor} ${config.pulse ? 'animate-pulse' : ''}
+                          absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center font-bold text-base shadow-md text-white
+                          ${isSelected ? getBg() : isCompleted ? getBg() : isLocked ? 'bg-gray-500' : getBg()}
                         `}>
-                          <Icon
-                            className={`w-5 h-5 ${
-                              step.status === 'completed'
-                                ? 'text-emerald-600'
-                                : 'text-white'
-                            }`}
-                          />
+                          {phase.id}
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          {/* Step Header */}
-                          <div 
-                            onClick={() => hasDetails && toggleStep(step.step)}
-                            className={`${hasDetails ? 'cursor-pointer' : ''}`}
-                          >
-                            <div className="flex items-start justify-between gap-3 mb-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <span className={`px-2 py-0.5 ${config.lightBg} ${config.textColor} text-xs font-bold rounded`}>
-                                    {config.label.toUpperCase()}
-                                  </span>
-                                  {step.clientActionNeeded && step.status !== 'completed' && (
-                                    <span className="text-xs px-2 py-0.5 bg-amber-500 text-white font-bold rounded">
-                                      ACTION NEEDED
-                                    </span>
-                                  )}
-                                </div>
-                                <h3 className="font-bold text-gray-900 mb-1">{step.title}</h3>
-                                
-                                {/* Phase/Stage Badge */}
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                    📍 {step.stage}
-                                  </span>
-                                  {step.owner && (
-                                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                                      <UserIcon className="w-3 h-3" />
-                                      {step.owner}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              {hasDetails && (
-                                <button className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                                  ) : (
-                                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
+                        {/* Icon */}
+                        <div className={`
+                          w-12 h-12 rounded-lg flex items-center justify-center mb-3 shadow-sm
+                          ${isSelected ? getBg() : isLocked ? 'bg-gray-500' : getBg()}
+                        `}>
+                          {isLocked ? (
+                            <Lock className="w-6 h-6 text-white" />
+                          ) : (
+                            <PhaseIcon className="w-6 h-6 text-white" />
+                          )}
+                        </div>
 
-                            {/* Timestamp */}
-                            <div className="space-y-1 mb-2">
-                              {step.completedDate && (
-                                <div className="flex items-center gap-2 text-xs text-emerald-700">
-                                  <CheckCircle className="w-3 h-3" />
-                                  <span className="font-medium">Completed: {formatDateOnly(step.completedDate)}</span>
-                                </div>
-                              )}
-                              {!step.completedDate && step.deadlineDate && step.status === 'in-progress' && (
-                                <div className="flex items-center gap-2 text-xs text-blue-700">
-                                  <Calendar className="w-3 h-3" />
-                                  <span className="font-medium">Due: {formatDateOnly(step.deadlineDate)}</span>
-                                </div>
-                              )}
-                              {step.updatedAt && step.status === 'in-progress' && (
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  <Clock className="w-3 h-3" />
-                                  <span>Last updated: {formatDateTime(step.updatedAt)}</span>
-                                </div>
-                              )}
-                            </div>
+                        {/* Title */}
+                        <h3 className={`font-bold text-base mb-2 leading-tight ${isSelected ? 'text-gray-900' : isLocked ? 'text-gray-400' : 'text-gray-800'}`}>
+                          {phase.label}
+                        </h3>
+                        
+                        {/* Description - Only show on selected */}
+                        {isSelected && (
+                          <p className="text-xs text-gray-600 mb-2 italic leading-relaxed">
+                            {phase.description}
+                          </p>
+                        )}
 
-                            {/* Short description preview when collapsed */}
-                            {!isExpanded && step.description && (
-                              <p className="text-sm text-gray-600 line-clamp-2 mb-1">
-                                {step.description}
-                              </p>
-                            )}
-                            {!isExpanded && step.notes && (
-                              <p className="text-xs text-gray-600 mt-1 line-clamp-1 italic bg-blue-50 px-2 py-1 rounded">
-                                💬 {step.notes}
-                              </p>
-                            )}
+                        {/* Progress */}
+                        {!isLocked && (
+                          <div className="mb-2">
+                            <div className="h-2 rounded-full overflow-hidden bg-gray-200">
+                              <div 
+                                className={`h-full transition-all duration-500 ${getBgLight500()}`}
+                                style={{ width: `${phase.progress}%` }}
+                              />
+                            </div>
+                            <p className={`text-xs mt-1.5 font-semibold ${isSelected ? getText() : 'text-gray-600'}`}>
+                              {phase.progress}% Complete
+                            </p>
                           </div>
+                        )}
 
-                          {/* EXPANDED DETAILS */}
-                          {isExpanded && hasDetails && (
-                            <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                              
-                              {/* Full Description */}
-                              {step.description && (
-                                <div>
-                                  <h5 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
-                                    <Info className="w-4 h-4 text-[#005670]" />
-                                    Description
-                                  </h5>
-                                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{step.description}</p>
-                                  </div>
-                                </div>
-                              )}
+                        {/* Status Badge */}
+                        <div className="flex items-center gap-2">
+                          {isCompleted && (
+                            <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold ${getBg()} text-white`}>
+                              <CheckCircle className="w-3 h-3" />
+                              Done
+                            </span>
+                          )}
+                          {phase.status === 'in-progress' && !isCompleted && (
+                            <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold ${getBg()} text-white`}>
+                              <Clock className="w-3 h-3" />
+                              Active
+                            </span>
+                          )}
+                          {isLocked && (
+                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-gray-500 text-white">
+                              <Lock className="w-3 h-3" />
+                              Locked
+                            </span>
+                          )}
+                          {phase.status === 'available' && !isCompleted && phase.status !== 'in-progress' && (
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${getBg()} text-white`}>
+                              Ready
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                              {/* Step Details Grid */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {/* Completion Date */}
-                                {step.completedDate && (
-                                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                                      <span className="text-xs font-bold text-emerald-900">COMPLETED</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-emerald-900">{formatDateOnly(step.completedDate)}</p>
-                                  </div>
-                                )}
+              {/* PHASE DETAILS - VERTICAL STEPS */}
+              {currentPhase && currentPhase.status !== 'locked' && (
+                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                  <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-200">
+                    <div className={`w-14 h-14 ${getCurrentPhaseBg()} rounded-xl flex items-center justify-center shadow-md`}>
+                      {React.createElement(currentPhase.icon, { className: "w-7 h-7 text-white" })}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-2xl font-bold text-gray-900">{currentPhase.label}</h2>
+                        <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${getCurrentPhaseBg()} text-white`}>
+                          PHASE {currentPhase.id}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 italic text-sm">{currentPhase.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-gray-900 mb-1">{currentPhase.progress}%</div>
+                      <div className="text-xs text-gray-500 font-medium mb-2">Complete</div>
+                      <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${getCurrentPhaseBgLight()}`}
+                          style={{ width: `${currentPhase.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                                {/* Deadline Date */}
-                                {step.deadlineDate && !step.completedDate && (
-                                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Calendar className="w-4 h-4 text-blue-600" />
-                                      <span className="text-xs font-bold text-blue-900">DUE DATE</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-blue-900">{formatDateOnly(step.deadlineDate)}</p>
-                                  </div>
-                                )}
-
-                                {/* Auto Email Notification */}
-                                {step.autoEmail && (
-                                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Bell className="w-4 h-4 text-purple-600" />
-                                      <span className="text-xs font-bold text-purple-900">AUTO NOTIFICATION</span>
-                                    </div>
-                                    <p className="text-xs text-purple-700">You'll receive an email update</p>
-                                  </div>
-                                )}
-
-                                {/* Auto Generated Documents */}
-                                {step.docAutoGenerated && (
-                                  <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <FileText className="w-4 h-4 text-indigo-600" />
-                                      <span className="text-xs font-bold text-indigo-900">DOCUMENT AUTO-GENERATED</span>
-                                    </div>
-                                    <p className="text-xs text-indigo-700">System will create required documents</p>
-                                  </div>
+                  {/* VERTICAL STEPS LIST */}
+                  {currentPhase.steps.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
+                          <span className={`w-1 h-5 ${getCurrentPhaseBg()} rounded-full`}></span>
+                          What's Happening Now
+                        </h3>
+                        <p className="text-sm text-gray-600 ml-3">
+                          Here are your current milestones. We'll guide you through each one.
+                        </p>
+                      </div>
+                      {currentPhase.steps.map((step, stepIdx) => {
+                        const isStepCompleted = step.status === 'completed';
+                        const isStepInProgress = step.status === 'in-progress';
+                        
+                        return (
+                          <div 
+                            key={step.step}
+                            className={`p-4 rounded-lg border-2 transition-all ${
+                              isStepCompleted ? 'bg-[#e6f4f7] border-[#007a9a]' :
+                              isStepInProgress ? 'bg-blue-50 border-blue-300' :
+                              'bg-white border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {/* Step Status Icon */}
+                              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                isStepCompleted ? 'bg-[#005670]' :
+                                isStepInProgress ? 'bg-blue-500' :
+                                'bg-gray-500'
+                              }`}>
+                                {isStepCompleted ? (
+                                  <CheckCircle className="w-5 h-5 text-white" />
+                                ) : isStepInProgress ? (
+                                  <Clock className="w-5 h-5 text-white" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-white" />
                                 )}
                               </div>
 
-                              {/* DOCUMENTS */}
-                              {step.generatedDocuments && step.generatedDocuments.length > 0 && (
-                                <div>
-                                  <h5 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-[#005670]" />
-                                    Available Documents
-                                  </h5>
-                                  <div className="space-y-2">
+                              {/* Step Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="flex-1">
+                                    <h4 className="font-bold text-gray-900 text-base mb-1">{step.title}</h4>
+                                    
+                                    {step.description && (
+                                      <p className="text-sm text-gray-700 mb-2 leading-relaxed">{step.description}</p>
+                                    )}
+
+                                    {/* Dates */}
+                                    <div className="flex flex-wrap gap-2 text-xs">
+                                      {step.completedDate && (
+                                        <span className="flex items-center gap-1.5 text-[#004558] font-semibold bg-[#e6f4f7] px-2.5 py-1 rounded-md">
+                                          <CheckCircle className="w-3.5 h-3.5" />
+                                          Completed {formatDateOnly(step.completedDate)}
+                                        </span>
+                                      )}
+                                      {!step.completedDate && step.deadlineDate && (
+                                        <span className="flex items-center gap-1.5 text-blue-700 font-semibold bg-blue-100 px-2.5 py-1 rounded-md">
+                                          <Calendar className="w-3.5 h-3.5" />
+                                          Due {formatDateOnly(step.deadlineDate)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Action Needed Badge with Info */}
+                                  {step.clientActionNeeded && !isStepCompleted && (
+                                    <div className="flex-shrink-0">
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg mb-2">
+                                        <Zap className="w-3.5 h-3.5" />
+                                        Action Required
+                                      </span>
+                                      <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                                        Our team will contact you via email
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Documents */}
+                                {step.generatedDocuments && step.generatedDocuments.length > 0 && (
+                                  <div className="mt-3 space-y-2">
+                                    <p className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                                      <FileText className="w-3.5 h-3.5 text-[#005670]" />
+                                      Your Documents (Click to Download):
+                                    </p>
                                     {step.generatedDocuments.map((doc, docIdx) => (
                                       <button
                                         key={docIdx}
                                         onClick={() => downloadDocument(step.step, docIdx, doc.filename)}
-                                        className="w-full flex items-center gap-3 p-3 bg-gray-50 hover:bg-[#005670]/5 rounded-lg border border-gray-200 hover:border-[#005670] transition-all text-left group"
+                                        className="flex items-center gap-2.5 px-3 py-2 bg-white hover:bg-[#005670] rounded-lg border-2 border-[#005670] transition-all text-xs group w-full"
                                       >
-                                        <FileText className="w-5 h-5 text-[#005670] flex-shrink-0" />
-                                        <span className="flex-1 font-medium text-gray-900 text-sm truncate">
+                                        <FileText className="w-4 h-4 text-[#005670] group-hover:text-white flex-shrink-0 transition-colors" />
+                                        <span className="flex-1 text-left text-gray-900 group-hover:text-white font-semibold truncate transition-colors">
                                           {doc.filename}
                                         </span>
-                                        <Download className="w-4 h-4 text-[#005670] group-hover:scale-110 transition-transform" />
+                                        <Download className="w-4 h-4 text-[#005670] group-hover:text-white transition-colors" />
                                       </button>
                                     ))}
                                   </div>
-                                </div>
-                              )}
+                                )}
 
-                              {/* TEAM NOTES */}
-                              {step.notes && (
-                                <div>
-                                  <h5 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
-                                    <Info className="w-4 h-4 text-[#005670]" />
-                                    Additional Information
-                                  </h5>
-                                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                    <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{step.notes}</p>
+                                {/* Notes */}
+                                {step.notes && (
+                                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <div className="flex items-start gap-2">
+                                      <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                      <div className="flex-1">
+                                        <p className="text-xs font-semibold text-blue-900 mb-0.5">Additional Info</p>
+                                        <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{step.notes}</p>
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <div className="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                      <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">No Steps Yet</h3>
+                      <p className="text-gray-600">Your milestones will appear here as your project progresses.</p>
+                      <p className="text-gray-500 text-sm mt-2">We'll notify you when there are updates!</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* LOCKED PHASE MESSAGE */}
+              {currentPhase && currentPhase.status === 'locked' && (
+                <div className="bg-white rounded-2xl shadow-lg p-16 text-center border-2 border-gray-100">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <Lock className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-3">Coming Soon!</h3>
+                  <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
+                    This phase will unlock after you complete the current milestones.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const prevPhase = phases.findIndex(p => p.status !== 'completed' && p.status !== 'locked');
+                      if (prevPhase !== -1) setSelectedPhase(prevPhase);
+                    }}
+                    className="inline-flex items-center gap-3 px-8 py-4 bg-[#005670] text-white rounded-xl hover:bg-[#004558] transition-all font-bold text-lg shadow-lg hover:shadow-xl"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                    Back to Active Phase
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </main>
 
-        {/* FOOTER */}
-        <footer className="bg-white border-t border-gray-200 mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center">
+        {/* FOOTER - MINIMAL */}
+        <footer className="bg-[#005670] border-t border-[#004558] mt-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
               <img 
                 src="/images/HDG-Logo.png" 
                 alt="Henderson Design Group" 
-                className="h-8 w-auto mx-auto mb-3 opacity-60"
+                className="h-8 w-auto brightness-0 invert"
               />
-              <p className="text-gray-500 text-sm">
+              <p className="text-white/80 text-sm">
                 &copy; {new Date().getFullYear()} Henderson Design Group. All rights reserved.
               </p>
             </div>

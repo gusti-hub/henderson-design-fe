@@ -407,6 +407,7 @@ const ClientManagement = () => {
     propertyType: 'Lock 2025 Pricing',
     collection: '',
     bedroomCount: '',
+    packageType: 'investor', // ✅ ADD THIS NEW FIELD
     calculatedAmount: 0
   });
   const [errors, setErrors] = useState({});
@@ -549,28 +550,63 @@ const ClientManagement = () => {
   }, [searchTerm, activeModal, fetchClients]);
 
   useEffect(() => {
+    // ✅ AUTO-SET PACKAGE TYPE BASED ON COLLECTION
+    if (formData.collection) {
+      let autoPackageType = 'investor'; // default
+      
+      if (formData.collection === 'Nalu Foundation Collection') {
+        autoPackageType = 'library';
+      } else if (formData.collection === 'Nalu Collection') {
+        autoPackageType = 'investor';
+      } else if (formData.collection === 'Lani') {
+        autoPackageType = 'custom';
+      }
+      
+      setFormData(prev => ({ ...prev, packageType: autoPackageType }));
+    }
+
+    // Calculate pricing (skip for library)
+    if (formData.packageType === 'library') {
+      setFormData(prev => ({ ...prev, calculatedAmount: 0 }));
+      return;
+    }
+    
     if (formData.collection && formData.bedroomCount) {
       const amount = PRICING_TABLE[formData.collection][formData.bedroomCount] || 0;
       setFormData(prev => ({ ...prev, calculatedAmount: amount }));
     } else {
       setFormData(prev => ({ ...prev, calculatedAmount: 0 }));
     }
-  }, [formData.collection, formData.bedroomCount]);
+  }, [formData.collection, formData.bedroomCount, formData.packageType]);
 
   const validateForm = useCallback(() => {
     const newErrors = {};
+    
+    // Basic required fields
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.email) newErrors.email = 'Required';
     if (!formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
     if (!formData.unitNumber) newErrors.unitNumber = 'Required';
     if (!formData.floorPlan) newErrors.floorPlan = 'Required';
     if (!formData.propertyType) newErrors.propertyType = 'Required';
-    if (!formData.collection) newErrors.collection = 'Required';
-    if (!formData.bedroomCount) newErrors.bedroomCount = 'Required';
-    if (modalMode === 'create' && !formData.password) newErrors.password = 'Required';
+    
+    // ✅ Collection and bedroom ONLY required for CREATE mode
+    if (modalMode === 'create') {
+      if (formData.packageType !== 'library') {
+        if (!formData.collection) newErrors.collection = 'Required';
+        if (!formData.bedroomCount) newErrors.bedroomCount = 'Required';
+      }
+    }
+    
+    // Password validation
+    if (modalMode === 'create' && !formData.password) {
+      newErrors.password = 'Required';
+    }
+    
     if (showPasswordField && modalMode === 'edit' && formData.password?.length < 6) {
       newErrors.password = 'Min 6 characters';
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData, modalMode, showPasswordField]);
@@ -585,6 +621,7 @@ const ClientManagement = () => {
       propertyType: 'Lock 2025 Pricing',
       collection: '',
       bedroomCount: '',
+      packageType: 'investor', // ✅ ADD THIS
       calculatedAmount: 0
     });
     setApprovalData({ clientCode: '', floorPlan: '', rejectionReason: '' });
@@ -612,6 +649,7 @@ const ClientManagement = () => {
         password: '',
         collection: '',
         bedroomCount: '',
+        packageType: client.packageType || 'investor',
         calculatedAmount: client.paymentInfo?.totalAmount || 0
       });
     } else if (mode === 'create') {
@@ -686,6 +724,22 @@ const ClientManagement = () => {
     );
   }, []);
 
+  const getPackageTypeBadge = useCallback((packageType) => {
+    const badges = {
+      investor: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Nalu' },
+      custom: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Lani' },
+      library: { bg: 'bg-teal-100', text: 'text-teal-800', label: 'Library' },
+    };
+
+    const badge = badges[packageType] || badges.investor;
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${badge.bg} ${badge.text}`}>
+        {badge.label}
+      </span>
+    );
+  }, []);
+
   const handleFormSubmit = useCallback(
     async (e) => {
       e.preventDefault();
@@ -705,12 +759,17 @@ const ClientManagement = () => {
           unitNumber: formData.unitNumber,
           floorPlan: formData.floorPlan,
           propertyType: formData.propertyType,
+          packageType: formData.packageType,
         };
 
         if (modalMode === 'create') {
           submitData.password = formData.password;
           submitData.collection = formData.collection;
           submitData.bedroomCount = formData.bedroomCount;
+          if (formData.packageType !== 'library') {
+            submitData.collection = formData.collection;
+            submitData.bedroomCount = formData.bedroomCount;
+          }
         } else if (showPasswordField && formData.password) {
           submitData.password = formData.password;
         }
@@ -882,6 +941,7 @@ const ClientManagement = () => {
           clients={clients}
           clientJourneys={clientJourneys}
           getBadge={getBadge}
+          getPackageTypeBadge={getPackageTypeBadge}
           onOpenFormModal={openFormModal}
           onOpenApprovalModal={openApprovalModal}
           onDeleteClient={handleDelete}
@@ -976,6 +1036,7 @@ const ClientTable = React.memo(
     clients,
     clientJourneys,
     getBadge,
+    getPackageTypeBadge, // ✅ ADD THIS
     onOpenFormModal,
     onOpenApprovalModal,
     onDeleteClient,
@@ -1034,7 +1095,6 @@ const ClientTable = React.memo(
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Property</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Journey Status</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Last Login</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Payment</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Property Type</th> 
                 <th className="text-right px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -1083,6 +1143,7 @@ const ClientTable = React.memo(
                       </div>
                     </td>
 
+
                     <td className="px-4 py-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -1108,22 +1169,6 @@ const ClientTable = React.memo(
                       </div>
                     </td>
 
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        {client.paymentInfo?.totalAmount ? (
-                          <>
-                            <p className="text-sm font-bold text-[#005670]">
-                              ${client.paymentInfo.totalAmount.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Paid: ${(client.paymentInfo.amountPaid || 0).toLocaleString()}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-gray-400">-</p>
-                        )}
-                      </div>
-                    </td>
                     <td className="px-4 py-3">
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
@@ -1298,6 +1343,30 @@ const FormModal = React.memo(
                 <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Sparkles className="w-5 h-5" /> Pricing Information
                 </h4>
+                
+                {/* ✅ SHOW PACKAGE TYPE INFO (READ-ONLY) */}
+                {formData.collection && (
+                  <div className="mb-4 p-3 bg-white rounded-xl border-2 border-emerald-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Package Type:</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        formData.packageType === 'library' ? 'bg-teal-100 text-teal-800' :
+                        formData.packageType === 'custom' ? 'bg-purple-100 text-purple-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {formData.packageType === 'library' ? '🎨 Library (Drag & Drop)' :
+                        formData.packageType === 'custom' ? '✨ Lani Package' :
+                        '📦 Nalu Package'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {formData.packageType === 'library' && 'Full library access with drag & drop furniture placement'}
+                      {formData.packageType === 'custom' && 'Custom Lani package with curated selection'}
+                      {formData.packageType === 'investor' && 'Pre-configured Nalu package with fixed furniture placements'}
+                    </p>
+                  </div>
+                )}
+                
                 <div className="grid md:grid-cols-2 gap-4">
                   <Select
                     label="Collection"
@@ -1324,6 +1393,21 @@ const FormModal = React.memo(
                       <span className="text-2xl font-black text-emerald-600">
                         ${formData.calculatedAmount.toLocaleString()}
                       </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* ✅ INFO BOX FOR LIBRARY PACKAGE */}
+                {formData.packageType === 'library' && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-200">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-teal-900 mb-1">Library Package Selected</p>
+                        <p className="text-xs text-teal-700">
+                          This client will have access to all furniture from both Nalu and Lani collections with drag & drop placement.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

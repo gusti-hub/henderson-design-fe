@@ -1,4 +1,4 @@
-// AdminJourneyManager.jsx - ULTRA COMPACT WITH HORIZONTAL STAGES
+// AdminJourneyManager.jsx - HORIZONTAL PHASE TABS (Like Client Portal)
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -34,10 +34,73 @@ import {
   XCircle,
   Calendar,
   StickyNote,
+  Sparkles,
+  TrendingUp,
+  Package,
+  Truck,
+  Home as HomeIcon
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import InvoiceManagementInline from './InvoiceManagementInline';
 import AgreementManagementInline from './AgreementManagementInline';
+
+// ==================== INTERNAL PHASES DEFINITION ====================
+const INTERNAL_PHASES = [
+  {
+    id: 1,
+    name: "Inquiry & Intake",
+    shortName: "Intake",
+    description: "Qualify lead, confirm basics, approve to proceed",
+    icon: ClipboardList,
+    color: "teal",
+    stepRange: [1, 7]
+  },
+  {
+    id: 2,
+    name: "Portal Setup & Deposit Lock",
+    shortName: "Portal & Deposit",
+    description: "Portal live, preferences captured, funds secured",
+    icon: Lock,
+    color: "teal",
+    stepRange: [8, 21]
+  },
+  {
+    id: 3,
+    name: "Design Development",
+    shortName: "Design",
+    description: "Create, present, and refine design",
+    icon: Palette,
+    color: "purple",
+    stepRange: [22, 38]
+  },
+  {
+    id: 4,
+    name: "Final Design Lock & Procurement Auth",
+    shortName: "Design Lock",
+    description: "Lock design, pricing, authorization to order",
+    icon: CheckCircle,
+    color: "purple",
+    stepRange: [39, 46]
+  },
+  {
+    id: 5,
+    name: "Procurement, Production & Logistics",
+    shortName: "Production",
+    description: "Build, QC, ship, and plan install",
+    icon: Package,
+    color: "blue",
+    stepRange: [47, 66]
+  },
+  {
+    id: 6,
+    name: "Installation, Closeout & Handover",
+    shortName: "Installation",
+    description: "Deliver, install, close cleanly",
+    icon: HomeIcon,
+    color: "amber",
+    stepRange: [67, 80]
+  }
+];
 
 const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true }) => {
   const fileInputRef = useRef(null);
@@ -56,7 +119,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const [allStages, setAllStages] = useState([]);
+  const [selectedPhase, setSelectedPhase] = useState(0); // Current active phase tab
   const [updatingStep, setUpdatingStep] = useState(null);
 
   // questionnaire state
@@ -74,33 +137,34 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     }
   }, [chatMessages, activeChat]);
 
-const fetchJourney = async () => {
-  try {
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    
-    // Fetch journey data
-    const response = await fetch(
-      `${backendServer}/api/journeys/client/${clientId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+  const fetchJourney = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(
+        `${backendServer}/api/journeys/client/${clientId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    if (response.ok) {
-      const data = await response.json();
-      setJourney(data); // This sets journey state with clientId.propertyType
-      const stages = [...new Set(data.steps.map((s) => s.stage))];
-      setAllStages(stages);
-    } else if (response.status === 404) {
-      setJourney(null);
+      if (response.ok) {
+        const data = await response.json();
+        setJourney(data);
+        
+        // Auto-select current active phase
+        const currentPhaseIndex = getCurrentPhaseIndex(data.steps);
+        setSelectedPhase(currentPhaseIndex);
+      } else if (response.status === 404) {
+        setJourney(null);
+      }
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    setError(error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleCreateJourney = async () => {
     try {
@@ -129,7 +193,94 @@ const fetchJourney = async () => {
     }
   };
 
-  // QUICK STATUS CHANGE - Inline dropdown
+  // Get current active phase based on steps
+  const getCurrentPhaseIndex = (steps) => {
+    if (!steps || steps.length === 0) return 0;
+    
+    // Find first in-progress step
+    const inProgressStep = steps.find(s => s.status === 'in-progress');
+    if (inProgressStep) {
+      const phaseId = inProgressStep.internalPhaseId || getPhaseIdFromStep(inProgressStep.step);
+      return phaseId - 1; // Convert to 0-indexed
+    }
+    
+    // Find last completed step
+    const completedSteps = steps.filter(s => s.status === 'completed');
+    if (completedSteps.length === 0) return 0;
+    
+    const lastCompleted = completedSteps[completedSteps.length - 1];
+    const phaseId = lastCompleted.internalPhaseId || getPhaseIdFromStep(lastCompleted.step);
+    
+    // If phase complete, move to next phase
+    const phaseSteps = steps.filter(s => 
+      (s.internalPhaseId || getPhaseIdFromStep(s.step)) === phaseId
+    );
+    const allPhaseCompleted = phaseSteps.every(s => s.status === 'completed');
+    
+    if (allPhaseCompleted && phaseId < 6) {
+      return phaseId; // Next phase (already 0-indexed)
+    }
+    
+    return phaseId - 1; // Current phase (0-indexed)
+  };
+
+  // Helper to get phase ID from step number (fallback)
+  const getPhaseIdFromStep = (stepNumber) => {
+    for (const phase of INTERNAL_PHASES) {
+      if (stepNumber >= phase.stepRange[0] && stepNumber <= phase.stepRange[1]) {
+        return phase.id;
+      }
+    }
+    return 1;
+  };
+
+  // Get phase progress
+  const getPhaseProgress = (phaseId) => {
+    if (!journey || !journey.steps) return { completed: 0, total: 0, percentage: 0 };
+    
+    const phaseSteps = journey.steps.filter(step => {
+      const stepPhaseId = step.internalPhaseId || getPhaseIdFromStep(step.step);
+      return stepPhaseId === phaseId;
+    });
+    
+    const completed = phaseSteps.filter(s => s.status === 'completed').length;
+    const total = phaseSteps.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return { completed, total, percentage };
+  };
+
+  // Get phase status
+  const getPhaseStatus = (phaseId) => {
+    if (!journey || !journey.steps) return 'locked';
+    
+    const phaseSteps = journey.steps.filter(step => {
+      const stepPhaseId = step.internalPhaseId || getPhaseIdFromStep(step.step);
+      return stepPhaseId === phaseId;
+    });
+    
+    if (phaseSteps.length === 0) return 'locked';
+    
+    const allCompleted = phaseSteps.every(s => s.status === 'completed');
+    const hasInProgress = phaseSteps.some(s => s.status === 'in-progress');
+    const hasStarted = phaseSteps.some(s => s.status !== 'not-started');
+    
+    if (allCompleted) return 'completed';
+    if (hasInProgress || hasStarted) return 'active';
+    
+    // Check if previous phase is completed
+    if (phaseId === 1) return 'active';
+    
+    const prevPhaseSteps = journey.steps.filter(step => {
+      const stepPhaseId = step.internalPhaseId || getPhaseIdFromStep(step.step);
+      return stepPhaseId === phaseId - 1;
+    });
+    
+    const prevCompleted = prevPhaseSteps.every(s => s.status === 'completed');
+    return prevCompleted ? 'active' : 'locked';
+  };
+
+  // QUICK STATUS CHANGE
   const handleQuickStatusChange = async (step, newStatus) => {
     // Validation
     if (step.step > 1) {
@@ -485,31 +636,6 @@ const fetchJourney = async () => {
     return prev && (prev.status === 'completed' || prev.status === 'cancelled');
   };
 
-  const getStageProgress = (stage) => {
-    const stageSteps = journey.steps.filter((s) => s.stage === stage);
-    const completed = stageSteps.filter((s) => s.status === 'completed').length;
-    return {
-      completed,
-      total: stageSteps.length,
-      percentage: stageSteps.length > 0 ? Math.round((completed / stageSteps.length) * 100) : 0,
-    };
-  };
-
-  const getCurrentStage = () => {
-    const inProgress = journey.steps.find((s) => s.status === 'in-progress');
-    if (inProgress) return inProgress.stage;
-    
-    const lastCompleted = [...journey.steps]
-      .reverse()
-      .find((s) => s.status === 'completed');
-    if (lastCompleted) {
-      const nextStep = journey.steps.find((s) => s.step === lastCompleted.step + 1);
-      return nextStep ? nextStep.stage : lastCompleted.stage;
-    }
-    
-    return journey.steps[0]?.stage;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -545,7 +671,13 @@ const fetchJourney = async () => {
 
   const completedSteps = journey.steps.filter((s) => s.status === 'completed').length;
   const progressPercentage = (completedSteps / journey.steps.length) * 100 || 0;
-  const currentStage = getCurrentStage();
+
+  // Get current phase steps
+  const currentPhase = INTERNAL_PHASES[selectedPhase];
+  const currentPhaseSteps = journey.steps.filter(step => {
+    const stepPhaseId = step.internalPhaseId || getPhaseIdFromStep(step.step);
+    return stepPhaseId === currentPhase.id;
+  });
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -577,9 +709,9 @@ const fetchJourney = async () => {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex justify-between mb-1.5">
-                <span className="text-xs font-bold text-gray-700">Journey Progress</span>
+                <span className="text-xs font-bold text-gray-700">Overall Journey Progress</span>
                 <span className="text-xs font-black text-gray-900">
-                  {completedSteps} of {journey.steps.length} completed
+                  {completedSteps} of {journey.steps.length} steps completed
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -596,60 +728,175 @@ const fetchJourney = async () => {
         </div>
       </div>
 
-      {/* COMPACT STEP LIST - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto space-y-3">
-          {journey.steps.map((step) => {
-            const isLocked = step.status === 'completed' || step.status === 'cancelled';
-            const canEdit = canEditStep(step);
-            const isExpanded = expandedSteps.has(step.step);
+      {/* HORIZONTAL PHASE TABS */}
+      <div className="bg-white border-b border-gray-200 sticky top-[60px] z-9">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {INTERNAL_PHASES.map((phase, index) => {
+              const progress = getPhaseProgress(phase.id);
+              const status = getPhaseStatus(phase.id);
+              const isSelected = selectedPhase === index;
+              const isLocked = status === 'locked';
+              const isCompleted = status === 'completed';
+              const PhaseIcon = phase.icon;
 
-            return (
-              <CompactStepCard
-                key={step.step}
-                step={step}
-                isLocked={isLocked}
-                canEdit={canEdit}
-                isExpanded={isExpanded}
-                updatingStep={updatingStep}
-                onStatusChange={handleQuickStatusChange}
-                onGeneratePdf={handleGeneratePdf}
-                onToggleExpand={toggleStepExpanded}
-                generatingPdf={generatingPdf}
-                // Chat
-                activeChat={activeChat}
-                chatMessages={chatMessages}
-                chatInput={chatInput}
-                setChatInput={setChatInput}
-                selectedFiles={selectedFiles}
-                uploadingFiles={uploadingFiles}
-                fileInputRef={fileInputRef}
-                chatEndRef={chatEndRef}
-                onFileSelect={handleFileSelect}
-                onRemoveFile={removeSelectedFile}
-                onSendMessage={sendChatMessage}
-                onDownloadAttachment={downloadAttachment}
-                formatFileSize={formatFileSize}
-                // Questionnaire
-                loadingQuestionnaire={loadingQuestionnaire}
-                viewingQuestionnaire={viewingQuestionnaire}
-                // Documents
-                onDownloadDocument={downloadDocument}
-                // Other
-                clientId={clientId}
-                clientName={clientName}
-                fetchJourney={fetchJourney}
-                propertyType={journey?.clientId?.propertyType}
-              />
-            );
-          })}
+              return (
+                <button
+                  key={phase.id}
+                  onClick={() => !isLocked && setSelectedPhase(index)}
+                  disabled={isLocked}
+                  className={`p-4 rounded-xl border-2 transition-all text-left ${
+                    isSelected
+                      ? 'bg-[#005670] border-[#005670] shadow-lg scale-105'
+                      : isLocked
+                      ? 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'
+                      : isCompleted
+                      ? 'bg-green-50 border-green-200 hover:border-green-300'
+                      : 'bg-white border-gray-200 hover:border-[#005670] hover:shadow-md'
+                  }`}
+                >
+                  {/* Phase Icon & Number */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      isSelected
+                        ? 'bg-white/20'
+                        : isCompleted
+                        ? 'bg-green-500'
+                        : isLocked
+                        ? 'bg-gray-300'
+                        : 'bg-[#005670]'
+                    }`}>
+                      {isCompleted ? (
+                        <CheckCircle className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-white'}`} />
+                      ) : isLocked ? (
+                        <Lock className="w-4 h-4 text-gray-500" />
+                      ) : (
+                        <PhaseIcon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-white'}`} />
+                      )}
+                    </div>
+                    <span className={`text-xs font-black ${
+                      isSelected ? 'text-white' : 'text-gray-500'
+                    }`}>
+                      PHASE {phase.id}
+                    </span>
+                  </div>
+
+                  {/* Phase Name */}
+                  <h4 className={`text-sm font-bold mb-2 ${
+                    isSelected ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {phase.shortName}
+                  </h4>
+
+                  {/* Progress Bar */}
+                  <div className="mb-1">
+                    <div className={`w-full rounded-full h-1.5 overflow-hidden ${
+                      isSelected ? 'bg-white/30' : 'bg-gray-200'
+                    }`}>
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${
+                          isSelected
+                            ? 'bg-white'
+                            : isCompleted
+                            ? 'bg-green-500'
+                            : 'bg-[#005670]'
+                        }`}
+                        style={{ width: `${progress.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Progress Text */}
+                  <p className={`text-xs font-bold ${
+                    isSelected ? 'text-white/90' : 'text-gray-600'
+                  }`}>
+                    {progress.completed}/{progress.total} steps
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* CURRENT PHASE CONTENT */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-5xl mx-auto">
+          {/* Phase Header */}
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border-l-4 border-[#005670]">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-[#005670] rounded-xl flex items-center justify-center flex-shrink-0">
+                {React.createElement(currentPhase.icon, { className: "w-6 h-6 text-white" })}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{currentPhase.name}</h3>
+                <p className="text-sm text-gray-600 mb-3">{currentPhase.description}</p>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-bold text-gray-500">
+                    Steps {currentPhase.stepRange[0]}-{currentPhase.stepRange[1]}
+                  </span>
+                  <span className="text-xs font-bold text-[#005670]">
+                    {getPhaseProgress(currentPhase.id).completed}/{getPhaseProgress(currentPhase.id).total} completed
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Steps List */}
+          <div className="space-y-3">
+            {currentPhaseSteps.map((step) => {
+              const isLocked = step.status === 'completed' || step.status === 'cancelled';
+              const canEdit = canEditStep(step);
+              const isExpanded = expandedSteps.has(step.step);
+
+              return (
+                <CompactStepCard
+                  key={step.step}
+                  step={step}
+                  isLocked={isLocked}
+                  canEdit={canEdit}
+                  isExpanded={isExpanded}
+                  updatingStep={updatingStep}
+                  onStatusChange={handleQuickStatusChange}
+                  onGeneratePdf={handleGeneratePdf}
+                  onToggleExpand={toggleStepExpanded}
+                  generatingPdf={generatingPdf}
+                  // Chat
+                  activeChat={activeChat}
+                  chatMessages={chatMessages}
+                  chatInput={chatInput}
+                  setChatInput={setChatInput}
+                  selectedFiles={selectedFiles}
+                  uploadingFiles={uploadingFiles}
+                  fileInputRef={fileInputRef}
+                  chatEndRef={chatEndRef}
+                  onFileSelect={handleFileSelect}
+                  onRemoveFile={removeSelectedFile}
+                  onSendMessage={sendChatMessage}
+                  onDownloadAttachment={downloadAttachment}
+                  formatFileSize={formatFileSize}
+                  // Questionnaire
+                  loadingQuestionnaire={loadingQuestionnaire}
+                  viewingQuestionnaire={viewingQuestionnaire}
+                  // Documents
+                  onDownloadDocument={downloadDocument}
+                  // Other
+                  clientId={clientId}
+                  clientName={clientName}
+                  fetchJourney={fetchJourney}
+                  propertyType={journey?.clientId?.propertyType}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// ==================== COMPACT STEP CARD ====================
+// ==================== COMPACT STEP CARD (Same as before) ====================
 
 const CompactStepCard = ({
   step,
@@ -700,7 +947,7 @@ const CompactStepCard = ({
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed': return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+      case 'completed': return 'text-[#005670] bg-[#e6f4f7] border-[#007a9a]';
       case 'in-progress': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'pending': return 'text-amber-600 bg-amber-50 border-amber-200';
       case 'cancelled': return 'text-red-600 bg-red-50 border-red-200';
@@ -739,14 +986,13 @@ const CompactStepCard = ({
     }
   };
 
-  // Check if step is disabled
   const isDisabled = !canEdit && !isLocked;
 
   return (
     <div className={`bg-white rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden ${
       isDisabled ? 'opacity-40 pointer-events-none' : ''
     }`}>
-      {/* Mini Header - Always visible */}
+      {/* Mini Header */}
       <div className="p-4">
         <div className="flex items-center gap-4">
           {/* Status Icon */}
@@ -768,7 +1014,7 @@ const CompactStepCard = ({
             </h4>
           </div>
 
-          {/* Quick Status Dropdown - INLINE */}
+          {/* Quick Status Dropdown */}
           <div className="flex items-center gap-2">
             {!isLocked && canEdit && (
               <select
@@ -787,7 +1033,6 @@ const CompactStepCard = ({
               </select>
             )}
 
-            {/* Locked badge */}
             {isLocked && (
               <div className="px-4 py-2 bg-gray-200 rounded-lg flex items-center gap-2">
                 <Lock className="w-4 h-4 text-gray-600" />
@@ -795,7 +1040,6 @@ const CompactStepCard = ({
               </div>
             )}
 
-            {/* Actions */}
             {step.docAutoGenerated && (
               <button
                 onClick={() => onGeneratePdf(step.step)}
@@ -820,9 +1064,9 @@ const CompactStepCard = ({
           </div>
         </div>
 
-        {/* Mini metadata row with editable deadline */}
+        {/* Mini metadata row */}
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 flex-wrap">
-          {/* Deadline - editable */}
+          {/* Deadline */}
           <div className="flex items-center gap-2">
             {editingDeadline ? (
               <div className="flex items-center gap-2">
@@ -882,9 +1126,9 @@ const CompactStepCard = ({
           </div>
 
           {step.completedDate && (
-            <div className="flex items-center gap-1.5 text-sm text-emerald-600">
+            <div className="flex items-center gap-1.5 text-sm text-[#005670]">
               <CheckCircle className="w-4 h-4" />
-              <span className="font-medium">Done: {new Date(step.completedDate).toLocaleDateString()}</span>
+              <span className="font-medium">Completed: {new Date(step.completedDate).toLocaleDateString()}</span>
             </div>
           )}
           
@@ -944,7 +1188,7 @@ const CompactStepCard = ({
             </>
           )}
 
-          {/* Invoice Management for Step 15 */}
+          {/* Invoice Management for Step 16 */}
           {step.step === 16 && (
             <InvoiceManagementInline
               clientId={clientId}
@@ -954,14 +1198,14 @@ const CompactStepCard = ({
             />
           )}
 
-          {/* Agreement Management for Step 16 */}
+          {/* Agreement Management for Step 15 */}
           {step.step === 15 && (
             <AgreementManagementInline
               clientId={clientId}
               clientName={clientName}
               currentStep={step.step}
               onAgreementGenerated={() => fetchJourney()}
-              propertyType={propertyType} // ADD THIS LINE
+              propertyType={propertyType}
             />
           )}
 
@@ -989,7 +1233,7 @@ const CompactStepCard = ({
   );
 };
 
-// ==================== CHAT SECTION (Compact) ====================
+// ==================== CHAT SECTION ====================
 
 const ChatSection = ({
   stepNumber,
@@ -1120,7 +1364,7 @@ const ChatSection = ({
   );
 };
 
-// ==================== QuestionnaireView (Compact) ====================
+// ==================== QuestionnaireView ====================
 
 const QuestionnaireView = ({ questionnaire }) => {
   const [activeTab, setActiveTab] = useState('overview');
