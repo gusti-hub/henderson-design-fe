@@ -460,6 +460,8 @@ const ClientManagement = () => {
       if (journeyRes.ok) {
         journeyData = await journeyRes.json();
       }
+
+      console.log('12345');
       
       const questionnaireRes = await fetch(`${backendServer}/api/questionnaires/client/${clientId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -550,7 +552,6 @@ const ClientManagement = () => {
   }, [searchTerm, activeModal, fetchClients]);
 
   useEffect(() => {
-    // ✅ AUTO-SET PACKAGE TYPE BASED ON COLLECTION
     if (formData.collection) {
       let autoPackageType = 'investor'; // default
       
@@ -560,13 +561,15 @@ const ClientManagement = () => {
         autoPackageType = 'investor';
       } else if (formData.collection === 'Lani') {
         autoPackageType = 'custom';
+      } else if (formData.collection === 'Custom') { // ✅ TAMBAH INI
+        autoPackageType = 'custom';
       }
       
       setFormData(prev => ({ ...prev, packageType: autoPackageType }));
     }
 
-    // Calculate pricing (skip for library)
-    if (formData.packageType === 'library') {
+    // ✅ Calculate pricing (skip untuk library dan custom)
+    if (formData.packageType === 'library' || formData.packageType === 'custom') {
       setFormData(prev => ({ ...prev, calculatedAmount: 0 }));
       return;
     }
@@ -587,13 +590,19 @@ const ClientManagement = () => {
     if (!formData.email) newErrors.email = 'Required';
     if (!formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
     if (!formData.unitNumber) newErrors.unitNumber = 'Required';
-    if (!formData.floorPlan) newErrors.floorPlan = 'Required';
     if (!formData.propertyType) newErrors.propertyType = 'Required';
     
-    // ✅ Collection and bedroom ONLY required for CREATE mode
+    // ✅ Floor plan TIDAK required untuk Custom package
+    if (formData.packageType !== 'custom' && !formData.floorPlan) {
+      newErrors.floorPlan = 'Required';
+    }
+    
+    // ✅ Collection dan bedroom HANYA untuk CREATE mode
     if (modalMode === 'create') {
-      if (formData.packageType !== 'library') {
-        if (!formData.collection) newErrors.collection = 'Required';
+      if (!formData.collection) newErrors.collection = 'Required';
+      
+      // ✅ Bedroom count TIDAK required untuk Custom atau Library
+      if (formData.packageType !== 'library' && formData.packageType !== 'custom') {
         if (!formData.bedroomCount) newErrors.bedroomCount = 'Required';
       }
     }
@@ -740,70 +749,83 @@ const ClientManagement = () => {
     );
   }, []);
 
-  const handleFormSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      if (!validateForm()) return;
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
-      setFormLoading(true);
-      try {
-        const token = localStorage.getItem('token');
-        const url =
-          modalMode === 'create'
-            ? `${backendServer}/api/clients`
-            : `${backendServer}/api/clients/${selectedClient._id}`;
+    setFormLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const url = modalMode === 'create'
+        ? `${backendServer}/api/clients`
+        : `${backendServer}/api/clients/${selectedClient._id}`;
 
-        const submitData = {
-          name: formData.name,
-          email: formData.email,
-          unitNumber: formData.unitNumber,
-          floorPlan: formData.floorPlan,
-          propertyType: formData.propertyType,
-          packageType: formData.packageType,
-        };
+      // ✅ BASE SUBMIT DATA - ONLY required fields
+      const submitData = {
+        name: formData.name,
+        email: formData.email,
+        unitNumber: formData.unitNumber,
+        propertyType: formData.propertyType,
+        packageType: formData.packageType,
+        floorPlan: formData.packageType === 'custom' ? 'Custom Project' : formData.floorPlan,
+      };
 
-        if (modalMode === 'create') {
-          submitData.password = formData.password;
-          submitData.collection = formData.collection;
-          submitData.bedroomCount = formData.bedroomCount;
-          if (formData.packageType !== 'library') {
-            submitData.collection = formData.collection;
-            submitData.bedroomCount = formData.bedroomCount;
-          }
-        } else if (showPasswordField && formData.password) {
-          submitData.password = formData.password;
-        }
-
-        const res = await fetch(url, {
-          method: modalMode === 'create' ? 'POST' : 'PUT',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(submitData)
-        });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.message || 'Failed to save client');
-        }
-
-        await fetchClients();
-        await fetchPendingCount();
-        closeModal();
+      if (modalMode === 'create') {
+        // Password required for create
+        submitData.password = formData.password;
         
-        if (modalMode === 'create') {
-          alert('✅ Client created and journey initialized successfully!');
+        // Collection required for create
+        submitData.collection = formData.collection;
+        
+        // ✅ ONLY add bedroomCount if:
+        // 1. NOT custom package
+        // 2. NOT library package
+        // 3. bedroomCount has actual value
+        if (formData.packageType !== 'custom' && 
+            formData.packageType !== 'library' && 
+            formData.bedroomCount) {
+          submitData.bedroomCount = formData.bedroomCount;
         }
-      } catch (error) {
-        console.error(error);
-        setErrors((prev) => ({ ...prev, form: error.message }));
-      } finally {
-        setFormLoading(false);
+        
+        // ✅ Add customNotes if custom package
+        if (formData.packageType === 'custom' && formData.customNotes) {
+          submitData.customNotes = formData.customNotes;
+        }
+      } else if (showPasswordField && formData.password) {
+        // Update mode - only if changing password
+        submitData.password = formData.password;
       }
-    },
-    [validateForm, modalMode, formData, showPasswordField, selectedClient, fetchClients, fetchPendingCount, closeModal]
-  );
+
+      console.log('📤 Submitting client data:', submitData);
+
+      const res = await fetch(url, {
+        method: modalMode === 'create' ? 'POST' : 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to save client');
+      }
+
+      await fetchClients();
+      await fetchPendingCount();
+      closeModal();
+      
+      if (modalMode === 'create') {
+        alert('✅ Client created and journey initialized successfully!');
+      }
+    } catch (error) {
+      console.error('❌ Submit error:', error);
+      setErrors((prev) => ({ ...prev, form: error.message }));
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const handleApprovalSubmit = useCallback(
     async (e) => {
@@ -1317,14 +1339,17 @@ const FormModal = React.memo(
                 error={errors.unitNumber}
                 required
               />
-              <Select
-                label="Floor Plan"
-                value={formData.floorPlan}
-                onChange={(v) => setFormData((prev) => ({ ...prev, floorPlan: v }))}
-                options={floorPlans.map((fp) => ({ value: fp, label: fp }))}
-                error={errors.floorPlan}
-                required
-              />
+              {/* ✅ FLOOR PLAN - HIDE UNTUK CUSTOM PACKAGE */}
+              {formData.collection !== 'Custom' && (
+                <Select
+                  label="Floor Plan"
+                  value={formData.floorPlan}
+                  onChange={(v) => setFormData(prev => ({ ...prev, floorPlan: v }))}
+                  options={floorPlans.map((fp) => ({ value: fp, label: fp }))}
+                  error={errors.floorPlan}
+                  required
+                />
+              )}
               <Select 
                 label="Property Type" 
                 value={formData.propertyType} 
@@ -1344,9 +1369,104 @@ const FormModal = React.memo(
                   <Sparkles className="w-5 h-5" /> Pricing Information
                 </h4>
                 
-                {/* ✅ SHOW PACKAGE TYPE INFO (READ-ONLY) */}
+                {/* ✅ COLLECTION DROPDOWN - TAMBAH OPTION CUSTOM */}
+                <div className="mb-4">
+                  <Select
+                    label="Collection"
+                    value={formData.collection}
+                    onChange={(v) => setFormData(prev => ({ 
+                      ...prev, 
+                      collection: v,
+                      // ✅ Reset bedroom count kalau pilih Custom
+                      bedroomCount: v === 'Custom' ? '' : prev.bedroomCount,
+                      // ✅ Reset floor plan kalau pilih Custom
+                      floorPlan: v === 'Custom' ? '' : prev.floorPlan
+                    }))}
+                    options={[
+                      { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
+                      { value: 'Nalu Collection', label: 'Nalu Collection' },
+                      { value: 'Lani', label: 'Lani' },
+                      { value: 'Custom', label: '✨ Custom (Manual Input)' } // ✅ BARU
+                    ]}
+                    error={errors.collection}
+                    required
+                  />
+                </div>
+
+                {/* ✅ CONDITIONAL RENDERING */}
+                {formData.collection === 'Custom' ? (
+                  // ========================================
+                  // TAMPILAN UNTUK CUSTOM PACKAGE
+                  // ========================================
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-300">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-purple-900 mb-1">
+                            🎨 Custom Package Selected
+                          </p>
+                          <p className="text-xs text-purple-700 leading-relaxed">
+                            • Designer akan input barang secara manual<br/>
+                            • Tidak perlu pilih floor plan<br/>
+                            • Bisa input gambar, link, dan spesifikasi detail
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Optional Custom Notes */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Project Notes (Optional)
+                      </label>
+                      <textarea
+                        value={formData.customNotes || ''}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          customNotes: e.target.value 
+                        }))}
+                        placeholder="Contoh: Client ingin furniture tema minimalis modern..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 resize-none"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  // ========================================
+                  // TAMPILAN UNTUK PACKAGE BIASA (Nalu/Lani)
+                  // ========================================
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Select
+                        label="Bedroom Count"
+                        value={formData.bedroomCount}
+                        onChange={(v) => setFormData(prev => ({ ...prev, bedroomCount: v }))}
+                        options={BEDROOM_OPTIONS.map(b => ({ 
+                          value: b, 
+                          label: `${b} Bedroom` 
+                        }))}
+                        error={errors.bedroomCount}
+                        required
+                      />
+                    </div>
+                    
+                    {formData.calculatedAmount > 0 && (
+                      <div className="mt-4 p-4 bg-white rounded-xl border-2 border-emerald-300">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-700">Total Amount:</span>
+                          <span className="text-2xl font-black text-emerald-600">
+                            ${formData.calculatedAmount.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Package Type Badge */}
                 {formData.collection && (
-                  <div className="mb-4 p-3 bg-white rounded-xl border-2 border-emerald-300">
+                  <div className="mt-4 p-3 bg-white rounded-xl border-2 border-emerald-300">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">Package Type:</span>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${
@@ -1355,60 +1475,15 @@ const FormModal = React.memo(
                         'bg-blue-100 text-blue-800'
                       }`}>
                         {formData.packageType === 'library' ? '🎨 Library (Drag & Drop)' :
-                        formData.packageType === 'custom' ? '✨ Lani Package' :
+                        formData.packageType === 'custom' ? '✨ Custom Package' :
                         '📦 Nalu Package'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {formData.packageType === 'library' && 'Full library access with drag & drop furniture placement'}
-                      {formData.packageType === 'custom' && 'Custom Lani package with curated selection'}
-                      {formData.packageType === 'investor' && 'Pre-configured Nalu package with fixed furniture placements'}
-                    </p>
-                  </div>
-                )}
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Select
-                    label="Collection"
-                    value={formData.collection}
-                    onChange={(v) => setFormData(prev => ({ ...prev, collection: v }))}
-                    options={COLLECTIONS.map(c => ({ value: c, label: c }))}
-                    error={errors.collection}
-                    required
-                  />
-                  <Select
-                    label="Bedroom Count"
-                    value={formData.bedroomCount}
-                    onChange={(v) => setFormData(prev => ({ ...prev, bedroomCount: v }))}
-                    options={BEDROOM_OPTIONS.map(b => ({ value: b, label: `${b} Bedroom` }))}
-                    error={errors.bedroomCount}
-                    required
-                  />
-                </div>
-                
-                {formData.calculatedAmount > 0 && (
-                  <div className="mt-4 p-4 bg-white rounded-xl border-2 border-emerald-300">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-700">Total Amount:</span>
-                      <span className="text-2xl font-black text-emerald-600">
-                        ${formData.calculatedAmount.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {/* ✅ INFO BOX FOR LIBRARY PACKAGE */}
-                {formData.packageType === 'library' && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-200">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-teal-900 mb-1">Library Package Selected</p>
-                        <p className="text-xs text-teal-700">
-                          This client will have access to all furniture from both Nalu and Lani collections with drag & drop placement.
-                        </p>
-                      </div>
-                    </div>
+                    {formData.packageType === 'custom' && (
+                      <p className="text-xs text-purple-600 mt-2">
+                        💡 Floor plan tidak diperlukan untuk custom package
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

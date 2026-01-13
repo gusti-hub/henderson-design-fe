@@ -1,4 +1,4 @@
-// AdminJourneyManager.jsx - HORIZONTAL PHASE TABS (Like Client Portal)
+// AdminJourneyManager.jsx - HORIZONTAL SCROLLABLE PHASE TABS
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -7,6 +7,8 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   MessageSquare,
   Send,
   Paperclip,
@@ -44,12 +46,45 @@ import { backendServer } from '../utils/info';
 import InvoiceManagementInline from './InvoiceManagementInline';
 import AgreementManagementInline from './AgreementManagementInline';
 
+// ==================== SCROLLBAR STYLES ====================
+const scrollbarStyles = `
+  /* Custom Scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Firefox */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+
+  /* Smooth scroll behavior */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+`;
+
 // ==================== INTERNAL PHASES DEFINITION ====================
 const INTERNAL_PHASES = [
   {
     id: 1,
-    name: "Inquiry & Intake",
-    shortName: "Intake",
+    name: "Inquiry, Intake, and Qualification",
+    shortName: "Intake & Qualify",
     description: "Qualify lead, confirm basics, approve to proceed",
     icon: ClipboardList,
     color: "teal",
@@ -57,8 +92,8 @@ const INTERNAL_PHASES = [
   },
   {
     id: 2,
-    name: "Portal Setup & Deposit Lock",
-    shortName: "Portal & Deposit",
+    name: "Welcome, Portal, and Funding",
+    shortName: "Portal & Funding",
     description: "Portal live, preferences captured, funds secured",
     icon: Lock,
     color: "teal",
@@ -66,45 +101,64 @@ const INTERNAL_PHASES = [
   },
   {
     id: 3,
-    name: "Design Development",
-    shortName: "Design",
-    description: "Create, present, and refine design",
+    name: "Design Kickoff & Design Round 1",
+    shortName: "Design Kickoff",
+    description: "Create and present initial design concepts",
     icon: Palette,
     color: "purple",
-    stepRange: [22, 38]
+    stepRange: [22, 30]
   },
   {
     id: 4,
-    name: "Final Design Lock & Procurement Auth",
+    name: "Design Revisions & Final Design Lock",
     shortName: "Design Lock",
-    description: "Lock design, pricing, authorization to order",
+    description: "Refine design, lock pricing, authorize procurement",
     icon: CheckCircle,
     color: "purple",
-    stepRange: [39, 46]
+    stepRange: [31, 41]
   },
   {
     id: 5,
-    name: "Procurement, Production & Logistics",
-    shortName: "Production",
-    description: "Build, QC, ship, and plan install",
+    name: "Procurement Preparation & Order Placement",
+    shortName: "Procurement",
+    description: "Prepare vendors, secure quotes, place orders",
     icon: Package,
     color: "blue",
-    stepRange: [47, 66]
+    stepRange: [42, 52]
   },
   {
     id: 6,
-    name: "Installation, Closeout & Handover",
+    name: "Production, QC, and Freight",
+    shortName: "Production & Ship",
+    description: "Build, QC check, and ship to destination",
+    icon: Truck,
+    color: "blue",
+    stepRange: [53, 63]
+  },
+  {
+    id: 7,
+    name: "Arrival, Installation, and Punch",
     shortName: "Installation",
-    description: "Deliver, install, close cleanly",
+    description: "Receive, deliver, install, and punch list",
     icon: HomeIcon,
     color: "amber",
-    stepRange: [67, 80]
+    stepRange: [64, 73]
+  },
+  {
+    id: 8,
+    name: "Closeout, Feedback, and Archive",
+    shortName: "Closeout",
+    description: "Final reveal, handover, feedback, and close",
+    icon: Heart,
+    color: "amber",
+    stepRange: [74, 80]
   }
 ];
 
 const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true }) => {
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   const [journey, setJourney] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,10 +173,9 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const [selectedPhase, setSelectedPhase] = useState(0); // Current active phase tab
+  const [selectedPhase, setSelectedPhase] = useState(0);
   const [updatingStep, setUpdatingStep] = useState(null);
 
-  // questionnaire state
   const [loadingQuestionnaire, setLoadingQuestionnaire] = useState(false);
   const [viewingQuestionnaire, setViewingQuestionnaire] = useState(null);
 
@@ -136,6 +189,20 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, activeChat]);
+
+  // Auto-scroll to selected phase
+  useEffect(() => {
+    if (selectedPhase !== null && scrollContainerRef.current) {
+      const selectedButton = scrollContainerRef.current.querySelector(`[data-phase-index="${selectedPhase}"]`);
+      if (selectedButton) {
+        selectedButton.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [selectedPhase]);
 
   const fetchJourney = async () => {
     try {
@@ -153,7 +220,6 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
         const data = await response.json();
         setJourney(data);
         
-        // Auto-select current active phase
         const currentPhaseIndex = getCurrentPhaseIndex(data.steps);
         setSelectedPhase(currentPhaseIndex);
       } else if (response.status === 404) {
@@ -193,38 +259,33 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     }
   };
 
-  // Get current active phase based on steps
   const getCurrentPhaseIndex = (steps) => {
     if (!steps || steps.length === 0) return 0;
     
-    // Find first in-progress step
     const inProgressStep = steps.find(s => s.status === 'in-progress');
     if (inProgressStep) {
       const phaseId = inProgressStep.internalPhaseId || getPhaseIdFromStep(inProgressStep.step);
-      return phaseId - 1; // Convert to 0-indexed
+      return phaseId - 1;
     }
     
-    // Find last completed step
     const completedSteps = steps.filter(s => s.status === 'completed');
     if (completedSteps.length === 0) return 0;
     
     const lastCompleted = completedSteps[completedSteps.length - 1];
     const phaseId = lastCompleted.internalPhaseId || getPhaseIdFromStep(lastCompleted.step);
     
-    // If phase complete, move to next phase
     const phaseSteps = steps.filter(s => 
       (s.internalPhaseId || getPhaseIdFromStep(s.step)) === phaseId
     );
     const allPhaseCompleted = phaseSteps.every(s => s.status === 'completed');
     
-    if (allPhaseCompleted && phaseId < 6) {
-      return phaseId; // Next phase (already 0-indexed)
+    if (allPhaseCompleted && phaseId < 8) {
+      return phaseId;
     }
     
-    return phaseId - 1; // Current phase (0-indexed)
+    return phaseId - 1;
   };
 
-  // Helper to get phase ID from step number (fallback)
   const getPhaseIdFromStep = (stepNumber) => {
     for (const phase of INTERNAL_PHASES) {
       if (stepNumber >= phase.stepRange[0] && stepNumber <= phase.stepRange[1]) {
@@ -234,7 +295,6 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     return 1;
   };
 
-  // Get phase progress
   const getPhaseProgress = (phaseId) => {
     if (!journey || !journey.steps) return { completed: 0, total: 0, percentage: 0 };
     
@@ -250,7 +310,6 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     return { completed, total, percentage };
   };
 
-  // Get phase status
   const getPhaseStatus = (phaseId) => {
     if (!journey || !journey.steps) return 'locked';
     
@@ -268,7 +327,6 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     if (allCompleted) return 'completed';
     if (hasInProgress || hasStarted) return 'active';
     
-    // Check if previous phase is completed
     if (phaseId === 1) return 'active';
     
     const prevPhaseSteps = journey.steps.filter(step => {
@@ -280,9 +338,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     return prevCompleted ? 'active' : 'locked';
   };
 
-  // QUICK STATUS CHANGE
   const handleQuickStatusChange = async (step, newStatus) => {
-    // Validation
     if (step.step > 1) {
       const prev = journey.steps.find((s) => s.step === step.step - 1);
       if (prev && prev.status !== 'completed' && prev.status !== 'cancelled') {
@@ -636,6 +692,18 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     return prev && (prev.status === 'completed' || prev.status === 'cancelled');
   };
 
+  const handleScrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -280, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 280, behavior: 'smooth' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -672,7 +740,6 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
   const completedSteps = journey.steps.filter((s) => s.status === 'completed').length;
   const progressPercentage = (completedSteps / journey.steps.length) * 100 || 0;
 
-  // Get current phase steps
   const currentPhase = INTERNAL_PHASES[selectedPhase];
   const currentPhaseSteps = journey.steps.filter(step => {
     const stepPhaseId = step.internalPhaseId || getPhaseIdFromStep(step.step);
@@ -680,224 +747,297 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
   });
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Notifications - Floating */}
-      {error && (
-        <div className="fixed top-4 right-4 z-50 max-w-md bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg shadow-lg">
-          <div className="flex gap-2 items-center">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-            <p className="text-red-800 text-sm font-medium flex-1">{error}</p>
-            <button onClick={() => setError('')}>
-              <X className="w-5 h-5 text-red-600" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="fixed top-4 right-4 z-50 max-w-md bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg shadow-lg">
-          <div className="flex gap-2 items-center">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <p className="text-green-800 text-sm font-medium">{success}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Overall Progress Bar - Thin sticky header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="px-6 py-3">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between mb-1.5">
-                <span className="text-xs font-bold text-gray-700">Overall Journey Progress</span>
-                <span className="text-xs font-black text-gray-900">
-                  {completedSteps} of {journey.steps.length} steps completed
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-[#005670] to-blue-600 h-2 rounded-full transition-all duration-700"
-                  style={{ width: `${progressPercentage}%` }}
-                />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-[#005670]">
-              {Math.round(progressPercentage)}%
+    <>
+      <style>{scrollbarStyles}</style>
+      
+      <div className="flex flex-col h-full bg-gray-50">
+        {/* Notifications */}
+        {error && (
+          <div className="fixed top-4 right-4 z-50 max-w-md bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg shadow-lg">
+            <div className="flex gap-2 items-center">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-800 text-sm font-medium flex-1">{error}</p>
+              <button onClick={() => setError('')}>
+                <X className="w-5 h-5 text-red-600" />
+              </button>
             </div>
           </div>
+        )}
+
+        {success && (
+          <div className="fixed top-4 right-4 z-50 max-w-md bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg shadow-lg">
+            <div className="flex gap-2 items-center">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <p className="text-green-800 text-sm font-medium">{success}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Overall Progress Bar */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+          <div className="px-6 py-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-xs font-bold text-gray-700">Overall Journey Progress</span>
+                  <span className="text-xs font-black text-gray-900">
+                    {completedSteps} of {journey.steps.length} steps completed
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-[#005670] to-blue-600 h-2 rounded-full transition-all duration-700"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-[#005670]">
+                {Math.round(progressPercentage)}%
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* HORIZONTAL PHASE TABS */}
-      <div className="bg-white border-b border-gray-200 sticky top-[60px] z-9">
-        <div className="px-6 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {INTERNAL_PHASES.map((phase, index) => {
-              const progress = getPhaseProgress(phase.id);
-              const status = getPhaseStatus(phase.id);
-              const isSelected = selectedPhase === index;
-              const isLocked = status === 'locked';
-              const isCompleted = status === 'completed';
-              const PhaseIcon = phase.icon;
+        {/* HORIZONTAL SCROLLABLE PHASE TABS */}
+        <div className="bg-white border-b border-gray-200 sticky top-[60px] z-9 shadow-sm">
+          <div className="px-6 py-4">
+            {/* Navigation Hint */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-700">Project Phases</h3>
+              <span className="text-xs text-gray-500 hidden md:block">
+                ← Scroll to see all phases →
+              </span>
+            </div>
 
-              return (
-                <button
-                  key={phase.id}
-                  onClick={() => !isLocked && setSelectedPhase(index)}
-                  disabled={isLocked}
-                  className={`p-4 rounded-xl border-2 transition-all text-left ${
-                    isSelected
-                      ? 'bg-[#005670] border-[#005670] shadow-lg scale-105'
-                      : isLocked
-                      ? 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'
-                      : isCompleted
-                      ? 'bg-green-50 border-green-200 hover:border-green-300'
-                      : 'bg-white border-gray-200 hover:border-[#005670] hover:shadow-md'
-                  }`}
-                >
-                  {/* Phase Icon & Number */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      isSelected
-                        ? 'bg-white/20'
-                        : isCompleted
-                        ? 'bg-green-500'
-                        : isLocked
-                        ? 'bg-gray-300'
-                        : 'bg-[#005670]'
-                    }`}>
-                      {isCompleted ? (
-                        <CheckCircle className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-white'}`} />
-                      ) : isLocked ? (
-                        <Lock className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <PhaseIcon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-white'}`} />
-                      )}
-                    </div>
-                    <span className={`text-xs font-black ${
-                      isSelected ? 'text-white' : 'text-gray-500'
-                    }`}>
-                      PHASE {phase.id}
-                    </span>
-                  </div>
+            {/* Scrollable Container with Arrows */}
+            <div className="relative">
+              {/* Left Arrow */}
+              <button
+                onClick={handleScrollLeft}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 border border-gray-200 transition-all"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
 
-                  {/* Phase Name */}
-                  <h4 className={`text-sm font-bold mb-2 ${
-                    isSelected ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {phase.shortName}
-                  </h4>
+              {/* Right Arrow */}
+              <button
+                onClick={handleScrollRight}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 border border-gray-200 transition-all"
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
+              </button>
 
-                  {/* Progress Bar */}
-                  <div className="mb-1">
-                    <div className={`w-full rounded-full h-1.5 overflow-hidden ${
-                      isSelected ? 'bg-white/30' : 'bg-gray-200'
-                    }`}>
-                      <div
-                        className={`h-1.5 rounded-full transition-all ${
+              {/* Gradient Fades */}
+              <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+
+              {/* Scrollable Phase Cards */}
+              <div 
+                ref={scrollContainerRef}
+                className="flex gap-3 overflow-x-auto pb-2 px-12 scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400"
+              >
+                {INTERNAL_PHASES.map((phase, index) => {
+                  const progress = getPhaseProgress(phase.id);
+                  const status = getPhaseStatus(phase.id);
+                  const isSelected = selectedPhase === index;
+                  const isLocked = status === 'locked';
+                  const isCompleted = status === 'completed';
+                  const PhaseIcon = phase.icon;
+
+                  return (
+                    <button
+                      key={phase.id}
+                      data-phase-index={index}
+                      onClick={() => !isLocked && setSelectedPhase(index)}
+                      disabled={isLocked}
+                      className={`flex-shrink-0 w-56 p-4 rounded-xl border-2 transition-all text-left ${
+                        isSelected
+                          ? 'bg-[#005670] border-[#005670] shadow-lg scale-105'
+                          : isLocked
+                          ? 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'
+                          : isCompleted
+                          ? 'bg-green-50 border-green-200 hover:border-green-300'
+                          : 'bg-white border-gray-200 hover:border-[#005670] hover:shadow-md'
+                      }`}
+                    >
+                      {/* Phase Icon & Number */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                           isSelected
-                            ? 'bg-white'
+                            ? 'bg-white/20'
                             : isCompleted
                             ? 'bg-green-500'
+                            : isLocked
+                            ? 'bg-gray-300'
                             : 'bg-[#005670]'
-                        }`}
-                        style={{ width: `${progress.percentage}%` }}
-                      />
-                    </div>
-                  </div>
+                        }`}>
+                          {isCompleted ? (
+                            <CheckCircle className="w-5 h-5 text-white" />
+                          ) : isLocked ? (
+                            <Lock className="w-5 h-5 text-gray-500" />
+                          ) : (
+                            <PhaseIcon className="w-5 h-5 text-white" />
+                          )}
+                        </div>
+                        <span className={`text-xs font-black ${
+                          isSelected ? 'text-white' : 'text-gray-500'
+                        }`}>
+                          PHASE {phase.id}
+                        </span>
+                      </div>
 
-                  {/* Progress Text */}
-                  <p className={`text-xs font-bold ${
-                    isSelected ? 'text-white/90' : 'text-gray-600'
-                  }`}>
-                    {progress.completed}/{progress.total} steps
-                  </p>
-                </button>
-              );
-            })}
+                      {/* Phase Name */}
+                      <h4 className={`text-sm font-bold mb-2 leading-tight min-h-[40px] ${
+                        isSelected ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {phase.shortName}
+                      </h4>
+
+                      {/* Description - Only show when selected */}
+                      {isSelected && (
+                        <p className="text-xs text-white/80 mb-3 leading-relaxed">
+                          {phase.description}
+                        </p>
+                      )}
+
+                      {/* Progress Bar */}
+                      {!isLocked && (
+                        <div className="mb-2">
+                          <div className={`w-full rounded-full h-2 overflow-hidden ${
+                            isSelected ? 'bg-white/30' : 'bg-gray-200'
+                          }`}>
+                            <div
+                              className={`h-2 rounded-full transition-all ${
+                                isSelected
+                                  ? 'bg-white'
+                                  : isCompleted
+                                  ? 'bg-green-500'
+                                  : 'bg-[#005670]'
+                              }`}
+                              style={{ width: `${progress.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Progress Text & Status */}
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs font-bold ${
+                          isSelected ? 'text-white/90' : 'text-gray-600'
+                        }`}>
+                          {progress.completed}/{progress.total} steps
+                        </p>
+                        
+                        {/* Status Badge */}
+                        {isCompleted && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isSelected 
+                              ? 'bg-white/20 text-white' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            Done
+                          </span>
+                        )}
+                        {status === 'active' && !isCompleted && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isSelected 
+                              ? 'bg-white/20 text-white' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            Active
+                          </span>
+                        )}
+                        {isLocked && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+                            Locked
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* CURRENT PHASE CONTENT */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto">
-          {/* Phase Header */}
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border-l-4 border-[#005670]">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-[#005670] rounded-xl flex items-center justify-center flex-shrink-0">
-                {React.createElement(currentPhase.icon, { className: "w-6 h-6 text-white" })}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{currentPhase.name}</h3>
-                <p className="text-sm text-gray-600 mb-3">{currentPhase.description}</p>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold text-gray-500">
-                    Steps {currentPhase.stepRange[0]}-{currentPhase.stepRange[1]}
-                  </span>
-                  <span className="text-xs font-bold text-[#005670]">
-                    {getPhaseProgress(currentPhase.id).completed}/{getPhaseProgress(currentPhase.id).total} completed
-                  </span>
+        {/* CURRENT PHASE CONTENT */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-5xl mx-auto">
+            {/* Phase Header */}
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border-l-4 border-[#005670]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[#005670] rounded-xl flex items-center justify-center flex-shrink-0">
+                  {React.createElement(currentPhase.icon, { className: "w-6 h-6 text-white" })}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">{currentPhase.name}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{currentPhase.description}</p>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-bold text-gray-500">
+                      Steps {currentPhase.stepRange[0]}-{currentPhase.stepRange[1]}
+                    </span>
+                    <span className="text-xs font-bold text-[#005670]">
+                      {getPhaseProgress(currentPhase.id).completed}/{getPhaseProgress(currentPhase.id).total} completed
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Steps List */}
-          <div className="space-y-3">
-            {currentPhaseSteps.map((step) => {
-              const isLocked = step.status === 'completed' || step.status === 'cancelled';
-              const canEdit = canEditStep(step);
-              const isExpanded = expandedSteps.has(step.step);
+            {/* Steps List */}
+            <div className="space-y-3">
+              {currentPhaseSteps.map((step) => {
+                const isLocked = step.status === 'completed' || step.status === 'cancelled';
+                const canEdit = canEditStep(step);
+                const isExpanded = expandedSteps.has(step.step);
 
-              return (
-                <CompactStepCard
-                  key={step.step}
-                  step={step}
-                  isLocked={isLocked}
-                  canEdit={canEdit}
-                  isExpanded={isExpanded}
-                  updatingStep={updatingStep}
-                  onStatusChange={handleQuickStatusChange}
-                  onGeneratePdf={handleGeneratePdf}
-                  onToggleExpand={toggleStepExpanded}
-                  generatingPdf={generatingPdf}
-                  // Chat
-                  activeChat={activeChat}
-                  chatMessages={chatMessages}
-                  chatInput={chatInput}
-                  setChatInput={setChatInput}
-                  selectedFiles={selectedFiles}
-                  uploadingFiles={uploadingFiles}
-                  fileInputRef={fileInputRef}
-                  chatEndRef={chatEndRef}
-                  onFileSelect={handleFileSelect}
-                  onRemoveFile={removeSelectedFile}
-                  onSendMessage={sendChatMessage}
-                  onDownloadAttachment={downloadAttachment}
-                  formatFileSize={formatFileSize}
-                  // Questionnaire
-                  loadingQuestionnaire={loadingQuestionnaire}
-                  viewingQuestionnaire={viewingQuestionnaire}
-                  // Documents
-                  onDownloadDocument={downloadDocument}
-                  // Other
-                  clientId={clientId}
-                  clientName={clientName}
-                  fetchJourney={fetchJourney}
-                  propertyType={journey?.clientId?.propertyType}
-                />
-              );
-            })}
+                return (
+                  <CompactStepCard
+                    key={step.step}
+                    step={step}
+                    isLocked={isLocked}
+                    canEdit={canEdit}
+                    isExpanded={isExpanded}
+                    updatingStep={updatingStep}
+                    onStatusChange={handleQuickStatusChange}
+                    onGeneratePdf={handleGeneratePdf}
+                    onToggleExpand={toggleStepExpanded}
+                    generatingPdf={generatingPdf}
+                    activeChat={activeChat}
+                    chatMessages={chatMessages}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    selectedFiles={selectedFiles}
+                    uploadingFiles={uploadingFiles}
+                    fileInputRef={fileInputRef}
+                    chatEndRef={chatEndRef}
+                    onFileSelect={handleFileSelect}
+                    onRemoveFile={removeSelectedFile}
+                    onSendMessage={sendChatMessage}
+                    onDownloadAttachment={downloadAttachment}
+                    formatFileSize={formatFileSize}
+                    loadingQuestionnaire={loadingQuestionnaire}
+                    viewingQuestionnaire={viewingQuestionnaire}
+                    onDownloadDocument={downloadDocument}
+                    clientId={clientId}
+                    clientName={clientName}
+                    fetchJourney={fetchJourney}
+                    propertyType={journey?.clientId?.propertyType}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-// ==================== COMPACT STEP CARD (Same as before) ====================
-
+// ==================== COMPACT STEP CARD ====================
 const CompactStepCard = ({
   step,
   isLocked,
@@ -992,15 +1132,12 @@ const CompactStepCard = ({
     <div className={`bg-white rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden ${
       isDisabled ? 'opacity-40 pointer-events-none' : ''
     }`}>
-      {/* Mini Header */}
       <div className="p-4">
         <div className="flex items-center gap-4">
-          {/* Status Icon */}
           <div className={`flex-shrink-0 w-12 h-12 rounded-xl border-2 flex items-center justify-center ${getStatusColor(step.status)}`}>
             {getStatusIcon(step.status)}
           </div>
 
-          {/* Step Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
@@ -1014,7 +1151,6 @@ const CompactStepCard = ({
             </h4>
           </div>
 
-          {/* Quick Status Dropdown */}
           <div className="flex items-center gap-2">
             {!isLocked && canEdit && (
               <select
@@ -1064,9 +1200,7 @@ const CompactStepCard = ({
           </div>
         </div>
 
-        {/* Mini metadata row */}
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 flex-wrap">
-          {/* Deadline */}
           <div className="flex items-center gap-2">
             {editingDeadline ? (
               <div className="flex items-center gap-2">
@@ -1141,10 +1275,8 @@ const CompactStepCard = ({
         </div>
       </div>
 
-      {/* EXPANDED CONTENT */}
       {isExpanded && (
         <div className="border-t-2 border-gray-100 p-5 bg-gray-50 space-y-4">
-          {/* Generated Documents */}
           {step.generatedDocuments?.length > 0 && (
             <div className="bg-white rounded-lg p-4 border border-purple-200">
               <p className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
@@ -1167,7 +1299,6 @@ const CompactStepCard = ({
             </div>
           )}
 
-          {/* Questionnaire for Step 11 */}
           {step.step === 11 && (
             <>
               {loadingQuestionnaire ? (
@@ -1188,7 +1319,6 @@ const CompactStepCard = ({
             </>
           )}
 
-          {/* Invoice Management for Step 16 */}
           {step.step === 16 && (
             <InvoiceManagementInline
               clientId={clientId}
@@ -1198,7 +1328,6 @@ const CompactStepCard = ({
             />
           )}
 
-          {/* Agreement Management for Step 15 */}
           {step.step === 15 && (
             <AgreementManagementInline
               clientId={clientId}
@@ -1209,7 +1338,6 @@ const CompactStepCard = ({
             />
           )}
 
-          {/* Chat Section */}
           {activeChat === step.step && (
             <ChatSection
               stepNumber={step.step}
@@ -1234,7 +1362,6 @@ const CompactStepCard = ({
 };
 
 // ==================== CHAT SECTION ====================
-
 const ChatSection = ({
   stepNumber,
   chatMessages,
@@ -1257,7 +1384,6 @@ const ChatSection = ({
         Conversation
       </h5>
 
-      {/* Messages */}
       <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
         {!chatMessages[stepNumber] || chatMessages[stepNumber].length === 0 ? (
           <p className="text-center py-6 text-gray-400 text-xs">No messages yet</p>
@@ -1310,7 +1436,6 @@ const ChatSection = ({
         )}
       </div>
 
-      {/* Selected Files */}
       {selectedFiles.length > 0 && (
         <div className="mb-2 space-y-1">
           {selectedFiles.map((file, idx) => (
@@ -1327,7 +1452,6 @@ const ChatSection = ({
         </div>
       )}
 
-      {/* Input */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -1364,8 +1488,7 @@ const ChatSection = ({
   );
 };
 
-// ==================== QuestionnaireView ====================
-
+// ==================== QUESTIONNAIRE VIEW ====================
 const QuestionnaireView = ({ questionnaire }) => {
   const [activeTab, setActiveTab] = useState('overview');
 

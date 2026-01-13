@@ -13,6 +13,7 @@ import {
 import { backendServer } from '../utils/info';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
 import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor'; // ✅ NEW IMPORT
+import CustomProductManager from '../components/CustomProductManager'; // ✅ TAMBAH INI
 
 const LoadingOverlay = () => (
   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
@@ -365,7 +366,17 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
-  const getPackageTypeBadge = (packageType) => {
+  const getPackageTypeBadge = (packageType, floorPlan) => {
+    console.log(floorPlan)
+    // ✅ kondisi khusus
+    if (packageType === 'custom' && floorPlan === 'Custom Project') {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+          Custom
+        </span>
+      );
+    }
+
     const badges = {
       investor: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Nalu' },
       custom: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Lani' },
@@ -380,6 +391,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       </span>
     );
   };
+
 
   const renderStatusPill = (order) => {
     const label = getOrderStatusLabel(order);
@@ -398,23 +410,35 @@ const AdminOrderList = ({ onOrderClick }) => {
   // ✅ EDITING MODE - Check package type and render appropriate editor
   if (editingOrder) {
     const isLibraryPackage = editingOrder.packageType === 'library';
+    const isCustomPackage = editingOrder.packageType === 'custom'; // ✅ TAMBAH INI
 
     return (
       <div className="space-y-4">
-        {!isLibraryPackage && (
+        {/* ✅ UPDATE: Hide back button untuk library DAN custom */}
+        {!isLibraryPackage && !isCustomPackage && (
           <div className="p-4 bg-white border-b border-gray-200">
             <button
               onClick={handleBackToList}
               className="inline-flex items-center text-[#005670] hover:text-[#005670]/80 text-sm font-medium"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Order List
+              Kembali ke Daftar Order
             </button>
           </div>
         )}
         
-        {/* ✅ LIBRARY PACKAGE: Use LibraryFloorPlanEditor */}
-        {isLibraryPackage ? (
+        {/* ✅ CUSTOM PACKAGE: Gunakan CustomProductManager */}
+        {isCustomPackage ? (
+          <CustomProductManager
+            order={editingOrder}
+            onSave={(products) => {
+              console.log('✅ Custom products saved:', products);
+              fetchOrders();
+            }}
+            onBack={handleBackToList}
+          />
+        ) : isLibraryPackage ? (
+          /* LIBRARY PACKAGE: Gunakan LibraryFloorPlanEditor */
           <LibraryFloorPlanEditor
             order={editingOrder}
             onSave={(placements) => {
@@ -424,7 +448,7 @@ const AdminOrderList = ({ onOrderClick }) => {
             onBack={handleBackToList}
           />
         ) : (
-          /* INVESTOR/CUSTOM PACKAGE: Use AreaCustomization */
+          /* INVESTOR/LANI PACKAGE: Gunakan AreaCustomization */
           <AreaCustomization
             selectedPlan={editingOrder.selectedPlan}
             floorPlanImage={editingOrder.selectedPlan?.image}
@@ -543,7 +567,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                   </td>
 
                   <td className="px-4 py-3">
-                    {getPackageTypeBadge(order.packageType)}
+                    {getPackageTypeBadge(order.packageType, order.clientInfo.floorPlan)}
                   </td>
 
                   <td className="px-4 py-3 text-sm text-gray-700">

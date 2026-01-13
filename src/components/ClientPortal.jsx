@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LogOut, 
   CheckCircle,
@@ -6,6 +6,7 @@ import {
   Clock,
   AlertCircle,
   ChevronRight,
+  ChevronLeft,
   Download,
   X,
   Zap,
@@ -19,73 +20,157 @@ import {
   User as UserIcon,
   Lock,
   Sparkles,
-  ChevronLeft
+  Palette,
+  Package,
+  Truck,
+  Home as HomeIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import QuestionnaireModal from './QuestionnaireModal';
 
 // ============================================================================
-// PHASE CONFIGURATION - CLIENT FACING (4 PHASES ONLY)
+// SCROLLBAR STYLES
+// ============================================================================
+const scrollbarStyles = `
+  /* Custom Scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Firefox */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+
+  /* Smooth scroll behavior */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+`;
+
+// ============================================================================
+// PHASE CONFIGURATION - CLIENT FACING (8 PHASES)
 // ============================================================================
 const CLIENT_PHASES = [
   {
     id: 1,
-    name: "Introduction & Onboarding",
+    name: "Inquiry, Intake, and Qualification",
     label: "Getting Started",
-    description: "I've met HDG, reviewed options, and decided to move forward.",
-    color: "teal",  // Changed from green to teal (brand color)
+    description: "We're getting to know you and confirming the basics.",
+    color: "teal",
     icon: Sparkles,
-    stages: ["Inquiry and Intake", "Welcome Portal Access", "Deposit and Agreements"],
+    stages: ["Inquiry and Intake"],
+    stepRange: [1, 7]
   },
   {
     id: 2,
-    name: "Design & Approval",
-    label: "Design Development",
-    description: "We are shaping and confirming the design.",
-    color: "purple",
-    icon: Layers,
-    stages: [
-      "Design Kickoff - Internal Prep",
-      "Design Round 1 - Presentation", 
-      "Design Round 2 - Revisions",
-      "Final Design Approval"
-    ],
+    name: "Welcome, Portal, and Funding",
+    label: "Portal & Deposit",
+    description: "Access your portal, share preferences, and secure your project.",
+    color: "teal",
+    icon: Lock,
+    stages: ["Welcome Portal Access", "Deposit and Agreements"],
+    stepRange: [8, 21]
   },
   {
     id: 3,
-    name: "Production & Planning",
-    label: "Production & Scheduling",
-    description: "Design is locked. Your project is being built and scheduled.",
-    color: "blue",
-    icon: Clock,
+    name: "Design Kickoff & Design Round 1",
+    label: "Initial Design",
+    description: "We're creating your first design presentation.",
+    color: "purple",
+    icon: Palette,
     stages: [
-      "Progress Payment for Procurement to 50%",
-      "Procurement Prep & Vendor Quotes",
-      "Order Placement & Vendor Deposits",
-      "Production - In Progress",
-      "Progress Payment to 75%",
-      "Logistics & Export",
-      "Arrival QC & Delivery Scheduling"
+      "Design Kickoff - Internal Prep",
+      "Design Round 1 - Presentation"
     ],
+    stepRange: [22, 30]
   },
   {
     id: 4,
-    name: "Delivery & Completion",
-    label: "Delivery & Handover",
-    description: "Execution, completion, and closeout.",
+    name: "Design Revisions & Final Design Lock",
+    label: "Design Refinement",
+    description: "Refining and finalizing your design direction.",
+    color: "purple",
+    icon: Layers,
+    stages: [
+      "Design Round 2 - Revisions",
+      "Final Design Approval"
+    ],
+    stepRange: [31, 41]
+  },
+  {
+    id: 5,
+    name: "Procurement Preparation & Order Placement",
+    label: "Ordering Phase",
+    description: "We're preparing vendors and placing orders.",
+    color: "blue",
+    icon: Package,
+    stages: [
+      "Progress Payment for Procurement to 50%",
+      "Procurement Prep & Vendor Quotes",
+      "Order Placement & Vendor Deposits"
+    ],
+    stepRange: [42, 52]
+  },
+  {
+    id: 6,
+    name: "Production, QC, and Freight",
+    label: "Building & Shipping",
+    description: "Your furniture is being built and shipped.",
+    color: "blue",
+    icon: Truck,
+    stages: [
+      "Production - In Progress",
+      "Progress Payment to 75%",
+      "Logistics & Export"
+    ],
+    stepRange: [53, 63]
+  },
+  {
+    id: 7,
+    name: "Arrival, Installation, and Punch",
+    label: "Installation",
+    description: "Final delivery and installation in your home.",
+    color: "amber",
+    icon: HomeIcon,
+    stages: [
+      "Arrival QC & Delivery Scheduling",
+      "Final Payment Balance Due for Release of Product",
+      "Installation & Punch List"
+    ],
+    stepRange: [64, 73]
+  },
+  {
+    id: 8,
+    name: "Closeout, Feedback, and Archive",
+    label: "Project Complete",
+    description: "Final walkthrough, handover, and project close.",
     color: "amber",
     icon: CheckCircle,
-    stages: [
-      "Final Payment Balance Due for Release of Product",
-      "Installation & Punch List",
-      "Reveal & Closeout"
-    ],
+    stages: ["Reveal & Closeout"],
+    stepRange: [74, 80]
   }
 ];
 
 const ClientPortal = () => {
   const navigate = useNavigate();
+  const scrollContainerRef = useRef(null);
   
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
@@ -106,18 +191,15 @@ const ClientPortal = () => {
     const phases = CLIENT_PHASES.map(phase => ({
       ...phase,
       steps: [],
-      allStepsInPhase: [],  // Track ALL steps for status calculation
+      allStepsInPhase: [],
       status: 'not-started',
       progress: 0
     }));
 
-    // First, map ALL steps (including non-visible) to determine phase status
+    // Map ALL steps to phases based on STEP NUMBER
     allSteps.forEach(step => {
       const phaseIndex = phases.findIndex(phase => 
-        phase.stages.some(stage => 
-          step.stage?.toLowerCase().includes(stage.toLowerCase()) ||
-          stage.toLowerCase().includes(step.stage?.toLowerCase())
-        )
+        step.step >= phase.stepRange[0] && step.step <= phase.stepRange[1]
       );
 
       if (phaseIndex !== -1) {
@@ -125,13 +207,10 @@ const ClientPortal = () => {
       }
     });
 
-    // Then, map VISIBLE steps for display
+    // Map VISIBLE steps to phases based on STEP NUMBER
     visibleSteps.forEach(step => {
       const phaseIndex = phases.findIndex(phase => 
-        phase.stages.some(stage => 
-          step.stage?.toLowerCase().includes(stage.toLowerCase()) ||
-          stage.toLowerCase().includes(step.stage?.toLowerCase())
-        )
+        step.step >= phase.stepRange[0] && step.step <= phase.stepRange[1]
       );
 
       if (phaseIndex !== -1) {
@@ -144,19 +223,16 @@ const ClientPortal = () => {
       const allPhaseSteps = phase.allStepsInPhase;
       const visiblePhaseSteps = phase.steps;
       
-      // If phase has NO steps at all (even non-visible), mark as locked
       if (allPhaseSteps.length === 0) {
         phase.status = 'locked';
         phase.progress = 0;
         return;
       }
 
-      // Calculate progress from VISIBLE steps only (what user can see)
       const completedVisible = visiblePhaseSteps.filter(s => s.status === 'completed').length;
       const totalVisible = visiblePhaseSteps.length;
       phase.progress = totalVisible > 0 ? Math.round((completedVisible / totalVisible) * 100) : 0;
 
-      // Determine phase status based on ALL steps (including hidden for accuracy)
       const completedAll = allPhaseSteps.filter(s => s.status === 'completed').length;
       const totalAll = allPhaseSteps.length;
       
@@ -179,6 +255,20 @@ const ClientPortal = () => {
 
     return phases;
   };
+
+  // Auto-scroll to selected phase
+  useEffect(() => {
+    if (selectedPhase !== null && scrollContainerRef.current) {
+      const selectedButton = scrollContainerRef.current.querySelector(`[data-phase-index="${selectedPhase}"]`);
+      if (selectedButton) {
+        selectedButton.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [selectedPhase]);
 
   // ============================================================================
   // DATA FETCHING
@@ -355,54 +445,16 @@ const ClientPortal = () => {
     });
   };
 
-  const getColorClasses = (color) => {
-    const colors = {
-      teal: {
-        bg: 'bg-[#005670]',
-        bgLight: 'bg-[#007a9a]',
-        text: 'text-[#005670]',
-        textWhite: 'text-white',
-        light: 'bg-[#e6f4f7]',
-        border: 'border-[#007a9a]',
-        ring: 'ring-[#005670]',
-        darkBg: 'bg-[#004558]',
-        textOnLight: 'text-[#004558]'
-      },
-      purple: {
-        bg: 'bg-purple-600',
-        bgLight: 'bg-purple-500',
-        text: 'text-purple-600',
-        textWhite: 'text-white',
-        light: 'bg-purple-50',
-        border: 'border-purple-200',
-        ring: 'ring-purple-500',
-        darkBg: 'bg-purple-700',
-        textOnLight: 'text-purple-700'
-      },
-      blue: {
-        bg: 'bg-blue-600',
-        bgLight: 'bg-blue-500',
-        text: 'text-blue-600',
-        textWhite: 'text-white',
-        light: 'bg-blue-50',
-        border: 'border-blue-200',
-        ring: 'ring-blue-500',
-        darkBg: 'bg-blue-700',
-        textOnLight: 'text-blue-700'
-      },
-      amber: {
-        bg: 'bg-amber-600',
-        bgLight: 'bg-amber-500',
-        text: 'text-amber-600',
-        textWhite: 'text-white',
-        light: 'bg-amber-50',
-        border: 'border-amber-200',
-        ring: 'ring-amber-500',
-        darkBg: 'bg-amber-700',
-        textOnLight: 'text-amber-700'
-      }
-    };
-    return colors[color] || colors.blue;
+  const handleScrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -280, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 280, behavior: 'smooth' });
+    }
   };
 
   // ============================================================================
@@ -449,7 +501,7 @@ const ClientPortal = () => {
   const isJourneyInitialized = journeySteps.length > 0;
   const currentPhase = selectedPhase !== null ? phases[selectedPhase] : null;
   
-  // Helper functions for currentPhase colors (explicit for Tailwind)
+  // Helper functions for currentPhase colors
   const getCurrentPhaseBg = () => {
     if (!currentPhase) return 'bg-blue-600';
     switch(currentPhase.color) {
@@ -473,6 +525,8 @@ const ClientPortal = () => {
 
   return (
     <>
+      <style>{scrollbarStyles}</style>
+      
       {showQuestionnaire && (
         <QuestionnaireModal 
           onComplete={handleQuestionnaireComplete}
@@ -522,7 +576,7 @@ const ClientPortal = () => {
           </div>
         </header>
 
-        {/* HERO SECTION - REDESIGNED */}
+        {/* HERO SECTION */}
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Welcome Card */}
@@ -633,7 +687,7 @@ const ClientPortal = () => {
           </div>
         )}
 
-        {/* MAIN CONTENT - HORIZONTAL PHASES */}
+        {/* MAIN CONTENT */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!isJourneyInitialized ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
@@ -645,165 +699,191 @@ const ClientPortal = () => {
             </div>
           ) : (
             <div>
-              {/* HORIZONTAL PHASE SELECTOR */}
+              {/* HORIZONTAL SCROLLABLE PHASE SELECTOR */}
               <div className="mb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {phases.map((phase, index) => {
-                    const PhaseIcon = phase.icon;
-                    const colors = getColorClasses(phase.color);
-                    const isSelected = selectedPhase === index;
-                    const isLocked = phase.status === 'locked';
-                    const isCompleted = phase.status === 'completed';
+                {/* Navigation Hint */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-gray-700">Your Project Phases</h3>
+                  <span className="text-xs text-gray-500 hidden md:block">
+                    ← Scroll to see all phases →
+                  </span>
+                </div>
 
-                    // Get explicit class names based on phase color
-                    const getBgLight = () => {
-                      switch(phase.color) {
-                        case 'teal': return 'bg-[#e6f4f7]';
-                        case 'purple': return 'bg-purple-50';
-                        case 'blue': return 'bg-blue-50';
-                        case 'amber': return 'bg-amber-50';
-                        default: return 'bg-blue-50';
-                      }
-                    };
-                    const getBorder = () => {
-                      switch(phase.color) {
-                        case 'teal': return 'border-[#007a9a]';
-                        case 'purple': return 'border-purple-200';
-                        case 'blue': return 'border-blue-200';
-                        case 'amber': return 'border-amber-200';
-                        default: return 'border-blue-200';
-                      }
-                    };
-                    const getRing = () => {
-                      switch(phase.color) {
-                        case 'teal': return 'ring-[#005670]';
-                        case 'purple': return 'ring-purple-500';
-                        case 'blue': return 'ring-blue-500';
-                        case 'amber': return 'ring-amber-500';
-                        default: return 'ring-blue-500';
-                      }
-                    };
-                    const getBg = () => {
-                      switch(phase.color) {
-                        case 'teal': return 'bg-[#005670]';
-                        case 'purple': return 'bg-purple-600';
-                        case 'blue': return 'bg-blue-600';
-                        case 'amber': return 'bg-amber-600';
-                        default: return 'bg-blue-600';
-                      }
-                    };
-                    const getText = () => {
-                      switch(phase.color) {
-                        case 'teal': return 'text-[#005670]';
-                        case 'purple': return 'text-purple-600';
-                        case 'blue': return 'text-blue-600';
-                        case 'amber': return 'text-amber-600';
-                        default: return 'text-blue-600';
-                      }
-                    };
-                    const getBgLight500 = () => {
-                      switch(phase.color) {
-                        case 'teal': return 'bg-[#007a9a]';
-                        case 'purple': return 'bg-purple-500';
-                        case 'blue': return 'bg-blue-500';
-                        case 'amber': return 'bg-amber-500';
-                        default: return 'bg-blue-500';
-                      }
-                    };
+                {/* Scrollable Container with Arrows */}
+                <div className="relative">
+                  {/* Left Arrow */}
+                  <button
+                    onClick={handleScrollLeft}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 border border-gray-200 transition-all"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-gray-600" />
+                  </button>
 
-                    return (
-                      <button
-                        key={phase.id}
-                        onClick={() => !isLocked && setSelectedPhase(index)}
-                        disabled={isLocked}
-                        className={`
-                          relative p-5 rounded-xl text-left transition-all cursor-pointer
-                          ${isSelected 
-                            ? `${getBgLight()} border-3 ${getBorder()} shadow-xl scale-[1.02] ring-2 ${getRing()} ring-opacity-30` 
-                            : isLocked
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200'
-                            : isCompleted
-                            ? `bg-white ${getText()} hover:shadow-md border-2 ${getBorder()}`
-                            : `bg-white border-2 border-gray-200 hover:shadow-md hover:${getBorder()}`
-                          }
-                        `}
-                      >
-                        {/* Phase Number Badge */}
-                        <div className={`
-                          absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center font-bold text-base shadow-md text-white
-                          ${isSelected ? getBg() : isCompleted ? getBg() : isLocked ? 'bg-gray-500' : getBg()}
-                        `}>
-                          {phase.id}
-                        </div>
+                  {/* Right Arrow */}
+                  <button
+                    onClick={handleScrollRight}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 border border-gray-200 transition-all"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                  </button>
 
-                        {/* Icon */}
-                        <div className={`
-                          w-12 h-12 rounded-lg flex items-center justify-center mb-3 shadow-sm
-                          ${isSelected ? getBg() : isLocked ? 'bg-gray-500' : getBg()}
-                        `}>
-                          {isLocked ? (
-                            <Lock className="w-6 h-6 text-white" />
-                          ) : (
-                            <PhaseIcon className="w-6 h-6 text-white" />
-                          )}
-                        </div>
+                  {/* Gradient Fades */}
+                  <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none" />
+                  <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none" />
 
-                        {/* Title */}
-                        <h3 className={`font-bold text-base mb-2 leading-tight ${isSelected ? 'text-gray-900' : isLocked ? 'text-gray-400' : 'text-gray-800'}`}>
-                          {phase.label}
-                        </h3>
-                        
-                        {/* Description - Only show on selected */}
-                        {isSelected && (
-                          <p className="text-xs text-gray-600 mb-2 italic leading-relaxed">
-                            {phase.description}
-                          </p>
-                        )}
+                  {/* Scrollable Phase Cards - LEBIH COMPACT */}
+                  <div 
+                    ref={scrollContainerRef}
+                    className="flex gap-3 overflow-x-auto pb-2 pt-4 px-10 scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400"
+                  >
+                    {phases.map((phase, index) => {
+                      const PhaseIcon = phase.icon;
+                      const isSelected = selectedPhase === index;
+                      const isLocked = phase.status === 'locked';
+                      const isCompleted = phase.status === 'completed';
 
-                        {/* Progress */}
-                        {!isLocked && (
-                          <div className="mb-2">
-                            <div className="h-2 rounded-full overflow-hidden bg-gray-200">
-                              <div 
-                                className={`h-full transition-all duration-500 ${getBgLight500()}`}
-                                style={{ width: `${phase.progress}%` }}
-                              />
-                            </div>
-                            <p className={`text-xs mt-1.5 font-semibold ${isSelected ? getText() : 'text-gray-600'}`}>
-                              {phase.progress}% Complete
-                            </p>
+                      // Get color classes
+                      const getBg = () => {
+                        switch(phase.color) {
+                          case 'teal': return 'bg-[#005670]';
+                          case 'purple': return 'bg-purple-600';
+                          case 'blue': return 'bg-blue-600';
+                          case 'amber': return 'bg-amber-600';
+                          default: return 'bg-blue-600';
+                        }
+                      };
+                      const getBgLight = () => {
+                        switch(phase.color) {
+                          case 'teal': return 'bg-[#e6f4f7]';
+                          case 'purple': return 'bg-purple-50';
+                          case 'blue': return 'bg-blue-50';
+                          case 'amber': return 'bg-amber-50';
+                          default: return 'bg-blue-50';
+                        }
+                      };
+                      const getBorder = () => {
+                        switch(phase.color) {
+                          case 'teal': return 'border-[#007a9a]';
+                          case 'purple': return 'border-purple-200';
+                          case 'blue': return 'border-blue-200';
+                          case 'amber': return 'border-amber-200';
+                          default: return 'border-blue-200';
+                        }
+                      };
+                      const getBgLight500 = () => {
+                        switch(phase.color) {
+                          case 'teal': return 'bg-[#007a9a]';
+                          case 'purple': return 'bg-purple-500';
+                          case 'blue': return 'bg-blue-500';
+                          case 'amber': return 'bg-amber-500';
+                          default: return 'bg-blue-500';
+                        }
+                      };
+                      const getText = () => {
+                        switch(phase.color) {
+                          case 'teal': return 'text-[#005670]';
+                          case 'purple': return 'text-purple-600';
+                          case 'blue': return 'text-blue-600';
+                          case 'amber': return 'text-amber-600';
+                          default: return 'text-blue-600';
+                        }
+                      };
+
+                      return (
+                        <button
+                          key={phase.id}
+                          data-phase-index={index}
+                          onClick={() => !isLocked && setSelectedPhase(index)}
+                          disabled={isLocked}
+                          className={`relative flex-shrink-0 w-52 p-4 rounded-xl border-2 transition-all text-left ${
+                            isSelected 
+                              ? `${getBgLight()} ${getBorder()} shadow-lg scale-105` 
+                              : isLocked
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                              : isCompleted
+                              ? `bg-white ${getBorder()} hover:shadow-md`
+                              : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300'
+                          }`}
+                        >
+                          {/* Phase Number Badge */}
+                          <div className={`absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm shadow-md text-white ${
+                            isSelected ? getBg() : isCompleted ? getBg() : isLocked ? 'bg-gray-500' : getBg()
+                          }`}>
+                            {phase.id}
                           </div>
-                        )}
 
-                        {/* Status Badge */}
-                        <div className="flex items-center gap-2">
-                          {isCompleted && (
-                            <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold ${getBg()} text-white`}>
-                              <CheckCircle className="w-3 h-3" />
-                              Done
-                            </span>
+                          {/* Icon */}
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 shadow-sm ${
+                            isSelected ? getBg() : isLocked ? 'bg-gray-500' : getBg()
+                          }`}>
+                            {isLocked ? (
+                              <Lock className="w-5 h-5 text-white" />
+                            ) : (
+                              <PhaseIcon className="w-5 h-5 text-white" />
+                            )}
+                          </div>
+
+                          {/* Title */}
+                          <h3 className={`font-bold text-sm mb-2 leading-tight ${
+                            isSelected ? 'text-gray-900' : isLocked ? 'text-gray-400' : 'text-gray-800'
+                          }`}>
+                            {phase.label}
+                          </h3>
+                          
+                          {/* Description - Only show when selected */}
+                          {isSelected && (
+                            <p className="text-xs text-gray-600 mb-2 leading-snug line-clamp-2">
+                              {phase.description}
+                            </p>
                           )}
-                          {phase.status === 'in-progress' && !isCompleted && (
-                            <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold ${getBg()} text-white`}>
-                              <Clock className="w-3 h-3" />
-                              Active
-                            </span>
+
+                          {/* Progress Bar */}
+                          {!isLocked && (
+                            <div className="mb-2">
+                              <div className="h-1.5 rounded-full overflow-hidden bg-gray-200">
+                                <div 
+                                  className={`h-full transition-all duration-500 ${getBgLight500()}`}
+                                  style={{ width: `${phase.progress}%` }}
+                                />
+                              </div>
+                              <p className={`text-xs mt-1 font-semibold ${isSelected ? getText() : 'text-gray-600'}`}>
+                                {phase.progress}% Complete
+                              </p>
+                            </div>
                           )}
-                          {isLocked && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-gray-500 text-white">
-                              <Lock className="w-3 h-3" />
-                              Locked
-                            </span>
-                          )}
-                          {phase.status === 'available' && !isCompleted && phase.status !== 'in-progress' && (
-                            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${getBg()} text-white`}>
-                              Ready
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+
+                          {/* Status Badge */}
+                          <div className="flex items-center gap-1">
+                            {isCompleted && (
+                              <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold ${getBg()} text-white`}>
+                                <CheckCircle className="w-3 h-3" />
+                                Done
+                              </span>
+                            )}
+                            {phase.status === 'in-progress' && !isCompleted && (
+                              <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold ${getBg()} text-white`}>
+                                <Clock className="w-3 h-3" />
+                                Active
+                              </span>
+                            )}
+                            {isLocked && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-500 text-white">
+                                <Lock className="w-3 h-3" />
+                                Locked
+                              </span>
+                            )}
+                            {phase.status === 'available' && !isCompleted && phase.status !== 'in-progress' && (
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getBg()} text-white`}>
+                                Ready
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -847,7 +927,7 @@ const ClientPortal = () => {
                           Here are your current milestones. We'll guide you through each one.
                         </p>
                       </div>
-                      {currentPhase.steps.map((step, stepIdx) => {
+                      {currentPhase.steps.map((step) => {
                         const isStepCompleted = step.status === 'completed';
                         const isStepInProgress = step.status === 'in-progress';
                         
@@ -903,7 +983,7 @@ const ClientPortal = () => {
                                     </div>
                                   </div>
 
-                                  {/* Action Needed Badge with Info */}
+                                  {/* Action Needed Badge */}
                                   {step.clientActionNeeded && !isStepCompleted && (
                                     <div className="flex-shrink-0">
                                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg mb-2">
@@ -995,7 +1075,7 @@ const ClientPortal = () => {
           )}
         </main>
 
-        {/* FOOTER - MINIMAL */}
+        {/* FOOTER */}
         <footer className="bg-[#005670] border-t border-[#004558] mt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
