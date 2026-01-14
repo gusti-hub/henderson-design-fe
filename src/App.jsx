@@ -1,8 +1,6 @@
-// App.js - CORRECTED VERSION
-// NO BrowserRouter here because it's already in main.jsx!
-
+// App.js - FIXED VERSION
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
 // Import your components
 import BrochureLandingPage from './pages/BrochureLandingPage';
@@ -12,6 +10,7 @@ import AdminPanel from './pages/AdminPanel';
 import InvoiceHTML from './components/InvoiceHTML';
 import QuickBooksConnect from './components/QuickBooksConnect';
 import AgreementViewer from './components/AgreementViewer';
+import ProposalEditor from './components/ProposalEditor';
 
 // ✅ Protected Route untuk Client
 const ClientProtectedRoute = ({ children }) => {
@@ -45,10 +44,23 @@ const AdminProtectedRoute = ({ children }) => {
   return children;
 };
 
+// ✅ NEW: Wrapper component untuk ProposalEditor
+const ProposalEditorWrapper = () => {
+  const { orderId, version } = useParams();
+  
+  return (
+    <AdminProtectedRoute>
+      <ProposalEditor 
+        orderId={orderId}
+        version={version}
+        onClose={() => window.close()}
+      />
+    </AdminProtectedRoute>
+  );
+};
+
 function App() {
   return (
-    // ⚠️ NO <BrowserRouter> or <Router> here!
-    // Just <Routes> because Router is already in main.jsx
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<BrochureLandingPage />} />
@@ -76,14 +88,34 @@ function App() {
           </AdminProtectedRoute>
         } 
       />
+      
+      {/* Invoice Route */}
       <Route 
         path="/invoice/:clientId/:invoiceNumber" 
         element={<InvoiceHTML />} 
       />
-
-      <Route path="/admin/quickbooks" element={<QuickBooksConnect />} />
-      <Route path="/agreement/:clientId/:agreementNumber" element={<AgreementViewer />} />
       
+      {/* ✅ FIXED: Proposal Editor Route */}
+      <Route 
+        path="/admin/proposal/:orderId/:version?" 
+        element={<ProposalEditorWrapper />}
+      />
+
+      {/* QuickBooks Route */}
+      <Route 
+        path="/admin/quickbooks" 
+        element={
+          <AdminProtectedRoute>
+            <QuickBooksConnect />
+          </AdminProtectedRoute>
+        } 
+      />
+      
+      {/* Agreement Route */}
+      <Route 
+        path="/agreement/:clientId/:agreementNumber" 
+        element={<AgreementViewer />} 
+      />
       
       {/* Catch all - redirect to home */}
       <Route path="*" element={<Navigate to="/" replace />} />

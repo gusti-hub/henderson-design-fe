@@ -294,6 +294,11 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
+  const handleOpenProposal = (orderId) => {
+    // Open proposal in new tab
+    window.open(`/admin/proposal/${orderId}`, '_blank');
+  };
+
   const handleEdit = (order) => {
     if (order.status !== 'ongoing') {
       alert('Only ongoing orders can be edited');
@@ -616,12 +621,9 @@ const AdminOrderList = ({ onOrderClick }) => {
                       </button>
 
                       <button
-                        onClick={() => {
-                          setSelectedOrderId(order._id);
-                          setShowProposalModal(true);
-                        }}
+                        onClick={() => handleOpenProposal(order._id)}
                         className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-                        title="Generate New Proposal"
+                        title="Open Proposal Editor"
                       >
                         <FileText className="w-4 h-4" />
                       </button>
