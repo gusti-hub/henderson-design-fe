@@ -54,7 +54,7 @@ const PRICING_TABLE = {
 };
 
 const COLLECTIONS = Object.keys(PRICING_TABLE);
-const BEDROOM_OPTIONS = ['1', '2', '3'];
+const BEDROOM_OPTIONS = ['1', '2', '3', 'custom'];
 
 // ==================== IMAGE LIGHTBOX COMPONENT ====================
 const ImageLightbox = ({ isOpen, onClose, imageUrl, designId, designTitle }) => {
@@ -415,6 +415,8 @@ const ClientManagement = () => {
 
   const [approvalMode, setApprovalMode] = useState('approve');
   const [approvalData, setApprovalData] = useState({ clientCode: '', floorPlan: '', rejectionReason: '' });
+  const [bedroomMode, setBedroomMode] = useState(''); // '1' | '2' | '3' | 'custom' | ''
+
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -461,7 +463,6 @@ const ClientManagement = () => {
         journeyData = await journeyRes.json();
       }
 
-      console.log('12345');
       
       const questionnaireRes = await fetch(`${backendServer}/api/questionnaires/client/${clientId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -603,8 +604,16 @@ const ClientManagement = () => {
       
       // ✅ Bedroom count TIDAK required untuk Custom atau Library
       if (formData.packageType !== 'library' && formData.packageType !== 'custom') {
-        if (!formData.bedroomCount) newErrors.bedroomCount = 'Required';
+        if (!formData.bedroomCount) {
+          newErrors.bedroomCount = 'Required';
+        } else {
+          const n = Number(formData.bedroomCount);
+          if (!Number.isFinite(n) || n < 1) {
+            newErrors.bedroomCount = 'Must be a positive number';
+          }
+        }
       }
+
     }
     
     // Password validation
@@ -636,6 +645,7 @@ const ClientManagement = () => {
     setApprovalData({ clientCode: '', floorPlan: '', rejectionReason: '' });
     setErrors({});
     setShowPasswordField(false);
+    setBedroomMode('');
   }, []);
 
   const closeModal = useCallback(() => {
@@ -1020,6 +1030,8 @@ const ClientManagement = () => {
           formLoading={formLoading}
           onClose={closeModal}
           onSubmit={handleFormSubmit}
+          bedroomMode={bedroomMode}
+          setBedroomMode={setBedroomMode}
         />
       )}
 
@@ -1297,7 +1309,9 @@ const FormModal = React.memo(
     floorPlans,
     formLoading,
     onClose,
-    onSubmit
+    onSubmit,
+    bedroomMode,
+    setBedroomMode
   }) => {
     return (
       <Modal
@@ -1384,8 +1398,8 @@ const FormModal = React.memo(
                     }))}
                     options={[
                       { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
-                      { value: 'Nalu Collection', label: 'Nalu Collection' },
-                      { value: 'Lani', label: 'Lani' },
+                      { value: 'Nalu Collection', label: 'Nalu (Developer)' },
+                      { value: 'Lani', label: 'Lani (Developer)' },
                       { value: 'Custom', label: '✨ Custom (Manual Input)' } // ✅ BARU
                     ]}
                     error={errors.collection}
@@ -1438,17 +1452,57 @@ const FormModal = React.memo(
                   // ========================================
                   <div className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
-                      <Select
-                        label="Bedroom Count"
-                        value={formData.bedroomCount}
-                        onChange={(v) => setFormData(prev => ({ ...prev, bedroomCount: v }))}
-                        options={BEDROOM_OPTIONS.map(b => ({ 
-                          value: b, 
-                          label: `${b} Bedroom` 
-                        }))}
-                        error={errors.bedroomCount}
-                        required
-                      />
+                    {/* Bedroom Count (1/2/3/custom) */}
+                    <Select
+                      label="Bedroom Count"
+                      value={
+                        bedroomMode
+                          ? bedroomMode
+                          : (['1', '2', '3'].includes(String(formData.bedroomCount)) ? String(formData.bedroomCount) : '')
+                      }
+                      onChange={(v) => {
+                        setBedroomMode(v);
+
+                        if (v === 'custom') {
+                          // kosongkan dulu supaya user input angka
+                          setFormData(prev => ({ ...prev, bedroomCount: '' }));
+                        } else {
+                          // normal option: langsung simpan angka ke bedroomCount (existing field)
+                          setFormData(prev => ({ ...prev, bedroomCount: v }));
+                        }
+                      }}
+                      options={BEDROOM_OPTIONS.map((b) => ({
+                        value: b,
+                        label: b === 'custom' ? 'Custom (Input Qty)' : `${b} Bedroom + Den`,
+                      }))}
+                      error={errors.bedroomCount}
+                      required
+                    />
+
+                    {/* Custom bedroom input */}
+                    {bedroomMode === 'custom' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Bedroom Qty <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={formData.bedroomCount || ''}
+                          onChange={(e) => {
+                            const val = e.target.value; // string
+                            // ✅ tetap pakai existing field bedroomCount
+                            setFormData(prev => ({ ...prev, bedroomCount: val }));
+                          }}
+                          placeholder="e.g. 4"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition-all"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Bedroom + Den
+                        </p>
+                      </div>
+                    )}
+
                     </div>
                     
                     {formData.calculatedAmount > 0 && (

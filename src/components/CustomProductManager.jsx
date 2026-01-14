@@ -140,6 +140,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         return;
       }
       setFloorPlanFile(file);
+      // ✅ Clear existing floor plan when new file selected
+      setExistingFloorPlan(null);
     }
   };
 
@@ -154,137 +156,180 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     if (floorPlanFile) {
       return URL.createObjectURL(floorPlanFile);
     }
-    if (existingFloorPlan?.data) {
+    if (existingFloorPlan?.url) {
+      // ✅ Use S3 URL directly
+      return existingFloorPlan.url;
+    }
+
+     if (existingFloorPlan?.data) {
       return `data:${existingFloorPlan.contentType};base64,${existingFloorPlan.data}`;
     }
     return null;
   };
 
-  const handleSave = async () => {
-    const emptyProducts = customProducts.filter(p => !p.name || p.unitPrice <= 0);
-    if (emptyProducts.length > 0) {
-      alert('❌ All products must have a Name and Price!');
-      return;
-    }
+const handleSave = async () => {
+  const emptyProducts = customProducts.filter(p => !p.name || p.unitPrice <= 0);
+  if (emptyProducts.length > 0) {
+    alert('❌ All products must have a Name and Price!');
+    return;
+  }
 
-    setSaving(true);
-    try {
-      const token = localStorage.getItem('token');
-      
-      // STEP 1: Save manual products to master collection
-      const manualProducts = customProducts.filter(p => p.sourceType === 'manual');
-      
-      for (const product of manualProducts) {
-        if (!product._id.toString().startsWith('temp_')) {
-          continue;
-        }
+  setSaving(true);
+  try {
+    const token = localStorage.getItem('token');
+    
+    // STEP 1: Save manual products to master collection
+    const manualProducts = customProducts.filter(p => p.sourceType === 'manual');
+    
+    for (const product of manualProducts) {
+      if (!product._id.toString().startsWith('temp_')) {
+        continue;
+      }
 
-        try {
-          const productPayload = {
-            orderId: order._id,
-            productData: {
-              name: product.name,
-              product_id: product.product_id,
-              category: product.category,
-              specifications: product.selectedOptions.specifications,
-              finish: product.selectedOptions.finish,
-              fabric: product.selectedOptions.fabric,
-              size: product.selectedOptions.size,
-              unitPrice: product.unitPrice,
-              images: product.selectedOptions.images,
-              uploadedImages: product.selectedOptions.uploadedImages,
-              customAttributes: product.selectedOptions.customAttributes || {}
-            }
-          };
-
-          const response = await fetch(
-            `${backendServer}/api/products/custom-order-product`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(productPayload),
-            }
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ Product saved to master collection:', result.data._id);
-            product._id = result.data._id;
+      try {
+        const productPayload = {
+          orderId: order._id,
+          productData: {
+            name: product.name,
+            product_id: product.product_id,
+            category: product.category,
+            specifications: product.selectedOptions.specifications,
+            finish: product.selectedOptions.finish,
+            fabric: product.selectedOptions.fabric,
+            size: product.selectedOptions.size,
+            unitPrice: product.unitPrice,
+            images: product.selectedOptions.images,
+            uploadedImages: product.selectedOptions.uploadedImages,
+            customAttributes: product.selectedOptions.customAttributes || {}
           }
-        } catch (err) {
-          console.error('Error saving product to master:', err);
-        }
-      }
-
-      // STEP 2: Prepare floor plan data
-      let floorPlanData = existingFloorPlan;
-      
-      if (floorPlanFile) {
-        const base64 = await fileToBase64(floorPlanFile);
-        floorPlanData = {
-          filename: floorPlanFile.name,
-          contentType: floorPlanFile.type,
-          data: base64,
-          size: floorPlanFile.size,
-          notes: floorPlanNotes,
-          uploadedAt: new Date().toISOString()
         };
-      } else if (existingFloorPlan && floorPlanNotes !== existingFloorPlan.notes) {
-        floorPlanData = {
-          ...existingFloorPlan,
-          notes: floorPlanNotes
-        };
-      }
 
-      // STEP 3: Save to order
-      const cleanedProducts = customProducts.map(product => ({
-        ...product,
-        selectedOptions: {
-          ...product.selectedOptions,
-          uploadedImages: product.selectedOptions.uploadedImages?.map(img => ({
-            filename: img.filename,
-            contentType: img.contentType,
-            data: img.data,
-            size: img.size
-          })) || []
+        const response = await fetch(
+          `${backendServer}/api/products/custom-order-product`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(productPayload),
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Product saved to master collection:', result.data._id);
+          product._id = result.data._id;
         }
-      }));
-
-      const orderResponse = await fetch(
-        `${backendServer}/api/orders/${order._id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            selectedProducts: cleanedProducts,
-            customFloorPlan: floorPlanData,
-            status: 'ongoing',
-            step: 2
-          }),
-        }
-      );
-
-      const orderData = await orderResponse.json();
-
-      if (orderData) {
-        alert('✅ Products and floor plan saved successfully!');
-        if (onSave) onSave(customProducts);
-      } else {
-        alert('❌ Failed to save');
+      } catch (err) {
+        console.error('Error saving product to master:', err);
       }
-    } catch (error) {
-      console.error('Error saving:', error);
-      alert('❌ Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
     }
-  };
+
+    // ✅ STEP 2: Upload floor plan to S3 FIRST (if new file)
+    let floorPlanData = existingFloorPlan;
+    
+    if (floorPlanFile) {
+      try {
+        console.log('📤 Uploading floor plan to S3...');
+        
+        const formData = new FormData();
+        formData.append('floorPlan', floorPlanFile);
+        formData.append('notes', floorPlanNotes);
+
+        const floorPlanResponse = await fetch(
+          `${backendServer}/api/orders/${order._id}/floor-plan`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData
+          }
+        );
+
+        if (!floorPlanResponse.ok) {
+          const errorData = await floorPlanResponse.json();
+          throw new Error(errorData.message || 'Floor plan upload failed');
+        }
+
+        const result = await floorPlanResponse.json();
+        
+        if (result.success && result.data) {
+          floorPlanData = result.data;
+          console.log('✅ Floor plan uploaded to S3:', floorPlanData.url);
+        } else {
+          throw new Error('Invalid floor plan upload response');
+        }
+      } catch (err) {
+        console.error('❌ Error uploading floor plan:', err);
+        alert(`⚠️ Floor plan upload failed: ${err.message}`);
+        setSaving(false);
+        return; // ✅ Stop save if floor plan upload fails
+      }
+    } else if (existingFloorPlan && floorPlanNotes !== existingFloorPlan.notes) {
+      // Only update notes
+      floorPlanData = {
+        ...existingFloorPlan,
+        notes: floorPlanNotes
+      };
+    }
+
+    // ✅ STEP 3: Save to order with S3 URLs
+    const cleanedProducts = customProducts.map(product => ({
+      ...product,
+      selectedOptions: {
+        ...product.selectedOptions,
+      }
+    }));
+
+    console.log('💾 Saving order with floor plan:', floorPlanData);
+
+    const orderResponse = await fetch(
+      `${backendServer}/api/orders/${order._id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          selectedProducts: cleanedProducts,
+          customFloorPlan: floorPlanData, // ✅ Will be S3 URL now
+          status: 'ongoing',
+          step: 2
+        }),
+      }
+    );
+
+    if (!orderResponse.ok) {
+      const errorData = await orderResponse.json();
+      throw new Error(errorData.message || 'Failed to save order');
+    }
+
+    const orderData = await orderResponse.json();
+
+    if (orderData) {
+      console.log('✅ Order saved successfully');
+      alert('✅ Products and floor plan saved successfully!');
+      
+      // ✅ Update local state
+      if (floorPlanData) {
+        setExistingFloorPlan(floorPlanData);
+        setFloorPlanFile(null); // Clear file input
+      }
+      
+      if (onSave) onSave(customProducts);
+    } else {
+      alert('❌ Failed to save');
+    }
+  } catch (error) {
+    console.error('❌ Error saving:', error);
+    alert(`❌ Failed to save: ${error.message}`);
+  } finally {
+    setSaving(false);
+  }
+};
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -520,6 +565,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               key={product._id}
               product={product}
               index={index}
+              order={order}  // ✅ ADD THIS LINE
               expanded={expandedProduct === index}
               onToggleExpand={() => setExpandedProduct(expandedProduct === index ? null : index)}
               onUpdate={updateProduct}
@@ -602,7 +648,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
 // [Include the complete ProductCard component from previous response]
 
 // ==================== PRODUCT CARD COMPONENT ====================
-const ProductCard = ({ product, index, expanded, onToggleExpand, onUpdate, onRemove }) => {
+const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate, onRemove }) => {
   const [customAttrs, setCustomAttrs] = useState(
     product.selectedOptions?.customAttributes || {}
   );
@@ -637,18 +683,25 @@ const ProductCard = ({ product, index, expanded, onToggleExpand, onUpdate, onRem
       });
     }
     
-    // Uploaded images
-    if (product.selectedOptions?.uploadedImages?.length > 0) {
-      product.selectedOptions.uploadedImages.forEach(img => {
-        const url = img.previewUrl || `data:${img.contentType};base64,${img.data}`;
-        images.push({
-          url,
-          type: 'uploaded',
-          source: 'uploaded',
-          filename: img.filename
-        });
+  // Uploaded images
+  if (product.selectedOptions?.uploadedImages?.length > 0) {
+    product.selectedOptions.uploadedImages.forEach((img) => {
+      const url =
+        img.url ||                         // ✅ dari S3 (backend response)
+        img.previewUrl ||                  // ✅ dari FE (sebelum upload)
+        (img.data ? `data:${img.contentType};base64,${img.data}` : null); // ✅ fallback base64
+
+      if (!url) return;
+
+      images.push({
+        url,
+        type: 'uploaded',
+        source: 'uploaded',
+        filename: img.filename,
       });
-    }
+    });
+  }
+
     
     return images;
   };
@@ -1035,6 +1088,7 @@ const ProductCard = ({ product, index, expanded, onToggleExpand, onUpdate, onRem
 
               {/* Image Upload */}
               <ImageUploadField
+                orderId={order._id}  // ⭐ ADD THIS LINE
                 images={product.selectedOptions?.uploadedImages || []}
                 onImagesChange={(images) => onUpdate(index, 'selectedOptions.uploadedImages', images)}
               />
