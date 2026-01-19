@@ -1,8 +1,11 @@
+// components/CustomProductManager.jsx
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, FileText, Loader2, AlertCircle, Library, Lock, Edit2, Upload, File, X, Eye , ImageIcon} from 'lucide-react';
+import { Plus, Trash2, Save, FileText, Loader2, AlertCircle, Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
 import ImageUploadField from './ImageUploadField';
+import VendorSearchDropdown from './VendorSearchDropdown';
 
 const CustomProductManager = ({ order, onSave, onBack }) => {
   const [customProducts, setCustomProducts] = useState([]);
@@ -42,6 +45,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         quantity: 1,
         unitPrice: defaultVariant?.price || 0,
         finalPrice: defaultVariant?.price || 0,
+        vendor: null,
         sourceType: 'library',
         isEditable: false,
         selectedOptions: {
@@ -58,7 +62,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         }
       };
     });
-
     setCustomProducts(prev => [...prev, ...newProducts]);
   };
 
@@ -72,6 +75,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       quantity: 1,
       unitPrice: 0,
       finalPrice: 0,
+      vendor: null,
       sourceType: 'manual',
       isEditable: true,
       selectedOptions: {
@@ -88,43 +92,42 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     }]);
   };
 
-    const updateProduct = (index, field, value) => {
+  const updateProduct = (index, field, value) => {
     setCustomProducts(prev => {
-        const updated = [...prev];
-        const item = updated[index];
-        if (!item) return prev;
+      const updated = [...prev];
+      const item = updated[index];
+      if (!item) return prev;
 
-        const isLocked = !item.isEditable;
-        const allowedWhenLocked = new Set(['quantity']); // ✅ library boleh ubah quantity
+      const isLocked = !item.isEditable;
+      const allowedWhenLocked = new Set(['quantity', 'vendor']);
 
-        if (isLocked && !allowedWhenLocked.has(field)) {
-        console.warn('Library products cannot be edited except quantity');
+      if (isLocked && !allowedWhenLocked.has(field)) {
+        console.warn('Library products cannot be edited except quantity and vendor');
         return prev;
-        }
+      }
 
-        // Update nested selectedOptions.*
-        if (field.startsWith('selectedOptions.')) {
+      // Update nested selectedOptions.*
+      if (field.startsWith('selectedOptions.')) {
         const optionField = field.split('.')[1];
         item.selectedOptions = {
-            ...item.selectedOptions,
-            [optionField]: value
+          ...item.selectedOptions,
+          [optionField]: value
         };
-        } else {
+      } else {
         item[field] = value;
-        }
+      }
 
-        // ✅ Recalc finalPrice jika quantity / unitPrice berubah
-        if (field === 'unitPrice' || field === 'quantity') {
+      // Recalc finalPrice
+      if (field === 'unitPrice' || field === 'quantity') {
         const qty = Number(item.quantity) || 1;
         const price = Number(item.unitPrice) || 0;
         item.finalPrice = qty * price;
-        }
+      }
 
-        updated[index] = { ...item };
-        return updated;
+      updated[index] = { ...item };
+      return updated;
     });
-    };
-
+  };
 
   const removeProduct = (index) => {
     if (window.confirm('Remove this product?')) {
@@ -140,7 +143,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         return;
       }
       setFloorPlanFile(file);
-      // ✅ Clear existing floor plan when new file selected
       setExistingFloorPlan(null);
     }
   };
@@ -151,193 +153,133 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     setFloorPlanNotes('');
   };
 
-  // ✅ Get floor plan preview URL
   const getFloorPlanPreviewUrl = () => {
     if (floorPlanFile) {
       return URL.createObjectURL(floorPlanFile);
     }
     if (existingFloorPlan?.url) {
-      // ✅ Use S3 URL directly
       return existingFloorPlan.url;
     }
-
-     if (existingFloorPlan?.data) {
+    if (existingFloorPlan?.data) {
       return `data:${existingFloorPlan.contentType};base64,${existingFloorPlan.data}`;
     }
     return null;
   };
 
-const handleSave = async () => {
-  const emptyProducts = customProducts.filter(p => !p.name || p.unitPrice <= 0);
-  if (emptyProducts.length > 0) {
-    alert('❌ All products must have a Name and Price!');
-    return;
-  }
+  const handleSave = async () => {
+    // ✅ Removed vendor validation - vendor is now optional
+    const emptyProducts = customProducts.filter(p => !p.name || p.unitPrice <= 0);
+    if (emptyProducts.length > 0) {
+      alert('❌ All products must have a Name and Price!');
+      return;
+    }
 
-  setSaving(true);
-  try {
-    const token = localStorage.getItem('token');
-    
-    // STEP 1: Save manual products to master collection
-    const manualProducts = customProducts.filter(p => p.sourceType === 'manual');
-    
-    for (const product of manualProducts) {
-      if (!product._id.toString().startsWith('temp_')) {
-        continue;
-      }
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // STEP 1: Upload floor plan to S3 FIRST (if new file)
+      let floorPlanData = existingFloorPlan;
+      
+      if (floorPlanFile) {
+        try {
+          console.log('📤 Uploading floor plan to S3...');
+          
+          const formData = new FormData();
+          formData.append('floorPlan', floorPlanFile);
+          formData.append('notes', floorPlanNotes);
 
-      try {
-        const productPayload = {
-          orderId: order._id,
-          productData: {
-            name: product.name,
-            product_id: product.product_id,
-            category: product.category,
-            specifications: product.selectedOptions.specifications,
-            finish: product.selectedOptions.finish,
-            fabric: product.selectedOptions.fabric,
-            size: product.selectedOptions.size,
-            unitPrice: product.unitPrice,
-            images: product.selectedOptions.images,
-            uploadedImages: product.selectedOptions.uploadedImages,
-            customAttributes: product.selectedOptions.customAttributes || {}
+          const floorPlanResponse = await fetch(
+            `${backendServer}/api/orders/${order._id}/floor-plan`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              body: formData
+            }
+          );
+
+          if (!floorPlanResponse.ok) {
+            const errorData = await floorPlanResponse.json();
+            throw new Error(errorData.message || 'Floor plan upload failed');
           }
+
+          const result = await floorPlanResponse.json();
+          
+          if (result.success && result.data) {
+            floorPlanData = result.data;
+            console.log('✅ Floor plan uploaded to S3:', floorPlanData.url);
+          } else {
+            throw new Error('Invalid floor plan upload response');
+          }
+        } catch (err) {
+          console.error('❌ Error uploading floor plan:', err);
+          alert(`⚠️ Floor plan upload failed: ${err.message}`);
+          setSaving(false);
+          return;
+        }
+      } else if (existingFloorPlan && floorPlanNotes !== existingFloorPlan.notes) {
+        floorPlanData = {
+          ...existingFloorPlan,
+          notes: floorPlanNotes
         };
-
-        const response = await fetch(
-          `${backendServer}/api/products/custom-order-product`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(productPayload),
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('✅ Product saved to master collection:', result.data._id);
-          product._id = result.data._id;
-        }
-      } catch (err) {
-        console.error('Error saving product to master:', err);
       }
-    }
 
-    // ✅ STEP 2: Upload floor plan to S3 FIRST (if new file)
-    let floorPlanData = existingFloorPlan;
-    
-    if (floorPlanFile) {
-      try {
-        console.log('📤 Uploading floor plan to S3...');
+      // STEP 2: Save to order directly
+      const cleanedProducts = customProducts.map(product => ({
+        ...product,
+        vendor: product.vendor || null, // ✅ Allow null vendor
+        selectedOptions: {
+          ...product.selectedOptions,
+        }
+      }));
+
+      console.log('💾 Saving order with products and floor plan');
+
+      const orderResponse = await fetch(
+        `${backendServer}/api/orders/${order._id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            selectedProducts: cleanedProducts,
+            customFloorPlan: floorPlanData,
+            status: 'ongoing',
+            step: 2
+          }),
+        }
+      );
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.message || 'Failed to save order');
+      }
+
+      const orderData = await orderResponse.json();
+
+      if (orderData) {
+        console.log('✅ Order saved successfully');
+        alert('✅ Products and floor plan saved successfully!');
         
-        const formData = new FormData();
-        formData.append('floorPlan', floorPlanFile);
-        formData.append('notes', floorPlanNotes);
-
-        const floorPlanResponse = await fetch(
-          `${backendServer}/api/orders/${order._id}/floor-plan`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            body: formData
-          }
-        );
-
-        if (!floorPlanResponse.ok) {
-          const errorData = await floorPlanResponse.json();
-          throw new Error(errorData.message || 'Floor plan upload failed');
+        if (floorPlanData) {
+          setExistingFloorPlan(floorPlanData);
+          setFloorPlanFile(null);
         }
-
-        const result = await floorPlanResponse.json();
         
-        if (result.success && result.data) {
-          floorPlanData = result.data;
-          console.log('✅ Floor plan uploaded to S3:', floorPlanData.url);
-        } else {
-          throw new Error('Invalid floor plan upload response');
-        }
-      } catch (err) {
-        console.error('❌ Error uploading floor plan:', err);
-        alert(`⚠️ Floor plan upload failed: ${err.message}`);
-        setSaving(false);
-        return; // ✅ Stop save if floor plan upload fails
+        if (onSave) onSave(customProducts);
+      } else {
+        alert('❌ Failed to save');
       }
-    } else if (existingFloorPlan && floorPlanNotes !== existingFloorPlan.notes) {
-      // Only update notes
-      floorPlanData = {
-        ...existingFloorPlan,
-        notes: floorPlanNotes
-      };
+    } catch (error) {
+      console.error('❌ Error saving:', error);
+      alert(`❌ Failed to save: ${error.message}`);
+    } finally {
+      setSaving(false);
     }
-
-    // ✅ STEP 3: Save to order with S3 URLs
-    const cleanedProducts = customProducts.map(product => ({
-      ...product,
-      selectedOptions: {
-        ...product.selectedOptions,
-      }
-    }));
-
-    console.log('💾 Saving order with floor plan:', floorPlanData);
-
-    const orderResponse = await fetch(
-      `${backendServer}/api/orders/${order._id}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          selectedProducts: cleanedProducts,
-          customFloorPlan: floorPlanData, // ✅ Will be S3 URL now
-          status: 'ongoing',
-          step: 2
-        }),
-      }
-    );
-
-    if (!orderResponse.ok) {
-      const errorData = await orderResponse.json();
-      throw new Error(errorData.message || 'Failed to save order');
-    }
-
-    const orderData = await orderResponse.json();
-
-    if (orderData) {
-      console.log('✅ Order saved successfully');
-      alert('✅ Products and floor plan saved successfully!');
-      
-      // ✅ Update local state
-      if (floorPlanData) {
-        setExistingFloorPlan(floorPlanData);
-        setFloorPlanFile(null); // Clear file input
-      }
-      
-      if (onSave) onSave(customProducts);
-    } else {
-      alert('❌ Failed to save');
-    }
-  } catch (error) {
-    console.error('❌ Error saving:', error);
-    alert(`❌ Failed to save: ${error.message}`);
-  } finally {
-    setSaving(false);
-  }
-};
-
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   };
 
   const previewUrl = getFloorPlanPreviewUrl();
@@ -381,7 +323,6 @@ const handleSave = async () => {
               Manual Input
             </button>
             
-            {/* ✅ SINGLE SAVE BUTTON */}
             <button
               onClick={handleSave}
               disabled={saving}
@@ -420,7 +361,7 @@ const handleSave = async () => {
         )}
       </div>
 
-      {/* ✅ UPDATED: Floor Plan Upload with Preview */}
+      {/* Floor Plan Upload */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -454,10 +395,8 @@ const handleSave = async () => {
           </div>
         ) : (
           <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-            {/* ✅ File Info & Preview */}
             <div className="flex items-start gap-4 p-4">
-              {/* Thumbnail/Icon */}
-              <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                 {isImageFile && previewUrl ? (
                   <img
                     src={previewUrl}
@@ -469,7 +408,6 @@ const handleSave = async () => {
                 )}
               </div>
               
-              {/* File Details */}
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -491,7 +429,6 @@ const handleSave = async () => {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* ✅ Preview Button */}
                     {previewUrl && (
                       <button
                         onClick={() => setShowFloorPlanPreview(true)}
@@ -501,7 +438,6 @@ const handleSave = async () => {
                         <Eye className="w-5 h-5" />
                       </button>
                     )}
-                    {/* Remove Button */}
                     <button
                       onClick={removeFloorPlan}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -512,7 +448,6 @@ const handleSave = async () => {
                   </div>
                 </div>
                 
-                {/* Notes */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Notes
@@ -565,7 +500,7 @@ const handleSave = async () => {
               key={product._id}
               product={product}
               index={index}
-              order={order}  // ✅ ADD THIS LINE
+              order={order}
               expanded={expandedProduct === index}
               onToggleExpand={() => setExpandedProduct(expandedProduct === index ? null : index)}
               onUpdate={updateProduct}
@@ -575,7 +510,7 @@ const handleSave = async () => {
         )}
       </div>
 
-      {/* ✅ REMOVED: Duplicate Footer Summary - Only keep products count info */}
+      {/* Products Summary */}
       {customProducts.length > 0 && (
         <div className="bg-gray-100 rounded-xl p-4 mt-6">
           <div className="flex items-center justify-between text-sm">
@@ -598,7 +533,7 @@ const handleSave = async () => {
         </div>
       )}
 
-      {/* ✅ Floor Plan Preview Modal */}
+      {/* Floor Plan Preview Modal */}
       {showFloorPlanPreview && previewUrl && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setShowFloorPlanPreview(false)}>
           <div className="max-w-6xl max-h-[90vh] bg-white rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -644,9 +579,6 @@ const handleSave = async () => {
   );
 };
 
-// ProductCard component remains the same as before...
-// [Include the complete ProductCard component from previous response]
-
 // ==================== PRODUCT CARD COMPONENT ====================
 const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate, onRemove }) => {
   const [customAttrs, setCustomAttrs] = useState(
@@ -657,11 +589,9 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // ✅ Get all images (URL + uploaded)
   const getAllImages = () => {
     const images = [];
     
-    // Primary image
     if (product.selectedOptions?.image) {
       images.push({
         url: product.selectedOptions.image,
@@ -670,7 +600,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
       });
     }
     
-    // Additional URL images
     if (product.selectedOptions?.images?.length > 0) {
       product.selectedOptions.images.forEach(url => {
         if (url && !images.find(img => img.url === url)) {
@@ -683,25 +612,23 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
       });
     }
     
-  // Uploaded images
-  if (product.selectedOptions?.uploadedImages?.length > 0) {
-    product.selectedOptions.uploadedImages.forEach((img) => {
-      const url =
-        img.url ||                         // ✅ dari S3 (backend response)
-        img.previewUrl ||                  // ✅ dari FE (sebelum upload)
-        (img.data ? `data:${img.contentType};base64,${img.data}` : null); // ✅ fallback base64
+    if (product.selectedOptions?.uploadedImages?.length > 0) {
+      product.selectedOptions.uploadedImages.forEach((img) => {
+        const url =
+          img.url ||
+          img.previewUrl ||
+          (img.data ? `data:${img.contentType};base64,${img.data}` : null);
 
-      if (!url) return;
+        if (!url) return;
 
-      images.push({
-        url,
-        type: 'uploaded',
-        source: 'uploaded',
-        filename: img.filename,
+        images.push({
+          url,
+          type: 'uploaded',
+          source: 'uploaded',
+          filename: img.filename,
+        });
       });
-    });
-  }
-
+    }
     
     return images;
   };
@@ -732,12 +659,11 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
 
   return (
     <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200">
-      {/* Compact Header with Thumbnail */}
+      {/* Compact Header */}
       <div className="p-4">
         <div className="flex items-center gap-4">
-          {/* ✅ Clickable Thumbnail */}
           <div 
-            className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 cursor-pointer hover:border-[#005670] transition-colors"
+            className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 cursor-pointer hover:border-[#005670] transition-colors relative"
             onClick={() => allImages.length > 0 && setShowImageGallery(true)}
             title="Click to view images"
           >
@@ -756,7 +682,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 <ImageIcon className="w-8 h-8" />
               </div>
             )}
-            {/* Image Count Badge */}
             {allImages.length > 1 && (
               <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
                 +{allImages.length - 1}
@@ -764,7 +689,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
             )}
           </div>
 
-          {/* Product Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
@@ -785,7 +709,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 )}
               </span>
             </div>
-
             <h4 className="font-bold text-gray-900 truncate">
               {product.name || 'Untitled Product'}
             </h4>
@@ -793,7 +716,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               {product.product_id} • Qty: {product.quantity} • ${product.finalPrice.toFixed(2)}
             </p>
             
-            {/* ✅ Show image count */}
             {allImages.length > 0 && (
               <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                 <ImageIcon className="w-3 h-3" />
@@ -802,9 +724,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
-            {/* View Images Button */}
             {allImages.length > 0 && (
               <button
                 onClick={() => setShowImageGallery(true)}
@@ -822,7 +742,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
             >
               <Edit2 className="w-5 h-5 text-gray-600" />
             </button>
-
             <button
               onClick={() => onRemove(index)}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -834,14 +753,13 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
         </div>
       </div>
 
-      {/* ✅ Image Gallery Modal */}
+      {/* Image Gallery Modal */}
       {showImageGallery && allImages.length > 0 && (
         <div 
           className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
           onClick={() => setShowImageGallery(false)}
         >
           <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
             <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 z-10">
               <div className="flex items-center justify-between text-white">
                 <div>
@@ -859,7 +777,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               </div>
             </div>
 
-            {/* Main Image */}
             <div className="flex items-center justify-center min-h-[60vh]">
               <img
                 src={allImages[currentImageIndex].url}
@@ -873,7 +790,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               />
             </div>
 
-            {/* Navigation Arrows */}
             {allImages.length > 1 && (
               <>
                 <button
@@ -895,7 +811,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               </>
             )}
 
-            {/* Thumbnail Strip */}
             {allImages.length > 1 && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
                 <div className="flex gap-2 overflow-x-auto justify-center">
@@ -926,7 +841,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
       {/* Expanded Content */}
       {expanded && (
         <div className="p-6 border-t border-gray-200 space-y-6">
-          {/* Lock Notice for Library Products */}
           {product.sourceType === 'library' && (
             <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
               <div className="flex items-start gap-3">
@@ -936,7 +850,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                     Read-Only Product
                   </p>
                   <p className="text-xs text-purple-700 mt-1">
-                    This product is from the library and cannot be edited. Only quantity can be changed.
+                    This product is from the library. Only quantity and vendor can be changed.
                   </p>
                 </div>
               </div>
@@ -957,7 +871,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Product Name *
@@ -970,7 +883,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category/Location
@@ -983,7 +895,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Quantity *
@@ -996,7 +907,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Unit Price ($) *
@@ -1011,7 +921,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
-
             <div className="flex items-end">
               <div className="w-full p-3 bg-gray-50 rounded-lg border border-gray-300">
                 <p className="text-xs text-gray-500 mb-1">Total Price</p>
@@ -1022,14 +931,24 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
             </div>
           </div>
 
-          {/* ✅ REMOVED: Specifications for manual products */}
+          {/* ✅ VENDOR FIELD - Optional with label change */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Vendor (Optional)
+            </label>
+            <VendorSearchDropdown
+              selectedVendor={product.vendor}
+              onSelectVendor={(vendorId) => onUpdate(index, 'vendor', vendorId)}
+              disabled={false}
+            />
+          </div>
+
           {product.isEditable && (
             <>
-              {/* Custom Attributes Section */}
+              {/* Custom Attributes */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-gray-900">Custom Attributes</h4>
                 
-                {/* Existing Custom Attributes */}
                 {Object.keys(customAttrs).length > 0 && (
                   <div className="space-y-2">
                     {Object.entries(customAttrs).map(([key, value]) => (
@@ -1055,7 +974,6 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                   </div>
                 )}
 
-                {/* Add New Custom Attribute */}
                 <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl">
                   <p className="text-sm font-medium text-gray-700 mb-3">
                     Add Custom Attribute
@@ -1088,7 +1006,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
 
               {/* Image Upload */}
               <ImageUploadField
-                orderId={order._id}  // ⭐ ADD THIS LINE
+                orderId={order._id}
                 images={product.selectedOptions?.uploadedImages || []}
                 onImagesChange={(images) => onUpdate(index, 'selectedOptions.uploadedImages', images)}
               />
@@ -1107,7 +1025,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 />
               </div>
 
-              {/* Notes */}
+              {/* ✅ CHANGED LABEL: Additional Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Additional Notes
@@ -1116,8 +1034,8 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                   value={product.selectedOptions?.notes || ''}
                   onChange={(e) => onUpdate(index, 'selectedOptions.notes', e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] resize-none"
-                  rows={2}
-                  placeholder="Special instructions or notes about this product..."
+                  rows={3}
+                  placeholder="Special instructions, vendor notes, delivery details, or any other additional information..."
                 />
               </div>
             </>

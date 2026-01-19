@@ -427,7 +427,7 @@ const AdminOrderList = ({ onOrderClick }) => {
               className="inline-flex items-center text-[#005670] hover:text-[#005670]/80 text-sm font-medium"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali ke Daftar Order
+              Back to Order
             </button>
           </div>
         )}

@@ -29,6 +29,7 @@ import ProductMapping from './ProductMapping';
 import Dashboard from './Dashboard';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
+import VendorManagement from './VendorManagement';
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -74,6 +75,12 @@ const AdminPanel = () => {
       description: 'Manage client orders'
     },
     { 
+      icon: Store, 
+      label: 'Vendor Management', 
+      path: '/vendor-management',
+      description: 'Manage vendors'
+    },
+    { 
       icon: Users, 
       label: 'User Management', 
       path: '/user-management',
@@ -96,7 +103,7 @@ const AdminPanel = () => {
       label: 'Product Mapping', 
       path: '/product-mapping',
       description: 'Location mapping'
-    }
+    },
   ];
 
   const bottomMenuItems = [
@@ -151,7 +158,9 @@ const AdminPanel = () => {
       case '/product':
         return <ProductConfiguration />;
       case '/product-mapping':
-        return <ProductMapping />;  
+        return <ProductMapping />; 
+      case '/vendor-management':
+        return <VendorManagement />; 
       default:
         return <Dashboard />;
     }
