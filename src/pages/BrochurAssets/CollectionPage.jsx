@@ -195,11 +195,11 @@ const CollectionsPage = () => {
       lookbookImages: generateImagePaths("lani-lookbook", 26),
       prototypeImages: generateImagePaths("lani-prototype", 26),
       pricing: {
-        "1-Bedroom": "$140,000",
-        "2-Bedroom": "$180,000",
-        "3-Bedroom": "$220,000",
+        "1-Bedroom": "$154,000",
+        "2-Bedroom": "$198,000",
+        "3-Bedroom": "$242,000",
         includes: "Design, Furnishings & Delivery",
-        deadline: "June 2026",
+        deadline: "August 2026",
       },
     },
     {
@@ -219,11 +219,11 @@ const CollectionsPage = () => {
       lookbookImages: generateImagePaths("nalu-lookbook", 18),
       prototypeImages: generateImagePaths("nalu-prototype", 19),
       pricing: {
-        "1-Bedroom": "$84,000",
-        "2-Bedroom": "$108,000",
-        "3-Bedroom": "$132,000",
+        "1-Bedroom": "$92,400",
+        "2-Bedroom": "$118,800",
+        "3-Bedroom": "$145,200",
         includes: "Design, Furnishings & Delivery",
-        deadline: "July 2026",
+        deadline: "August 2026",
       },
     },
     {
@@ -242,9 +242,9 @@ const CollectionsPage = () => {
         "Foundation provides all the essentials for comfortable island living, offering a practical yet refined experience.",
       lookbookImages: generateImagePaths("foundation-lookbook", 18),
       pricing: {
-        "1-Bedroom": "$50,000",
-        "2-Bedroom": "$65,000",
-        "3-Bedroom": "$80,000",
+        "1-Bedroom": "$55,000",
+        "2-Bedroom": "$71,500",
+        "3-Bedroom": "$88,000",
         includes: "Design, Furniture Only, Delivery",
         deadline: "August 2026",
       },
@@ -392,7 +392,7 @@ const CollectionsPage = () => {
 
                 <div className="mt-6 p-4 bg-white/10 rounded-lg border border-white/20">
                   <p className="text-sm text-white/90 text-center">
-                    All pricing apply 2025 rates. Delivery is first-come, first-served and scheduled by building floor release.
+                    All pricing apply 2026 rates. Delivery is first-come, first-served and scheduled by building floor release.
                   </p>
                 </div>
               </div>
