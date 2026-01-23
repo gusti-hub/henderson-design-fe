@@ -107,48 +107,10 @@ const PaymentPage = () => {
                 Each option offers different flexibility for timing and pricing.
               </p>
 
-              {/* Option 1 */}
-              <div className="space-y-6 border border-gray-200 rounded-2xl p-8 bg-gray-50 mb-10">
-                <h4 className="text-2xl font-medium text-[#005670] mb-4">
-                  OPTION 1 – DEPOSIT TO HOLD 2025 PRICING
-                </h4>
-
-                <InfoBlock
-                  title="Purpose"
-                  text="Secure current HDG collection pricing while finalizing design decisions."
-                />
-
-                <InfoBlock
-                  title="Deposit Amount"
-                  text="Thirty percent (30%) of your selected furnishing package total."
-                />
-
-                <div>
-                  <h5 className="text-xl font-medium text-gray-900 mb-2">
-                    What This Does
-                  </h5>
-                  <ul className="list-disc pl-6 space-y-2 text-lg text-gray-700">
-                    <li>Locks in 2025 pricing for your chosen collection (Lani, Nalu, or Foundation).</li>
-                    <li>Reserves materials and production allocation in HDG's manufacturing schedule.</li>
-                    <li>Applies in full toward your total furnishing package once you move forward to production.</li>
-                  </ul>
-                </div>
-
-                <InfoBlock
-                  title="Refund Policy"
-                  text="Refundable less a 10% administrative fee if cancelled before design selections or production scheduling begin (less any design fees incurred). Non-refundable once design selections are approved or production has started."
-                />
-
-                <InfoBlock
-                  title="Next Step"
-                  text="Once your deposit is received, HDG will confirm your pricing lock and place your project in the design calendar for the 2026 phase."
-                />
-              </div>
-
               {/* Option 2 */}
               <div className="space-y-6 border border-gray-200 rounded-2xl p-8 bg-gray-50">
                 <h4 className="text-2xl font-medium text-[#005670] mb-4">
-                  OPTION 2 – DESIGN FEE TO HOLD PLACE IN LINE
+                  DESIGN FEE TO HOLD PLACE IN LINE
                 </h4>
 
                 <InfoBlock
@@ -201,7 +163,7 @@ const PaymentPage = () => {
             <CheckCircle className="w-6 h-6 text-white" />
           </div>
           <p className="text-base text-[#005670] font-bold mb-2">
-            Updated October 2025
+            Updated January 2026
           </p>
           <p className="text-sm text-gray-600">
             Payment structure designed for transparency and flexibility

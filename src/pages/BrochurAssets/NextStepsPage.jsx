@@ -1002,34 +1002,21 @@ Estimated Completion: _______________________`
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8 items-stretch">
-        <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] mb-6 mx-auto">
-            <Lock className="w-8 h-8 text-white" />
-          </div>
-
-          <h2 className="text-2xl md:text-3xl font-bold text-[#005670] mb-4 text-center">Lock 2025 Pricing</h2>
-          <p className="text-gray-600 text-lg mb-6 leading-relaxed flex-grow text-center">
-            Secure current pricing with a 30% deposit. Protect yourself from price increases and reserve your materials.
-          </p>
-
-          <button
-            onClick={() => handleOptionClick('lock-price')}
-            className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#005670] to-[#007a9a] text-white px-8 py-4 text-lg font-bold rounded-xl hover:from-[#004150] hover:to-[#005670] transition-all duration-300 shadow-lg hover:shadow-xl active:scale-95"
-          >
-            <span>Select This Option</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
+      <div className="max-w-5xl mx-auto grid gap-8 lg:grid-cols-2 justify-items-center items-stretch">
+        
+        {/* Design Hold Fee */}
+        <div className="w-full max-w-xl bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] mb-6 mx-auto">
             <FileText className="w-8 h-8 text-white" />
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-bold text-[#005670] mb-4 text-center">Design Hold Fee</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#005670] mb-4 text-center">
+            Design Hold Fee
+          </h2>
+
           <p className="text-gray-600 text-lg mb-6 leading-relaxed flex-grow text-center">
-            Reserve your design start date with full design services included. 100% credited toward your final package.
+            Reserve your design start date with full design services included.
+            100% credited toward your final package.
           </p>
 
           <button
@@ -1041,14 +1028,19 @@ Estimated Completion: _______________________`
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
+        {/* Still Have Questions */}
+        <div className="w-full max-w-xl bg-white rounded-2xl p-10 shadow-xl border-2 border-[#005670]/10 flex flex-col hover:shadow-2xl transition-all duration-300 hover:scale-105">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] mb-6 mx-auto">
             <MessageCircle className="w-8 h-8 text-white" />
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-bold text-[#005670] mb-4 text-center">Still Have Questions?</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#005670] mb-4 text-center">
+            Still Have Questions?
+          </h2>
+
           <p className="text-gray-600 text-lg mb-6 leading-relaxed flex-grow text-center">
-            Not sure which option is right for you? Schedule a consultation with our team to discuss your specific needs.
+            Not sure which option is right for you?
+            Schedule a consultation with our team to discuss your needs.
           </p>
 
           <button
@@ -1059,7 +1051,9 @@ Estimated Completion: _______________________`
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
+
       </div>
+
     </div>
   );
 };
