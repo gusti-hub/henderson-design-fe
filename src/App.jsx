@@ -11,6 +11,7 @@ import InvoiceHTML from './components/InvoiceHTML';
 import QuickBooksConnect from './components/QuickBooksConnect';
 import AgreementViewer from './components/AgreementViewer';
 import ProposalEditor from './components/ProposalEditor';
+import AdminInstallBinder from './pages/AdminInstallBinder';
 
 // ✅ Protected Route untuk Client
 const ClientProtectedRoute = ({ children }) => {
@@ -117,9 +118,12 @@ function App() {
         element={<AgreementViewer />} 
       />
       
+      <Route path="/admin/install-binder/:orderId" element={<AdminInstallBinder />} />
+      
       {/* Catch all - redirect to home */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    
   );
 }
 

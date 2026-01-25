@@ -1,7 +1,8 @@
 // components/CustomProductManager.jsx
+// ✅ FIXED VERSION - Individual save buttons, no leading zero, auto expand
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, FileText, Loader2, AlertCircle, Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Save, FileText, Loader2, AlertCircle, Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon, Check } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
 import ImageUploadField from './ImageUploadField';
@@ -9,8 +10,6 @@ import VendorSearchDropdown from './VendorSearchDropdown';
 
 const CustomProductManager = ({ order, onSave, onBack }) => {
   const [customProducts, setCustomProducts] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [expandedProduct, setExpandedProduct] = useState(null);
   
   // Floor plan state
@@ -18,6 +17,9 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [floorPlanNotes, setFloorPlanNotes] = useState('');
   const [existingFloorPlan, setExistingFloorPlan] = useState(null);
   const [showFloorPlanPreview, setShowFloorPlanPreview] = useState(false);
+  const [savingFloorPlan, setSavingFloorPlan] = useState(false);
+  
+  const [showLibraryModal, setShowLibraryModal] = useState(false);
 
   useEffect(() => {
     if (order?.selectedProducts) {
@@ -31,7 +33,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   }, [order]);
 
   const handleAddFromLibrary = (selectedProducts) => {
-    const newProducts = selectedProducts.map(product => {
+    const newProducts = selectedProducts.map((product, idx) => {
       const defaultVariant = product.variants?.[0];
       const primaryImage = product.images?.find(img => img.isPrimary) || product.images?.[0];
       const imageUrl = primaryImage?.url || defaultVariant?.image?.url;
@@ -58,15 +60,27 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           specifications: product.description || '',
           notes: '',
           uploadedImages: [],
-          customAttributes: {}
+          customAttributes: {},
+          poNumber: '',
+          vendorOrderNumber: '',
+          trackingInfo: '',
+          deliveryStatus: ''
         }
       };
     });
-    setCustomProducts(prev => [...prev, ...newProducts]);
+    
+    setCustomProducts(prev => {
+      const updated = [...prev, ...newProducts];
+      // ✅ Auto expand first new product
+      if (newProducts.length > 0) {
+        setExpandedProduct(prev.length);
+      }
+      return updated;
+    });
   };
 
   const addManualProduct = () => {
-    setCustomProducts(prev => [...prev, {
+    const newProduct = {
       _id: `temp_${Date.now()}`,
       product_id: `CUSTOM-${Date.now().toString().slice(-6)}`,
       name: '',
@@ -87,9 +101,20 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         fabric: '',
         size: '',
         uploadedImages: [],
-        customAttributes: {}
+        customAttributes: {},
+        poNumber: '',
+        vendorOrderNumber: '',
+        trackingInfo: '',
+        deliveryStatus: ''
       }
-    }]);
+    };
+    
+    setCustomProducts(prev => {
+      const updated = [...prev, newProduct];
+      // ✅ Auto expand new product
+      setExpandedProduct(updated.length - 1);
+      return updated;
+    });
   };
 
   const updateProduct = (index, field, value) => {
@@ -106,7 +131,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         return prev;
       }
 
-      // Update nested selectedOptions.*
       if (field.startsWith('selectedOptions.')) {
         const optionField = field.split('.')[1];
         item.selectedOptions = {
@@ -117,7 +141,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         item[field] = value;
       }
 
-      // Recalc finalPrice
       if (field === 'unitPrice' || field === 'quantity') {
         const qty = Number(item.quantity) || 1;
         const price = Number(item.unitPrice) || 0;
@@ -132,6 +155,9 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const removeProduct = (index) => {
     if (window.confirm('Remove this product?')) {
       setCustomProducts(prev => prev.filter((_, i) => i !== index));
+      if (expandedProduct === index) {
+        setExpandedProduct(null);
+      }
     }
   };
 
@@ -166,119 +192,70 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     return null;
   };
 
-  const handleSave = async () => {
-    // ✅ Removed vendor validation - vendor is now optional
-    const emptyProducts = customProducts.filter(p => !p.name || p.unitPrice <= 0);
-    if (emptyProducts.length > 0) {
-      alert('❌ All products must have a Name and Price!');
-      return;
-    }
-
-    setSaving(true);
+  // ✅ NEW: Save individual floor plan
+  const handleSaveFloorPlan = async () => {
+    setSavingFloorPlan(true);
     try {
       const token = localStorage.getItem('token');
-      
-      // STEP 1: Upload floor plan to S3 FIRST (if new file)
       let floorPlanData = existingFloorPlan;
       
       if (floorPlanFile) {
-        try {
-          console.log('📤 Uploading floor plan to S3...');
-          
-          const formData = new FormData();
-          formData.append('floorPlan', floorPlanFile);
-          formData.append('notes', floorPlanNotes);
+        const formData = new FormData();
+        formData.append('floorPlan', floorPlanFile);
+        formData.append('notes', floorPlanNotes);
 
-          const floorPlanResponse = await fetch(
-            `${backendServer}/api/orders/${order._id}/floor-plan`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-              body: formData
-            }
-          );
-
-          if (!floorPlanResponse.ok) {
-            const errorData = await floorPlanResponse.json();
-            throw new Error(errorData.message || 'Floor plan upload failed');
+        const floorPlanResponse = await fetch(
+          `${backendServer}/api/orders/${order._id}/floor-plan`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData
           }
+        );
 
-          const result = await floorPlanResponse.json();
-          
-          if (result.success && result.data) {
-            floorPlanData = result.data;
-            console.log('✅ Floor plan uploaded to S3:', floorPlanData.url);
-          } else {
-            throw new Error('Invalid floor plan upload response');
-          }
-        } catch (err) {
-          console.error('❌ Error uploading floor plan:', err);
-          alert(`⚠️ Floor plan upload failed: ${err.message}`);
-          setSaving(false);
-          return;
+        if (!floorPlanResponse.ok) {
+          const errorData = await floorPlanResponse.json();
+          throw new Error(errorData.message || 'Floor plan upload failed');
         }
-      } else if (existingFloorPlan && floorPlanNotes !== existingFloorPlan.notes) {
-        floorPlanData = {
-          ...existingFloorPlan,
-          notes: floorPlanNotes
-        };
-      }
 
-      // STEP 2: Save to order directly
-      const cleanedProducts = customProducts.map(product => ({
-        ...product,
-        vendor: product.vendor || null, // ✅ Allow null vendor
-        selectedOptions: {
-          ...product.selectedOptions,
-        }
-      }));
-
-      console.log('💾 Saving order with products and floor plan');
-
-      const orderResponse = await fetch(
-        `${backendServer}/api/orders/${order._id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            selectedProducts: cleanedProducts,
-            customFloorPlan: floorPlanData,
-            status: 'ongoing',
-            step: 2
-          }),
-        }
-      );
-
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.message || 'Failed to save order');
-      }
-
-      const orderData = await orderResponse.json();
-
-      if (orderData) {
-        console.log('✅ Order saved successfully');
-        alert('✅ Products and floor plan saved successfully!');
+        const result = await floorPlanResponse.json();
         
-        if (floorPlanData) {
+        if (result.success && result.data) {
+          floorPlanData = result.data;
           setExistingFloorPlan(floorPlanData);
           setFloorPlanFile(null);
+          alert('✅ Floor plan saved successfully!');
         }
-        
-        if (onSave) onSave(customProducts);
-      } else {
-        alert('❌ Failed to save');
+      } else if (existingFloorPlan && floorPlanNotes !== existingFloorPlan.notes) {
+        // Update notes only
+        const orderResponse = await fetch(
+          `${backendServer}/api/orders/${order._id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              customFloorPlan: {
+                ...existingFloorPlan,
+                notes: floorPlanNotes
+              }
+            }),
+          }
+        );
+
+        if (orderResponse.ok) {
+          alert('✅ Floor plan notes saved!');
+        }
       }
     } catch (error) {
-      console.error('❌ Error saving:', error);
-      alert(`❌ Failed to save: ${error.message}`);
+      console.error('❌ Error saving floor plan:', error);
+      alert(`❌ Failed to save floor plan: ${error.message}`);
     } finally {
-      setSaving(false);
+      setSavingFloorPlan(false);
     }
   };
 
@@ -320,25 +297,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all"
             >
               <Plus className="w-5 h-5" />
-              Manual Input
-            </button>
-            
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:shadow-lg disabled:opacity-50 transition-all font-semibold"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  Save All
-                </>
-              )}
+              Add Product
             </button>
           </div>
         </div>
@@ -353,7 +312,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                 </p>
                 <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc list-inside">
                   <li><strong>Browse Library</strong>: Select from existing product catalog</li>
-                  <li><strong>Manual Input</strong>: Create new products with custom attributes</li>
+                  <li><strong>Add Product</strong>: Create new products with custom attributes</li>
                 </ul>
               </div>
             </div>
@@ -372,6 +331,27 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               Upload custom floor plan image or document
             </p>
           </div>
+          
+          {/* ✅ FIX: Always show save button when floor plan section is visible */}
+          {(floorPlanFile || existingFloorPlan) && (
+            <button
+              onClick={handleSaveFloorPlan}
+              disabled={savingFloorPlan}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-medium"
+            >
+              {savingFloorPlan ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Floor Plan
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {!floorPlanFile && !existingFloorPlan ? (
@@ -490,23 +470,38 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all"
               >
                 <Plus className="w-5 h-5" />
-                Manual Input
+                Add Product
               </button>
             </div>
           </div>
         ) : (
-          customProducts.map((product, index) => (
-            <ProductCard
-              key={product._id}
-              product={product}
-              index={index}
-              order={order}
-              expanded={expandedProduct === index}
-              onToggleExpand={() => setExpandedProduct(expandedProduct === index ? null : index)}
-              onUpdate={updateProduct}
-              onRemove={removeProduct}
-            />
-          ))
+          <>
+            {/* ✅ Simple Product Count Header */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-gray-900">
+                Products ({customProducts.length})
+              </h3>
+            </div>
+            
+            {customProducts.map((product, index) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                index={index}
+                order={order}
+                expanded={expandedProduct === index}
+                onToggleExpand={() => {
+                  // Toggle this specific product
+                  setExpandedProduct(expandedProduct === index ? null : index);
+                }}
+                onUpdate={updateProduct}
+                onRemove={removeProduct}
+                onSaved={() => {
+                  if (onSave) onSave(customProducts);
+                }}
+              />
+            ))}
+          </>
         )}
       </div>
 
@@ -580,7 +575,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
 };
 
 // ==================== PRODUCT CARD COMPONENT ====================
-const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate, onRemove }) => {
+const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate, onRemove, onSaved }) => {
   const [customAttrs, setCustomAttrs] = useState(
     product.selectedOptions?.customAttributes || {}
   );
@@ -588,6 +583,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
   const [newAttrValue, setNewAttrValue] = useState('');
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   const getAllImages = () => {
     const images = [];
@@ -655,6 +651,144 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
     delete updated[key];
     setCustomAttrs(updated);
     onUpdate(index, 'selectedOptions.customAttributes', updated);
+  };
+
+  // ✅ NEW: Individual product save
+  const handleSaveProduct = async () => {
+    if (!product.name || product.unitPrice <= 0) {
+      alert('❌ Product must have a Name and Price!');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // ✅ FIX: Use parent component's customProducts state directly
+      // Build the updated products array from current state
+      const currentProducts = order.selectedProducts || [];
+      
+      // Find this product in the current products array
+      let updatedProducts;
+      
+      // Check if this is a new product (temp ID)
+      const isNewProduct = product._id && typeof product._id === 'string' && product._id.startsWith('temp_');
+      
+      if (isNewProduct) {
+        // New product - add to array
+        const cleanProduct = { ...product };
+        delete cleanProduct._id; // Remove temp ID
+        
+        updatedProducts = [
+          ...currentProducts,
+          {
+            product_id: cleanProduct.product_id,
+            name: cleanProduct.name,
+            category: cleanProduct.category || '',
+            spotName: cleanProduct.spotName || 'Custom Item',
+            quantity: cleanProduct.quantity || 1,
+            unitPrice: cleanProduct.unitPrice || 0,
+            finalPrice: cleanProduct.finalPrice || 0,
+            vendor: cleanProduct.vendor || null,
+            sourceType: cleanProduct.sourceType || 'manual',
+            isEditable: cleanProduct.isEditable !== undefined ? cleanProduct.isEditable : true,
+            selectedOptions: {
+              finish: cleanProduct.selectedOptions?.finish || '',
+              fabric: cleanProduct.selectedOptions?.fabric || '',
+              size: cleanProduct.selectedOptions?.size || '',
+              insetPanel: cleanProduct.selectedOptions?.insetPanel || '',
+              image: cleanProduct.selectedOptions?.image || '',
+              images: cleanProduct.selectedOptions?.images || [],
+              links: cleanProduct.selectedOptions?.links || [],
+              specifications: cleanProduct.selectedOptions?.specifications || '',
+              notes: cleanProduct.selectedOptions?.notes || '',
+              uploadedImages: cleanProduct.selectedOptions?.uploadedImages || [],
+              customAttributes: cleanProduct.selectedOptions?.customAttributes || {},
+              poNumber: cleanProduct.selectedOptions?.poNumber || '',
+              vendorOrderNumber: cleanProduct.selectedOptions?.vendorOrderNumber || '',
+              trackingInfo: cleanProduct.selectedOptions?.trackingInfo || '',
+              deliveryStatus: cleanProduct.selectedOptions?.deliveryStatus || ''
+            },
+            placement: cleanProduct.placement || null
+          }
+        ];
+      } else {
+        // Existing product - update in array
+        updatedProducts = currentProducts.map((p) => {
+          // Match by _id or product_id
+          if (p._id === product._id || p.product_id === product.product_id) {
+            return {
+              ...(product._id && { _id: product._id }),
+              product_id: product.product_id,
+              name: product.name,
+              category: product.category || '',
+              spotName: product.spotName || 'Custom Item',
+              quantity: product.quantity || 1,
+              unitPrice: product.unitPrice || 0,
+              finalPrice: product.finalPrice || 0,
+              vendor: product.vendor || null,
+              sourceType: product.sourceType || 'manual',
+              isEditable: product.isEditable !== undefined ? product.isEditable : true,
+              selectedOptions: {
+                finish: product.selectedOptions?.finish || '',
+                fabric: product.selectedOptions?.fabric || '',
+                size: product.selectedOptions?.size || '',
+                insetPanel: product.selectedOptions?.insetPanel || '',
+                image: product.selectedOptions?.image || '',
+                images: product.selectedOptions?.images || [],
+                links: product.selectedOptions?.links || [],
+                specifications: product.selectedOptions?.specifications || '',
+                notes: product.selectedOptions?.notes || '',
+                uploadedImages: product.selectedOptions?.uploadedImages || [],
+                customAttributes: product.selectedOptions?.customAttributes || {},
+                poNumber: product.selectedOptions?.poNumber || '',
+                vendorOrderNumber: product.selectedOptions?.vendorOrderNumber || '',
+                trackingInfo: product.selectedOptions?.trackingInfo || '',
+                deliveryStatus: product.selectedOptions?.deliveryStatus || ''
+              },
+              placement: product.placement || null
+            };
+          }
+          return p;
+        });
+      }
+
+      // Save to server
+      const saveResponse = await fetch(
+        `${backendServer}/api/orders/${order._id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            selectedProducts: updatedProducts,
+            status: 'ongoing',
+            step: 2
+          }),
+        }
+      );
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.message || 'Failed to save product');
+      }
+
+      const result = await saveResponse.json();
+      
+      console.log('✅ Save successful:', result);
+      alert('✅ Product saved successfully!');
+      
+      // Update local state with server response
+      if (onSaved) onSaved();
+      
+    } catch (error) {
+      console.error('❌ Error saving product:', error);
+      alert(`❌ Failed to save: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -742,6 +876,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
             >
               <Edit2 className="w-5 h-5 text-gray-600" />
             </button>
+            
             <button
               onClick={() => onRemove(index)}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -753,7 +888,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
         </div>
       </div>
 
-      {/* Image Gallery Modal */}
+      {/* Image Gallery Modal - UNCHANGED */}
       {showImageGallery && allImages.length > 0 && (
         <div 
           className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
@@ -911,14 +1046,42 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Unit Price ($) *
               </label>
+              {/* ✅ FIX: Proper decimal handling without leading zero */}
               <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={product.unitPrice}
-                onChange={(e) => onUpdate(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={product.unitPrice === 0 ? '' : product.unitPrice}
+                onChange={(e) => {
+                  let value = e.target.value;
+                  
+                  // Allow empty (will become 0)
+                  if (value === '') {
+                    onUpdate(index, 'unitPrice', 0);
+                    return;
+                  }
+                  
+                  // Remove leading zeros except for "0." pattern
+                  value = value.replace(/^0+(?=\d)/, '');
+                  
+                  // Allow only numbers and ONE decimal point with max 2 decimals
+                  if (/^\d*\.?\d{0,2}$/.test(value)) {
+                    // Store as string while typing
+                    onUpdate(index, 'unitPrice', value);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Convert to number on blur
+                  let value = e.target.value;
+                  if (value === '' || value === '.') {
+                    onUpdate(index, 'unitPrice', 0);
+                  } else {
+                    const numValue = parseFloat(value) || 0;
+                    onUpdate(index, 'unitPrice', numValue);
+                  }
+                }}
                 disabled={!product.isEditable}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
+                placeholder="0.00"
               />
             </div>
             <div className="flex items-end">
@@ -931,7 +1094,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
             </div>
           </div>
 
-          {/* ✅ VENDOR FIELD - Optional with label change */}
+          {/* Vendor Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Vendor (Optional)
@@ -941,6 +1104,78 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               onSelectVendor={(vendorId) => onUpdate(index, 'vendor', vendorId)}
               disabled={false}
             />
+          </div>
+
+          {/* INSTALL BINDER SECTION */}
+          <div className="border-t-2 border-gray-200 pt-6">
+            <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#005670]" />
+              Install Binder Information
+            </h4>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Purchase Order (PO #)
+                </label>
+                <input
+                  type="text"
+                  value={product.selectedOptions?.poNumber || ''}
+                  onChange={(e) => onUpdate(index, 'selectedOptions.poNumber', e.target.value)}
+                  disabled={!product.isEditable}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100"
+                  placeholder="Tim-2289995"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendor Order Number
+                </label>
+                <input
+                  type="text"
+                  value={product.selectedOptions?.vendorOrderNumber || ''}
+                  onChange={(e) => onUpdate(index, 'selectedOptions.vendorOrderNumber', e.target.value)}
+                  disabled={!product.isEditable}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100"
+                  placeholder="353502018743"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Shipment Tracking Info
+                </label>
+                <input
+                  type="text"
+                  value={product.selectedOptions?.trackingInfo || ''}
+                  onChange={(e) => onUpdate(index, 'selectedOptions.trackingInfo', e.target.value)}
+                  disabled={!product.isEditable}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100"
+                  placeholder="UPS (1Z61RE120340475585)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Delivery/Order Status
+                </label>
+                <textarea
+                  value={product.selectedOptions?.deliveryStatus || ''}
+                  onChange={(e) => onUpdate(index, 'selectedOptions.deliveryStatus', e.target.value)}
+                  disabled={!product.isEditable}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 resize-none"
+                  rows={2}
+                  placeholder="12/23/25 Delivered&#10;12/18/25 Shipped&#10;12/16/25 Placed order online; eta 1/6/26"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800">
+                <strong>Install Binder Fields:</strong> These fields will appear in the Install Binder document for tracking vendor orders, shipments, and delivery status.
+              </p>
+            </div>
           </div>
 
           {product.isEditable && (
@@ -1025,7 +1260,7 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
                 />
               </div>
 
-              {/* ✅ CHANGED LABEL: Additional Notes */}
+              {/* Additional Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Additional Notes
@@ -1040,6 +1275,27 @@ const ProductCard = ({ product, index, order, expanded, onToggleExpand, onUpdate
               </div>
             </>
           )}
+
+          {/* ✅ Individual Save Button */}
+          <div className="flex justify-end pt-4 border-t border-gray-200">
+            <button
+              onClick={handleSaveProduct}
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-semibold shadow-sm hover:shadow-md"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  Save Product
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>

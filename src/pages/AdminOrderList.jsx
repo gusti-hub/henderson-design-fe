@@ -205,6 +205,11 @@ const AdminOrderList = ({ onOrderClick }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
+  const handleOpenInstallBinder = (orderId) => {
+    // Open install binder in new tab (same as proposal)
+    window.open(`/admin/install-binder/${orderId}`, '_blank');
+  };
+
   const handleGenerateProposal = async () => {
     if (!proposalNotes.trim()) {
       alert('Please add notes explaining the changes in this version');
@@ -339,6 +344,8 @@ const AdminOrderList = ({ onOrderClick }) => {
     if (order.status) {
       return order.status.charAt(0).toUpperCase() + order.status.slice(1);
     }
+
+    console.log(order)
 
     switch (order.step) {
       case 1:
@@ -626,6 +633,27 @@ const AdminOrderList = ({ onOrderClick }) => {
                         title="Open Proposal Editor"
                       >
                         <FileText className="w-4 h-4" />
+                      </button>
+
+                      {/* ✅ NEW: Install Binder Button - Same pattern as Proposal */}
+                      <button
+                        onClick={() => handleOpenInstallBinder(order._id)}
+                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                        title="Open Install Binder"
+                      >
+                        <svg 
+                          className="w-4 h-4" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                          />
+                        </svg>
                       </button>
                     </div>
                   </td>
