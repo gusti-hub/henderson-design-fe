@@ -4,7 +4,7 @@ import {
   Search, Filter, Sparkles, AlertCircle, Mail, Phone,
   User, Building2, CheckCircle, Clock, ClipboardList, MapPin, TrendingUp,
   Calendar, Activity, ChevronLeft, ChevronRight, ClipboardCheck,
-  ShoppingBag, Download // Tambahkan ini
+  ShoppingBag, Download, Users // Tambahkan ini
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import AdminJourneyManager from '../components/AdminJourneyManager';
@@ -30,6 +30,13 @@ const DESIGN_IMAGES = {
   26: '/images/collections/26.jpg',
   27: '/images/collections/27.jpg',
   28: '/images/collections/28.jpg',
+};
+
+const TEAM_OPTIONS = {
+  designer: ['Joanna Staniszewski', 'Janelle Balci', 'Ash Agustin'],
+  projectManager: ['Madeline Clifford', 'Daiki Matsumaru', 'Savanna Gonzales'],
+  projectManagerAssistant: ['Haley Spitz', 'Florence Sosrita'],
+  designerAssistant: []
 };
 
 const DESIGN_TITLES = {
@@ -408,7 +415,11 @@ const ClientManagement = () => {
     collection: '',
     bedroomCount: '',
     packageType: 'investor', // ✅ ADD THIS NEW FIELD
-    calculatedAmount: 0
+    calculatedAmount: 0,
+    designer: '',
+    projectManager: '',
+    projectManagerAssistant: '',
+    designerAssistant: ''
   });
   const [errors, setErrors] = useState({});
   const [showPasswordField, setShowPasswordField] = useState(false);
@@ -669,7 +680,11 @@ const ClientManagement = () => {
         collection: '',
         bedroomCount: '',
         packageType: client.packageType || 'investor',
-        calculatedAmount: client.paymentInfo?.totalAmount || 0
+        calculatedAmount: client.paymentInfo?.totalAmount || 0,
+        designer: client.teamAssignment?.designer || '',
+        projectManager: client.teamAssignment?.projectManager || '',
+        projectManagerAssistant: client.teamAssignment?.projectManagerAssistant || '',
+        designerAssistant: client.teamAssignment?.designerAssistant || ''
       });
     } else if (mode === 'create') {
       resetFormState();
@@ -778,6 +793,12 @@ const ClientManagement = () => {
         propertyType: formData.propertyType,
         packageType: formData.packageType,
         floorPlan: formData.packageType === 'custom' ? 'Custom Project' : formData.floorPlan,
+        teamAssignment: {
+        designer: formData.designer || '',
+        projectManager: formData.projectManager || '',
+        projectManagerAssistant: formData.projectManagerAssistant || '',
+        designerAssistant: formData.designerAssistant || ''
+      }
       };
 
       if (modalMode === 'create') {
@@ -1145,9 +1166,9 @@ const ClientTable = React.memo(
                         <div className="w-10 h-10 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0">
                           {client.name?.charAt(0)?.toUpperCase()}
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{client.name}</p>
-                          <p className="text-xs text-gray-500">{client.clientCode || 'No code'}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-900 truncate text-left">{client.name}</p>
+                          <p className="text-xs text-gray-500 text-left">{client.clientCode || 'No code'}</p>
                         </div>
                       </div>
                     </td>
@@ -1174,6 +1195,27 @@ const ClientTable = React.memo(
                           Unit {client.unitNumber}
                         </p>
                         <p className="text-xs text-gray-500">{client.floorPlan || '-'}</p>
+                      </div>
+                    </td>
+
+                    {/* ✅ NEW: Team Assignment Column */}
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        {client.teamAssignment?.designer && (
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3 h-3 text-purple-500 flex-shrink-0" />
+                            <span className="text-xs text-gray-700">{client.teamAssignment.designer}</span>
+                          </div>
+                        )}
+                        {client.teamAssignment?.projectManager && (
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                            <span className="text-xs text-gray-700">{client.teamAssignment.projectManager}</span>
+                          </div>
+                        )}
+                        {!client.teamAssignment?.designer && !client.teamAssignment?.projectManager && (
+                          <span className="text-xs text-gray-400 italic">No team assigned</span>
+                        )}
                       </div>
                     </td>
 
@@ -1375,6 +1417,56 @@ const FormModal = React.memo(
                 error={errors.propertyType} 
                 required 
               />
+            </div>
+
+            {/* ✅ NEW: Team Assignment Section */}
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
+              <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" /> Team Assignment (Optional)
+              </h4>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <Select
+                  label="Designer"
+                  value={formData.designer}
+                  onChange={(v) => setFormData(prev => ({ ...prev, designer: v }))}
+                  options={[
+                    { value: '', label: '-- Select Designer --' },
+                    ...TEAM_OPTIONS.designer.map(name => ({ value: name, label: name }))
+                  ]}
+                />
+                
+                <Select
+                  label="Project Manager"
+                  value={formData.projectManager}
+                  onChange={(v) => setFormData(prev => ({ ...prev, projectManager: v }))}
+                  options={[
+                    { value: '', label: '-- Select PM --' },
+                    ...TEAM_OPTIONS.projectManager.map(name => ({ value: name, label: name }))
+                  ]}
+                />
+
+                <Select
+                  label="Designer Assistant"
+                  value={formData.designerAssistant}
+                  onChange={(v) => setFormData(prev => ({ ...prev, designerAssistant: v }))}
+                  options={[
+                    { value: '', label: '-- Select Designer Assistant --' },
+                    ...TEAM_OPTIONS.designerAssistant.map(name => ({ value: name, label: name }))
+                  ]}
+                />
+                
+                <Select
+                  label="PM Assistant"
+                  value={formData.projectManagerAssistant}
+                  onChange={(v) => setFormData(prev => ({ ...prev, projectManagerAssistant: v }))}
+                  options={[
+                    { value: '', label: '-- Select PM Assistant --' },
+                    ...TEAM_OPTIONS.projectManagerAssistant.map(name => ({ value: name, label: name }))
+                  ]}
+                />
+                
+              </div>
             </div>
 
             {modalMode === 'create' && (
@@ -2497,6 +2589,40 @@ const ViewMode = React.memo(({ client }) => (
         </p>
       </div>
     </div>
+        {/* ✅ NEW: Team Assignment Display */}
+    {(client?.teamAssignment?.designer || client?.teamAssignment?.projectManager) && (
+      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <Users className="w-4 h-4 text-blue-600" /> Team Assignment
+        </h4>
+        <div className="grid md:grid-cols-2 gap-3 text-sm">
+          {client.teamAssignment.designer && (
+            <div>
+              <span className="font-medium text-gray-700">Designer:</span>
+              <span className="ml-2 text-gray-900">{client.teamAssignment.designer}</span>
+            </div>
+          )}
+          {client.teamAssignment.projectManager && (
+            <div>
+              <span className="font-medium text-gray-700">Project Manager:</span>
+              <span className="ml-2 text-gray-900">{client.teamAssignment.projectManager}</span>
+            </div>
+          )}
+          {client.teamAssignment.projectManagerAssistant && (
+            <div>
+              <span className="font-medium text-gray-700">PM Assistant:</span>
+              <span className="ml-2 text-gray-900">{client.teamAssignment.projectManagerAssistant}</span>
+            </div>
+          )}
+          {client.teamAssignment.designerAssistant && (
+            <div>
+              <span className="font-medium text-gray-700">Designer Assistant:</span>
+              <span className="ml-2 text-gray-900">{client.teamAssignment.designerAssistant}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
   </div>
 ));
 

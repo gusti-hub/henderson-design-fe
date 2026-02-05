@@ -346,7 +346,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
         {
           id: 'art_coverage',
           label: 'Art Coverage / Quantity Preference (Select one):',
-          type: 'checkbox',
+          type: 'radio',
           options: [
             'Minimal – a few statement pieces only',
             'Moderate – balanced, curated selection throughout the space',
@@ -357,7 +357,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
         {
           id: 'accessories_styling',
           label: 'Accessories & styling preference (Select one):',
-          type: 'checkbox',
+          type: 'radio',
           options: [
             'Minimal – a few statement pieces only',
             'Moderate – balanced, curated selection throughout the space',
@@ -368,7 +368,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
         {
           id: 'decorative_pillows',
           label: 'Decorative pillow preferences (Select one):',
-          type: 'checkbox',
+          type: 'radio',
           options: [
             'Curated by Henderson Design Group',
             'Prefer to order/manage on your own'
@@ -395,7 +395,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
         {
           id: 'existing_furniture',
           label: 'Existing furniture to incorporate:',
-          type: 'checkbox',
+          type: 'radio',
           options: [
             'Yes',
             'No'

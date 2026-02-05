@@ -579,43 +579,110 @@ const ClientPortal = () => {
         {/* HERO SECTION */}
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Welcome Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-              <div className="flex items-start justify-between gap-6 flex-wrap">
-                <div className="flex-1 min-w-[280px]">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-1">Welcome back, {clientData.name}</h1>
-                  <p className="text-gray-600 text-base">Track your design journey with Henderson Design Group</p>
+          {/* Welcome Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="flex-1 min-w-[280px]">
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">Welcome back, {clientData.name}</h1>
+                <p className="text-gray-600 text-base">Track your design journey with Henderson Design Group</p>
+              </div>
+
+              <div className="flex gap-3 flex-wrap">
+                <div className="bg-gray-50 rounded-xl p-4 min-w-[110px] border border-gray-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MapPin className="w-4 h-4 text-[#005670]" />
+                    <p className="text-xs text-gray-600 font-semibold">Unit</p>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{clientData.unitNumber}</p>
                 </div>
 
-                <div className="flex gap-3 flex-wrap">
+                <div className="bg-gray-50 rounded-xl p-4 min-w-[130px] border border-gray-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Layers className="w-4 h-4 text-[#005670]" />
+                    <p className="text-xs text-gray-600 font-semibold">Floor Plan</p>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{clientData.floorPlan}</p>
+                </div>
+
+                {clientData.clientCode && (
                   <div className="bg-gray-50 rounded-xl p-4 min-w-[110px] border border-gray-200">
                     <div className="flex items-center gap-2 mb-1">
-                      <MapPin className="w-4 h-4 text-[#005670]" />
-                      <p className="text-xs text-gray-600 font-semibold">Unit</p>
+                      <Hash className="w-4 h-4 text-[#005670]" />
+                      <p className="text-xs text-gray-600 font-semibold">Code</p>
                     </div>
-                    <p className="text-xl font-bold text-gray-900">{clientData.unitNumber}</p>
+                    <p className="text-xl font-bold text-gray-900">{clientData.clientCode}</p>
                   </div>
-
-                  <div className="bg-gray-50 rounded-xl p-4 min-w-[130px] border border-gray-200">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Layers className="w-4 h-4 text-[#005670]" />
-                      <p className="text-xs text-gray-600 font-semibold">Floor Plan</p>
-                    </div>
-                    <p className="text-xl font-bold text-gray-900">{clientData.floorPlan}</p>
-                  </div>
-
-                  {clientData.clientCode && (
-                    <div className="bg-gray-50 rounded-xl p-4 min-w-[110px] border border-gray-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Hash className="w-4 h-4 text-[#005670]" />
-                        <p className="text-xs text-gray-600 font-semibold">Code</p>
-                      </div>
-                      <p className="text-xl font-bold text-gray-900">{clientData.clientCode}</p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
+
+            {/* Team Assignment Section - NEW */}
+            {clientData.teamAssignment && (clientData.teamAssignment.designer || clientData.teamAssignment.projectManager) && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <UserIcon className="w-5 h-5 text-[#005670]" />
+                  <h3 className="text-sm font-bold text-gray-900">Your Project Team</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {clientData.teamAssignment.designer && (
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Palette className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-purple-700 font-semibold mb-0.5">Lead Designer</p>
+                          <p className="text-base font-bold text-gray-900">{clientData.teamAssignment.designer}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {clientData.teamAssignment.projectManager && (
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <UserIcon className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-blue-700 font-semibold mb-0.5">Project Manager</p>
+                          <p className="text-base font-bold text-gray-900">{clientData.teamAssignment.projectManager}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* {clientData.teamAssignment.designerAssistant && clientData.teamAssignment.designerAssistant !== 'TBD' && (
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Palette className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-purple-700 font-semibold mb-0.5">Design Assistant</p>
+                          <p className="text-base font-bold text-gray-900">{clientData.teamAssignment.designerAssistant}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {clientData.teamAssignment.projectManagerAssistant && clientData.teamAssignment.projectManagerAssistant !== 'TBD' && (
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <UserIcon className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-blue-700 font-semibold mb-0.5">PM Assistant</p>
+                          <p className="text-base font-bold text-gray-900">{clientData.teamAssignment.projectManagerAssistant}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )} */}
+                </div>
+              </div>
+            )}
+          </div>
 
             {/* Progress Card */}
             <div className="bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-2xl shadow-lg p-6">

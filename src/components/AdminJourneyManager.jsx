@@ -800,43 +800,18 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
 
         {/* HORIZONTAL SCROLLABLE PHASE TABS */}
         <div className="bg-white border-b border-gray-200 sticky top-[60px] z-9 shadow-sm">
-          <div className="px-6 py-4">
+          <div className="px-6 py-3">
             {/* Navigation Hint */}
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-700">Project Phases</h3>
-              <span className="text-xs text-gray-500 hidden md:block">
-                ← Scroll to see all phases →
-              </span>
+            <div className="flex items-center justify-center mb-2">
+              <h3 className="text-xs font-bold text-gray-700">Project Phases</h3>
             </div>
 
-            {/* Scrollable Container with Arrows */}
+            {/* Centered Container */}
             <div className="relative">
-              {/* Left Arrow */}
-              <button
-                onClick={handleScrollLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 border border-gray-200 transition-all"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
-              </button>
-
-              {/* Right Arrow */}
-              <button
-                onClick={handleScrollRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 border border-gray-200 transition-all"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
-              </button>
-
-              {/* Gradient Fades */}
-              <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-              <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-
-              {/* Scrollable Phase Cards */}
+              {/* Scrollable Phase Cards - Centered */}
               <div 
                 ref={scrollContainerRef}
-                className="flex gap-3 overflow-x-auto pb-2 px-12 scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400"
+                className="flex gap-2 overflow-x-auto pb-2 scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 justify-center"
               >
                 {INTERNAL_PHASES.map((phase, index) => {
                   const progress = getPhaseProgress(phase.id);
@@ -852,7 +827,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                       data-phase-index={index}
                       onClick={() => !isLocked && setSelectedPhase(index)}
                       disabled={isLocked}
-                      className={`flex-shrink-0 w-56 p-4 rounded-xl border-2 transition-all text-left ${
+                      className={`flex-shrink-0 w-48 p-3 rounded-xl border-2 transition-all text-left ${
                         isSelected
                           ? 'bg-[#005670] border-[#005670] shadow-lg scale-105'
                           : isLocked
@@ -863,8 +838,8 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                       }`}
                     >
                       {/* Phase Icon & Number */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                           isSelected
                             ? 'bg-white/20'
                             : isCompleted
@@ -874,14 +849,14 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                             : 'bg-[#005670]'
                         }`}>
                           {isCompleted ? (
-                            <CheckCircle className="w-5 h-5 text-white" />
+                            <CheckCircle className="w-4 h-4 text-white" />
                           ) : isLocked ? (
-                            <Lock className="w-5 h-5 text-gray-500" />
+                            <Lock className="w-4 h-4 text-gray-500" />
                           ) : (
-                            <PhaseIcon className="w-5 h-5 text-white" />
+                            <PhaseIcon className="w-4 h-4 text-white" />
                           )}
                         </div>
-                        <span className={`text-xs font-black ${
+                        <span className={`text-[10px] font-black ${
                           isSelected ? 'text-white' : 'text-gray-500'
                         }`}>
                           PHASE {phase.id}
@@ -889,7 +864,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                       </div>
 
                       {/* Phase Name */}
-                      <h4 className={`text-sm font-bold mb-2 leading-tight min-h-[40px] ${
+                      <h4 className={`text-xs font-bold mb-2 leading-tight min-h-[32px] ${
                         isSelected ? 'text-white' : 'text-gray-900'
                       }`}>
                         {phase.shortName}
@@ -897,19 +872,19 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
 
                       {/* Description - Only show when selected */}
                       {isSelected && (
-                        <p className="text-xs text-white/80 mb-3 leading-relaxed">
+                        <p className="text-[10px] text-white/80 mb-2 leading-relaxed">
                           {phase.description}
                         </p>
                       )}
 
                       {/* Progress Bar */}
                       {!isLocked && (
-                        <div className="mb-2">
-                          <div className={`w-full rounded-full h-2 overflow-hidden ${
+                        <div className="mb-1.5">
+                          <div className={`w-full rounded-full h-1.5 overflow-hidden ${
                             isSelected ? 'bg-white/30' : 'bg-gray-200'
                           }`}>
                             <div
-                              className={`h-2 rounded-full transition-all ${
+                              className={`h-1.5 rounded-full transition-all ${
                                 isSelected
                                   ? 'bg-white'
                                   : isCompleted
@@ -924,7 +899,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
 
                       {/* Progress Text & Status */}
                       <div className="flex items-center justify-between">
-                        <p className={`text-xs font-bold ${
+                        <p className={`text-[10px] font-bold ${
                           isSelected ? 'text-white/90' : 'text-gray-600'
                         }`}>
                           {progress.completed}/{progress.total} steps
@@ -932,7 +907,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                         
                         {/* Status Badge */}
                         {isCompleted && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                             isSelected 
                               ? 'bg-white/20 text-white' 
                               : 'bg-green-100 text-green-700'
@@ -941,7 +916,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                           </span>
                         )}
                         {status === 'active' && !isCompleted && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                             isSelected 
                               ? 'bg-white/20 text-white' 
                               : 'bg-blue-100 text-blue-700'
@@ -950,7 +925,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                           </span>
                         )}
                         {isLocked && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-500">
                             Locked
                           </span>
                         )}
