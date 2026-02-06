@@ -9,14 +9,14 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  MessageSquare,
+  FileText,
   Send,
   Paperclip,
   Download,
   X,
   RefreshCw,
   AlertCircle,
-  FileText,
+  File as FileIcon,
   Lock,
   Edit2,
   File,
@@ -298,9 +298,13 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
   const getPhaseProgress = (phaseId) => {
     if (!journey || !journey.steps) return { completed: 0, total: 0, percentage: 0 };
     
+    // Find the phase definition
+    const phase = INTERNAL_PHASES.find(p => p.id === phaseId);
+    if (!phase) return { completed: 0, total: 0, percentage: 0 };
+    
+    // Get steps within this phase's step range
     const phaseSteps = journey.steps.filter(step => {
-      const stepPhaseId = step.internalPhaseId || getPhaseIdFromStep(step.step);
-      return stepPhaseId === phaseId;
+      return step.step >= phase.stepRange[0] && step.step <= phase.stepRange[1];
     });
     
     const completed = phaseSteps.filter(s => s.status === 'completed').length;
@@ -509,7 +513,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
         setActiveChat(stepNumber);
       }
     } catch (error) {
-      console.error('Error loading chat:', error);
+      console.error('Error loading notes:', error);
     }
   };
 
@@ -557,7 +561,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
     }
 
     if (validFiles.length + selectedFiles.length > 5) {
-      alert('Maximum 5 attachments per message');
+      alert('Maximum 5 attachments per note');
       return;
     }
 
@@ -617,11 +621,11 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
         setSelectedFiles([]);
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.message || 'Failed to send message'}`);
+        alert(`Error: ${errorData.message || 'Failed to send note'}`);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message');
+      console.error('Error sending note:', error);
+      alert('Failed to send note');
     } finally {
       setUploadingFiles(false);
     }
@@ -715,7 +719,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
   if (!journey) {
     return (
       <div className="bg-white rounded-2xl p-16 text-center">
-        <FileText className="w-24 h-24 text-gray-400 mx-auto mb-8" />
+        <FileIcon className="w-24 h-24 text-gray-400 mx-auto mb-8" />
         <h3 className="text-3xl font-bold text-gray-900 mb-6">No Journey Created</h3>
         <p className="text-xl text-gray-600 mb-10">Initialize journey tracking for {clientName}</p>
         <div className="flex gap-4 justify-center">
@@ -902,7 +906,7 @@ const AdminJourneyManager = ({ clientId, clientName, onClose, hideHeader = true 
                         <p className={`text-[10px] font-bold ${
                           isSelected ? 'text-white/90' : 'text-gray-600'
                         }`}>
-                          {progress.completed}/{progress.total} steps
+                          Step {phase.stepRange[0]}-{phase.stepRange[1]}
                         </p>
                         
                         {/* Status Badge */}
@@ -1355,13 +1359,13 @@ const ChatSection = ({
   return (
     <div className="bg-white rounded-lg p-4 border-2 border-blue-200">
       <h5 className="font-bold mb-3 text-sm flex items-center gap-2 text-gray-900">
-        <MessageSquare className="w-4 h-4 text-blue-600" />
-        Conversation
+        <FileText className="w-4 h-4 text-blue-600" />
+        Notes
       </h5>
 
       <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
         {!chatMessages[stepNumber] || chatMessages[stepNumber].length === 0 ? (
-          <p className="text-center py-6 text-gray-400 text-xs">No messages yet</p>
+          <p className="text-center py-6 text-gray-400 text-xs">No notes yet</p>
         ) : (
           <>
             {chatMessages[stepNumber].map((msg, idx) => (
@@ -1433,7 +1437,7 @@ const ChatSection = ({
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           className="flex-1 px-3 py-2 text-xs border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          placeholder="Type message..."
+          placeholder="Type note..."
           onKeyPress={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

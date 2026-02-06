@@ -4,10 +4,14 @@ import {
   Search, Filter, Sparkles, AlertCircle, Mail, Phone,
   User, Building2, CheckCircle, Clock, ClipboardList, MapPin, TrendingUp,
   Calendar, Activity, ChevronLeft, ChevronRight, ClipboardCheck,
-  ShoppingBag, Download, Users // Tambahkan ini
+  ShoppingBag, Download, Users, Edit3 // Tambahkan ini
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { pdf } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import AdminJourneyManager from '../components/AdminJourneyManager';
+import QuestionnaireModal from '../components/QuestionnaireModal';
+
 
 const DESIGN_IMAGES = {
   1: '/images/collections/1.jpg',
@@ -36,7 +40,7 @@ const TEAM_OPTIONS = {
   designer: ['Joanna Staniszewski', 'Janelle Balci', 'Ash Agustin'],
   projectManager: ['Madeline Clifford', 'Daiki Matsumaru', 'Savanna Gonzales'],
   projectManagerAssistant: ['Haley Spitz', 'Florence Sosrita'],
-  designerAssistant: []
+  designerAssistant: ['Benny Kristanto']
 };
 
 const DESIGN_TITLES = {
@@ -404,6 +408,29 @@ const ClientManagement = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [modalMode, setModalMode] = useState('create');
   const [selectedClient, setSelectedClient] = useState(null);
+  // 2️⃣ ADD STATE FOR SHOWING FILL MODAL
+  const [showFillQuestionnaireModal, setShowFillQuestionnaireModal] = useState(false);
+  const [clientForQuestionnaire, setClientForQuestionnaire] = useState(null);
+
+  // 3️⃣ ADD HANDLER FUNCTIONS
+  const openFillQuestionnaireModal = useCallback((client) => {
+    setClientForQuestionnaire(client);
+    setShowFillQuestionnaireModal(true);
+  }, []);
+
+  const handleQuestionnaireComplete = () => {
+    setShowFillQuestionnaireModal(false);
+    setClientForQuestionnaire(null);
+    fetchClients(); // Refresh data
+  };
+
+  const handleCloseQuestionnaire = () => {
+    if (window.confirm('Close without saving? All progress will be lost.')) {
+      setShowFillQuestionnaireModal(false);
+      setClientForQuestionnaire(null);
+    }
+  };
+
   
   const [formData, setFormData] = useState({
     name: '',
@@ -1001,6 +1028,7 @@ const ClientManagement = () => {
           onOpenJourneyModal={openJourneyModal}
           onOpenQuestionnaireModal={openQuestionnaireModal}
           onOpenOrdersModal={openOrdersModal}
+          onOpenFillQuestionnaireModal={openFillQuestionnaireModal} 
         />
       )}
 
@@ -1074,11 +1102,20 @@ const ClientManagement = () => {
       )}
 
       {activeModal === 'questionnaire' && selectedClient && (
-        <QuestionnaireModal selectedClient={selectedClient} onClose={closeModal} />
+        <QuestionnaireModalCheck selectedClient={selectedClient} onClose={closeModal} />
       )}
 
       {activeModal === 'orders' && selectedClient && (
         <OrdersModal selectedClient={selectedClient} onClose={closeModal} />
+      )}
+
+      {showFillQuestionnaireModal && clientForQuestionnaire && (
+        <QuestionnaireModal 
+          onComplete={handleQuestionnaireComplete}
+          onClose={handleCloseQuestionnaire} // ✅ ADD THIS - admin bisa close
+          userData={clientForQuestionnaire}
+          isAdminMode={true} // ✅ ADD THIS - flag untuk admin mode
+        />
       )}
     </div>
   );
@@ -1097,7 +1134,8 @@ const ClientTable = React.memo(
     onDeleteClient,
     onOpenJourneyModal,
     onOpenQuestionnaireModal,
-    onOpenOrdersModal
+    onOpenOrdersModal,
+    onOpenFillQuestionnaireModal // ✅ ADD THIS PROP
   }) => {
     
     const getJourneyStatus = (clientId) => {
@@ -1148,8 +1186,9 @@ const ClientTable = React.memo(
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Client</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Contact</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Property</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Team Assignment</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Journey Status</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Last Login</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Last Modified</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Property Type</th> 
                 <th className="text-right px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -1297,14 +1336,26 @@ const ClientTable = React.memo(
                               size="sm"
                             />
 
+                             {/* ✅ EXISTING BUTTON - VIEW QUESTIONNAIRE */}
                             <ActionButton
                               icon={hasQuest ? ClipboardCheck : ClipboardList}
                               color={hasQuest ? 'green' : 'amber'}
                               onClick={() => onOpenQuestionnaireModal(client)}
-                              title={hasQuest ? "View Questionnaire ✓" : "Questionnaire Pending"}
+                              title={hasQuest ? "View Questionnaire ✓" : "View Questionnaire"}
                               size="sm"
                               pulse={!hasQuest}
                             />
+
+                            {/* ✅ NEW BUTTON - FILL QUESTIONNAIRE */}
+                            {!hasQuest && (
+                              <ActionButton
+                                icon={Edit3}  // ✅ Changed icon
+                                color="purple"
+                                onClick={() => onOpenFillQuestionnaireModal(client)}
+                                title="Fill Questionnaire for Client"
+                                size="sm"
+                              />
+                            )}
 
                             {/* <ActionButton
                               icon={ShoppingBag}
@@ -1513,9 +1564,9 @@ const FormModal = React.memo(
                             🎨 Custom Package Selected
                           </p>
                           <p className="text-xs text-purple-700 leading-relaxed">
-                            • Designer akan input barang secara manual<br/>
-                            • Tidak perlu pilih floor plan<br/>
-                            • Bisa input gambar, link, dan spesifikasi detail
+                            • The designer will manually input the items<br/>
+                            • No floor plan selection is required<br/>
+                            • Images, links, and detailed specifications can be added
                           </p>
                         </div>
                       </div>
@@ -1852,9 +1903,10 @@ const JourneyModal = React.memo(({ selectedClient, onClose }) => {
   );
 });
 
-const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
+const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
   const [questionnaire, setQuestionnaire] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     homeUse: true,
     design: false,
@@ -1883,7 +1935,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.questionnaire) {
-            // Check if questionnaire is actually filled (has submittedAt)
             if (data.questionnaire.submittedAt) {
               setQuestionnaire(data.questionnaire);
             } else {
@@ -1908,6 +1959,352 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
     }));
   };
 
+  // ✅ PDF DOWNLOAD HANDLER
+  const handleDownloadPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      // Dynamic imports
+      const { pdf } = await import('@react-pdf/renderer');
+      const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+
+      // PDF Styles
+      const pdfStyles = StyleSheet.create({
+        page: {
+          padding: 30,
+          fontSize: 10,
+          fontFamily: 'Helvetica',
+        },
+        header: {
+          backgroundColor: '#005670',
+          padding: 15,
+          marginBottom: 20,
+          borderRadius: 5,
+        },
+        headerTitle: {
+          fontSize: 24,
+          fontWeight: 'bold',
+          color: '#ffffff',
+          marginBottom: 5,
+        },
+        headerSubtitle: {
+          fontSize: 10,
+          color: '#ffffff',
+        },
+        infoBox: {
+          backgroundColor: '#f0f8ff',
+          padding: 12,
+          marginBottom: 15,
+          borderRadius: 5,
+          borderLeft: '4px solid #005670',
+        },
+        infoTitle: {
+          fontSize: 12,
+          fontWeight: 'bold',
+          marginBottom: 5,
+        },
+        infoRow: {
+          fontSize: 9,
+          marginBottom: 3,
+        },
+        section: {
+          marginBottom: 15,
+        },
+        sectionHeader: {
+          backgroundColor: '#005670',
+          color: '#ffffff',
+          padding: 8,
+          fontSize: 11,
+          fontWeight: 'bold',
+          marginBottom: 8,
+        },
+        fieldRow: {
+          flexDirection: 'row',
+          marginBottom: 6,
+          paddingBottom: 4,
+          borderBottom: '1px solid #e5e7eb',
+        },
+        fieldLabel: {
+          width: '35%',
+          fontWeight: 'bold',
+          fontSize: 9,
+          color: '#4b5563',
+        },
+        fieldValue: {
+          width: '65%',
+          fontSize: 9,
+          color: '#1f2937',
+        },
+        addonBox: {
+          backgroundColor: '#f0f9ff',
+          padding: 10,
+          marginBottom: 8,
+          borderRadius: 5,
+          borderLeft: '3px solid #3b82f6',
+        },
+        addonTitle: {
+          fontSize: 10,
+          fontWeight: 'bold',
+          color: '#1e40af',
+          marginBottom: 5,
+        },
+        addonItem: {
+          fontSize: 8,
+          color: '#374151',
+          marginBottom: 2,
+        },
+        footer: {
+          position: 'absolute',
+          bottom: 20,
+          left: 30,
+          right: 30,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          fontSize: 8,
+          color: '#9ca3af',
+        },
+        designsList: {
+          fontSize: 9,
+          color: '#1f2937',
+          lineHeight: 1.4,
+        }
+      });
+
+      const submittedDate = questionnaire.submittedAt 
+        ? new Date(questionnaire.submittedAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+        : 'N/A';
+
+      const renderField = (label, value) => {
+        if (!value || (Array.isArray(value) && value.length === 0)) return null;
+        
+        const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
+        
+        return (
+          <View style={pdfStyles.fieldRow}>
+            <Text style={pdfStyles.fieldLabel}>{label}:</Text>
+            <Text style={pdfStyles.fieldValue}>{displayValue}</Text>
+          </View>
+        );
+      };
+
+      // PDF Document
+      const MyDocument = (
+        <Document>
+          <Page size="A4" style={pdfStyles.page}>
+            {/* Header */}
+            <View style={pdfStyles.header}>
+              <Text style={pdfStyles.headerTitle}>Design Questionnaire</Text>
+              <Text style={pdfStyles.headerSubtitle}>Client: {selectedClient.name}</Text>
+            </View>
+
+            {/* Client Info */}
+            <View style={pdfStyles.infoBox}>
+              <Text style={pdfStyles.infoTitle}>Client Information</Text>
+              <Text style={pdfStyles.infoRow}>Name: {selectedClient.name}</Text>
+              <Text style={pdfStyles.infoRow}>Email: {selectedClient.email}</Text>
+              <Text style={pdfStyles.infoRow}>Unit: {selectedClient.unitNumber}</Text>
+              <Text style={pdfStyles.infoRow}>Submitted: {submittedDate}</Text>
+            </View>
+
+            {/* Home Use & Lifestyle */}
+            {(questionnaire.purpose_of_residence || questionnaire.who_will_use || questionnaire.family_members) && (
+              <View style={pdfStyles.section}>
+                <Text style={pdfStyles.sectionHeader}>🏠 Home Use & Lifestyle</Text>
+                {renderField('Purpose of Residence', questionnaire.purpose_of_residence)}
+                {renderField('Who Will Use', questionnaire.who_will_use)}
+                {renderField('Family Members', questionnaire.family_members)}
+                {renderField('Children Ages', questionnaire.children_ages)}
+                {renderField('Living Envision', questionnaire.living_envision)}
+                {renderField('Home Feeling', questionnaire.home_feeling)}
+                {questionnaire.has_pets && (
+                  <>
+                    {renderField('Has Pets', 'Yes')}
+                    {renderField('Pet Details', questionnaire.pet_details)}
+                  </>
+                )}
+                {questionnaire.has_renters && renderField('Has Renters', 'Yes')}
+              </View>
+            )}
+
+            {/* Daily Living & Entertaining */}
+            {(questionnaire.work_from_home || questionnaire.entertain_frequency) && (
+              <View style={pdfStyles.section}>
+                <Text style={pdfStyles.sectionHeader}>🏡 Daily Living & Entertaining</Text>
+                {renderField('Work From Home', questionnaire.work_from_home)}
+                {renderField('Entertain Frequency', questionnaire.entertain_frequency)}
+                {renderField('Gathering Types', questionnaire.gathering_types)}
+                {renderField('Outdoor/Lanai Use', questionnaire.outdoor_lanai_use)}
+              </View>
+            )}
+
+            {/* Design Aesthetic */}
+            {(questionnaire.unit_options || questionnaire.preferred_collection) && (
+              <View style={pdfStyles.section}>
+                <Text style={pdfStyles.sectionHeader}>🎨 Design Aesthetic</Text>
+                {renderField('Unit Options', questionnaire.unit_options)}
+                {renderField('Preferred Collection', questionnaire.preferred_collection)}
+                {renderField('Style Direction', questionnaire.style_direction)}
+                {renderField('Main Upholstery Color', questionnaire.main_upholstery_color)}
+                {renderField('Accent Fabric Color', questionnaire.accent_fabric_color)}
+                {renderField('Metal Tone', questionnaire.metal_tone)}
+                {renderField('Tone Preference', questionnaire.tone_preference)}
+                {renderField('Colors to Avoid', questionnaire.colors_to_avoid)}
+              </View>
+            )}
+
+            {/* Bedrooms & Comfort */}
+            {(questionnaire.bed_sizes || questionnaire.mattress_firmness) && (
+              <View style={pdfStyles.section}>
+                <Text style={pdfStyles.sectionHeader}>🛏️ Bedrooms & Comfort</Text>
+                {renderField('Bed Sizes', questionnaire.bed_sizes)}
+                {renderField('Mattress Firmness', questionnaire.mattress_firmness)}
+                {renderField('Bedding Type', questionnaire.bedding_type)}
+                {renderField('Bedding Material/Color', questionnaire.bedding_material_color)}
+                {renderField('Lighting Mood', questionnaire.lighting_mood)}
+              </View>
+            )}
+
+            {/* Art & Accessories */}
+            {(questionnaire.art_style || questionnaire.art_coverage) && (
+              <View style={pdfStyles.section}>
+                <Text style={pdfStyles.sectionHeader}>🖼️ Art & Accessories</Text>
+                {renderField('Art Style', questionnaire.art_style)}
+                {renderField('Art Coverage', questionnaire.art_coverage)}
+                {renderField('Accessories Styling', questionnaire.accessories_styling)}
+                {renderField('Decorative Pillows', questionnaire.decorative_pillows)}
+                {renderField('Special Zones', questionnaire.special_zones)}
+                {renderField('Existing Furniture', questionnaire.existing_furniture)}
+                {renderField('Furniture Details', questionnaire.existing_furniture_details)}
+                {renderField('Additional Notes', questionnaire.additional_notes)}
+              </View>
+            )}
+
+            {/* Liked Designs */}
+            {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
+              <View style={pdfStyles.section}>
+                <Text style={pdfStyles.sectionHeader}>⭐ Liked Designs</Text>
+                <View style={pdfStyles.fieldRow}>
+                  <Text style={pdfStyles.fieldLabel}>Selected Designs:</Text>
+                  <View style={{ width: '65%' }}>
+                    <Text style={pdfStyles.designsList}>
+                      {questionnaire.likedDesigns.map((id, idx) => {
+                        const title = DESIGN_TITLES[id] || `Design ${id}`;
+                        return `${idx + 1}. ${title} (ID: ${id})`;
+                      }).join('\n')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Add-On Services */}
+            {(questionnaire.closet_interested || questionnaire.window_interested || 
+              questionnaire.av_interested || questionnaire.greenery_interested || 
+              questionnaire.kitchen_interested) && (
+              <View style={pdfStyles.section} wrap={false}>
+                <Text style={pdfStyles.sectionHeader}>⚙️ Add-On Services</Text>
+
+                {/* Closet Solutions */}
+                {questionnaire.closet_interested && (
+                  <View style={pdfStyles.addonBox}>
+                    <Text style={pdfStyles.addonTitle}>Closet Solutions</Text>
+                    {questionnaire.closet_use && questionnaire.closet_use.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Use: {questionnaire.closet_use.join(', ')}</Text>
+                    )}
+                    {questionnaire.organization_style && questionnaire.organization_style.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Style: {questionnaire.organization_style.join(', ')}</Text>
+                    )}
+                    {questionnaire.closet_finish && questionnaire.closet_finish.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Finish: {questionnaire.closet_finish.join(', ')}</Text>
+                    )}
+                    {questionnaire.closet_locations && questionnaire.closet_locations.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Locations: {questionnaire.closet_locations.join(', ')}</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Window Coverings */}
+                {questionnaire.window_interested && (
+                  <View style={pdfStyles.addonBox}>
+                    <Text style={pdfStyles.addonTitle}>Window Coverings</Text>
+                    {questionnaire.window_treatment && questionnaire.window_treatment.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Treatment: {questionnaire.window_treatment.join(', ')}</Text>
+                    )}
+                    {questionnaire.window_operation && questionnaire.window_operation.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Operation: {questionnaire.window_operation.join(', ')}</Text>
+                    )}
+                    {questionnaire.shade_style && questionnaire.shade_style.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Style: {questionnaire.shade_style.join(', ')}</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Audio/Visual */}
+                {questionnaire.av_interested && (
+                  <View style={pdfStyles.addonBox}>
+                    <Text style={pdfStyles.addonTitle}>Audio/Visual</Text>
+                    {questionnaire.av_usage && questionnaire.av_usage.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Usage: {questionnaire.av_usage.join(', ')}</Text>
+                    )}
+                    {questionnaire.av_areas && questionnaire.av_areas.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Areas: {questionnaire.av_areas.join(', ')}</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Greenery/Plants */}
+                {questionnaire.greenery_interested && (
+                  <View style={pdfStyles.addonBox}>
+                    <Text style={pdfStyles.addonTitle}>Greenery/Plants</Text>
+                    {questionnaire.plant_type && questionnaire.plant_type.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Type: {questionnaire.plant_type.join(', ')}</Text>
+                    )}
+                    {questionnaire.plant_areas && questionnaire.plant_areas.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Areas: {questionnaire.plant_areas.join(', ')}</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Kitchen Essentials */}
+                {questionnaire.kitchen_interested && (
+                  <View style={pdfStyles.addonBox}>
+                    <Text style={pdfStyles.addonTitle}>Kitchen Essentials</Text>
+                    {questionnaire.kitchen_essentials && questionnaire.kitchen_essentials.length > 0 && (
+                      <Text style={pdfStyles.addonItem}>Items: {questionnaire.kitchen_essentials.join(', ')}</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Footer */}
+            <View style={pdfStyles.footer} fixed>
+              <Text>Generated on {new Date().toLocaleDateString('en-US')}</Text>
+              <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+            </View>
+          </Page>
+        </Document>
+      );
+
+      const blob = await pdf(MyDocument).toBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Questionnaire_${selectedClient.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
   if (loading) {
     return (
       <Modal title="📋 Client Questionnaire" onClose={onClose} size="large">
@@ -1918,7 +2315,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
     );
   }
 
-  // Updated: Check for questionnaire existence and submittedAt
   if (!questionnaire || !questionnaire.submittedAt) {
     return (
       <Modal title="📋 Client Questionnaire" onClose={onClose} size="large">
@@ -1936,7 +2332,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
           </p>
           
           <div className="max-w-lg mx-auto space-y-4">
-            {/* Info Box */}
             <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 rounded-xl text-left">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -1953,7 +2348,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
               </div>
             </div>
 
-            {/* Action Suggestions */}
             <div className="p-5 bg-amber-50 border border-amber-200 rounded-xl text-left">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1984,18 +2378,40 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
 
   return (
     <Modal title="📋 Client Questionnaire" onClose={onClose} size="large">
-      <div className="space-y-4">
-        {/* Status Badge */}
-        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-500">
-          <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-          <div>
-            <p className="font-bold text-gray-900">
-              Status: <span className="text-blue-600">Submitted</span>
-            </p>
-            <p className="text-sm text-gray-600">
-              Submitted: {questionnaire.submittedAt ? new Date(questionnaire.submittedAt).toLocaleDateString() : 'N/A'}
-            </p>
+      {/* Download Loading Overlay */}
+      {downloadingPDF && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-white px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl">
+            <Loader2 className="w-6 h-6 animate-spin text-[#005670]" />
+            <span className="text-sm font-medium text-gray-700">Generating PDF...</span>
           </div>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {/* Status Badge with Download Button */}
+        <div className="flex items-center justify-between gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-500">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-gray-900">
+                Status: <span className="text-blue-600">Submitted</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Submitted: {questionnaire.submittedAt ? new Date(questionnaire.submittedAt).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Download Button */}
+          <button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPDF}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Download PDF</span>
+          </button>
         </div>
 
         {/* Home Use & Lifestyle */}
@@ -2149,7 +2565,7 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
           )}
         </CollapsibleSection>
 
-        {/* Liked Designs - WITH LIGHTBOX MODAL */}
+        {/* Liked Designs */}
         {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
           <CollapsibleSection
             icon="⭐"
@@ -2162,7 +2578,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                 Client selected <span className="font-bold text-[#005670]">{questionnaire.likedDesigns.length}</span> design image(s)
               </p>
               
-              {/* Grid of Design Images */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {questionnaire.likedDesigns.map((designId, index) => {
                   const imageUrl = DESIGN_IMAGES[designId];
@@ -2178,7 +2593,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                       key={index} 
                       className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-[#005670] transition-all cursor-pointer shadow-sm hover:shadow-lg"
                       onClick={() => {
-                        // ✅ OPEN LIGHTBOX MODAL instead of new tab
                         setLightbox({
                           isOpen: true,
                           imageUrl: imageUrl,
@@ -2187,7 +2601,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                         });
                       }}
                     >
-                      {/* Design Image */}
                       <div className="aspect-square bg-gray-100">
                         <img
                           src={imageUrl}
@@ -2201,7 +2614,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                         />
                       </div>
                       
-                      {/* Hover Overlay with Gradient */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <div className="absolute bottom-0 left-0 right-0 p-4">
                           <div className="flex items-center justify-between">
@@ -2209,7 +2621,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                               <p className="text-white font-bold text-sm mb-1">{designTitle}</p>
                               <p className="text-white/80 text-xs">Click to view full size</p>
                             </div>
-                            {/* Eye icon */}
                             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -2220,14 +2631,12 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                         </div>
                       </div>
                       
-                      {/* Badge nomor di corner kanan atas */}
                       <div className="absolute top-2 right-2 z-10">
                         <span className="px-2.5 py-1 bg-[#005670] text-white rounded-full text-xs font-bold shadow-lg">
                           #{designId}
                         </span>
                       </div>
                       
-                      {/* Star icon di corner kiri atas */}
                       <div className="absolute top-2 left-2 z-10">
                         <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
                           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -2236,7 +2645,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                         </div>
                       </div>
                       
-                      {/* Selection order badge */}
                       <div className="absolute bottom-2 left-2 z-10">
                         <div className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-bold text-[#005670] shadow-md">
                           {index + 1} of {questionnaire.likedDesigns.length}
@@ -2247,7 +2655,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
                 })}
               </div>
               
-              {/* Summary info */}
               <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-400">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -2281,7 +2688,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
             isExpanded={expandedSections.addons}
             onToggle={() => toggleSection('addons')}
           >
-            {/* Closet Solutions */}
             {questionnaire.closet_interested && (
               <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
                 <p className="font-bold text-blue-900 mb-2">Closet Solutions</p>
@@ -2300,7 +2706,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
               </div>
             )}
 
-            {/* Window Coverings */}
             {questionnaire.window_interested && (
               <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
                 <p className="font-bold text-green-900 mb-2">Window Coverings</p>
@@ -2316,7 +2721,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
               </div>
             )}
 
-            {/* Audio/Visual */}
             {questionnaire.av_interested && (
               <div className="mb-4 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
                 <p className="font-bold text-purple-900 mb-2">Audio/Visual</p>
@@ -2329,7 +2733,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
               </div>
             )}
 
-            {/* Greenery */}
             {questionnaire.greenery_interested && (
               <div className="mb-4 p-3 bg-emerald-50 rounded-lg border-l-4 border-emerald-400">
                 <p className="font-bold text-emerald-900 mb-2">Greenery/Plants</p>
@@ -2342,7 +2745,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
               </div>
             )}
 
-            {/* Kitchen Essentials */}
             {questionnaire.kitchen_interested && (
               <div className="mb-4 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
                 <p className="font-bold text-orange-900 mb-2">Kitchen Essentials</p>
@@ -2355,7 +2757,6 @@ const QuestionnaireModal = React.memo(({ selectedClient, onClose }) => {
         )}
       </div>
 
-      {/* ✅ ADD LIGHTBOX MODAL */}
       <ImageLightbox
         isOpen={lightbox.isOpen}
         onClose={() => setLightbox({ ...lightbox, isOpen: false })}

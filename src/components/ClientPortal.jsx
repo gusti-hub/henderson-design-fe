@@ -1053,10 +1053,6 @@ const ClientPortal = () => {
                                   {/* Action Needed Badge */}
                                   {step.clientActionNeeded && !isStepCompleted && (
                                     <div className="flex-shrink-0">
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg mb-2">
-                                        <Zap className="w-3.5 h-3.5" />
-                                        Action Required
-                                      </span>
                                       <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
                                         Our team will contact you via email
                                       </p>

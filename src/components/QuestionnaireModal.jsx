@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, CheckCircle, Heart, AlertCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, Heart, AlertCircle, ClipboardCheck, Info, Clock, X } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
-const QuestionnaireModal = ({ onComplete, userData }) => {
-  const [currentStep, setCurrentStep] = useState(1);
+const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = false }) => {
+  const [currentStep, setCurrentStep] = useState(0); // Start at 0 for instruction page
   const [formData, setFormData] = useState({});
   const [likedImages, setLikedImages] = useState([]);
   const [errors, setErrors] = useState({});
@@ -19,6 +19,19 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
     }
     return false;
   };
+
+  useEffect(() => {
+    if (!isAdminMode) return; // Client mode cannot close
+    
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isAdminMode, onClose]);
 
   const inspirationImages = [
     { id: 1, src: '/images/collections/1.jpg', title: 'Design 1' },
@@ -654,7 +667,9 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
           const draft = data.questionnaires[0];
           if (draft.status === 'draft') {
             setFormData(draft);
-            setCurrentStep(draft.currentStep || 1);
+            // If draft exists, skip instruction page and go to saved step
+            const savedStep = draft.currentStep || 1;
+            setCurrentStep(savedStep);
             if (draft.likedDesigns) {
               setLikedImages(draft.likedDesigns);
             }
@@ -696,6 +711,11 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
   };
 
   const validateCurrentStep = () => {
+    // Instruction page (step 0) doesn't need validation
+    if (currentStep === 0) {
+      return true;
+    }
+
     const currentSection = questionSections[currentStep - 1];
     const newErrors = {};
 
@@ -742,7 +762,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
       document.querySelector('.questionnaire-content')?.scrollTo(0, 0);
     }
@@ -799,20 +819,42 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
     }
   };
 
-  const currentSection = questionSections[currentStep - 1];
-  const progressPercentage = (currentStep / totalSteps) * 100;
+  const currentSection = currentStep === 0 ? null : questionSections[currentStep - 1];
+  const progressPercentage = (currentStep / (totalSteps + 1)) * 100;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
+        {/* Header with Progress */}
         <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] p-6 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-white">Alia Home Design & Lifestyle Intake</h2>
-              <p className="text-white/80 text-sm mt-1">Step {currentStep} of {totalSteps}</p>
+              <h2 className="text-2xl font-bold text-white">
+                Alia Home Design & Lifestyle Intake
+                {isAdminMode && (
+                  <span className="ml-2 text-sm font-normal text-white/80">(Admin Mode)</span>
+                )}
+              </h2>
+              {currentStep === 0 ? (
+                <p className="text-white/80 text-sm mt-1">Welcome - Getting Started</p>
+              ) : (
+                <p className="text-white/80 text-sm mt-1">Step {currentStep} of {totalSteps}</p>
+              )}
             </div>
+            
+            {/* ✅ TARUH DI SINI - setelah closing </div> dari title section */}
+            {isAdminMode && onClose && (
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/20 rounded-xl transition-colors group"
+                title="Close (ESC)"
+              >
+                <X className="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-300" />
+              </button>
+            )}
           </div>
+          
+          {/* Progress bar */}
           <div className="w-full bg-white/20 rounded-full h-2">
             <div
               className="bg-white h-2 rounded-full transition-all duration-300"
@@ -823,165 +865,275 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 questionnaire-content">
-          <div className="mb-6">
-            <h3 className="text-2xl font-bold text-[#005670] mb-2">
-              {currentSection.title}
-            </h3>
-            <p className="text-gray-600">{currentSection.description}</p>
-          </div>
-
-          {currentSection.isImageSelection ? (
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Tip:</strong> Select designs that inspire you and match your aesthetic preferences. 
-                  You've selected {likedImages.length} design{likedImages.length !== 1 ? 's' : ''}.
+          {/* INSTRUCTION PAGE - Step 0 */}
+          {currentStep === 0 ? (
+            <div className="max-w-3xl mx-auto">
+              {/* Hero Section */}
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <ClipboardCheck className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                  Welcome to Your Design Journey!
+                </h2>
+                <p className="text-lg text-gray-600">
+                  Let's create your perfect Ālia home together
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {inspirationImages.map((image) => {
-                  const isLiked = likedImages.includes(image.id);
-                  return (
-                    <div
-                      key={image.id}
-                      className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all ${
-                        isLiked ? 'border-[#005670] shadow-lg scale-105' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => toggleImageLike(image.id)}
-                    >
-                      <img
-                        src={image.src}
-                        alt={image.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        className={`absolute top-2 right-2 w-10 h-10 flex items-center justify-center rounded-full shadow-md transition-all ${
-                          isLiked ? 'bg-[#005670] scale-110' : 'bg-white/90 hover:scale-110'
-                        }`}
-                      >
-                        <Heart className={`w-5 h-5 ${isLiked ? 'fill-white text-white' : 'text-gray-700'}`} />
-                      </button>
+              {/* Main Info Card */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 p-8 mb-6 shadow-lg">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+                    <Info className="w-5 h-5 text-white" />
+                  </div>
+                  Before You Begin
+                </h3>
+                <p className="text-gray-700 text-base leading-relaxed mb-6">
+                  This questionnaire helps us understand your unique style, lifestyle needs, and design preferences. 
+                  Your answers will guide our team in creating a personalized design plan that truly feels like home.
+                </p>
+
+                {/* What You'll Provide */}
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 mb-6">
+                  <h4 className="font-bold text-gray-900 mb-4 text-lg">What You'll Share With Us:</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-[#005670] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-sm font-bold">1</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Design Style & Aesthetic Preferences</p>
+                        <p className="text-gray-600 text-sm">Colors, materials, and overall design direction</p>
+                      </div>
                     </div>
-                  );
-                })}
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-[#005670] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-sm font-bold">2</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Lifestyle & Functional Needs</p>
+                        <p className="text-gray-600 text-sm">How you live, work, and entertain in your space</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-[#005670] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-sm font-bold">3</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Room-by-Room Requirements</p>
+                        <p className="text-gray-600 text-sm">Bedrooms, living areas, and special zones</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-[#005670] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-sm font-bold">4</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Optional Add-On Services</p>
+                        <p className="text-gray-600 text-sm">Closets, window treatments, AV systems, and more</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Info Boxes */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-white/80 rounded-xl p-4 border border-amber-300">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-white" />
+                      </div>
+                      <h5 className="font-bold text-gray-900">Estimated Time</h5>
+                    </div>
+                    <p className="text-gray-700 text-sm">10-15 minutes to complete</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Important Note */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-blue-900 mb-2">Portal Activation</h4>
+                    <p className="text-blue-800 text-sm leading-relaxed">
+                      Once you complete this questionnaire, your full project dashboard will be activated. 
+                      You'll be able to track your design progress, view milestones, and access important project documents.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           ) : (
-            <div className="space-y-6">
-              {currentSection.questions?.map((question) => {
-                // Handle showIf (for radio buttons)
-                if (question.showIf) {
-                  const [conditionKey, conditionValue] = Object.entries(question.showIf)[0];
-                  if (formData[conditionKey] !== conditionValue) {
-                    return null;
-                  }
-                }
+            <>
+              {/* QUESTIONNAIRE CONTENT - Steps 1-12 */}
+              {currentSection && (
+                <>
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-bold text-[#005670] mb-2">
+                      {currentSection.title}
+                    </h3>
+                    <p className="text-gray-600">{currentSection.description}</p>
+                  </div>
 
-                // Handle showIfCheckbox (for checkbox arrays)
-                if (question.showIfCheckbox) {
-                  const { field, value } = question.showIfCheckbox;
-                  const fieldValue = formData[field];
-                  if (!Array.isArray(fieldValue) || !fieldValue.includes(value)) {
-                    return null;
-                  }
-                }
+                  {currentSection.isImageSelection ? (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>Tip:</strong> Select designs that inspire you and match your aesthetic preferences. 
+                      You've selected {likedImages.length} design{likedImages.length !== 1 ? 's' : ''}.
+                    </p>
+                  </div>
 
-                return (
-                  <div key={question.id} className="space-y-3">
-                    <label className="block text-base font-medium text-gray-900">
-                      {question.label}
-                      {question.required && <span className="text-red-500 ml-1">*</span>}
-                    </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {inspirationImages.map((image) => {
+                      const isLiked = likedImages.includes(image.id);
+                      return (
+                        <div
+                          key={image.id}
+                          className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all ${
+                            isLiked ? 'border-[#005670] shadow-lg scale-105' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => toggleImageLike(image.id)}
+                        >
+                          <img
+                            src={image.src}
+                            alt={image.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            className={`absolute top-2 right-2 w-10 h-10 flex items-center justify-center rounded-full shadow-md transition-all ${
+                              isLiked ? 'bg-[#005670] scale-110' : 'bg-white/90 hover:scale-110'
+                            }`}
+                          >
+                            <Heart className={`w-5 h-5 ${isLiked ? 'fill-white text-white' : 'text-gray-700'}`} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {currentSection.questions?.map((question) => {
+                    // Handle showIf (for radio buttons)
+                    if (question.showIf) {
+                      const [conditionKey, conditionValue] = Object.entries(question.showIf)[0];
+                      if (formData[conditionKey] !== conditionValue) {
+                        return null;
+                      }
+                    }
 
-                    {question.type === 'text' && (
-                      <input
-                        type="text"
-                        value={formData[question.id] || ''}
-                        onChange={(e) => handleInputChange(question.id, e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#005670] focus:border-transparent outline-none ${
-                          errors[question.id] ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        placeholder={question.placeholder}
-                      />
-                    )}
+                    // Handle showIfCheckbox (for checkbox arrays)
+                    if (question.showIfCheckbox) {
+                      const { field, value } = question.showIfCheckbox;
+                      const fieldValue = formData[field];
+                      if (!Array.isArray(fieldValue) || !fieldValue.includes(value)) {
+                        return null;
+                      }
+                    }
 
-                    {question.type === 'textarea' && (
-                      <textarea
-                        rows={question.rows || 3}
-                        value={formData[question.id] || ''}
-                        onChange={(e) => handleInputChange(question.id, e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#005670] focus:border-transparent outline-none resize-none ${
-                          errors[question.id] ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        placeholder={question.placeholder}
-                      />
-                    )}
+                    return (
+                      <div key={question.id} className="space-y-3">
+                        <label className="block text-base font-medium text-gray-900">
+                          {question.label}
+                          {question.required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
 
-                    {question.type === 'radio' && (
-                      <div className="space-y-2">
-                        {question.options?.map((opt, i) => (
-                          <label key={i} className="flex items-start gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                            <input
-                              type="radio"
-                              name={question.id}
-                              value={opt}
-                              checked={formData[question.id] === opt}
-                              onChange={(e) => handleInputChange(question.id, e.target.value)}
-                              className="mt-1 w-5 h-5 text-[#005670]"
-                            />
-                            <span className="text-gray-700">{opt}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
+                        {question.type === 'text' && (
+                          <input
+                            type="text"
+                            value={formData[question.id] || ''}
+                            onChange={(e) => handleInputChange(question.id, e.target.value)}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#005670] focus:border-transparent outline-none ${
+                              errors[question.id] ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder={question.placeholder}
+                          />
+                        )}
 
-                    {question.type === 'checkbox' && (
-                      <div className="space-y-2">
-                        {question.options?.map((opt, i) => {
-                          const isChecked = (formData[question.id] || []).includes(opt);
-                          const currentSelections = formData[question.id] || [];
-                          const isDisabled = question.maxSelect && 
-                                            currentSelections.length >= question.maxSelect && 
-                                            !isChecked;
-                          
-                          return (
-                            <label 
-                              key={i} 
-                              className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg transition-colors ${
-                                isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                value={opt}
-                                checked={isChecked}
-                                disabled={isDisabled}
-                                onChange={(e) => handleInputChange(question.id, e.target.value, 'checkbox')}
-                                className="mt-1 w-5 h-5 text-[#005670] rounded"
-                              />
-                              <span className="text-gray-700">{opt}</span>
-                            </label>
-                          );
-                        })}
-                        {question.maxSelect && (
-                          <p className="text-sm text-gray-500 mt-2">
-                            Selected: {(formData[question.id] || []).length} / {question.maxSelect}
-                          </p>
+                        {question.type === 'textarea' && (
+                          <textarea
+                            rows={question.rows || 3}
+                            value={formData[question.id] || ''}
+                            onChange={(e) => handleInputChange(question.id, e.target.value)}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#005670] focus:border-transparent outline-none resize-none ${
+                              errors[question.id] ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder={question.placeholder}
+                          />
+                        )}
+
+                        {question.type === 'radio' && (
+                          <div className="space-y-2">
+                            {question.options?.map((opt, i) => (
+                              <label key={i} className="flex items-start gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                                <input
+                                  type="radio"
+                                  name={question.id}
+                                  value={opt}
+                                  checked={formData[question.id] === opt}
+                                  onChange={(e) => handleInputChange(question.id, e.target.value)}
+                                  className="mt-1 w-5 h-5 text-[#005670]"
+                                />
+                                <span className="text-gray-700">{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+
+                        {question.type === 'checkbox' && (
+                          <div className="space-y-2">
+                            {question.options?.map((opt, i) => {
+                              const isChecked = (formData[question.id] || []).includes(opt);
+                              const currentSelections = formData[question.id] || [];
+                              const isDisabled = question.maxSelect && 
+                                                currentSelections.length >= question.maxSelect && 
+                                                !isChecked;
+                              
+                              return (
+                                <label 
+                                  key={i} 
+                                  className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg transition-colors ${
+                                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    value={opt}
+                                    checked={isChecked}
+                                    disabled={isDisabled}
+                                    onChange={(e) => handleInputChange(question.id, e.target.value, 'checkbox')}
+                                    className="mt-1 w-5 h-5 text-[#005670] rounded"
+                                  />
+                                  <span className="text-gray-700">{opt}</span>
+                                </label>
+                              );
+                            })}
+                            {question.maxSelect && (
+                              <p className="text-sm text-gray-500 mt-2">
+                                Selected: {(formData[question.id] || []).length} / {question.maxSelect}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {errors[question.id] && (
+                          <div className="flex items-center gap-2 text-red-600 text-sm">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>{errors[question.id]}</span>
+                          </div>
                         )}
                       </div>
-                    )}
-
-                    {errors[question.id] && (
-                      <div className="flex items-center gap-2 text-red-600 text-sm">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>{errors[question.id]}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+                </>
+              )}
+            </>
           )}
         </div>
 
@@ -990,14 +1142,22 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
           <div className="flex items-center justify-between gap-4">
             <button
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 0}
               className="flex items-center gap-2 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
 
-            {currentStep < totalSteps ? (
+            {currentStep === 0 ? (
+              <button
+                onClick={handleNext}
+                className="flex items-center gap-2 px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-semibold"
+              >
+                <span>Start Questionnaire</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            ) : currentStep < totalSteps ? (
               <button
                 onClick={handleNext}
                 className="flex items-center gap-2 px-6 py-3 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-semibold"
@@ -1019,7 +1179,7 @@ const QuestionnaireModal = ({ onComplete, userData }) => {
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    <span>Submit & Complete</span>
+                    <span>Submit & Activate Portal</span>
                   </>
                 )}
               </button>
