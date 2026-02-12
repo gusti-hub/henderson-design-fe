@@ -12,6 +12,8 @@ import QuickBooksConnect from './components/QuickBooksConnect';
 import AgreementViewer from './components/AgreementViewer';
 import ProposalEditor from './components/ProposalEditor';
 import AdminInstallBinder from './pages/AdminInstallBinder';
+import PurchaseOrderEditor from './components/PurchaseOrderEditor';
+import PurchaseOrderPage from './pages/PurchaseOrderPage';
 
 // ✅ Protected Route untuk Client
 const ClientProtectedRoute = ({ children }) => {
@@ -122,6 +124,8 @@ function App() {
       
       {/* Catch all - redirect to home */}
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      <Route path="/admin/purchase-order/:orderId/:vendorId/:version?" element={<PurchaseOrderPage />} />
     </Routes>
     
   );

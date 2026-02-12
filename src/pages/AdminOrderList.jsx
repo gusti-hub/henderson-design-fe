@@ -12,8 +12,9 @@ import {
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
-import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor'; // ✅ NEW IMPORT
-import CustomProductManager from '../components/CustomProductManager'; // ✅ TAMBAH INI
+import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor';
+import CustomProductManager from '../components/CustomProductManager';
+import POVendorSelector from '../components/POVendorSelector'; // ✅ NEW: PO Import
 
 const LoadingOverlay = () => (
   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
@@ -166,6 +167,11 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [proposalNotes, setProposalNotes] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // ✅ NEW: PO States
+  const [showPOModal, setShowPOModal] = useState(false);
+  const [selectedPOOrderId, setSelectedPOOrderId] = useState(null);
+  const [selectedPOClientInfo, setSelectedPOClientInfo] = useState(null);
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -206,8 +212,14 @@ const AdminOrderList = ({ onOrderClick }) => {
   }, [searchTerm]);
 
   const handleOpenInstallBinder = (orderId) => {
-    // Open install binder in new tab (same as proposal)
     window.open(`/admin/install-binder/${orderId}`, '_blank');
+  };
+
+  // ✅ NEW: PO Handler
+  const handleOpenPO = (order) => {
+    setSelectedPOOrderId(order._id);
+    setSelectedPOClientInfo(order.clientInfo);
+    setShowPOModal(true);
   };
 
   const handleGenerateProposal = async () => {
@@ -300,7 +312,6 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   const handleOpenProposal = (orderId) => {
-    // Open proposal in new tab
     window.open(`/admin/proposal/${orderId}`, '_blank');
   };
 
@@ -315,7 +326,6 @@ const AdminOrderList = ({ onOrderClick }) => {
       return;
     }
 
-    // ✅ CHECK PACKAGE TYPE
     const packageType = order.packageType || 'investor';
     
     console.log('📦 Opening order for editing:', {
@@ -326,7 +336,7 @@ const AdminOrderList = ({ onOrderClick }) => {
 
     setEditingOrder({
       ...order,
-      packageType, // ✅ Ensure packageType is set
+      packageType,
       selectedPlan: {
         ...order.selectedPlan,
         id: order.selectedPlan?.id || order.clientInfo?.floorPlan || 'investor-a',
@@ -345,7 +355,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       return order.status.charAt(0).toUpperCase() + order.status.slice(1);
     }
 
-    console.log(order)
+    console.log(order);
 
     switch (order.step) {
       case 1:
@@ -379,8 +389,7 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   const getPackageTypeBadge = (packageType, floorPlan) => {
-    console.log(floorPlan)
-    // ✅ kondisi khusus
+    console.log(floorPlan);
     if (packageType === 'custom' && floorPlan === 'Custom Project') {
       return (
         <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
@@ -404,7 +413,6 @@ const AdminOrderList = ({ onOrderClick }) => {
     );
   };
 
-
   const renderStatusPill = (order) => {
     const label = getOrderStatusLabel(order);
     const classes = getStatusPillClasses(order.status);
@@ -419,14 +427,13 @@ const AdminOrderList = ({ onOrderClick }) => {
     );
   };
 
-  // ✅ EDITING MODE - Check package type and render appropriate editor
+  // ✅ EDITING MODE
   if (editingOrder) {
     const isLibraryPackage = editingOrder.packageType === 'library';
-    const isCustomPackage = editingOrder.packageType === 'custom'; // ✅ TAMBAH INI
+    const isCustomPackage = editingOrder.packageType === 'custom';
 
     return (
       <div className="space-y-4">
-        {/* ✅ UPDATE: Hide back button untuk library DAN custom */}
         {!isLibraryPackage && !isCustomPackage && (
           <div className="p-4 bg-white border-b border-gray-200">
             <button
@@ -439,7 +446,6 @@ const AdminOrderList = ({ onOrderClick }) => {
           </div>
         )}
         
-        {/* ✅ CUSTOM PACKAGE: Gunakan CustomProductManager */}
         {isCustomPackage ? (
           <CustomProductManager
             order={editingOrder}
@@ -450,7 +456,6 @@ const AdminOrderList = ({ onOrderClick }) => {
             onBack={handleBackToList}
           />
         ) : isLibraryPackage ? (
-          /* LIBRARY PACKAGE: Gunakan LibraryFloorPlanEditor */
           <LibraryFloorPlanEditor
             order={editingOrder}
             onSave={(placements) => {
@@ -460,7 +465,6 @@ const AdminOrderList = ({ onOrderClick }) => {
             onBack={handleBackToList}
           />
         ) : (
-          /* INVESTOR/LANI PACKAGE: Gunakan AreaCustomization */
           <AreaCustomization
             selectedPlan={editingOrder.selectedPlan}
             floorPlanImage={editingOrder.selectedPlan?.image}
@@ -590,6 +594,7 @@ const AdminOrderList = ({ onOrderClick }) => {
 
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1.5">
+                      {/* View Details */}
                       <button
                         onClick={() => onOrderClick(order._id)}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
@@ -598,6 +603,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                         <Eye className="w-4 h-4" />
                       </button>
 
+                      {/* Edit Order */}
                       <button
                         onClick={() =>
                           order.status === 'ongoing' && handleEdit(order)
@@ -619,6 +625,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                         <Edit2 className="w-4 h-4" />
                       </button>
 
+                      {/* Download Summary */}
                       <button
                         onClick={() => handleDownload(order._id, 'summary')}
                         className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
@@ -627,6 +634,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                         <Download className="w-4 h-4" />
                       </button>
 
+                      {/* Proposal */}
                       <button
                         onClick={() => handleOpenProposal(order._id)}
                         className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
@@ -635,7 +643,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                         <FileText className="w-4 h-4" />
                       </button>
 
-                      {/* ✅ NEW: Install Binder Button - Same pattern as Proposal */}
+                      {/* Install Binder */}
                       <button
                         onClick={() => handleOpenInstallBinder(order._id)}
                         className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all"
@@ -652,6 +660,27 @@ const AdminOrderList = ({ onOrderClick }) => {
                             strokeLinejoin="round" 
                             strokeWidth={2} 
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                          />
+                        </svg>
+                      </button>
+
+                      {/* ✅ NEW: Purchase Order Button */}
+                      <button
+                        onClick={() => handleOpenPO(order)}
+                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                        title="Purchase Orders"
+                      >
+                        <svg 
+                          className="w-4 h-4" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" 
                           />
                         </svg>
                       </button>
@@ -699,6 +728,18 @@ const AdminOrderList = ({ onOrderClick }) => {
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
+      />
+
+      {/* ✅ NEW: PO Vendor Selector Modal */}
+      <POVendorSelector
+        isOpen={showPOModal}
+        onClose={() => {
+          setShowPOModal(false);
+          setSelectedPOOrderId(null);
+          setSelectedPOClientInfo(null);
+        }}
+        orderId={selectedPOOrderId}
+        orderClientInfo={selectedPOClientInfo}
       />
     </div>
   );
