@@ -1,5 +1,5 @@
 // components/CustomProductManager.jsx
-// ✅ FIXED VERSION - handleSaveProduct uses allProducts, no updateData bug
+// ✅ FIXED: Added Status Report fields to buildProductPayload, addManualProduct, handleAddFromLibrary
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -10,6 +10,7 @@ import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
 import ImageUploadField from './ImageUploadField';
 import VendorSearchDropdown from './VendorSearchDropdown';
+import StatusReportFields from './StatusReportFields'; // ✅ NEW
 
 // ==================== MAIN COMPONENT ====================
 
@@ -17,7 +18,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [customProducts, setCustomProducts] = useState([]);
   const [expandedProduct, setExpandedProduct] = useState(null);
 
-  // Floor plan state
   const [floorPlanFile, setFloorPlanFile] = useState(null);
   const [floorPlanNotes, setFloorPlanNotes] = useState('');
   const [existingFloorPlan, setExistingFloorPlan] = useState(null);
@@ -65,10 +65,22 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           notes: '',
           uploadedImages: [],
           customAttributes: {},
+          // Install Binder
           poNumber: '',
           vendorOrderNumber: '',
           trackingInfo: '',
-          deliveryStatus: ''
+          deliveryStatus: '',
+          // ✅ Status Report fields
+          room: '',
+          statusCategory: '',
+          proposalNumber: '',
+          shipTo: '',
+          orderDate: '',
+          expectedShipDate: '',
+          dateReceived: '',
+          estimatedDeliveryDate: '',
+          shippingCarrier: '',
+          orderStatus: '',
         }
       };
     });
@@ -105,10 +117,22 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         size: '',
         uploadedImages: [],
         customAttributes: {},
+        // Install Binder
         poNumber: '',
         vendorOrderNumber: '',
         trackingInfo: '',
-        deliveryStatus: ''
+        deliveryStatus: '',
+        // ✅ Status Report fields
+        room: '',
+        statusCategory: '',
+        proposalNumber: '',
+        shipTo: '',
+        orderDate: '',
+        expectedShipDate: '',
+        dateReceived: '',
+        estimatedDeliveryDate: '',
+        shippingCarrier: '',
+        orderStatus: '',
       }
     };
 
@@ -122,14 +146,25 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const updateProduct = (index, field, value) => {
     setCustomProducts(prev => {
       const updated = [...prev];
-      const item = updated[index];
+      const item = { ...updated[index] };  // ✅ Shallow copy the item first
       if (!item) return prev;
 
       const isLocked = !item.isEditable;
-      const allowedWhenLocked = new Set(['quantity', 'vendor']);
+      const allowedWhenLocked = new Set(['quantity', 'vendor',
+        // ✅ Status Report fields should be editable even for library products
+        'selectedOptions.room', 'selectedOptions.statusCategory',
+        'selectedOptions.proposalNumber', 'selectedOptions.shipTo',
+        'selectedOptions.orderDate', 'selectedOptions.expectedShipDate',
+        'selectedOptions.dateReceived', 'selectedOptions.estimatedDeliveryDate',
+        'selectedOptions.shippingCarrier', 'selectedOptions.orderStatus',
+        // Install binder fields
+        'selectedOptions.poNumber', 'selectedOptions.vendorOrderNumber',
+        'selectedOptions.trackingInfo', 'selectedOptions.deliveryStatus',
+        'selectedOptions.notes',
+      ]);
 
       if (isLocked && !allowedWhenLocked.has(field)) {
-        console.warn('Library products cannot be edited except quantity and vendor');
+        console.warn('Library products cannot be edited except allowed fields');
         return prev;
       }
 
@@ -149,7 +184,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         item.finalPrice = qty * price;
       }
 
-      updated[index] = { ...item };
+      updated[index] = item;  // ✅ Already a new object reference
       return updated;
     });
   };
@@ -439,7 +474,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                 product={product}
                 index={index}
                 order={order}
-                allProducts={customProducts}              // ✅ Pass state terkini
+                allProducts={customProducts}
                 expanded={expandedProduct === index}
                 onToggleExpand={() =>
                   setExpandedProduct(expandedProduct === index ? null : index)
@@ -532,12 +567,12 @@ const ProductCard = ({
   product,
   index,
   order,
-  allProducts,        // ✅ State terkini dari parent
+  allProducts,
   expanded,
   onToggleExpand,
   onUpdate,
   onRemove,
-  onSaved             // (updatedProducts) => void
+  onSaved
 }) => {
   const [customAttrs, setCustomAttrs] = useState(
     product.selectedOptions?.customAttributes || {}
@@ -548,15 +583,16 @@ const ProductCard = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // ✅ Sync customAttrs when product changes (important for switching between products)
+  useEffect(() => {
+    setCustomAttrs(product.selectedOptions?.customAttributes || {});
+  }, [product._id, product.selectedOptions?.customAttributes]);
 
   const getAllImages = () => {
     const images = [];
-
     if (product.selectedOptions?.image) {
       images.push({ url: product.selectedOptions.image, type: 'url', source: 'primary' });
     }
-
     if (product.selectedOptions?.images?.length > 0) {
       product.selectedOptions.images.forEach(url => {
         if (url && !images.find(img => img.url === url)) {
@@ -564,7 +600,6 @@ const ProductCard = ({
         }
       });
     }
-
     if (product.selectedOptions?.uploadedImages?.length > 0) {
       product.selectedOptions.uploadedImages.forEach((img) => {
         const url =
@@ -575,14 +610,13 @@ const ProductCard = ({
         images.push({ url, type: 'uploaded', source: 'uploaded', filename: img.filename });
       });
     }
-
     return images;
   };
 
   const allImages = getAllImages();
   const primaryImage = allImages[0]?.url;
 
-  // ✅ Build clean payload untuk dikirim ke server
+  // ✅ FIXED: buildProductPayload includes ALL fields including Status Report
   const buildProductPayload = (src) => ({
     ...(src._id && !src._id.toString().startsWith('temp_') && { _id: src._id }),
     product_id: src.product_id,
@@ -596,6 +630,7 @@ const ProductCard = ({
     sourceType: src.sourceType || 'manual',
     isEditable: src.isEditable !== undefined ? src.isEditable : true,
     selectedOptions: {
+      // Product specs
       finish: src.selectedOptions?.finish || '',
       fabric: src.selectedOptions?.fabric || '',
       size: src.selectedOptions?.size || '',
@@ -607,16 +642,29 @@ const ProductCard = ({
       notes: src.selectedOptions?.notes || '',
       uploadedImages: src.selectedOptions?.uploadedImages || [],
       customAttributes: src.selectedOptions?.customAttributes || {},
+
+      // Install Binder
       poNumber: src.selectedOptions?.poNumber || '',
       vendorOrderNumber: src.selectedOptions?.vendorOrderNumber || '',
       trackingInfo: src.selectedOptions?.trackingInfo || '',
-      deliveryStatus: src.selectedOptions?.deliveryStatus || ''
+      deliveryStatus: src.selectedOptions?.deliveryStatus || '',
+
+      // ✅ Status Report fields — MUST be included per-product!
+      room: src.selectedOptions?.room || '',
+      statusCategory: src.selectedOptions?.statusCategory || '',
+      proposalNumber: src.selectedOptions?.proposalNumber || '',
+      shipTo: src.selectedOptions?.shipTo || '',
+      orderDate: src.selectedOptions?.orderDate || '',
+      expectedShipDate: src.selectedOptions?.expectedShipDate || '',
+      dateReceived: src.selectedOptions?.dateReceived || '',
+      estimatedDeliveryDate: src.selectedOptions?.estimatedDeliveryDate || '',
+      shippingCarrier: src.selectedOptions?.shippingCarrier || '',
+      orderStatus: src.selectedOptions?.orderStatus || '',
     },
     placement: src.placement || null
   });
 
-  // ─── Custom Attributes ────────────────────────────────────────────────────────
-
+  // Custom Attributes
   const addCustomAttribute = () => {
     if (!newAttrKey.trim()) return;
     const updated = { ...customAttrs, [newAttrKey]: newAttrValue };
@@ -633,8 +681,7 @@ const ProductCard = ({
     onUpdate(index, 'selectedOptions.customAttributes', updated);
   };
 
-  // ─── Save ─────────────────────────────────────────────────────────────────────
-
+  // ── Save ──
   const handleSaveProduct = async () => {
     if (!product.name?.trim()) {
       alert('❌ Product must have a Name!');
@@ -657,16 +704,14 @@ const ProductCard = ({
       let updatedProducts;
 
       if (isNewProduct) {
-        // ✅ New product: strip temp _id, append to existing saved products
         const existingSaved = allProducts
           .filter(p => !p._id?.toString().startsWith('temp_'))
           .map(buildProductPayload);
 
         const { _id, ...cleanProduct } = product;
         updatedProducts = [...existingSaved, buildProductPayload(cleanProduct)];
-
       } else {
-        // ✅ Existing product: replace matching entry in allProducts
+        // ✅ FIXED: Map ALL products from allProducts (including temp ones being edited)
         updatedProducts = allProducts
           .filter(p => !p._id?.toString().startsWith('temp_') || p._id === product._id)
           .map(p => {
@@ -675,9 +720,8 @@ const ProductCard = ({
           });
       }
 
-      console.log('📦 Saving products to server:', updatedProducts.length, updatedProducts);
+      console.log('📦 Saving products to server:', updatedProducts.length);
 
-      // ✅ FIX: pakai updatedProducts, bukan updateData yang tidak pernah didefinisikan
       const saveResponse = await fetch(
         `${backendServer}/api/orders/${order._id}`,
         {
@@ -713,15 +757,12 @@ const ProductCard = ({
     }
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────────
-
   return (
     <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200">
 
       {/* ── Compact Header ── */}
       <div className="p-4">
         <div className="flex items-center gap-4">
-
           {/* Thumbnail */}
           <div
             className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 cursor-pointer hover:border-[#005670] transition-colors relative"
@@ -767,12 +808,20 @@ const ProductCard = ({
                   <><Edit2 className="w-3 h-3" /> Manual #{index + 1}</>
                 )}
               </span>
+              {product.selectedOptions?.statusCategory && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                  {product.selectedOptions.statusCategory}
+                </span>
+              )}
             </div>
             <h4 className="font-bold text-gray-900 truncate">
               {product.name || 'Untitled Product'}
             </h4>
             <p className="text-xs text-gray-500 mt-1">
               {product.product_id} • Qty: {product.quantity} • ${parseFloat(product.finalPrice || 0).toFixed(2)}
+              {product.selectedOptions?.room && (
+                <span className="text-teal-600"> • {product.selectedOptions.room}</span>
+              )}
             </p>
             {allImages.length > 0 && (
               <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
@@ -818,7 +867,6 @@ const ProductCard = ({
           onClick={() => setShowImageGallery(false)}
         >
           <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
-
             <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 z-10">
               <div className="flex items-center justify-between text-white">
                 <div>
@@ -835,7 +883,6 @@ const ProductCard = ({
                 </button>
               </div>
             </div>
-
             <div className="flex items-center justify-center min-h-[60vh]">
               <img
                 src={allImages[currentImageIndex].url}
@@ -848,7 +895,6 @@ const ProductCard = ({
                 }}
               />
             </div>
-
             {allImages.length > 1 && (
               <>
                 <button
@@ -873,7 +919,6 @@ const ProductCard = ({
                 </button>
               </>
             )}
-
             {allImages.length > 1 && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
                 <div className="flex gap-2 overflow-x-auto justify-center">
@@ -909,7 +954,7 @@ const ProductCard = ({
                 <div>
                   <p className="text-sm font-medium text-purple-900">Read-Only Product</p>
                   <p className="text-xs text-purple-700 mt-1">
-                    This product is from the library. Only quantity and vendor can be changed.
+                    This product is from the library. Only quantity, vendor, and status/binder fields can be changed.
                   </p>
                 </div>
               </div>
@@ -1005,6 +1050,14 @@ const ProductCard = ({
             />
           </div>
 
+          {/* ✅ NEW: Status Report Fields */}
+          <StatusReportFields
+            product={product}
+            index={index}
+            onUpdate={onUpdate}
+            disabled={false}
+          />
+
           {/* ── Install Binder ── */}
           <div className="border-t-2 border-gray-200 pt-6">
             <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1018,8 +1071,7 @@ const ProductCard = ({
                   type="text"
                   value={product.selectedOptions?.poNumber || ''}
                   onChange={(e) => onUpdate(index, 'selectedOptions.poNumber', e.target.value)}
-                  disabled={!product.isEditable}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                   placeholder="Tim-2289995"
                 />
               </div>
@@ -1029,8 +1081,7 @@ const ProductCard = ({
                   type="text"
                   value={product.selectedOptions?.vendorOrderNumber || ''}
                   onChange={(e) => onUpdate(index, 'selectedOptions.vendorOrderNumber', e.target.value)}
-                  disabled={!product.isEditable}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                   placeholder="353502018743"
                 />
               </div>
@@ -1040,8 +1091,7 @@ const ProductCard = ({
                   type="text"
                   value={product.selectedOptions?.trackingInfo || ''}
                   onChange={(e) => onUpdate(index, 'selectedOptions.trackingInfo', e.target.value)}
-                  disabled={!product.isEditable}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                   placeholder="UPS (1Z61RE120340475585)"
                 />
               </div>
@@ -1050,8 +1100,7 @@ const ProductCard = ({
                 <textarea
                   value={product.selectedOptions?.deliveryStatus || ''}
                   onChange={(e) => onUpdate(index, 'selectedOptions.deliveryStatus', e.target.value)}
-                  disabled={!product.isEditable}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] resize-none"
                   rows={2}
                   placeholder={`12/23/25 Delivered\n12/18/25 Shipped`}
                 />
