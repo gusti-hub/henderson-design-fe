@@ -1,5 +1,4 @@
 // components/CustomProductManager.jsx
-// ✅ FIXED: Added Status Report fields to buildProductPayload, addManualProduct, handleAddFromLibrary
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -10,7 +9,8 @@ import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
 import ImageUploadField from './ImageUploadField';
 import VendorSearchDropdown from './VendorSearchDropdown';
-import StatusReportFields from './StatusReportFields'; // ✅ NEW
+import StatusReportFields from './StatusReportFields';
+import PricingFields from './PricingFields';
 
 // ==================== MAIN COMPONENT ====================
 
@@ -70,7 +70,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           vendorOrderNumber: '',
           trackingInfo: '',
           deliveryStatus: '',
-          // ✅ Status Report fields
+          // Status Report fields
           room: '',
           statusCategory: '',
           proposalNumber: '',
@@ -81,6 +81,26 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           estimatedDeliveryDate: '',
           shippingCarrier: '',
           orderStatus: '',
+          // Pricing defaults
+          units: 'Each',
+          msrp: 0,
+          discountPercent: 0,
+          noNetPurchaseCost: false,
+          discountTaken: '',
+          shippingCost: 0,
+          otherCost: 0,
+          markupPercent: 50,
+          shippingMarkupPercent: 50,
+          otherMarkupPercent: 50,
+          depositPercent: 90,
+          vendorDepositPercent: 0,
+          salesTaxRate: 8.75,
+          taxableCost: true,
+          taxableMarkup: true,
+          taxableShippingCost: true,
+          taxableShippingMarkup: true,
+          taxableOtherCost: true,
+          taxableOtherMarkup: true,
         }
       };
     });
@@ -122,7 +142,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         vendorOrderNumber: '',
         trackingInfo: '',
         deliveryStatus: '',
-        // ✅ Status Report fields
+        // Status Report fields
         room: '',
         statusCategory: '',
         proposalNumber: '',
@@ -133,6 +153,26 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         estimatedDeliveryDate: '',
         shippingCarrier: '',
         orderStatus: '',
+        // Pricing defaults
+        units: 'Each',
+        msrp: 0,
+        discountPercent: 0,
+        noNetPurchaseCost: false,
+        discountTaken: '',
+        shippingCost: 0,
+        otherCost: 0,
+        markupPercent: 50,
+        shippingMarkupPercent: 50,
+        otherMarkupPercent: 50,
+        depositPercent: 90,
+        vendorDepositPercent: 0,
+        salesTaxRate: 8.75,
+        taxableCost: true,
+        taxableMarkup: true,
+        taxableShippingCost: true,
+        taxableShippingMarkup: true,
+        taxableOtherCost: true,
+        taxableOtherMarkup: true,
       }
     };
 
@@ -146,12 +186,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const updateProduct = (index, field, value) => {
     setCustomProducts(prev => {
       const updated = [...prev];
-      const item = { ...updated[index] };  // ✅ Shallow copy the item first
+      const item = { ...updated[index] };
       if (!item) return prev;
 
       const isLocked = !item.isEditable;
-      const allowedWhenLocked = new Set(['quantity', 'vendor',
-        // ✅ Status Report fields should be editable even for library products
+      const allowedWhenLocked = new Set(['quantity', 'vendor', 'unitPrice', 'finalPrice',
+        // Status Report fields
         'selectedOptions.room', 'selectedOptions.statusCategory',
         'selectedOptions.proposalNumber', 'selectedOptions.shipTo',
         'selectedOptions.orderDate', 'selectedOptions.expectedShipDate',
@@ -161,6 +201,16 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         'selectedOptions.poNumber', 'selectedOptions.vendorOrderNumber',
         'selectedOptions.trackingInfo', 'selectedOptions.deliveryStatus',
         'selectedOptions.notes',
+        // Pricing fields
+        'selectedOptions.units', 'selectedOptions.msrp', 'selectedOptions.discountPercent',
+        'selectedOptions.noNetPurchaseCost', 'selectedOptions.discountTaken',
+        'selectedOptions.shippingCost', 'selectedOptions.otherCost',
+        'selectedOptions.markupPercent', 'selectedOptions.shippingMarkupPercent',
+        'selectedOptions.otherMarkupPercent', 'selectedOptions.depositPercent',
+        'selectedOptions.vendorDepositPercent', 'selectedOptions.salesTaxRate',
+        'selectedOptions.taxableCost', 'selectedOptions.taxableMarkup',
+        'selectedOptions.taxableShippingCost', 'selectedOptions.taxableShippingMarkup',
+        'selectedOptions.taxableOtherCost', 'selectedOptions.taxableOtherMarkup',
       ]);
 
       if (isLocked && !allowedWhenLocked.has(field)) {
@@ -184,7 +234,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         item.finalPrice = qty * price;
       }
 
-      updated[index] = item;  // ✅ Already a new object reference
+      updated[index] = item;
       return updated;
     });
   };
@@ -583,7 +633,6 @@ const ProductCard = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // ✅ Sync customAttrs when product changes (important for switching between products)
   useEffect(() => {
     setCustomAttrs(product.selectedOptions?.customAttributes || {});
   }, [product._id, product.selectedOptions?.customAttributes]);
@@ -616,7 +665,6 @@ const ProductCard = ({
   const allImages = getAllImages();
   const primaryImage = allImages[0]?.url;
 
-  // ✅ FIXED: buildProductPayload includes ALL fields including Status Report
   const buildProductPayload = (src) => ({
     ...(src._id && !src._id.toString().startsWith('temp_') && { _id: src._id }),
     product_id: src.product_id,
@@ -642,14 +690,12 @@ const ProductCard = ({
       notes: src.selectedOptions?.notes || '',
       uploadedImages: src.selectedOptions?.uploadedImages || [],
       customAttributes: src.selectedOptions?.customAttributes || {},
-
       // Install Binder
       poNumber: src.selectedOptions?.poNumber || '',
       vendorOrderNumber: src.selectedOptions?.vendorOrderNumber || '',
       trackingInfo: src.selectedOptions?.trackingInfo || '',
       deliveryStatus: src.selectedOptions?.deliveryStatus || '',
-
-      // ✅ Status Report fields — MUST be included per-product!
+      // Status Report fields
       room: src.selectedOptions?.room || '',
       statusCategory: src.selectedOptions?.statusCategory || '',
       proposalNumber: src.selectedOptions?.proposalNumber || '',
@@ -660,11 +706,32 @@ const ProductCard = ({
       estimatedDeliveryDate: src.selectedOptions?.estimatedDeliveryDate || '',
       shippingCarrier: src.selectedOptions?.shippingCarrier || '',
       orderStatus: src.selectedOptions?.orderStatus || '',
+      // Pricing - Purchase
+      units: src.selectedOptions?.units || 'Each',
+      msrp: parseFloat(src.selectedOptions?.msrp) || 0,
+      discountPercent: parseFloat(src.selectedOptions?.discountPercent) || 0,
+      noNetPurchaseCost: src.selectedOptions?.noNetPurchaseCost || false,
+      discountTaken: src.selectedOptions?.discountTaken || '',
+      shippingCost: parseFloat(src.selectedOptions?.shippingCost) || 0,
+      otherCost: parseFloat(src.selectedOptions?.otherCost) || 0,
+      // Pricing - Selling
+      markupPercent: parseFloat(src.selectedOptions?.markupPercent) || 0,
+      shippingMarkupPercent: parseFloat(src.selectedOptions?.shippingMarkupPercent) || 0,
+      otherMarkupPercent: parseFloat(src.selectedOptions?.otherMarkupPercent) || 0,
+      depositPercent: parseFloat(src.selectedOptions?.depositPercent) || 0,
+      vendorDepositPercent: parseFloat(src.selectedOptions?.vendorDepositPercent) || 0,
+      salesTaxRate: parseFloat(src.selectedOptions?.salesTaxRate) || 0,
+      // Pricing - Taxable
+      taxableCost: src.selectedOptions?.taxableCost !== false,
+      taxableMarkup: src.selectedOptions?.taxableMarkup !== false,
+      taxableShippingCost: src.selectedOptions?.taxableShippingCost !== false,
+      taxableShippingMarkup: src.selectedOptions?.taxableShippingMarkup !== false,
+      taxableOtherCost: src.selectedOptions?.taxableOtherCost !== false,
+      taxableOtherMarkup: src.selectedOptions?.taxableOtherMarkup !== false,
     },
     placement: src.placement || null
   });
 
-  // Custom Attributes
   const addCustomAttribute = () => {
     if (!newAttrKey.trim()) return;
     const updated = { ...customAttrs, [newAttrKey]: newAttrValue };
@@ -687,10 +754,6 @@ const ProductCard = ({
       alert('❌ Product must have a Name!');
       return;
     }
-    if (!product.unitPrice || parseFloat(product.unitPrice) <= 0) {
-      alert('❌ Product must have a Price greater than 0!');
-      return;
-    }
 
     setSaving(true);
     try {
@@ -711,7 +774,6 @@ const ProductCard = ({
         const { _id, ...cleanProduct } = product;
         updatedProducts = [...existingSaved, buildProductPayload(cleanProduct)];
       } else {
-        // ✅ FIXED: Map ALL products from allProducts (including temp ones being edited)
         updatedProducts = allProducts
           .filter(p => !p._id?.toString().startsWith('temp_') || p._id === product._id)
           .map(p => {
@@ -954,15 +1016,15 @@ const ProductCard = ({
                 <div>
                   <p className="text-sm font-medium text-purple-900">Read-Only Product</p>
                   <p className="text-xs text-purple-700 mt-1">
-                    This product is from the library. Only quantity, vendor, and status/binder fields can be changed.
+                    This product is from the library. Only quantity, vendor, pricing, and status/binder fields can be changed.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Basic Info ── */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* ── Basic Info (Product Code, Name, Category only) ── */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Product Code *</label>
               <input
@@ -993,51 +1055,6 @@ const ProductCard = ({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
-              <input
-                type="number"
-                min="1"
-                value={product.quantity}
-                onChange={(e) => onUpdate(index, 'quantity', parseInt(e.target.value) || 1)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price ($) *</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={product.unitPrice === 0 ? '' : product.unitPrice}
-                onChange={(e) => {
-                  let value = e.target.value;
-                  if (value === '') { onUpdate(index, 'unitPrice', 0); return; }
-                  value = value.replace(/^0+(?=\d)/, '');
-                  if (/^\d*\.?\d{0,2}$/.test(value)) {
-                    onUpdate(index, 'unitPrice', value);
-                  }
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value;
-                  if (value === '' || value === '.') {
-                    onUpdate(index, 'unitPrice', 0);
-                  } else {
-                    onUpdate(index, 'unitPrice', parseFloat(value) || 0);
-                  }
-                }}
-                disabled={!product.isEditable}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex items-end">
-              <div className="w-full p-3 bg-gray-50 rounded-lg border border-gray-300">
-                <p className="text-xs text-gray-500 mb-1">Total Price</p>
-                <p className="text-xl font-bold text-gray-900">
-                  ${parseFloat(product.finalPrice || 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* ── Vendor ── */}
@@ -1050,7 +1067,15 @@ const ProductCard = ({
             />
           </div>
 
-          {/* ✅ NEW: Status Report Fields */}
+          {/* ── Pricing ── */}
+          <PricingFields
+            product={product}
+            index={index}
+            onUpdate={onUpdate}
+            disabled={!product.isEditable}
+          />
+
+          {/* ── Status Report Fields ── */}
           <StatusReportFields
             product={product}
             index={index}
