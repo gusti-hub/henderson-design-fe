@@ -64,6 +64,9 @@ const PRICING_TABLE = {
   'Lani': { '1': 10000, '2': 15000, '3': 20000 }
 };
 
+// TAMBAH BARIS INI
+const CUSTOM_COLLECTIONS = ['Custom', 'Nalu (Client)', 'Lani (Client)'];
+
 const COLLECTIONS = Object.keys(PRICING_TABLE);
 const BEDROOM_OPTIONS = ['1', '2', '3', 'custom'];
 
@@ -598,9 +601,7 @@ const ClientManagement = () => {
         autoPackageType = 'library';
       } else if (formData.collection === 'Nalu Collection') {
         autoPackageType = 'investor';
-      } else if (formData.collection === 'Lani') {
-        autoPackageType = 'custom';
-      } else if (formData.collection === 'Custom') { // ✅ TAMBAH INI
+      } else if (CUSTOM_COLLECTIONS.includes(formData.collection)) {
         autoPackageType = 'custom';
       }
       
@@ -638,9 +639,10 @@ const ClientManagement = () => {
     
     // ✅ Collection dan bedroom HANYA untuk CREATE mode
     if (modalMode === 'create') {
+      // Collection required untuk create dan edit
       if (!formData.collection) newErrors.collection = 'Required';
-      
-      // ✅ Bedroom count TIDAK required untuk Custom atau Library
+
+      // Bedroom count tidak required untuk Custom atau Library
       if (formData.packageType !== 'library' && formData.packageType !== 'custom') {
         if (!formData.bedroomCount) {
           newErrors.bedroomCount = 'Required';
@@ -651,7 +653,6 @@ const ClientManagement = () => {
           }
         }
       }
-
     }
     
     // Password validation
@@ -704,8 +705,8 @@ const ClientManagement = () => {
         floorPlan: client.floorPlan || '',
         propertyType: client.propertyType || 'Lock 2025 Pricing',
         password: '',
-        collection: '',
-        bedroomCount: '',
+        collection: client.collection || '',
+        bedroomCount: client.bedroomCount ? String(client.bedroomCount) : '',
         packageType: client.packageType || 'investor',
         calculatedAmount: client.paymentInfo?.totalAmount || 0,
         designer: client.teamAssignment?.designer || '',
@@ -820,37 +821,31 @@ const ClientManagement = () => {
         propertyType: formData.propertyType,
         packageType: formData.packageType,
         floorPlan: formData.packageType === 'custom' ? 'Custom Project' : formData.floorPlan,
+        collection: formData.collection,  // ✅ selalu kirim, create & edit
         teamAssignment: {
-        designer: formData.designer || '',
-        projectManager: formData.projectManager || '',
-        projectManagerAssistant: formData.projectManagerAssistant || '',
-        designerAssistant: formData.designerAssistant || ''
-      }
+          designer: formData.designer || '',
+          projectManager: formData.projectManager || '',
+          projectManagerAssistant: formData.projectManagerAssistant || '',
+          designerAssistant: formData.designerAssistant || ''
+        }
       };
 
+      // Bedroom count untuk non-custom & non-library
+      if (formData.packageType !== 'custom' && 
+          formData.packageType !== 'library' && 
+          formData.bedroomCount) {
+        submitData.bedroomCount = formData.bedroomCount;
+      }
+
+      // Custom notes untuk custom package
+      if (formData.packageType === 'custom' && formData.customNotes) {
+        submitData.customNotes = formData.customNotes;
+      }
+
+      // Password handling
       if (modalMode === 'create') {
-        // Password required for create
         submitData.password = formData.password;
-        
-        // Collection required for create
-        submitData.collection = formData.collection;
-        
-        // ✅ ONLY add bedroomCount if:
-        // 1. NOT custom package
-        // 2. NOT library package
-        // 3. bedroomCount has actual value
-        if (formData.packageType !== 'custom' && 
-            formData.packageType !== 'library' && 
-            formData.bedroomCount) {
-          submitData.bedroomCount = formData.bedroomCount;
-        }
-        
-        // ✅ Add customNotes if custom package
-        if (formData.packageType === 'custom' && formData.customNotes) {
-          submitData.customNotes = formData.customNotes;
-        }
       } else if (showPasswordField && formData.password) {
-        // Update mode - only if changing password
         submitData.password = formData.password;
       }
 
@@ -1233,7 +1228,11 @@ const ClientTable = React.memo(
                           <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
                           Unit {client.unitNumber}
                         </p>
-                        <p className="text-xs text-gray-500">{client.floorPlan || '-'}</p>
+                        <p className="text-xs text-gray-500">
+                          {CUSTOM_COLLECTIONS.includes(client.collection) && client.collection !== 'Custom'
+                            ? client.collection
+                            : client.floorPlan || '-'}
+                        </p>
                       </div>
                     </td>
 
@@ -1447,7 +1446,7 @@ const FormModal = React.memo(
                 required
               />
               {/* ✅ FLOOR PLAN - HIDE UNTUK CUSTOM PACKAGE */}
-              {formData.collection !== 'Custom' && (
+              {!CUSTOM_COLLECTIONS.includes(formData.collection) && (
                 <Select
                   label="Floor Plan"
                   value={formData.floorPlan}
@@ -1520,7 +1519,7 @@ const FormModal = React.memo(
               </div>
             </div>
 
-            {modalMode === 'create' && (
+            {modalMode !== 'view' && (
               <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200">
                 <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Sparkles className="w-5 h-5" /> Pricing Information
@@ -1534,16 +1533,16 @@ const FormModal = React.memo(
                     onChange={(v) => setFormData(prev => ({ 
                       ...prev, 
                       collection: v,
-                      // ✅ Reset bedroom count kalau pilih Custom
-                      bedroomCount: v === 'Custom' ? '' : prev.bedroomCount,
-                      // ✅ Reset floor plan kalau pilih Custom
-                      floorPlan: v === 'Custom' ? '' : prev.floorPlan
+                      bedroomCount: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.bedroomCount,
+                      floorPlan: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.floorPlan
                     }))}
                     options={[
                       { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
                       { value: 'Nalu Collection', label: 'Nalu (Developer)' },
+                      { value: 'Nalu (Client)', label: 'Nalu (Client)' },
                       { value: 'Lani', label: 'Lani (Developer)' },
-                      { value: 'Custom', label: '✨ Custom (Manual Input)' } // ✅ BARU
+                      { value: 'Lani (Client)', label: 'Lani (Client)' },
+                      { value: 'Custom', label: '✨ Custom (Manual Input)' }
                     ]}
                     error={errors.collection}
                     required
@@ -1551,7 +1550,7 @@ const FormModal = React.memo(
                 </div>
 
                 {/* ✅ CONDITIONAL RENDERING */}
-                {formData.collection === 'Custom' ? (
+                {CUSTOM_COLLECTIONS.includes(formData.collection) ? (
                   // ========================================
                   // TAMPILAN UNTUK CUSTOM PACKAGE
                   // ========================================
