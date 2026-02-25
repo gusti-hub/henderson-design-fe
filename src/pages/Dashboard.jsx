@@ -66,7 +66,7 @@ const Dashboard = () => {
   };
 
   const handleOrderSelect = (orderId) => {
-    setSelectedOrders(prev => 
+    setSelectedOrders(prev =>
       prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
     );
   };
@@ -179,20 +179,22 @@ const Dashboard = () => {
           icon={Clock}
           color="cyan"
         />
+
+        {/* Recent Activity Panel */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
               <Activity className="w-5 h-5 text-white" />
             </div>
             <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+            <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              {activityData.recentActivity.length} entries
+            </span>
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {activityData.recentActivity.length > 0 ? (
               activityData.recentActivity.map((activity, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                  <span className="text-sm text-gray-700">{activity.action}</span>
-                  <span className="text-xs text-gray-500">{activity.time}</span>
-                </div>
+                <ActivityItem key={activity._id || index} activity={activity} />
               ))
             ) : (
               <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
@@ -209,8 +211,8 @@ const Dashboard = () => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
               data={[
-                { name: 'Ongoing', value: stats.orderDistribution?.ongoing || 0 },
-                { name: 'Review', value: stats.orderDistribution?.review || 0 },
+                { name: 'Ongoing',   value: stats.orderDistribution?.ongoing   || 0 },
+                { name: 'Review',    value: stats.orderDistribution?.review    || 0 },
                 { name: 'Confirmed', value: stats.orderDistribution?.confirmed || 0 },
                 { name: 'Completed', value: stats.orderDistribution?.completed || 0 }
               ]}
@@ -218,12 +220,12 @@ const Dashboard = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
               <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
@@ -240,12 +242,12 @@ const Dashboard = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="name" stroke="#6b7280" style={{ fontSize: '12px' }} />
               <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
@@ -284,7 +286,10 @@ const Dashboard = () => {
                 <th className="px-4 py-3 text-center">
                   <input
                     type="checkbox"
-                    checked={selectedOrders.length === stats?.recentOrders?.length && stats?.recentOrders?.length > 0}
+                    checked={
+                      selectedOrders.length === stats?.recentOrders?.length &&
+                      stats?.recentOrders?.length > 0
+                    }
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="rounded border-gray-300 text-[#005670] focus:ring-[#005670]"
                   />
@@ -328,7 +333,7 @@ const Dashboard = () => {
   );
 };
 
-// Stat Card Component
+// ─── Stat Card ───────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, icon: Icon, gradient }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
     <div className="flex items-center justify-between mb-4">
@@ -341,11 +346,11 @@ const StatCard = ({ title, value, icon: Icon, gradient }) => (
   </div>
 );
 
-// Activity Card Component
+// ─── Activity Card ────────────────────────────────────────────────────────────
 const ActivityCard = ({ title, value, icon: Icon, color }) => {
   const colorClasses = {
-    blue: 'from-blue-500 to-cyan-600',
-    cyan: 'from-cyan-500 to-teal-600',
+    blue:   'from-blue-500 to-cyan-600',
+    cyan:   'from-cyan-500 to-teal-600',
     purple: 'from-purple-500 to-pink-600'
   };
 
@@ -362,47 +367,108 @@ const ActivityCard = ({ title, value, icon: Icon, color }) => {
   );
 };
 
-// Status Badge Component
+// ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
   const config = {
-    completed: { 
-      bg: 'bg-emerald-100', 
-      text: 'text-emerald-700', 
-      icon: CheckCircle, 
-      label: 'Completed' 
-    },
-    confirmed: { 
-      bg: 'bg-blue-100', 
-      text: 'text-blue-700', 
-      icon: CheckCircle, 
-      label: 'Confirmed' 
-    },
-    ongoing: { 
-      bg: 'bg-amber-100', 
-      text: 'text-amber-700', 
-      icon: Clock, 
-      label: 'Ongoing' 
-    },
-    review: { 
-      bg: 'bg-purple-100', 
-      text: 'text-purple-700', 
-      icon: Eye, 
-      label: 'Review' 
-    }
-  }[status] || { 
-    bg: 'bg-gray-100', 
-    text: 'text-gray-700', 
-    icon: Circle, 
-    label: status 
-  };
+    completed: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle, label: 'Completed' },
+    confirmed: { bg: 'bg-blue-100',    text: 'text-blue-700',    icon: CheckCircle, label: 'Confirmed' },
+    ongoing:   { bg: 'bg-amber-100',   text: 'text-amber-700',   icon: Clock,       label: 'Ongoing'   },
+    review:    { bg: 'bg-purple-100',  text: 'text-purple-700',  icon: Eye,         label: 'Review'    }
+  }[status] || { bg: 'bg-gray-100', text: 'text-gray-700', icon: Circle, label: status };
 
   const Icon = config.icon;
-  
+
   return (
     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${config.bg} ${config.text}`}>
       <Icon className="w-3 h-3" />
       {config.label}
     </span>
+  );
+};
+
+// ─── Action Type Config ───────────────────────────────────────────────────────
+const ACTION_CONFIG = {
+  login:    { color: 'bg-emerald-100 text-emerald-700', label: 'Login'    },
+  logout:   { color: 'bg-gray-100 text-gray-600',       label: 'Logout'   },
+  create:   { color: 'bg-blue-100 text-blue-700',       label: 'Create'   },
+  update:   { color: 'bg-amber-100 text-amber-700',     label: 'Update'   },
+  delete:   { color: 'bg-red-100 text-red-700',         label: 'Delete'   },
+  download: { color: 'bg-purple-100 text-purple-700',   label: 'Download' },
+  view:     { color: 'bg-cyan-100 text-cyan-700',       label: 'View'     },
+  upload:   { color: 'bg-indigo-100 text-indigo-700',   label: 'Upload'   },
+  other:    { color: 'bg-gray-100 text-gray-600',       label: 'Activity' },
+};
+
+const STATUS_DOT = {
+  success: 'bg-emerald-500',
+  failed:  'bg-red-500',
+  warning: 'bg-amber-500',
+};
+
+// ─── Activity Item ────────────────────────────────────────────────────────────
+const ActivityItem = ({ activity }) => {
+  const cfg = ACTION_CONFIG[activity.actionType] || ACTION_CONFIG.other;
+  const statusDot = STATUS_DOT[activity.status] || STATUS_DOT.success;
+
+  const displayName = activity.userName && activity.userName !== 'Guest'
+    ? activity.userName
+    : activity.userEmail || 'Unknown';
+
+  const timeAgo = (date) => {
+    const diff = Math.floor((Date.now() - new Date(date)) / 1000);
+    if (diff < 60)    return `${diff}s ago`;
+    if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return new Date(date).toLocaleDateString();
+  };
+
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100">
+      {/* Avatar */}
+      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] flex items-center justify-center text-white text-xs font-bold shrink-0">
+        {displayName.charAt(0).toUpperCase()}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Row 1: Name + Badge + Status dot */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            {displayName}
+          </span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
+            {cfg.label}
+          </span>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot}`} title={activity.status} />
+        </div>
+
+        {/* Row 2: Action */}
+        <p className="text-xs text-gray-700 mt-0.5 truncate">{activity.action}</p>
+
+        {/* Row 3: Resource */}
+        {activity.resource && (
+          <p className="text-xs text-gray-400 truncate">
+            {activity.resource}
+            {activity.resourceId ? ` · #${activity.resourceId.slice(-6)}` : ''}
+          </p>
+        )}
+
+        {/* Row 4: Role + IP + Time */}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {activity.userRole && activity.userRole !== 'unknown' && (
+            <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+              {activity.userRole}
+            </span>
+          )}
+          {activity.ipAddress && (
+            <span className="text-xs text-gray-400">{activity.ipAddress}</span>
+          )}
+          <span className="text-xs text-gray-400 ml-auto shrink-0">
+            {timeAgo(activity.time)}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 };
 

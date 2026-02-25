@@ -59,16 +59,24 @@ const DESIGN_TITLES = {
 };
 
 const PRICING_TABLE = {
-  'Nalu Foundation Collection': { '1': 2500, '2': 3500, '3': 4500 },
-  'Nalu Collection': { '1': 5000, '2': 7500, '3': 10000 },
-  'Lani': { '1': 10000, '2': 15000, '3': 20000 }
+  'Nalu Foundation Collection': { '1': 2500, '2': 3500, '3': 4500, '1B': 2500, '2B': 3500, '3B': 4500 },
+  'Nalu Collection': { '1': 5000, '2': 7500, '3': 10000, '1B': 5000, '2B': 7500, '3B': 10000 },
 };
 
 // TAMBAH BARIS INI
-const CUSTOM_COLLECTIONS = ['Custom', 'Nalu (Client)', 'Lani (Client)'];
+const CUSTOM_COLLECTIONS = ['Custom']; // hanya pure Custom yang tidak butuh floor plan
+const CLIENT_COLLECTIONS = ['Nalu (Client)', 'Lani (Client)']; // butuh floor plan, tidak butuh bedroom/harga
 
 const COLLECTIONS = Object.keys(PRICING_TABLE);
-const BEDROOM_OPTIONS = ['1', '2', '3', 'custom'];
+const BEDROOM_OPTIONS = [
+  { value: '1', label: '1 Bedroom + Den' },
+  { value: '2', label: '2 Bedroom + Den' },
+  { value: '3', label: '3 Bedroom + Den' },
+  { value: '1B', label: '1 Bedroom' },
+  { value: '2B', label: '2 Bedroom' },
+  { value: '3B', label: '3 Bedroom' },
+  { value: 'custom', label: 'Custom (Input Qty)' },
+];
 
 // ==================== IMAGE LIGHTBOX COMPONENT ====================
 const ImageLightbox = ({ isOpen, onClose, imageUrl, designId, designTitle }) => {
@@ -599,9 +607,7 @@ const ClientManagement = () => {
       
       if (formData.collection === 'Nalu Foundation Collection') {
         autoPackageType = 'library';
-      } else if (formData.collection === 'Nalu Collection') {
-        autoPackageType = 'investor';
-      } else if (CUSTOM_COLLECTIONS.includes(formData.collection)) {
+      } else if (CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection)) {
         autoPackageType = 'custom';
       }
       
@@ -627,13 +633,19 @@ const ClientManagement = () => {
     
     // Basic required fields
     if (!formData.name) newErrors.name = 'Required';
-    if (!formData.email) newErrors.email = 'Required';
-    if (!formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
+    if (formData.email && !formData.email.match(/^\S+@\S+\.\S+$/)) {
+      newErrors.email = 'Invalid email format';
+    }
+    // Email wajib hanya untuk create mode
+    const emailOptionalTypes = ['Design Hold Fee', 'Developer'];
+    if (modalMode === 'create' && !formData.email && !emailOptionalTypes.includes(formData.propertyType)) {
+      newErrors.email = 'Required';
+    }
     if (!formData.unitNumber) newErrors.unitNumber = 'Required';
     if (!formData.propertyType) newErrors.propertyType = 'Required';
     
     // ✅ Floor plan TIDAK required untuk Custom package
-    if (formData.packageType !== 'custom' && !formData.floorPlan) {
+    if (CUSTOM_COLLECTIONS.includes(formData.collection) === false && !formData.floorPlan) {
       newErrors.floorPlan = 'Required';
     }
     
@@ -647,8 +659,9 @@ const ClientManagement = () => {
         if (!formData.bedroomCount) {
           newErrors.bedroomCount = 'Required';
         } else {
+          const VALID_BEDROOM_OPTIONS = ['1', '2', '3', '1B', '2B', '3B'];
           const n = Number(formData.bedroomCount);
-          if (!Number.isFinite(n) || n < 1) {
+          if (!VALID_BEDROOM_OPTIONS.includes(formData.bedroomCount) && (!Number.isFinite(n) || n < 1)) {
             newErrors.bedroomCount = 'Must be a positive number';
           }
         }
@@ -820,7 +833,9 @@ const ClientManagement = () => {
         unitNumber: formData.unitNumber,
         propertyType: formData.propertyType,
         packageType: formData.packageType,
-        floorPlan: formData.packageType === 'custom' ? 'Custom Project' : formData.floorPlan,
+        floorPlan: CUSTOM_COLLECTIONS.includes(formData.collection)
+        ? 'Custom Project'
+        : formData.floorPlan,
         collection: formData.collection,  // ✅ selalu kirim, create & edit
         teamAssignment: {
           designer: formData.designer || '',
@@ -1229,8 +1244,8 @@ const ClientTable = React.memo(
                           Unit {client.unitNumber}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {CUSTOM_COLLECTIONS.includes(client.collection) && client.collection !== 'Custom'
-                            ? client.collection
+                          {CLIENT_COLLECTIONS.includes(client.collection)
+                            ? `${client.collection} • ${client.floorPlan || '-'}`
                             : client.floorPlan || '-'}
                         </p>
                       </div>
@@ -1431,12 +1446,21 @@ const FormModal = React.memo(
                 required
               />
               <Input
-                label="Email"
+                label={
+                  ['Design Hold Fee', 'Developer'].includes(formData.propertyType)
+                    ? 'Email (Optional)'
+                    : 'Email'
+                }
                 type="email"
                 value={formData.email}
                 onChange={(v) => setFormData((prev) => ({ ...prev, email: v }))}
                 error={errors.email}
-                required
+                required={!['Design Hold Fee', 'Developer'].includes(formData.propertyType)}
+                placeholder={
+                  ['Design Hold Fee', 'Developer'].includes(formData.propertyType)
+                    ? 'Optional'
+                    : 'Enter client email'
+                }
               />
               <Input
                 label="Unit Number"
@@ -1446,7 +1470,7 @@ const FormModal = React.memo(
                 required
               />
               {/* ✅ FLOOR PLAN - HIDE UNTUK CUSTOM PACKAGE */}
-              {!CUSTOM_COLLECTIONS.includes(formData.collection) && (
+              {(!CUSTOM_COLLECTIONS.includes(formData.collection)) && (
                 <Select
                   label="Floor Plan"
                   value={formData.floorPlan}
@@ -1456,17 +1480,18 @@ const FormModal = React.memo(
                   required
                 />
               )}
-              <Select 
-                label="Property Type" 
-                value={formData.propertyType} 
-                onChange={(v) => setFormData(prev => ({...prev, propertyType: v}))} 
-                options={[
-                  { value: 'Lock 2025 Pricing', label: 'Lock 2025 Pricing' },
-                  { value: 'Design Hold Fee', label: 'Design Hold Fee' }
-                ]}
-                error={errors.propertyType} 
-                required 
-              />
+            <Select 
+              label="Property Type" 
+              value={formData.propertyType} 
+              onChange={(v) => setFormData(prev => ({...prev, propertyType: v}))} 
+              options={[
+                { value: 'Lock 2025 Pricing', label: 'Lock 2025 Pricing' },
+                { value: 'Design Hold Fee', label: 'Design Hold Fee' },
+                { value: 'Developer', label: 'Developer' }
+              ]}
+              error={errors.propertyType} 
+              required 
+            />
             </div>
 
             {/* ✅ NEW: Team Assignment Section */}
@@ -1533,14 +1558,12 @@ const FormModal = React.memo(
                     onChange={(v) => setFormData(prev => ({ 
                       ...prev, 
                       collection: v,
-                      bedroomCount: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.bedroomCount,
-                      floorPlan: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.floorPlan
+                      bedroomCount: (CUSTOM_COLLECTIONS.includes(v) || CLIENT_COLLECTIONS.includes(v)) ? '' : prev.bedroomCount,
+                      floorPlan: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.floorPlan  // Client collections tetap simpan floor plan
                     }))}
                     options={[
-                      { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
-                      { value: 'Nalu Collection', label: 'Nalu (Developer)' },
+                      // { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
                       { value: 'Nalu (Client)', label: 'Nalu (Client)' },
-                      { value: 'Lani', label: 'Lani (Developer)' },
                       { value: 'Lani (Client)', label: 'Lani (Client)' },
                       { value: 'Custom', label: '✨ Custom (Manual Input)' }
                     ]}
@@ -1550,11 +1573,12 @@ const FormModal = React.memo(
                 </div>
 
                 {/* ✅ CONDITIONAL RENDERING */}
-                {CUSTOM_COLLECTIONS.includes(formData.collection) ? (
+                {(CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection)) ? (
                   // ========================================
                   // TAMPILAN UNTUK CUSTOM PACKAGE
                   // ========================================
                   <div className="space-y-4">
+                  {CUSTOM_COLLECTIONS.includes(formData.collection) && (
                     <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-300">
                       <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
@@ -1570,6 +1594,7 @@ const FormModal = React.memo(
                         </div>
                       </div>
                     </div>
+                  )}
 
                     {/* Optional Custom Notes */}
                     <div>
@@ -1600,23 +1625,19 @@ const FormModal = React.memo(
                       value={
                         bedroomMode
                           ? bedroomMode
-                          : (['1', '2', '3'].includes(String(formData.bedroomCount)) ? String(formData.bedroomCount) : '')
+                          : (['1', '2', '3', '1B', '2B', '3B'].includes(String(formData.bedroomCount))
+                              ? String(formData.bedroomCount)
+                              : '')
                       }
                       onChange={(v) => {
                         setBedroomMode(v);
-
                         if (v === 'custom') {
-                          // kosongkan dulu supaya user input angka
                           setFormData(prev => ({ ...prev, bedroomCount: '' }));
                         } else {
-                          // normal option: langsung simpan angka ke bedroomCount (existing field)
                           setFormData(prev => ({ ...prev, bedroomCount: v }));
                         }
                       }}
-                      options={BEDROOM_OPTIONS.map((b) => ({
-                        value: b,
-                        label: b === 'custom' ? 'Custom (Input Qty)' : `${b} Bedroom + Den`,
-                      }))}
+                      options={BEDROOM_OPTIONS}
                       error={errors.bedroomCount}
                       required
                     />
