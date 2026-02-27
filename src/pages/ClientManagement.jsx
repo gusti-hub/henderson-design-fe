@@ -596,10 +596,9 @@ const ClientManagement = () => {
     if (activeModal) return;
     const timer = setTimeout(() => {
       setCurrentPage(1);
-      fetchClients();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchTerm, activeModal, fetchClients]);
+  }, [searchTerm, activeModal]);
 
   useEffect(() => {
     if (formData.collection) {
