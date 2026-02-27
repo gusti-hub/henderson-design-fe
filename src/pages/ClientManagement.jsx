@@ -58,14 +58,18 @@ const DESIGN_TITLES = {
   16: 'Design 12',
 };
 
+// AFTER
 const PRICING_TABLE = {
   'Nalu Foundation Collection': { '1': 2500, '2': 3500, '3': 4500, '1B': 2500, '2B': 3500, '3B': 4500 },
-  'Nalu Collection': { '1': 5000, '2': 7500, '3': 10000, '1B': 5000, '2B': 7500, '3B': 10000 },
+  'Nalu Collection':            { '1': 5000, '2': 7500,  '3': 10000, '1B': 5000, '2B': 7500,  '3B': 10000 },
+  'Nalu (Developer)':           { '1': 5000, '2': 7500,  '3': 10000, '1B': 5000, '2B': 7500,  '3B': 10000 },
+  'Lani (Developer)':           { '1': 10000, '2': 15000, '3': 20000, '1B': 10000, '2B': 15000, '3B': 20000 },
 };
 
 // TAMBAH BARIS INI
 const CUSTOM_COLLECTIONS = ['Custom']; // hanya pure Custom yang tidak butuh floor plan
 const CLIENT_COLLECTIONS = ['Nalu (Client)', 'Lani (Client)']; // butuh floor plan, tidak butuh bedroom/harga
+const DEVELOPER_COLLECTIONS = ['Nalu (Developer)', 'Lani (Developer)'];
 
 const COLLECTIONS = Object.keys(PRICING_TABLE);
 const BEDROOM_OPTIONS = [
@@ -606,7 +610,7 @@ const ClientManagement = () => {
       
       if (formData.collection === 'Nalu Foundation Collection') {
         autoPackageType = 'library';
-      } else if (CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection)) {
+      } else if (CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection) ||  DEVELOPER_COLLECTIONS.includes(formData.collection)) {
         autoPackageType = 'custom';
       }
       
@@ -1243,7 +1247,7 @@ const ClientTable = React.memo(
                           Unit {client.unitNumber}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {CLIENT_COLLECTIONS.includes(client.collection)
+                          {(CLIENT_COLLECTIONS.includes(client.collection) || DEVELOPER_COLLECTIONS.includes(client.collection))
                             ? `${client.collection} • ${client.floorPlan || '-'}`
                             : client.floorPlan || '-'}
                         </p>
@@ -1564,6 +1568,8 @@ const FormModal = React.memo(
                       // { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
                       { value: 'Nalu (Client)', label: 'Nalu (Client)' },
                       { value: 'Lani (Client)', label: 'Lani (Client)' },
+                      { value: 'Nalu (Developer)', label: 'Nalu (Developer)' },
+                      { value: 'Lani (Developer)', label: 'Lani (Developer)' },
                       { value: 'Custom', label: '✨ Custom (Manual Input)' }
                     ]}
                     error={errors.collection}
