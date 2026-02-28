@@ -848,10 +848,11 @@ const ClientManagement = () => {
         }
       };
 
-      // Bedroom count untuk non-custom & non-library
-      if (formData.packageType !== 'custom' && 
-          formData.packageType !== 'library' && 
-          formData.bedroomCount) {
+      const isClientCollection = CLIENT_COLLECTIONS.includes(formData.collection);
+
+      if (formData.packageType !== 'library' && 
+          formData.bedroomCount &&
+          (!CUSTOM_COLLECTIONS.includes(formData.collection) || isClientCollection)) {
         submitData.bedroomCount = formData.bedroomCount;
       }
 
