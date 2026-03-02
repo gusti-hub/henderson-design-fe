@@ -1449,7 +1449,45 @@ const ClientTable = React.memo(
 );
 
 
+
 // ==================== MODALS ====================
+const FloorPlanAutocomplete = ({ value, onChange, error, opts }) => {
+  const [fpQuery, setFpQuery] = React.useState(value || '');
+  const [fpOpen, setFpOpen] = React.useState(false);
+
+  React.useEffect(() => { setFpQuery(value || ''); }, [value]);
+
+  const filtered = fpQuery
+    ? opts.filter(fp => fp.toLowerCase().includes(fpQuery.toLowerCase()))
+    : opts;
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={fpQuery}
+        onChange={e => { setFpQuery(e.target.value); setFpOpen(true); }}
+        onFocus={() => setFpOpen(true)}
+        onBlur={() => setTimeout(() => setFpOpen(false), 150)}
+        placeholder="Search floor plan..."
+        autoComplete="off"
+        className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] ${error ? 'border-red-400' : 'border-gray-300'}`}
+      />
+      {fpOpen && filtered.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+          {filtered.map(fp => (
+            <button key={fp} type="button"
+              onMouseDown={() => { onChange(fp); setFpQuery(fp); setFpOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#005670]/10 transition-colors ${value === fp ? 'bg-[#005670]/10 text-[#005670] font-semibold' : 'text-gray-700'}`}>
+              {fp}
+            </button>
+          ))}
+        </div>
+      )}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+};
 
 const FormModal = React.memo(
   ({
@@ -1641,40 +1679,12 @@ const FormModal = React.memo(
                         {!isCustom && (
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Floor Plan{idx === 0 ? ' *' : ''}</label>
-                              {(() => {
-                                const [fpQuery, setFpQuery] = React.useState(formData[f.fp] || '');
-                                const [fpOpen, setFpOpen] = React.useState(false);
-                                React.useEffect(() => { setFpQuery(formData[f.fp] || ''); }, [formData[f.fp]]);
-                                const filtered = fpQuery
-                                  ? FLOOR_PLAN_OPTS.filter(fp => fp.toLowerCase().includes(fpQuery.toLowerCase()))
-                                  : FLOOR_PLAN_OPTS;
-                                return (
-                                  <div className="relative">
-                                    <input
-                                      type="text"
-                                      value={fpQuery}
-                                      onChange={e => { setFpQuery(e.target.value); setFpOpen(true); }}
-                                      onFocus={() => setFpOpen(true)}
-                                      onBlur={() => setTimeout(() => setFpOpen(false), 150)}
-                                      placeholder="Search floor plan..."
-                                      autoComplete="off"
-                                      className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] ${errors[f.fp] ? 'border-red-400' : 'border-gray-300'}`}
-                                    />
-                                    {fpOpen && filtered.length > 0 && (
-                                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
-                                        {filtered.map(fp => (
-                                          <button key={fp} type="button"
-                                            onMouseDown={() => { setFormData(prev => ({ ...prev, [f.fp]: fp })); setFpQuery(fp); setFpOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-[#005670]/10 transition-colors ${formData[f.fp] === fp ? 'bg-[#005670]/10 text-[#005670] font-semibold' : 'text-gray-700'}`}>
-                                            {fp}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            {errors[f.fp] && <p className="text-red-500 text-xs mt-1">{errors[f.fp]}</p>}
+                            <FloorPlanAutocomplete
+                              value={formData[f.fp]}
+                              onChange={(v) => setFormData(prev => ({ ...prev, [f.fp]: v }))}
+                              error={errors[f.fp]}
+                              opts={FLOOR_PLAN_OPTS}
+                            />
                           </div>
                         )}
                       </div>
