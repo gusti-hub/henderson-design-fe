@@ -461,7 +461,11 @@ const ClientManagement = () => {
     designer: '',
     projectManager: '',
     projectManagerAssistant: '',
-    designerAssistant: ''
+    designerAssistant: '',
+    unitNumber2: '', floorPlan2: '',
+    unitNumber3: '', floorPlan3: '',
+    unitNumber4: '', floorPlan4: '',
+    unitNumber5: '', floorPlan5: '',
   });
   const [errors, setErrors] = useState({});
   const [showPasswordField, setShowPasswordField] = useState(false);
@@ -691,6 +695,14 @@ const ClientManagement = () => {
       password: '12345678',
       unitNumber: '',
       floorPlan: '',
+      unitNumber2: '',
+      floorPlan2: '',
+      unitNumber3: '',
+      floorPlan3: '',
+      unitNumber4: '',
+      floorPlan4: '',
+      unitNumber5: '',
+      floorPlan5: '',                  
       propertyType: 'Lock 2025 Pricing',
       collection: '',
       bedroomCount: '',
@@ -719,6 +731,14 @@ const ClientManagement = () => {
         email: client.email || '',
         unitNumber: client.unitNumber || '',
         floorPlan: client.floorPlan || '',
+        unitNumber2: client.unitNumber2 || '',
+        floorPlan2: client.floorPlan2 || '',
+        unitNumber3: client.unitNumber3 || '',
+        floorPlan3: client.floorPlan3 || '',
+        unitNumber4: client.unitNumber4 || '',
+        floorPlan4: client.floorPlan4 || '',
+        unitNumber5: client.unitNumber5 || '',
+        floorPlan5: client.floorPlan5 || '',                                
         propertyType: client.propertyType || 'Lock 2025 Pricing',
         password: '',
         collection: client.collection || '',
@@ -834,6 +854,14 @@ const ClientManagement = () => {
         name: formData.name,
         email: formData.email,
         unitNumber: formData.unitNumber,
+        unitNumber2: formData.unitNumber2 || '',
+        floorPlan2: formData.floorPlan2 || '',
+        unitNumber3: formData.unitNumber3 || '',
+        floorPlan3: formData.floorPlan3 || '',
+        unitNumber4: formData.unitNumber4 || '',
+        floorPlan4: formData.floorPlan4 || '',
+        unitNumber5: formData.unitNumber5 || '',
+        floorPlan5: formData.floorPlan5 || '',
         propertyType: formData.propertyType,
         packageType: formData.packageType,
         floorPlan: CUSTOM_COLLECTIONS.includes(formData.collection)
@@ -1241,19 +1269,34 @@ const ClientTable = React.memo(
                       </div>
                     </td>
 
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                  <td className="px-4 py-3">
+                    <div className="space-y-1">
+                      {[
+                        { un: client.unitNumber, fp: client.floorPlan, primary: true },
+                        { un: client.unitNumber2, fp: client.floorPlan2 },
+                        { un: client.unitNumber3, fp: client.floorPlan3 },
+                        { un: client.unitNumber4, fp: client.floorPlan4 },
+                        { un: client.unitNumber5, fp: client.floorPlan5 },
+                      ].filter(u => u.un).map((u, i) => (
+                        <div key={i} className="flex items-center gap-1.5">
                           <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          Unit {client.unitNumber}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {(CLIENT_COLLECTIONS.includes(client.collection) || DEVELOPER_COLLECTIONS.includes(client.collection))
-                            ? `${client.collection} • ${client.floorPlan || '-'}`
-                            : client.floorPlan || '-'}
-                        </p>
-                      </div>
-                    </td>
+                          <div>
+                            <span className={`text-sm font-medium ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>
+                              Unit {u.un}
+                            </span>
+                            {u.primary && i === 0 && (
+                              <span className="ml-1 text-xs text-[#005670] font-bold">★</span>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              {(CLIENT_COLLECTIONS.includes(client.collection) || DEVELOPER_COLLECTIONS.includes(client.collection))
+                                ? `${client.collection} • ${u.fp || '-'}`
+                                : u.fp || '-'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
 
                     {/* ✅ NEW: Team Assignment Column */}
                     <td className="px-4 py-3">
@@ -1466,37 +1509,180 @@ const FormModal = React.memo(
                     : 'Enter client email'
                 }
               />
-              <Input
-                label="Unit Number"
-                value={formData.unitNumber}
-                onChange={(v) => setFormData((prev) => ({ ...prev, unitNumber: v }))}
-                error={errors.unitNumber}
-                required
-              />
-              {/* ✅ FLOOR PLAN - HIDE UNTUK CUSTOM PACKAGE */}
-              {(!CUSTOM_COLLECTIONS.includes(formData.collection)) && (
-                <Select
-                  label="Floor Plan"
-                  value={formData.floorPlan}
-                  onChange={(v) => setFormData(prev => ({ ...prev, floorPlan: v }))}
-                  options={floorPlans.map((fp) => ({ value: fp, label: fp }))}
-                  error={errors.floorPlan}
-                  required
-                />
-              )}
-            <Select 
-              label="Property Type" 
-              value={formData.propertyType} 
-              onChange={(v) => setFormData(prev => ({...prev, propertyType: v}))} 
-              options={[
-                { value: 'Lock 2025 Pricing', label: 'Lock 2025 Pricing' },
-                { value: 'Design Hold Fee', label: 'Design Hold Fee' },
-                { value: 'Developer', label: 'Developer' }
-              ]}
-              error={errors.propertyType} 
-              required 
-            />
+              {(() => {
+                const opts = ['Lock 2025 Pricing', 'Design Hold Fee', 'Developer'];
+                const [q, setQ] = React.useState(formData.propertyType || '');
+                const [open, setOpen] = React.useState(false);
+                React.useEffect(() => { setQ(formData.propertyType || ''); }, [formData.propertyType]);
+                const filtered = q ? opts.filter(o => o.toLowerCase().includes(q.toLowerCase())) : opts;
+                return (
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Property Type <span className="text-red-500">*</span></label>
+                    <input type="text" value={q}
+                      onChange={e => { setQ(e.target.value); setOpen(true); }}
+                      onFocus={() => setOpen(true)}
+                      onBlur={() => setTimeout(() => setOpen(false), 150)}
+                      placeholder="Select property type..." autoComplete="off"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]" />
+                    {open && filtered.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        {filtered.map(o => (
+                          <button key={o} type="button"
+                            onMouseDown={() => { setFormData(prev => ({ ...prev, propertyType: o })); setQ(o); setOpen(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#005670]/10 ${formData.propertyType === o ? 'bg-[#005670]/10 text-[#005670] font-semibold' : 'text-gray-700'}`}>
+                            {o}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
+
+            {/* Units Manager */}
+            {(() => {
+              const FLOOR_PLAN_OPTS = [
+                "Residence 00A", "Residence 00B",
+                "Residence 01A", "Residence 01B",
+                "Residence 02A", "Residence 02B",
+                "Residence 03A", "Residence 03B",
+                "Residence 04A", "Residence 04B",
+                "Residence 05A", "Residence 05B",
+                "Residence 06A", "Residence 06B",
+                "Residence 07A", "Residence 07B",
+                "Residence 08A", "Residence 08B",
+                "Residence 09A", "Residence 09B",
+                "Residence 10A", "Residence 10B",
+                "Residence 11A", "Residence 11B",
+                "Residence 12A", "Residence 12B",
+                "Residence 13A", "Residence 13B",
+                "Residence 14A", "Residence 14B",
+                "Residence 15A", "Residence 15B",
+                "Residence 16A", "Residence 16B",
+                "Residence 17A", "Residence 17B",
+                "Residence 08", "Residence 10A/12A", "Residence 10/12"
+              ];
+
+              const unitFields = [
+                { un: 'unitNumber', fp: 'floorPlan', label: '★ Primary' },
+                { un: 'unitNumber2', fp: 'floorPlan2', label: 'Unit 2' },
+                { un: 'unitNumber3', fp: 'floorPlan3', label: 'Unit 3' },
+                { un: 'unitNumber4', fp: 'floorPlan4', label: 'Unit 4' },
+                { un: 'unitNumber5', fp: 'floorPlan5', label: 'Unit 5' },
+              ];
+
+              const [visibleCount, setVisibleCount] = React.useState(() => {
+                let count = 1;
+                for (let i = 1; i < 5; i++) {
+                  if (formData[unitFields[i].un]) count = i + 1;
+                }
+                return count;
+              });
+
+              const isCustom = CUSTOM_COLLECTIONS.includes(formData.collection);
+
+              return (
+                <div className="p-5 bg-gradient-to-br from-slate-50 to-gray-50 rounded-2xl border-2 border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-[#005670]" />
+                      <span className="text-sm font-semibold text-gray-700">Unit Details</span>
+                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{visibleCount}/5</span>
+                    </div>
+                    {visibleCount < 5 && (
+                      <button type="button" onClick={() => setVisibleCount(v => v + 1)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#005670] bg-[#005670]/10 hover:bg-[#005670]/20 rounded-lg transition-all">
+                        <Plus className="w-3.5 h-3.5" /> Add Unit
+                      </button>
+                    )}
+                  </div>
+
+                  {unitFields.slice(0, visibleCount).map((f, idx) => (
+                    <div key={idx} className={`relative p-4 rounded-xl border-2 ${idx === 0 ? 'border-[#005670]/40 bg-[#005670]/5' : 'border-dashed border-gray-300 bg-white'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-[#005670] text-white' : 'bg-gray-200 text-gray-600'}`}>{f.label}</span>
+                        {idx > 0 && (
+                          <button type="button" onClick={() => {
+                          // Shift semua unit di atas idx ke bawah, clear yang terakhir
+                          setFormData(prev => {
+                            const next = { ...prev };
+                            const fields = [
+                              { un: 'unitNumber', fp: 'floorPlan' },
+                              { un: 'unitNumber2', fp: 'floorPlan2' },
+                              { un: 'unitNumber3', fp: 'floorPlan3' },
+                              { un: 'unitNumber4', fp: 'floorPlan4' },
+                              { un: 'unitNumber5', fp: 'floorPlan5' },
+                            ];
+                            // Geser ke atas mulai dari posisi idx
+                            for (let i = idx; i < visibleCount - 1; i++) {
+                              next[fields[i].un] = prev[fields[i + 1].un];
+                              next[fields[i].fp] = prev[fields[i + 1].fp];
+                            }
+                            // Clear yang terakhir
+                            next[fields[visibleCount - 1].un] = '';
+                            next[fields[visibleCount - 1].fp] = '';
+                            return next;
+                          });
+                          setVisibleCount(v => v - 1);
+                        }} className="p-1 text-red-400 hover:text-red-600 rounded">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className={`grid gap-3 ${isCustom ? 'grid-cols-1' : 'sm:grid-cols-2'}`}>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Unit Number{idx === 0 ? ' *' : ''}</label>
+                          <input type="text" value={formData[f.un]} onChange={e => setFormData(prev => ({ ...prev, [f.un]: e.target.value }))}
+                            placeholder="e.g. 1201"
+                            className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] ${errors[f.un] ? 'border-red-400' : 'border-gray-300'}`} />
+                          {errors[f.un] && <p className="text-red-500 text-xs mt-1">{errors[f.un]}</p>}
+                        </div>
+                        {!isCustom && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Floor Plan{idx === 0 ? ' *' : ''}</label>
+                              {(() => {
+                                const [fpQuery, setFpQuery] = React.useState(formData[f.fp] || '');
+                                const [fpOpen, setFpOpen] = React.useState(false);
+                                React.useEffect(() => { setFpQuery(formData[f.fp] || ''); }, [formData[f.fp]]);
+                                const filtered = fpQuery
+                                  ? FLOOR_PLAN_OPTS.filter(fp => fp.toLowerCase().includes(fpQuery.toLowerCase()))
+                                  : FLOOR_PLAN_OPTS;
+                                return (
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={fpQuery}
+                                      onChange={e => { setFpQuery(e.target.value); setFpOpen(true); }}
+                                      onFocus={() => setFpOpen(true)}
+                                      onBlur={() => setTimeout(() => setFpOpen(false), 150)}
+                                      placeholder="Search floor plan..."
+                                      autoComplete="off"
+                                      className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] ${errors[f.fp] ? 'border-red-400' : 'border-gray-300'}`}
+                                    />
+                                    {fpOpen && filtered.length > 0 && (
+                                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                                        {filtered.map(fp => (
+                                          <button key={fp} type="button"
+                                            onMouseDown={() => { setFormData(prev => ({ ...prev, [f.fp]: fp })); setFpQuery(fp); setFpOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-[#005670]/10 transition-colors ${formData[f.fp] === fp ? 'bg-[#005670]/10 text-[#005670] font-semibold' : 'text-gray-700'}`}>
+                                            {fp}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            {errors[f.fp] && <p className="text-red-500 text-xs mt-1">{errors[f.fp]}</p>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* ✅ NEW: Team Assignment Section */}
             <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
