@@ -1072,7 +1072,7 @@ const ProductCard = ({
             product={product}
             index={index}
             onUpdate={onUpdate}
-            disabled={!product.isEditable}
+            disabled={false}
           />
 
           {/* ── Status Report Fields ── */}
@@ -1137,6 +1137,18 @@ const ProductCard = ({
                 Binder document for tracking vendor orders, shipments, and delivery status.
               </p>
             </div>
+          </div>
+
+          {/* Additional Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+            <textarea
+              value={product.selectedOptions?.notes || ''}
+              onChange={(e) => onUpdate(index, 'selectedOptions.notes', e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] resize-none"
+              rows={3}
+              placeholder="Special instructions, vendor notes, delivery details..."
+            />
           </div>
 
           {/* ── Manual-only fields ── */}
@@ -1221,18 +1233,6 @@ const ProductCard = ({
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] resize-none font-mono text-xs"
                   rows={2}
                   placeholder="https://vendor.com/product-page"
-                />
-              </div>
-
-              {/* Additional Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
-                <textarea
-                  value={product.selectedOptions?.notes || ''}
-                  onChange={(e) => onUpdate(index, 'selectedOptions.notes', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] resize-none"
-                  rows={3}
-                  placeholder="Special instructions, vendor notes, delivery details..."
                 />
               </div>
             </>

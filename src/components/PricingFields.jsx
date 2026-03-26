@@ -210,7 +210,19 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Net Cost</label>
-            <div className={readonlyCls}>{fmt(netCost)}</div>
+            <DecimalInput
+              value={noNetPurchaseCost ? 0 : netCost}
+              onChange={(v) => {
+                if (noNetPurchaseCost) return;
+                const newNetCost = parseFloat(v) || 0;
+                const discount = num(opts.discountPercent);
+                const divisor = 1 - (discount / 100);
+                const newMsrp = divisor !== 0 ? newNetCost / divisor : newNetCost;
+                upd('msrp', Math.round(newMsrp * 100) / 100);
+              }}
+              disabled={disabled || noNetPurchaseCost}
+              className={inputCls}
+            />
           </div>
         </div>
 

@@ -86,9 +86,9 @@ const VendorManagement = () => {
     const discount = parseFloat(formData.defaultDiscount);
     const deposit = parseFloat(formData.vendorDepositRequested);
     
-    if (formData.defaultMarkup !== '' && !isNaN(markup) && (markup < 0 || markup > 100)) {
-      newErrors.defaultMarkup = 'Must be between 0-100';
-    }
+    // if (formData.defaultMarkup !== '' && !isNaN(markup) && (markup < 0 || markup > 100)) {
+    //   newErrors.defaultMarkup = 'Must be between 0-100';
+    // }
     if (formData.defaultDiscount !== '' && !isNaN(discount) && (discount < 0 || discount > 100)) {
       newErrors.defaultDiscount = 'Must be between 0-100';
     }
@@ -563,7 +563,7 @@ const VendorManagement = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Default Markup (%)</label>
-                      <input type="number" min="0" max="100" step="0.01" value={formData.defaultMarkup}
+                      <input type="number" min="0" max="1000" step="0.01" value={formData.defaultMarkup}
                         onChange={(e) => setFormData({ ...formData, defaultMarkup: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                         placeholder="15.00" />
@@ -623,7 +623,7 @@ const VendorManagement = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Login Password</label>
-                      <input type="password" value={formData.loginPassword}
+                      <input type="text" value={formData.loginPassword}
                         onChange={(e) => setFormData({ ...formData, loginPassword: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                         placeholder="••••••••" />
