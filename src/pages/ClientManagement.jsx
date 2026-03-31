@@ -82,6 +82,7 @@ const BEDROOM_OPTIONS = [
   { value: 'custom', label: 'Custom (Input Qty)' },
 ];
 
+
 // ==================== IMAGE LIGHTBOX COMPONENT ====================
 const ImageLightbox = ({ isOpen, onClose, imageUrl, designId, designTitle }) => {
   useEffect(() => {
@@ -426,6 +427,7 @@ const ClientManagement = () => {
   // 2️⃣ ADD STATE FOR SHOWING FILL MODAL
   const [showFillQuestionnaireModal, setShowFillQuestionnaireModal] = useState(false);
   const [clientForQuestionnaire, setClientForQuestionnaire] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   // 3️⃣ ADD HANDLER FUNCTIONS
   const openFillQuestionnaireModal = useCallback((client) => {
@@ -473,6 +475,35 @@ const ClientManagement = () => {
   const [approvalMode, setApprovalMode] = useState('approve');
   const [approvalData, setApprovalData] = useState({ clientCode: '', floorPlan: '', rejectionReason: '' });
   const [bedroomMode, setBedroomMode] = useState(''); // '1' | '2' | '3' | 'custom' | ''
+
+  const handleExportExcel = useCallback(async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res   = await fetch(`${backendServer}/api/clients/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      if (!res.ok) throw new Error('Export failed');
+  
+      const blob        = await res.blob();
+      const now         = new Date();
+      const dateStr     = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+      const url         = window.URL.createObjectURL(blob);
+      const a           = document.createElement('a');
+      a.href            = url;
+      a.download        = `HDG_ClientReport_${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to export. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  }, []);
 
 
   const fetchClients = useCallback(async () => {
@@ -1014,25 +1045,50 @@ const ClientManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Client Management</h1>
-          {pendingCount > 0 && (
-            <div className="flex items-center gap-2 mt-2">
-              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-              <p className="text-sm text-amber-600 font-medium">
-                {pendingCount} pending approval
-              </p>
-            </div>
-          )}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Client Management</h1>
+            {pendingCount > 0 && (
+              <div className="flex items-center gap-2 mt-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                <p className="text-sm text-amber-600 font-medium">
+                  {pendingCount} pending approval
+                </p>
+              </div>
+            )}
+          </div>
+      
+          {/* Action buttons */}
+          <div className="flex items-center gap-3">
+            {/* ── Download Report ── */}
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              className="group flex items-center gap-2 px-5 py-2.5 border-2 border-[#005670] text-[#005670] rounded-xl hover:bg-[#005670] hover:text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Export all clients to Excel"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="font-semibold">Exporting...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
+                  <span className="font-semibold">Download Report</span>
+                </>
+              )}
+            </button>
+      
+            {/* ── Add Client ── */}
+            <button
+              onClick={() => openFormModal('create')}
+              className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all"
+            >
+              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+              <span className="font-semibold">Add Client</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => openFormModal('create')}
-          className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-          <span className="font-semibold">Add Client</span>
-        </button>
-      </div>
 
       <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
         <div className="flex flex-col md:flex-row gap-3">
