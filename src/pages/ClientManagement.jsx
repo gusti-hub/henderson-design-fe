@@ -2237,15 +2237,36 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
     }));
   };
 
-  // ✅ PDF DOWNLOAD HANDLER
-  const handleDownloadPDF = async () => {
-    setDownloadingPDF(true);
-    try {
-      // Dynamic imports
-      const { pdf } = await import('@react-pdf/renderer');
-      const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+  const imageToBase64 = async (src) => {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        
+        // Cap maksimal 800px width — cukup tajam untuk PDF tanpa bloat
+        const MAX_WIDTH = 800;
+        const scale = img.naturalWidth > MAX_WIDTH 
+          ? MAX_WIDTH / img.naturalWidth 
+          : 1;
+        
+        canvas.width = img.naturalWidth * scale;
+        canvas.height = img.naturalHeight * scale;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // JPEG quality 0.92 — sweet spot antara sharpness vs file size
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  };
 
-      // PDF Styles
+        // PDF Styles
       const pdfStyles = StyleSheet.create({
         page: {
           padding: 30,
@@ -2347,241 +2368,421 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
         }
       });
 
-      const submittedDate = questionnaire.submittedAt 
-        ? new Date(questionnaire.submittedAt).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })
-        : 'N/A';
+      const handleDownloadPDF = async () => {
+        setDownloadingPDF(true);
+        try {
+          const { pdf } = await import('@react-pdf/renderer');
+          const { Document, Page, Text, View, Image } = await import('@react-pdf/renderer');
 
-      const renderField = (label, value) => {
-        if (!value || (Array.isArray(value) && value.length === 0)) return null;
-        
-        const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
-        
-        return (
-          <View style={pdfStyles.fieldRow}>
-            <Text style={pdfStyles.fieldLabel}>{label}:</Text>
-            <Text style={pdfStyles.fieldValue}>{displayValue}</Text>
-          </View>
-        );
-      };
+          // 1. Convert images ke base64
+          const likedDesignBase64Map = {};
+          if (questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0) {
+            await Promise.all(
+              questionnaire.likedDesigns.map(async (designId) => {
+                const imgPath = DESIGN_IMAGES[designId];
+                if (imgPath) {
+                  const base64 = await imageToBase64(imgPath);
+                  if (base64) likedDesignBase64Map[designId] = base64;
+                }
+              })
+            );
+          }
 
-      // PDF Document
-      const MyDocument = (
-        <Document>
-          <Page size="A4" style={pdfStyles.page}>
-            {/* Header */}
-            <View style={pdfStyles.header}>
-              <Text style={pdfStyles.headerTitle}>Design Questionnaire</Text>
-              <Text style={pdfStyles.headerSubtitle}>Client: {selectedClient.name}</Text>
-            </View>
+          // 2. Build MyDocument
+          const MyDocument = (
+            <Document>
+              <Page size="A4" style={pdfStyles.page}>
 
-            {/* Client Info */}
-            <View style={pdfStyles.infoBox}>
-              <Text style={pdfStyles.infoTitle}>Client Information</Text>
-              <Text style={pdfStyles.infoRow}>Name: {selectedClient.name}</Text>
-              <Text style={pdfStyles.infoRow}>Email: {selectedClient.email}</Text>
-              <Text style={pdfStyles.infoRow}>Unit: {selectedClient.unitNumber}</Text>
-              <Text style={pdfStyles.infoRow}>Submitted: {submittedDate}</Text>
-            </View>
-
-            {/* Home Use & Lifestyle */}
-            {(questionnaire.purpose_of_residence || questionnaire.who_will_use || questionnaire.family_members) && (
-              <View style={pdfStyles.section}>
-                <Text style={pdfStyles.sectionHeader}>🏠 Home Use & Lifestyle</Text>
-                {renderField('Purpose of Residence', questionnaire.purpose_of_residence)}
-                {renderField('Who Will Use', questionnaire.who_will_use)}
-                {renderField('Family Members', questionnaire.family_members)}
-                {renderField('Children Ages', questionnaire.children_ages)}
-                {renderField('Living Envision', questionnaire.living_envision)}
-                {renderField('Home Feeling', questionnaire.home_feeling)}
-                {questionnaire.has_pets && (
-                  <>
-                    {renderField('Has Pets', 'Yes')}
-                    {renderField('Pet Details', questionnaire.pet_details)}
-                  </>
-                )}
-                {questionnaire.has_renters && renderField('Has Renters', 'Yes')}
-              </View>
-            )}
-
-            {/* Daily Living & Entertaining */}
-            {(questionnaire.work_from_home || questionnaire.entertain_frequency) && (
-              <View style={pdfStyles.section}>
-                <Text style={pdfStyles.sectionHeader}>🏡 Daily Living & Entertaining</Text>
-                {renderField('Work From Home', questionnaire.work_from_home)}
-                {renderField('Entertain Frequency', questionnaire.entertain_frequency)}
-                {renderField('Gathering Types', questionnaire.gathering_types)}
-                {renderField('Outdoor/Lanai Use', questionnaire.outdoor_lanai_use)}
-              </View>
-            )}
-
-            {/* Design Aesthetic */}
-            {(questionnaire.unit_options || questionnaire.preferred_collection) && (
-              <View style={pdfStyles.section}>
-                <Text style={pdfStyles.sectionHeader}>🎨 Design Aesthetic</Text>
-                {renderField('Unit Options', questionnaire.unit_options)}
-                {renderField('Preferred Collection', questionnaire.preferred_collection)}
-                {renderField('Style Direction', questionnaire.style_direction)}
-                {renderField('Main Upholstery Color', questionnaire.main_upholstery_color)}
-                {renderField('Accent Fabric Color', questionnaire.accent_fabric_color)}
-                {renderField('Metal Tone', questionnaire.metal_tone)}
-                {renderField('Tone Preference', questionnaire.tone_preference)}
-                {renderField('Colors to Avoid', questionnaire.colors_to_avoid)}
-              </View>
-            )}
-
-            {/* Bedrooms & Comfort */}
-            {(questionnaire.bed_sizes || questionnaire.mattress_firmness) && (
-              <View style={pdfStyles.section}>
-                <Text style={pdfStyles.sectionHeader}>🛏️ Bedrooms & Comfort</Text>
-                {renderField('Bed Sizes', questionnaire.bed_sizes)}
-                {renderField('Mattress Firmness', questionnaire.mattress_firmness)}
-                {renderField('Bedding Type', questionnaire.bedding_type)}
-                {renderField('Bedding Material/Color', questionnaire.bedding_material_color)}
-                {renderField('Lighting Mood', questionnaire.lighting_mood)}
-              </View>
-            )}
-
-            {/* Art & Accessories */}
-            {(questionnaire.art_style || questionnaire.art_coverage) && (
-              <View style={pdfStyles.section}>
-                <Text style={pdfStyles.sectionHeader}>🖼️ Art & Accessories</Text>
-                {renderField('Art Style', questionnaire.art_style)}
-                {renderField('Art Coverage', questionnaire.art_coverage)}
-                {renderField('Accessories Styling', questionnaire.accessories_styling)}
-                {renderField('Decorative Pillows', questionnaire.decorative_pillows)}
-                {renderField('Special Zones', questionnaire.special_zones)}
-                {renderField('Existing Furniture', questionnaire.existing_furniture)}
-                {renderField('Furniture Details', questionnaire.existing_furniture_details)}
-                {renderField('Additional Notes', questionnaire.additional_notes)}
-              </View>
-            )}
-
-            {/* Liked Designs */}
-            {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
-              <View style={pdfStyles.section}>
-                <Text style={pdfStyles.sectionHeader}>⭐ Liked Designs</Text>
-                <View style={pdfStyles.fieldRow}>
-                  <Text style={pdfStyles.fieldLabel}>Selected Designs:</Text>
-                  <View style={{ width: '65%' }}>
-                    <Text style={pdfStyles.designsList}>
-                      {questionnaire.likedDesigns.map((id, idx) => {
-                        const title = DESIGN_TITLES[id] || `Design ${id}`;
-                        return `${idx + 1}. ${title} (ID: ${id})`;
-                      }).join('\n')}
-                    </Text>
-                  </View>
+                {/* HEADER */}
+                <View style={pdfStyles.header}>
+                  <Text style={pdfStyles.headerTitle}>Design Questionnaire</Text>
+                  <Text style={pdfStyles.headerSubtitle}>Client: {selectedClient.name}</Text>
                 </View>
-              </View>
-            )}
 
-            {/* Add-On Services */}
-            {(questionnaire.closet_interested || questionnaire.window_interested || 
-              questionnaire.av_interested || questionnaire.greenery_interested || 
-              questionnaire.kitchen_interested) && (
-              <View style={pdfStyles.section} wrap={false}>
-                <Text style={pdfStyles.sectionHeader}>⚙️ Add-On Services</Text>
+                {/* CLIENT INFO */}
+                <View style={pdfStyles.infoBox}>
+                  <Text style={pdfStyles.infoTitle}>Client Information</Text>
+                  <Text style={pdfStyles.infoRow}>Name: {selectedClient.name}</Text>
+                  <Text style={pdfStyles.infoRow}>Email: {selectedClient.email}</Text>
+                  <Text style={pdfStyles.infoRow}>Unit: {selectedClient.unitNumber}</Text>
+                  <Text style={pdfStyles.infoRow}>
+                    Submitted: {questionnaire.submittedAt
+                      ? new Date(questionnaire.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                      : 'N/A'}
+                  </Text>
+                </View>
 
-                {/* Closet Solutions */}
-                {questionnaire.closet_interested && (
-                  <View style={pdfStyles.addonBox}>
-                    <Text style={pdfStyles.addonTitle}>Closet Solutions</Text>
-                    {questionnaire.closet_use && questionnaire.closet_use.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Use: {questionnaire.closet_use.join(', ')}</Text>
+                {/* HOME USE & LIFESTYLE */}
+                {(questionnaire.purpose_of_residence || questionnaire.who_will_use || questionnaire.family_members) && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>HOME USE AND LIFESTYLE</Text>
+                    {questionnaire.purpose_of_residence && questionnaire.purpose_of_residence.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Purpose of Residence:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.purpose_of_residence.join(', ')}</Text>
+                      </View>
                     )}
-                    {questionnaire.organization_style && questionnaire.organization_style.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Style: {questionnaire.organization_style.join(', ')}</Text>
+                    {questionnaire.who_will_use && questionnaire.who_will_use.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Who Will Use:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.who_will_use.join(', ')}</Text>
+                      </View>
                     )}
-                    {questionnaire.closet_finish && questionnaire.closet_finish.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Finish: {questionnaire.closet_finish.join(', ')}</Text>
+                    {questionnaire.family_members && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Family Members:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.family_members}</Text>
+                      </View>
                     )}
-                    {questionnaire.closet_locations && questionnaire.closet_locations.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Locations: {questionnaire.closet_locations.join(', ')}</Text>
+                    {questionnaire.children_ages && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Children Ages:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.children_ages}</Text>
+                      </View>
+                    )}
+                    {questionnaire.living_envision && questionnaire.living_envision.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Living Envision:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.living_envision.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.home_feeling && questionnaire.home_feeling.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Home Feeling:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.home_feeling.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.has_pets && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Has Pets:</Text>
+                        <Text style={pdfStyles.fieldValue}>Yes{questionnaire.pet_details ? ` — ${questionnaire.pet_details}` : ''}</Text>
+                      </View>
+                    )}
+                    {questionnaire.has_renters && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Has Renters:</Text>
+                        <Text style={pdfStyles.fieldValue}>Yes</Text>
+                      </View>
                     )}
                   </View>
                 )}
 
-                {/* Window Coverings */}
-                {questionnaire.window_interested && (
-                  <View style={pdfStyles.addonBox}>
-                    <Text style={pdfStyles.addonTitle}>Window Coverings</Text>
-                    {questionnaire.window_treatment && questionnaire.window_treatment.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Treatment: {questionnaire.window_treatment.join(', ')}</Text>
+                {/* DAILY LIVING & ENTERTAINING */}
+                {(questionnaire.work_from_home || questionnaire.entertain_frequency) && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>DAILY LIVING AND ENTERTAINING</Text>
+                    {questionnaire.work_from_home && questionnaire.work_from_home.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Work From Home:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.work_from_home.join(', ')}</Text>
+                      </View>
                     )}
-                    {questionnaire.window_operation && questionnaire.window_operation.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Operation: {questionnaire.window_operation.join(', ')}</Text>
+                    {questionnaire.entertain_frequency && questionnaire.entertain_frequency.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Entertain Frequency:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.entertain_frequency.join(', ')}</Text>
+                      </View>
                     )}
-                    {questionnaire.shade_style && questionnaire.shade_style.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Style: {questionnaire.shade_style.join(', ')}</Text>
+                    {questionnaire.gathering_types && questionnaire.gathering_types.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Gathering Types:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.gathering_types.join(', ')}</Text>
+                      </View>
                     )}
-                  </View>
-                )}
-
-                {/* Audio/Visual */}
-                {questionnaire.av_interested && (
-                  <View style={pdfStyles.addonBox}>
-                    <Text style={pdfStyles.addonTitle}>Audio/Visual</Text>
-                    {questionnaire.av_usage && questionnaire.av_usage.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Usage: {questionnaire.av_usage.join(', ')}</Text>
-                    )}
-                    {questionnaire.av_areas && questionnaire.av_areas.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Areas: {questionnaire.av_areas.join(', ')}</Text>
-                    )}
-                  </View>
-                )}
-
-                {/* Greenery/Plants */}
-                {questionnaire.greenery_interested && (
-                  <View style={pdfStyles.addonBox}>
-                    <Text style={pdfStyles.addonTitle}>Greenery/Plants</Text>
-                    {questionnaire.plant_type && questionnaire.plant_type.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Type: {questionnaire.plant_type.join(', ')}</Text>
-                    )}
-                    {questionnaire.plant_areas && questionnaire.plant_areas.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Areas: {questionnaire.plant_areas.join(', ')}</Text>
+                    {questionnaire.outdoor_lanai_use && questionnaire.outdoor_lanai_use.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Outdoor/Lanai Use:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.outdoor_lanai_use.join(', ')}</Text>
+                      </View>
                     )}
                   </View>
                 )}
 
-                {/* Kitchen Essentials */}
-                {questionnaire.kitchen_interested && (
-                  <View style={pdfStyles.addonBox}>
-                    <Text style={pdfStyles.addonTitle}>Kitchen Essentials</Text>
-                    {questionnaire.kitchen_essentials && questionnaire.kitchen_essentials.length > 0 && (
-                      <Text style={pdfStyles.addonItem}>Items: {questionnaire.kitchen_essentials.join(', ')}</Text>
+                {/* DESIGN AESTHETIC */}
+                {(questionnaire.unit_options || questionnaire.preferred_collection || questionnaire.style_direction) && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>DESIGN AESTHETIC</Text>
+                    {questionnaire.unit_options && questionnaire.unit_options.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Unit Options:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.unit_options.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.preferred_collection && questionnaire.preferred_collection.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Preferred Collection:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.preferred_collection.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.style_direction && questionnaire.style_direction.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Style Direction:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.style_direction.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.main_upholstery_color && questionnaire.main_upholstery_color.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Main Upholstery Color:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.main_upholstery_color.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.accent_fabric_color && questionnaire.accent_fabric_color.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Accent Fabric Color:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.accent_fabric_color.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.metal_tone && questionnaire.metal_tone.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Metal Tone:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.metal_tone.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.tone_preference && questionnaire.tone_preference.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Tone Preference:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.tone_preference.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.colors_to_avoid && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Colors to Avoid:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.colors_to_avoid}</Text>
+                      </View>
                     )}
                   </View>
                 )}
-              </View>
-            )}
 
-            {/* Footer */}
-            <View style={pdfStyles.footer} fixed>
-              <Text>Generated on {new Date().toLocaleDateString('en-US')}</Text>
-              <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-            </View>
-          </Page>
-        </Document>
-      );
+                {/* BEDROOMS & COMFORT */}
+                {(questionnaire.bed_sizes || questionnaire.mattress_firmness) && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>BEDROOMS AND COMFORT</Text>
+                    {questionnaire.bed_sizes && questionnaire.bed_sizes.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Bed Sizes:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.bed_sizes.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.mattress_firmness && questionnaire.mattress_firmness.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Mattress Firmness:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.mattress_firmness.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.bedding_type && questionnaire.bedding_type.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Bedding Type:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.bedding_type.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.bedding_material_color && questionnaire.bedding_material_color.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Bedding Material/Color:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.bedding_material_color.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.lighting_mood && questionnaire.lighting_mood.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Lighting Mood:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.lighting_mood.join(', ')}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
-      const blob = await pdf(MyDocument).toBlob();
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Questionnaire_${selectedClient.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setDownloadingPDF(false);
-    }
-  };
+                {/* ART & ACCESSORIES */}
+                {(questionnaire.art_style || questionnaire.art_coverage || questionnaire.additional_notes) && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>ART AND ACCESSORIES</Text>
+                    {questionnaire.art_style && questionnaire.art_style.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Art Style:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.art_style.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.art_coverage && questionnaire.art_coverage.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Art Coverage:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.art_coverage.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.accessories_styling && questionnaire.accessories_styling.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Accessories Styling:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.accessories_styling.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.decorative_pillows && questionnaire.decorative_pillows.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Decorative Pillows:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.decorative_pillows.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.special_zones && questionnaire.special_zones.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Special Zones:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.special_zones.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.existing_furniture && questionnaire.existing_furniture.length > 0 && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Existing Furniture:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.existing_furniture.join(', ')}</Text>
+                      </View>
+                    )}
+                    {questionnaire.existing_furniture_details && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Furniture Details:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.existing_furniture_details}</Text>
+                      </View>
+                    )}
+                    {questionnaire.additional_notes && (
+                      <View style={pdfStyles.fieldRow}>
+                        <Text style={pdfStyles.fieldLabel}>Additional Notes:</Text>
+                        <Text style={pdfStyles.fieldValue}>{questionnaire.additional_notes}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* ADD-ON SERVICES */}
+                {(questionnaire.closet_interested || questionnaire.window_interested ||
+                  questionnaire.av_interested || questionnaire.greenery_interested ||
+                  questionnaire.kitchen_interested) && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>ADD-ON SERVICES</Text>
+                    {questionnaire.closet_interested && (
+                      <View style={pdfStyles.addonBox}>
+                        <Text style={pdfStyles.addonTitle}>Closet Solutions</Text>
+                        {questionnaire.closet_use && questionnaire.closet_use.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Use: {questionnaire.closet_use.join(', ')}</Text>
+                        )}
+                        {questionnaire.organization_style && questionnaire.organization_style.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Style: {questionnaire.organization_style.join(', ')}</Text>
+                        )}
+                        {questionnaire.closet_finish && questionnaire.closet_finish.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Finish: {questionnaire.closet_finish.join(', ')}</Text>
+                        )}
+                        {questionnaire.closet_locations && questionnaire.closet_locations.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Locations: {questionnaire.closet_locations.join(', ')}</Text>
+                        )}
+                      </View>
+                    )}
+                    {questionnaire.window_interested && (
+                      <View style={pdfStyles.addonBox}>
+                        <Text style={pdfStyles.addonTitle}>Window Coverings</Text>
+                        {questionnaire.window_treatment && questionnaire.window_treatment.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Treatment: {questionnaire.window_treatment.join(', ')}</Text>
+                        )}
+                        {questionnaire.window_operation && questionnaire.window_operation.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Operation: {questionnaire.window_operation.join(', ')}</Text>
+                        )}
+                        {questionnaire.shade_style && questionnaire.shade_style.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Style: {questionnaire.shade_style.join(', ')}</Text>
+                        )}
+                      </View>
+                    )}
+                    {questionnaire.av_interested && (
+                      <View style={pdfStyles.addonBox}>
+                        <Text style={pdfStyles.addonTitle}>Audio/Visual</Text>
+                        {questionnaire.av_usage && questionnaire.av_usage.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Usage: {questionnaire.av_usage.join(', ')}</Text>
+                        )}
+                        {questionnaire.av_areas && questionnaire.av_areas.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Areas: {questionnaire.av_areas.join(', ')}</Text>
+                        )}
+                      </View>
+                    )}
+                    {questionnaire.greenery_interested && (
+                      <View style={pdfStyles.addonBox}>
+                        <Text style={pdfStyles.addonTitle}>Greenery/Plants</Text>
+                        {questionnaire.plant_type && questionnaire.plant_type.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Type: {questionnaire.plant_type.join(', ')}</Text>
+                        )}
+                        {questionnaire.plant_areas && questionnaire.plant_areas.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Areas: {questionnaire.plant_areas.join(', ')}</Text>
+                        )}
+                      </View>
+                    )}
+                    {questionnaire.kitchen_interested && (
+                      <View style={pdfStyles.addonBox}>
+                        <Text style={pdfStyles.addonTitle}>Kitchen Essentials</Text>
+                        {questionnaire.kitchen_essentials && questionnaire.kitchen_essentials.length > 0 && (
+                          <Text style={pdfStyles.addonItem}>Items: {questionnaire.kitchen_essentials.join(', ')}</Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* LIKED DESIGNS */}
+                {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
+                  <View style={pdfStyles.section}>
+                    <Text style={pdfStyles.sectionHeader}>LIKED DESIGNS</Text>
+                    <View style={pdfStyles.fieldRow}>
+                      <Text style={pdfStyles.fieldLabel}>Total Selected:</Text>
+                      <Text style={pdfStyles.fieldValue}>{questionnaire.likedDesigns.length} design(s)</Text>
+                    </View>
+                    {Array.from(
+                      { length: Math.ceil(questionnaire.likedDesigns.length / 2) },
+                      (_, rowIdx) => {
+                        const pair = questionnaire.likedDesigns.slice(rowIdx * 2, rowIdx * 2 + 2);
+                        return (
+                          <View key={rowIdx} style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                            {pair.map((designId) => {
+                              const base64 = likedDesignBase64Map[designId];
+                              const title = DESIGN_TITLES[designId] || `Design ${designId}`;
+                              return (
+                                <View key={designId} style={{ width: '48%' }}>
+                                  {base64 ? (
+                                    <Image src={base64} style={{ width: '100%', height: 130 }} />
+                                  ) : (
+                                    <View style={{ width: '100%', height: 130, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Text style={{ fontSize: 8, color: '#9ca3af' }}>Image not available</Text>
+                                    </View>
+                                  )}
+                                  <View style={{ marginTop: 4, paddingVertical: 4, paddingHorizontal: 6, backgroundColor: '#005670' }}>
+                                    <Text style={{ fontSize: 8, color: '#ffffff', fontWeight: 'bold' }}>
+                                      {title} (#{designId})
+                                    </Text>
+                                  </View>
+                                </View>
+                              );
+                            })}
+                            {pair.length === 1 && <View style={{ width: '48%' }} />}
+                          </View>
+                        );
+                      }
+                    )}
+                  </View>
+                )}
+
+                {/* FOOTER */}
+                <View style={pdfStyles.footer} fixed>
+                  <Text>Generated on {new Date().toLocaleDateString('en-US')}</Text>
+                  <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+                </View>
+
+              </Page>
+            </Document>
+          );
+
+          // 3. Generate dan download
+          const blob = await pdf(MyDocument).toBlob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Questionnaire_${selectedClient.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+          link.click();
+          URL.revokeObjectURL(url);
+
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          alert('Failed to generate PDF. Please try again.');
+        } finally {
+          setDownloadingPDF(false);
+        }
+      };
 
   if (loading) {
     return (
@@ -2843,116 +3044,55 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           )}
         </CollapsibleSection>
 
-        {/* Liked Designs */}
-        {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
-          <CollapsibleSection
-            icon="⭐"
-            title="Liked Designs"
-            isExpanded={expandedSections.likedDesigns}
-            onToggle={() => toggleSection('likedDesigns')}
-          >
-            <div className="space-y-4">
-              <p className="text-sm text-gray-700 mb-3">
-                Client selected <span className="font-bold text-[#005670]">{questionnaire.likedDesigns.length}</span> design image(s)
-              </p>
-              
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {questionnaire.likedDesigns.map((designId, index) => {
-                  const imageUrl = DESIGN_IMAGES[designId];
-                  const designTitle = DESIGN_TITLES[designId] || `Design ${designId}`;
-                  
-                  if (!imageUrl) {
-                    console.warn(`Design ID ${designId} not found in DESIGN_IMAGES`);
-                    return null;
-                  }
-                  
-                  return (
-                    <div 
-                      key={index} 
-                      className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-[#005670] transition-all cursor-pointer shadow-sm hover:shadow-lg"
-                      onClick={() => {
-                        setLightbox({
-                          isOpen: true,
-                          imageUrl: imageUrl,
-                          designId: designId,
-                          designTitle: designTitle
-                        });
-                      }}
-                    >
-                      <div className="aspect-square bg-gray-100">
-                        <img
-                          src={imageUrl}
-                          alt={designTitle}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-300"
-                          loading="lazy"
-                          onError={(e) => {
-                            console.error(`Failed to load image for design ${designId}`);
-                            e.target.src = '/images/placeholder-design.jpg';
-                          }}
-                        />
-                      </div>
-                      
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="absolute bottom-0 left-0 right-0 p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-white font-bold text-sm mb-1">{designTitle}</p>
-                              <p className="text-white/80 text-xs">Click to view full size</p>
-                            </div>
-                            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="absolute top-2 right-2 z-10">
-                        <span className="px-2.5 py-1 bg-[#005670] text-white rounded-full text-xs font-bold shadow-lg">
-                          #{designId}
-                        </span>
-                      </div>
-                      
-                      <div className="absolute top-2 left-2 z-10">
-                        <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                        </div>
-                      </div>
-                      
-                      <div className="absolute bottom-2 left-2 z-10">
-                        <div className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-bold text-[#005670] shadow-md">
-                          {index + 1} of {questionnaire.likedDesigns.length}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Liked Designs - UI Section (bukan PDF) */}
+{questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
+  <CollapsibleSection
+    icon="⭐"
+    title="Liked Designs"
+    isExpanded={expandedSections.likedDesigns}
+    onToggle={() => toggleSection('likedDesigns')}
+  >
+    <div className="space-y-4">
+      <p className="text-sm text-gray-700 mb-3">
+        Client selected <span className="font-bold text-[#005670]">{questionnaire.likedDesigns.length}</span> design image(s)
+      </p>
+      
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {questionnaire.likedDesigns.map((designId, index) => {
+          const imageUrl = DESIGN_IMAGES[designId];
+          const designTitle = DESIGN_TITLES[designId] || `Design ${designId}`;
+          if (!imageUrl) return null;
+          return (
+            <div
+              key={index}
+              className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-[#005670] transition-all cursor-pointer shadow-sm hover:shadow-lg"
+              onClick={() => setLightbox({ isOpen: true, imageUrl, designId, designTitle })}
+            >
+              <div className="aspect-square bg-gray-100">
+                <img
+                  src={imageUrl}
+                  alt={designTitle}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-300"
+                  loading="lazy"
+                />
               </div>
-              
-              <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-400">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-blue-900 mb-1">
-                      Design Preferences Selected
-                    </p>
-                    <p className="text-xs text-blue-700">
-                      Click on any image to view in modal. Press ESC or click outside to close.
-                    </p>
-                  </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute bottom-2 left-2 right-2">
+                  <p className="text-white font-bold text-xs">{designTitle}</p>
                 </div>
               </div>
+              <div className="absolute top-2 right-2">
+                <span className="px-2 py-0.5 bg-[#005670] text-white rounded-full text-xs font-bold shadow">
+                  #{designId}
+                </span>
+              </div>
             </div>
-          </CollapsibleSection>
-        )}
+          );
+        })}
+      </div>
+    </div>
+  </CollapsibleSection>
+)}
 
         {/* Add-On Services */}
         {(questionnaire.closet_interested || 
