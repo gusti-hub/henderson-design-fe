@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2, AlertCircle, Eye, CheckCircle } from 'lucide-react';
-import { backendServer } from '../utils/info';
+import { uploadFileToS3 } from '../utils/uploadToS3';
 
 const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 }) => {
   const [uploading, setUploading] = useState(false);
@@ -11,7 +11,7 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
 
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
-    
+
     if (images.length + files.length > maxImages) {
       setError(`Maximum ${maxImages} images allowed`);
       return;
@@ -23,87 +23,69 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
         setError(`${file.name} is not an image`);
         continue;
       }
-
       if (file.size > 5 * 1024 * 1024) {
         setError(`${file.name} exceeds 5MB limit`);
         continue;
       }
-
       validFiles.push(file);
     }
 
-    if (validFiles.length === 0) {
-      return;
-    }
+    if (validFiles.length === 0) return;
 
     setError('');
     setUploading(true);
     setUploadProgress(validFiles.map(f => ({ name: f.name, status: 'uploading' })));
 
-    try {
-      const formData = new FormData();
-      validFiles.forEach(file => {
-        formData.append('images', file);
-      });
+    const results = [];
 
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${backendServer}/api/orders/${orderId}/custom-product-images`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Upload failed');
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      try {
+        // ✅ Upload langsung dari browser ke DO Spaces SF — tidak lewat server
+        const uploaded = await uploadFileToS3(file, 'product-images');
+        results.push({ file, uploaded, status: 'success' });
+        setUploadProgress(prev =>
+          prev.map((p, idx) => idx === i ? { ...p, status: 'success' } : p)
+        );
+      } catch (err) {
+        console.error(`❌ Failed to upload ${file.name}:`, err);
+        results.push({ file, error: err.message, status: 'error' });
+        setUploadProgress(prev =>
+          prev.map((p, idx) => idx === i ? { ...p, status: 'error' } : p)
+        );
       }
-
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const newImages = result.data.map(img => ({
-          filename: img.filename,
-          contentType: img.contentType,
-          url: img.url,
-          key: img.key,
-          size: img.size,
-          uploadedAt: img.uploadedAt
-        }));
-
-        onImagesChange([...images, ...newImages]);
-        setUploadProgress(validFiles.map(f => ({ name: f.name, status: 'success' })));
-        
-        console.log(`✅ Uploaded ${newImages.length} images to S3`);
-      } else {
-        throw new Error('Invalid response from server');
-      }
-
-    } catch (err) {
-      setError(err.message || 'Failed to upload images');
-      setUploadProgress(validFiles.map(f => ({ name: f.name, status: 'error' })));
-      console.error('Upload error:', err);
-    } finally {
-      setUploading(false);
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-
-      setTimeout(() => {
-        setUploadProgress([]);
-      }, 2000);
     }
+
+    const successful = results.filter(r => r.status === 'success').map(r => ({
+      filename: r.uploaded.filename,
+      contentType: r.uploaded.contentType,
+      url: r.uploaded.url,
+      key: r.uploaded.key,
+      size: r.uploaded.size,
+      uploadedAt: r.uploaded.uploadedAt,
+    }));
+
+    const failed = results.filter(r => r.status === 'error');
+
+    if (successful.length > 0) {
+      onImagesChange([...images, ...successful]);
+      console.log(`✅ Uploaded ${successful.length} image(s) directly to DO Spaces`);
+    }
+
+    if (failed.length > 0) {
+      setError(`${failed.length} file(s) failed: ${failed.map(f => f.file.name).join(', ')}`);
+    }
+
+    setUploading(false);
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    setTimeout(() => setUploadProgress([]), 2000);
   };
 
   const removeImage = (index) => {
     if (window.confirm('Remove this image?')) {
-      const updated = images.filter((_, i) => i !== index);
-      onImagesChange(updated);
+      onImagesChange(images.filter((_, i) => i !== index));
     }
   };
 
@@ -129,7 +111,7 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
           className="hidden"
           disabled={uploading || images.length >= maxImages}
         />
-        
+
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -139,20 +121,18 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
           {uploading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin text-[#005670]" />
-              <span className="text-sm text-gray-600">Uploading to S3...</span>
+              <span className="text-sm text-gray-600">Uploading...</span>
             </>
           ) : (
             <>
               <Upload className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-600">
-                Click to upload images
-              </span>
+              <span className="text-sm text-gray-600">Click to upload images</span>
             </>
           )}
         </button>
-        
+
         <p className="text-xs text-gray-500 mt-2">
-          PNG, JPG, WEBP up to 5MB each • Stored in Digital Ocean Spaces
+          PNG, JPG, WEBP up to 5MB each • Direct upload to Digital Ocean Spaces
         </p>
       </div>
 
@@ -160,15 +140,9 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
         <div className="space-y-2">
           {uploadProgress.map((progress, idx) => (
             <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-xs">
-              {progress.status === 'uploading' && (
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-              )}
-              {progress.status === 'success' && (
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              )}
-              {progress.status === 'error' && (
-                <AlertCircle className="w-4 h-4 text-red-600" />
-              )}
+              {progress.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
+              {progress.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
+              {progress.status === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
               <span className="text-gray-700">{progress.name}</span>
             </div>
           ))}
@@ -193,7 +167,6 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
                     alt={image.filename}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      console.error('Image load error:', image.filename);
                       e.target.onerror = null;
                       e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50" y="50" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="sans-serif" font-size="10"%3EError%3C/text%3E%3C/svg%3E';
                     }}
@@ -204,7 +177,7 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
                   </div>
                 )}
               </div>
-              
+
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
                 <div className="flex gap-2">
                   <button
@@ -225,7 +198,7 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
                   </button>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-xs text-gray-600 mt-1 truncate" title={image.filename}>
                   {image.filename}
@@ -241,7 +214,7 @@ const ImageUploadField = ({ orderId, images = [], onImagesChange, maxImages = 5 
       )}
 
       {previewImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
           onClick={() => setPreviewImage(null)}
         >

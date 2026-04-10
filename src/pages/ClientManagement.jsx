@@ -2187,12 +2187,17 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     homeUse: true,
-    design: false,
     entertaining: false,
+    design: false,
     bedrooms: false,
     art: false,
+    misc: false,
+    closet: false,
+    window: false,
+    av: false,
+    greenery: false,
+    kitchen: false,
     likedDesigns: false,
-    addons: false
   });
 
   const [lightbox, setLightbox] = useState({
@@ -2209,7 +2214,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
         const res = await fetch(`${backendServer}/api/questionnaires/client/${selectedClient._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.questionnaire) {
@@ -2226,15 +2230,20 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
         setLoading(false);
       }
     };
-
     fetchQuestionnaire();
   }, [selectedClient._id]);
 
   const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Format any value: array → joined string, boolean → Yes/No, blank → "—"
+  const fmt = (v) => {
+    if (v === null || v === undefined) return '—';
+    if (Array.isArray(v)) return v.length > 0 ? v.join(', ') : '—';
+    if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+    const s = String(v).trim();
+    return s !== '' ? s : '—';
   };
 
   const imageToBase64 = async (src) => {
@@ -2243,22 +2252,14 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        
-        // Cap maksimal 800px width — cukup tajam untuk PDF tanpa bloat
         const MAX_WIDTH = 800;
-        const scale = img.naturalWidth > MAX_WIDTH 
-          ? MAX_WIDTH / img.naturalWidth 
-          : 1;
-        
+        const scale = img.naturalWidth > MAX_WIDTH ? MAX_WIDTH / img.naturalWidth : 1;
         canvas.width = img.naturalWidth * scale;
         canvas.height = img.naturalHeight * scale;
-        
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // JPEG quality 0.92 — sweet spot antara sharpness vs file size
         resolve(canvas.toDataURL('image/jpeg', 0.92));
       };
       img.onerror = () => resolve(null);
@@ -2266,523 +2267,257 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
     });
   };
 
-        // PDF Styles
-      const pdfStyles = StyleSheet.create({
-        page: {
-          padding: 30,
-          fontSize: 10,
-          fontFamily: 'Helvetica',
-        },
-        header: {
-          backgroundColor: '#005670',
-          padding: 15,
-          marginBottom: 20,
-          borderRadius: 5,
-        },
-        headerTitle: {
-          fontSize: 24,
-          fontWeight: 'bold',
-          color: '#ffffff',
-          marginBottom: 5,
-        },
-        headerSubtitle: {
-          fontSize: 10,
-          color: '#ffffff',
-        },
-        infoBox: {
-          backgroundColor: '#f0f8ff',
-          padding: 12,
-          marginBottom: 15,
-          borderRadius: 5,
-          borderLeft: '4px solid #005670',
-        },
-        infoTitle: {
-          fontSize: 12,
-          fontWeight: 'bold',
-          marginBottom: 5,
-        },
-        infoRow: {
-          fontSize: 9,
-          marginBottom: 3,
-        },
-        section: {
-          marginBottom: 15,
-        },
-        sectionHeader: {
-          backgroundColor: '#005670',
-          color: '#ffffff',
-          padding: 8,
-          fontSize: 11,
-          fontWeight: 'bold',
-          marginBottom: 8,
-        },
-        fieldRow: {
-          flexDirection: 'row',
-          marginBottom: 6,
-          paddingBottom: 4,
-          borderBottom: '1px solid #e5e7eb',
-        },
-        fieldLabel: {
-          width: '35%',
-          fontWeight: 'bold',
-          fontSize: 9,
-          color: '#4b5563',
-        },
-        fieldValue: {
-          width: '65%',
-          fontSize: 9,
-          color: '#1f2937',
-        },
-        addonBox: {
-          backgroundColor: '#f0f9ff',
-          padding: 10,
-          marginBottom: 8,
-          borderRadius: 5,
-          borderLeft: '3px solid #3b82f6',
-        },
-        addonTitle: {
-          fontSize: 10,
-          fontWeight: 'bold',
-          color: '#1e40af',
-          marginBottom: 5,
-        },
-        addonItem: {
-          fontSize: 8,
-          color: '#374151',
-          marginBottom: 2,
-        },
-        footer: {
-          position: 'absolute',
-          bottom: 20,
-          left: 30,
-          right: 30,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          fontSize: 8,
-          color: '#9ca3af',
-        },
-        designsList: {
-          fontSize: 9,
-          color: '#1f2937',
-          lineHeight: 1.4,
-        }
-      });
+  const pdfStyles = StyleSheet.create({
+    page: { padding: 30, fontSize: 10, fontFamily: 'Helvetica' },
+    header: { backgroundColor: '#005670', padding: 15, marginBottom: 20, borderRadius: 5 },
+    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff', marginBottom: 5 },
+    headerSubtitle: { fontSize: 10, color: '#ffffff' },
+    infoBox: { backgroundColor: '#f0f8ff', padding: 12, marginBottom: 15, borderRadius: 5, borderLeft: '4px solid #005670' },
+    infoTitle: { fontSize: 12, fontWeight: 'bold', marginBottom: 5 },
+    infoRow: { fontSize: 9, marginBottom: 3 },
+    section: { marginBottom: 15 },
+    sectionHeader: { backgroundColor: '#005670', color: '#ffffff', padding: 8, fontSize: 11, fontWeight: 'bold', marginBottom: 8 },
+    addonSectionHeader: { backgroundColor: '#005670', color: '#ffffff', padding: 8, fontSize: 11, fontWeight: 'bold', marginBottom: 8 },
+    fieldRow: { flexDirection: 'row', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #e5e7eb' },
+    fieldLabel: { width: '40%', fontWeight: 'bold', fontSize: 9, color: '#4b5563' },
+    fieldValue: { width: '60%', fontSize: 9, color: '#1f2937' },
+    fieldValueBlank: { width: '60%', fontSize: 9, color: '#9ca3af', fontStyle: 'italic' },
+    footer: { position: 'absolute', bottom: 20, left: 30, right: 30, flexDirection: 'row', justifyContent: 'space-between', fontSize: 8, color: '#9ca3af' },
+  });
 
-      const handleDownloadPDF = async () => {
-        setDownloadingPDF(true);
-        try {
-          const { pdf } = await import('@react-pdf/renderer');
-          const { Document, Page, Text, View, Image } = await import('@react-pdf/renderer');
+  const handleDownloadPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      const { pdf } = await import('@react-pdf/renderer');
+      const { Document, Page, Text, View, Image } = await import('@react-pdf/renderer');
 
-          // 1. Convert images ke base64
-          const likedDesignBase64Map = {};
-          if (questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0) {
-            await Promise.all(
-              questionnaire.likedDesigns.map(async (designId) => {
-                const imgPath = DESIGN_IMAGES[designId];
-                if (imgPath) {
-                  const base64 = await imageToBase64(imgPath);
-                  if (base64) likedDesignBase64Map[designId] = base64;
-                }
-              })
-            );
-          }
+      const likedDesignBase64Map = {};
+      if (questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0) {
+        await Promise.all(
+          questionnaire.likedDesigns.map(async (designId) => {
+            const imgPath = DESIGN_IMAGES[designId];
+            if (imgPath) {
+              const base64 = await imageToBase64(imgPath);
+              if (base64) likedDesignBase64Map[designId] = base64;
+            }
+          })
+        );
+      }
 
-          // 2. Build MyDocument
-          const MyDocument = (
-            <Document>
-              <Page size="A4" style={pdfStyles.page}>
-
-                {/* HEADER */}
-                <View style={pdfStyles.header}>
-                  <Text style={pdfStyles.headerTitle}>Design Questionnaire</Text>
-                  <Text style={pdfStyles.headerSubtitle}>Client: {selectedClient.name}</Text>
-                </View>
-
-                {/* CLIENT INFO */}
-                <View style={pdfStyles.infoBox}>
-                  <Text style={pdfStyles.infoTitle}>Client Information</Text>
-                  <Text style={pdfStyles.infoRow}>Name: {selectedClient.name}</Text>
-                  <Text style={pdfStyles.infoRow}>Email: {selectedClient.email}</Text>
-                  <Text style={pdfStyles.infoRow}>Unit: {selectedClient.unitNumber}</Text>
-                  <Text style={pdfStyles.infoRow}>
-                    Submitted: {questionnaire.submittedAt
-                      ? new Date(questionnaire.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                      : 'N/A'}
-                  </Text>
-                </View>
-
-                {/* HOME USE & LIFESTYLE */}
-                {(questionnaire.purpose_of_residence || questionnaire.who_will_use || questionnaire.family_members) && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>HOME USE AND LIFESTYLE</Text>
-                    {questionnaire.purpose_of_residence && questionnaire.purpose_of_residence.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Purpose of Residence:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.purpose_of_residence.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.who_will_use && questionnaire.who_will_use.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Who Will Use:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.who_will_use.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.family_members && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Family Members:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.family_members}</Text>
-                      </View>
-                    )}
-                    {questionnaire.children_ages && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Children Ages:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.children_ages}</Text>
-                      </View>
-                    )}
-                    {questionnaire.living_envision && questionnaire.living_envision.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Living Envision:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.living_envision.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.home_feeling && questionnaire.home_feeling.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Home Feeling:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.home_feeling.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.has_pets && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Has Pets:</Text>
-                        <Text style={pdfStyles.fieldValue}>Yes{questionnaire.pet_details ? ` — ${questionnaire.pet_details}` : ''}</Text>
-                      </View>
-                    )}
-                    {questionnaire.has_renters && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Has Renters:</Text>
-                        <Text style={pdfStyles.fieldValue}>Yes</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* DAILY LIVING & ENTERTAINING */}
-                {(questionnaire.work_from_home || questionnaire.entertain_frequency) && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>DAILY LIVING AND ENTERTAINING</Text>
-                    {questionnaire.work_from_home && questionnaire.work_from_home.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Work From Home:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.work_from_home.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.entertain_frequency && questionnaire.entertain_frequency.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Entertain Frequency:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.entertain_frequency.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.gathering_types && questionnaire.gathering_types.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Gathering Types:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.gathering_types.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.outdoor_lanai_use && questionnaire.outdoor_lanai_use.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Outdoor/Lanai Use:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.outdoor_lanai_use.join(', ')}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* DESIGN AESTHETIC */}
-                {(questionnaire.unit_options || questionnaire.preferred_collection || questionnaire.style_direction) && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>DESIGN AESTHETIC</Text>
-                    {questionnaire.unit_options && questionnaire.unit_options.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Unit Options:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.unit_options.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.preferred_collection && questionnaire.preferred_collection.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Preferred Collection:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.preferred_collection.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.style_direction && questionnaire.style_direction.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Style Direction:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.style_direction.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.main_upholstery_color && questionnaire.main_upholstery_color.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Main Upholstery Color:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.main_upholstery_color.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.accent_fabric_color && questionnaire.accent_fabric_color.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Accent Fabric Color:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.accent_fabric_color.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.metal_tone && questionnaire.metal_tone.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Metal Tone:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.metal_tone.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.tone_preference && questionnaire.tone_preference.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Tone Preference:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.tone_preference.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.colors_to_avoid && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Colors to Avoid:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.colors_to_avoid}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* BEDROOMS & COMFORT */}
-                {(questionnaire.bed_sizes || questionnaire.mattress_firmness) && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>BEDROOMS AND COMFORT</Text>
-                    {questionnaire.bed_sizes && questionnaire.bed_sizes.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Bed Sizes:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.bed_sizes.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.mattress_firmness && questionnaire.mattress_firmness.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Mattress Firmness:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.mattress_firmness.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.bedding_type && questionnaire.bedding_type.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Bedding Type:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.bedding_type.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.bedding_material_color && questionnaire.bedding_material_color.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Bedding Material/Color:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.bedding_material_color.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.lighting_mood && questionnaire.lighting_mood.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Lighting Mood:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.lighting_mood.join(', ')}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* ART & ACCESSORIES */}
-                {(questionnaire.art_style || questionnaire.art_coverage || questionnaire.additional_notes) && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>ART AND ACCESSORIES</Text>
-                    {questionnaire.art_style && questionnaire.art_style.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Art Style:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.art_style.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.art_coverage && questionnaire.art_coverage.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Art Coverage:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.art_coverage.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.accessories_styling && questionnaire.accessories_styling.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Accessories Styling:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.accessories_styling.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.decorative_pillows && questionnaire.decorative_pillows.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Decorative Pillows:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.decorative_pillows.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.special_zones && questionnaire.special_zones.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Special Zones:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.special_zones.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.existing_furniture && questionnaire.existing_furniture.length > 0 && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Existing Furniture:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.existing_furniture.join(', ')}</Text>
-                      </View>
-                    )}
-                    {questionnaire.existing_furniture_details && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Furniture Details:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.existing_furniture_details}</Text>
-                      </View>
-                    )}
-                    {questionnaire.additional_notes && (
-                      <View style={pdfStyles.fieldRow}>
-                        <Text style={pdfStyles.fieldLabel}>Additional Notes:</Text>
-                        <Text style={pdfStyles.fieldValue}>{questionnaire.additional_notes}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* ADD-ON SERVICES */}
-                {(questionnaire.closet_interested || questionnaire.window_interested ||
-                  questionnaire.av_interested || questionnaire.greenery_interested ||
-                  questionnaire.kitchen_interested) && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>ADD-ON SERVICES</Text>
-                    {questionnaire.closet_interested && (
-                      <View style={pdfStyles.addonBox}>
-                        <Text style={pdfStyles.addonTitle}>Closet Solutions</Text>
-                        {questionnaire.closet_use && questionnaire.closet_use.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Use: {questionnaire.closet_use.join(', ')}</Text>
-                        )}
-                        {questionnaire.organization_style && questionnaire.organization_style.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Style: {questionnaire.organization_style.join(', ')}</Text>
-                        )}
-                        {questionnaire.closet_finish && questionnaire.closet_finish.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Finish: {questionnaire.closet_finish.join(', ')}</Text>
-                        )}
-                        {questionnaire.closet_locations && questionnaire.closet_locations.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Locations: {questionnaire.closet_locations.join(', ')}</Text>
-                        )}
-                      </View>
-                    )}
-                    {questionnaire.window_interested && (
-                      <View style={pdfStyles.addonBox}>
-                        <Text style={pdfStyles.addonTitle}>Window Coverings</Text>
-                        {questionnaire.window_treatment && questionnaire.window_treatment.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Treatment: {questionnaire.window_treatment.join(', ')}</Text>
-                        )}
-                        {questionnaire.window_operation && questionnaire.window_operation.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Operation: {questionnaire.window_operation.join(', ')}</Text>
-                        )}
-                        {questionnaire.shade_style && questionnaire.shade_style.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Style: {questionnaire.shade_style.join(', ')}</Text>
-                        )}
-                      </View>
-                    )}
-                    {questionnaire.av_interested && (
-                      <View style={pdfStyles.addonBox}>
-                        <Text style={pdfStyles.addonTitle}>Audio/Visual</Text>
-                        {questionnaire.av_usage && questionnaire.av_usage.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Usage: {questionnaire.av_usage.join(', ')}</Text>
-                        )}
-                        {questionnaire.av_areas && questionnaire.av_areas.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Areas: {questionnaire.av_areas.join(', ')}</Text>
-                        )}
-                      </View>
-                    )}
-                    {questionnaire.greenery_interested && (
-                      <View style={pdfStyles.addonBox}>
-                        <Text style={pdfStyles.addonTitle}>Greenery/Plants</Text>
-                        {questionnaire.plant_type && questionnaire.plant_type.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Type: {questionnaire.plant_type.join(', ')}</Text>
-                        )}
-                        {questionnaire.plant_areas && questionnaire.plant_areas.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Areas: {questionnaire.plant_areas.join(', ')}</Text>
-                        )}
-                      </View>
-                    )}
-                    {questionnaire.kitchen_interested && (
-                      <View style={pdfStyles.addonBox}>
-                        <Text style={pdfStyles.addonTitle}>Kitchen Essentials</Text>
-                        {questionnaire.kitchen_essentials && questionnaire.kitchen_essentials.length > 0 && (
-                          <Text style={pdfStyles.addonItem}>Items: {questionnaire.kitchen_essentials.join(', ')}</Text>
-                        )}
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* LIKED DESIGNS */}
-                {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
-                  <View style={pdfStyles.section}>
-                    <Text style={pdfStyles.sectionHeader}>LIKED DESIGNS</Text>
-                    <View style={pdfStyles.fieldRow}>
-                      <Text style={pdfStyles.fieldLabel}>Total Selected:</Text>
-                      <Text style={pdfStyles.fieldValue}>{questionnaire.likedDesigns.length} design(s)</Text>
-                    </View>
-                    {Array.from(
-                      { length: Math.ceil(questionnaire.likedDesigns.length / 2) },
-                      (_, rowIdx) => {
-                        const pair = questionnaire.likedDesigns.slice(rowIdx * 2, rowIdx * 2 + 2);
-                        return (
-                          <View key={rowIdx} style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-                            {pair.map((designId) => {
-                              const base64 = likedDesignBase64Map[designId];
-                              const title = DESIGN_TITLES[designId] || `Design ${designId}`;
-                              return (
-                                <View key={designId} style={{ width: '48%' }}>
-                                  {base64 ? (
-                                    <Image src={base64} style={{ width: '100%', height: 130 }} />
-                                  ) : (
-                                    <View style={{ width: '100%', height: 130, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Text style={{ fontSize: 8, color: '#9ca3af' }}>Image not available</Text>
-                                    </View>
-                                  )}
-                                  <View style={{ marginTop: 4, paddingVertical: 4, paddingHorizontal: 6, backgroundColor: '#005670' }}>
-                                    <Text style={{ fontSize: 8, color: '#ffffff', fontWeight: 'bold' }}>
-                                      {title} (#{designId})
-                                    </Text>
-                                  </View>
-                                </View>
-                              );
-                            })}
-                            {pair.length === 1 && <View style={{ width: '48%' }} />}
-                          </View>
-                        );
-                      }
-                    )}
-                  </View>
-                )}
-
-                {/* FOOTER */}
-                <View style={pdfStyles.footer} fixed>
-                  <Text>Generated on {new Date().toLocaleDateString('en-US')}</Text>
-                  <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-                </View>
-
-              </Page>
-            </Document>
-          );
-
-          // 3. Generate dan download
-          const blob = await pdf(MyDocument).toBlob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `Questionnaire_${selectedClient.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-          link.click();
-          URL.revokeObjectURL(url);
-
-        } catch (error) {
-          console.error('Error generating PDF:', error);
-          alert('Failed to generate PDF. Please try again.');
-        } finally {
-          setDownloadingPDF(false);
-        }
+      // PDF row — always renders, shows "Not answered" in gray if blank
+      const PdfRow = ({ label, value }) => {
+        const display = fmt(value);
+        const isBlank = display === '—';
+        return (
+          <View style={pdfStyles.fieldRow}>
+            <Text style={pdfStyles.fieldLabel}>{label}:</Text>
+            <Text style={isBlank ? pdfStyles.fieldValueBlank : pdfStyles.fieldValue}>
+              {isBlank ? 'Not answered' : display}
+            </Text>
+          </View>
+        );
       };
+
+      const MyDocument = (
+        <Document>
+          <Page size="A4" style={pdfStyles.page}>
+
+            {/* HEADER */}
+            <View style={pdfStyles.header}>
+              <Text style={pdfStyles.headerTitle}>Design Questionnaire</Text>
+              <Text style={pdfStyles.headerSubtitle}>Client: {selectedClient.name}</Text>
+            </View>
+
+            {/* CLIENT INFO */}
+            <View style={pdfStyles.infoBox}>
+              <Text style={pdfStyles.infoTitle}>Client Information</Text>
+              <Text style={pdfStyles.infoRow}>Name: {selectedClient.name}</Text>
+              <Text style={pdfStyles.infoRow}>Email: {selectedClient.email}</Text>
+              <Text style={pdfStyles.infoRow}>Unit: {selectedClient.unitNumber}</Text>
+              <Text style={pdfStyles.infoRow}>
+                Submitted: {questionnaire.submittedAt
+                  ? new Date(questionnaire.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : 'N/A'}
+              </Text>
+            </View>
+
+            {/* 1. HOME USE & LIFESTYLE */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>1. HOME USE &amp; LIFESTYLE</Text>
+              <PdfRow label="Purpose of Residence" value={questionnaire.purpose_of_residence} />
+              <PdfRow label="Who Will Use"          value={questionnaire.who_will_use} />
+              <PdfRow label="Family Members"        value={questionnaire.family_members} />
+              <PdfRow label="Children Ages"         value={questionnaire.children_ages} />
+              <PdfRow label="Living Envision"       value={questionnaire.living_envision} />
+              <PdfRow label="Home Feeling"          value={questionnaire.home_feeling} />
+            </View>
+
+            {/* 2. ENTERTAINING & DAILY USE */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>2. ENTERTAINING &amp; DAILY USE</Text>
+              <PdfRow label="Work From Home"      value={questionnaire.work_from_home} />
+              <PdfRow label="Entertain Frequency" value={questionnaire.entertain_frequency} />
+              <PdfRow label="Gathering Types"     value={questionnaire.gathering_types} />
+              <PdfRow label="Outdoor/Lanai Use"   value={questionnaire.outdoor_lanai_use} />
+            </View>
+
+            {/* 3. DESIGN AESTHETIC */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>3. DESIGN AESTHETIC &amp; COLOR PREFERENCES</Text>
+              <PdfRow label="Unit Options"          value={questionnaire.unit_options} />
+              <PdfRow label="Preferred Collection"  value={questionnaire.preferred_collection} />
+              <PdfRow label="Style Direction"       value={questionnaire.style_direction} />
+              <PdfRow label="Main Upholstery Color" value={questionnaire.main_upholstery_color} />
+              <PdfRow label="Accent Fabric Color"   value={questionnaire.accent_fabric_color} />
+              <PdfRow label="Metal Tone"            value={questionnaire.metal_tone} />
+              <PdfRow label="Tone Preference"       value={questionnaire.tone_preference} />
+              <PdfRow label="Colors to Avoid"       value={questionnaire.colors_to_avoid} />
+            </View>
+
+            {/* 4. BEDROOMS & COMFORT */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>4. BEDROOMS &amp; COMFORT</Text>
+              <PdfRow label="Bed Sizes"               value={questionnaire.bed_sizes} />
+              <PdfRow label="Mattress Firmness"       value={questionnaire.mattress_firmness} />
+              <PdfRow label="Bedding Type"            value={questionnaire.bedding_type} />
+              <PdfRow label="Bedding Material/Color"  value={questionnaire.bedding_material_color} />
+              <PdfRow label="Lighting Mood"           value={questionnaire.lighting_mood} />
+            </View>
+
+            {/* 5. ART & ACCESSORIES */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>5. ART, ACCESSORIES &amp; FINISHING TOUCHES</Text>
+              <PdfRow label="Art Style"           value={questionnaire.art_style} />
+              <PdfRow label="Art Coverage"        value={questionnaire.art_coverage} />
+              <PdfRow label="Accessories Styling" value={questionnaire.accessories_styling} />
+              <PdfRow label="Decorative Pillows"  value={questionnaire.decorative_pillows} />
+            </View>
+
+            {/* 6. ADDITIONAL NOTES */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>6. ADDITIONAL DESIGN NOTES</Text>
+              <PdfRow label="Special Zones"       value={questionnaire.special_zones} />
+              <PdfRow label="Existing Furniture"  value={questionnaire.existing_furniture} />
+              <PdfRow label="Furniture Details"   value={questionnaire.existing_furniture_details} />
+              <PdfRow label="Additional Notes"    value={questionnaire.additional_notes} />
+            </View>
+
+            {/* 7. ADD-ON: CLOSET */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.addonSectionHeader}>7. ADD-ON: CUSTOMIZED CLOSET SOLUTIONS</Text>
+              <PdfRow label="Closet Use"        value={questionnaire.closet_use} />
+              <PdfRow label="Organization Style" value={questionnaire.organization_style} />
+              <PdfRow label="Additional Needs"  value={questionnaire.closet_additional_needs} />
+              <PdfRow label="Finish"            value={questionnaire.closet_finish} />
+              <PdfRow label="Locations"         value={questionnaire.closet_locations} />
+            </View>
+
+            {/* 8. ADD-ON: WINDOW */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.addonSectionHeader}>8. ADD-ON: WINDOW COVERINGS</Text>
+              <PdfRow label="Treatment Preference" value={questionnaire.window_treatment} />
+              <PdfRow label="Operation"            value={questionnaire.window_operation} />
+              <PdfRow label="Light Quality"        value={questionnaire.light_quality} />
+              <PdfRow label="Shade Material"       value={questionnaire.shade_material} />
+              <PdfRow label="Shade Style"          value={questionnaire.shade_style} />
+              <PdfRow label="Locations"            value={questionnaire.window_locations} />
+              <PdfRow label="Other Area"           value={questionnaire.window_other_area} />
+            </View>
+
+            {/* 9. ADD-ON: AV */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.addonSectionHeader}>9. ADD-ON: AUDIO/VISUAL</Text>
+              <PdfRow label="AV Usage Level" value={questionnaire.av_usage} />
+              <PdfRow label="Areas to Equip" value={questionnaire.av_areas} />
+            </View>
+
+            {/* 10. ADD-ON: GREENERY */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.addonSectionHeader}>10. ADD-ON: GREENERY / PLANTS</Text>
+              <PdfRow label="Plant Type" value={questionnaire.plant_type} />
+              <PdfRow label="Areas"      value={questionnaire.plant_areas} />
+            </View>
+
+            {/* 11. ADD-ON: KITCHEN */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.addonSectionHeader}>11. ADD-ON: KITCHEN &amp; HOUSEHOLD ESSENTIALS</Text>
+              <PdfRow label="Selected Items" value={questionnaire.kitchen_essentials} />
+            </View>
+
+            {/* 12. LIKED DESIGNS */}
+            <View style={pdfStyles.section}>
+              <Text style={pdfStyles.sectionHeader}>12. VISUAL INSPIRATION (LIKED DESIGNS)</Text>
+              {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 ? (
+                <>
+                  <View style={pdfStyles.fieldRow}>
+                    <Text style={pdfStyles.fieldLabel}>Total Selected:</Text>
+                    <Text style={pdfStyles.fieldValue}>{questionnaire.likedDesigns.length} design(s)</Text>
+                  </View>
+                  {Array.from(
+                    { length: Math.ceil(questionnaire.likedDesigns.length / 2) },
+                    (_, rowIdx) => {
+                      const pair = questionnaire.likedDesigns.slice(rowIdx * 2, rowIdx * 2 + 2);
+                      return (
+                        <View key={rowIdx} style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                          {pair.map((designId) => {
+                            const base64 = likedDesignBase64Map[designId];
+                            const title = DESIGN_TITLES[designId] || `Design ${designId}`;
+                            return (
+                              <View key={designId} style={{ width: '48%' }}>
+                                {base64 ? (
+                                  <Image src={base64} style={{ width: '100%', height: 130 }} />
+                                ) : (
+                                  <View style={{ width: '100%', height: 130, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ fontSize: 8, color: '#9ca3af' }}>Image not available</Text>
+                                  </View>
+                                )}
+                                <View style={{ marginTop: 4, paddingVertical: 4, paddingHorizontal: 6, backgroundColor: '#005670' }}>
+                                  <Text style={{ fontSize: 8, color: '#ffffff', fontWeight: 'bold' }}>
+                                    {title} (#{designId})
+                                  </Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                          {pair.length === 1 && <View style={{ width: '48%' }} />}
+                        </View>
+                      );
+                    }
+                  )}
+                </>
+              ) : (
+                <View style={pdfStyles.fieldRow}>
+                  <Text style={pdfStyles.fieldLabel}>Liked Designs:</Text>
+                  <Text style={pdfStyles.fieldValueBlank}>Not answered</Text>
+                </View>
+              )}
+            </View>
+
+            {/* FOOTER */}
+            <View style={pdfStyles.footer} fixed>
+              <Text>Generated on {new Date().toLocaleDateString('en-US')}</Text>
+              <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+            </View>
+
+          </Page>
+        </Document>
+      );
+
+      const blob = await pdf(MyDocument).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Questionnaire_${selectedClient.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -2804,12 +2539,10 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <AlertCircle className="w-5 h-5 text-amber-600" />
             </div>
           </div>
-          
           <h3 className="text-2xl font-bold text-gray-900 mb-3">Questionnaire Not Completed</h3>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
             <strong>{selectedClient.name}</strong> has not completed their design questionnaire yet.
           </p>
-          
           <div className="max-w-lg mx-auto space-y-4">
             <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 rounded-xl text-left">
               <div className="flex items-start gap-3">
@@ -2826,25 +2559,15 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
                 </div>
               </div>
             </div>
-
             <div className="p-5 bg-amber-50 border border-amber-200 rounded-xl text-left">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold text-amber-900 mb-2">Next Steps</p>
                   <ul className="space-y-2 text-sm text-amber-800">
-                    <li className="flex items-start gap-2">
-                      <span className="text-amber-600">•</span>
-                      <span>Send a reminder email to the client</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-amber-600">•</span>
-                      <span>Follow up via phone to discuss their preferences</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-amber-600">•</span>
-                      <span>Questionnaire must be completed before proceeding with design</span>
-                    </li>
+                    <li className="flex items-start gap-2"><span className="text-amber-600">•</span><span>Send a reminder email to the client</span></li>
+                    <li className="flex items-start gap-2"><span className="text-amber-600">•</span><span>Follow up via phone to discuss their preferences</span></li>
+                    <li className="flex items-start gap-2"><span className="text-amber-600">•</span><span>Questionnaire must be completed before proceeding with design</span></li>
                   </ul>
                 </div>
               </div>
@@ -2855,9 +2578,22 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
     );
   }
 
+  // UI Row — always renders, gray italic if blank
+  const Row = ({ label, value }) => {
+    const display = fmt(value);
+    const isBlank = display === '—';
+    return (
+      <div className="flex gap-3 py-2 border-b border-gray-100 last:border-0">
+        <span className="w-2/5 text-sm font-semibold text-gray-500 flex-shrink-0">{label}</span>
+        <span className={`w-3/5 text-sm break-words ${isBlank ? 'text-gray-300 italic' : 'text-gray-800'}`}>
+          {isBlank ? '—' : display}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <Modal title="📋 Client Questionnaire" onClose={onClose} size="large">
-      {/* Download Loading Overlay */}
       {downloadingPDF && (
         <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm">
           <div className="bg-white px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl">
@@ -2868,21 +2604,18 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
       )}
 
       <div className="space-y-4">
-        {/* Status Badge with Download Button */}
+
+        {/* Status Badge + Download */}
         <div className="flex items-center justify-between gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-500">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
             <div>
-              <p className="font-bold text-gray-900">
-                Status: <span className="text-blue-600">Submitted</span>
-              </p>
+              <p className="font-bold text-gray-900">Status: <span className="text-blue-600">Submitted</span></p>
               <p className="text-sm text-gray-600">
                 Submitted: {questionnaire.submittedAt ? new Date(questionnaire.submittedAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
           </div>
-          
-          {/* Download Button */}
           <button
             onClick={handleDownloadPDF}
             disabled={downloadingPDF}
@@ -2893,286 +2626,156 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           </button>
         </div>
 
-        {/* Home Use & Lifestyle */}
-        <CollapsibleSection
-          icon="🏠"
-          title="Home Use & Lifestyle"
-          isExpanded={expandedSections.homeUse}
-          onToggle={() => toggleSection('homeUse')}
-        >
-          {questionnaire.purpose_of_residence && questionnaire.purpose_of_residence.length > 0 && (
-            <DataRow label="Purpose of Residence" value={questionnaire.purpose_of_residence.join(', ')} />
-          )}
-          {questionnaire.who_will_use && questionnaire.who_will_use.length > 0 && (
-            <DataRow label="Who Will Use" value={questionnaire.who_will_use.join(', ')} />
-          )}
-          {questionnaire.family_members && (
-            <DataRow label="Family Members" value={questionnaire.family_members} />
-          )}
-          {questionnaire.children_ages && (
-            <DataRow label="Children Ages" value={questionnaire.children_ages} />
-          )}
-          {questionnaire.living_envision && questionnaire.living_envision.length > 0 && (
-            <DataRow label="Living Envision" value={questionnaire.living_envision.join(', ')} />
-          )}
-          {questionnaire.home_feeling && questionnaire.home_feeling.length > 0 && (
-            <DataRow label="Home Feeling" value={questionnaire.home_feeling.join(', ')} />
-          )}
-          {questionnaire.has_pets && (
-            <>
-              <DataRow label="Has Pets" value="Yes" />
-              {questionnaire.pet_details && (
-                <DataRow label="Pet Details" value={questionnaire.pet_details} />
-              )}
-            </>
-          )}
-          {questionnaire.has_renters && (
-            <DataRow label="Has Renters" value="Yes" />
-          )}
+        {/* ─── 1. HOME USE & LIFESTYLE ─── */}
+        <CollapsibleSection icon="🏠" title="Home Use & Lifestyle"
+          isExpanded={expandedSections.homeUse} onToggle={() => toggleSection('homeUse')}>
+          <Row label="Purpose of Residence" value={questionnaire.purpose_of_residence} />
+          <Row label="Who Will Use"          value={questionnaire.who_will_use} />
+          <Row label="Family Members"        value={questionnaire.family_members} />
+          <Row label="Children Ages"         value={questionnaire.children_ages} />
+          <Row label="Living Envision"       value={questionnaire.living_envision} />
+          <Row label="Home Feeling"          value={questionnaire.home_feeling} />
         </CollapsibleSection>
 
-        {/* Daily Living */}
-        <CollapsibleSection
-          icon="🏡"
-          title="Daily Living & Entertaining"
-          isExpanded={expandedSections.entertaining}
-          onToggle={() => toggleSection('entertaining')}
-        >
-          {questionnaire.work_from_home && questionnaire.work_from_home.length > 0 && (
-            <DataRow label="Work From Home" value={questionnaire.work_from_home.join(', ')} />
-          )}
-          {questionnaire.entertain_frequency && questionnaire.entertain_frequency.length > 0 && (
-            <DataRow label="Entertain Frequency" value={questionnaire.entertain_frequency.join(', ')} />
-          )}
-          {questionnaire.gathering_types && questionnaire.gathering_types.length > 0 && (
-            <DataRow label="Gathering Types" value={questionnaire.gathering_types.join(', ')} />
-          )}
-          {questionnaire.outdoor_lanai_use && questionnaire.outdoor_lanai_use.length > 0 && (
-            <DataRow label="Outdoor/Lanai Use" value={questionnaire.outdoor_lanai_use.join(', ')} />
-          )}
+        {/* ─── 2. ENTERTAINING & DAILY USE ─── */}
+        <CollapsibleSection icon="🥂" title="Entertaining & Daily Use"
+          isExpanded={expandedSections.entertaining} onToggle={() => toggleSection('entertaining')}>
+          <Row label="Work From Home"      value={questionnaire.work_from_home} />
+          <Row label="Entertain Frequency" value={questionnaire.entertain_frequency} />
+          <Row label="Gathering Types"     value={questionnaire.gathering_types} />
+          <Row label="Outdoor/Lanai Use"   value={questionnaire.outdoor_lanai_use} />
         </CollapsibleSection>
 
-        {/* Design Aesthetic */}
-        <CollapsibleSection
-          icon="🎨"
-          title="Design Aesthetic"
-          isExpanded={expandedSections.design}
-          onToggle={() => toggleSection('design')}
-        >
-          {questionnaire.unit_options && questionnaire.unit_options.length > 0 && (
-            <DataRow label="Unit Options" value={questionnaire.unit_options.join(', ')} />
-          )}
-          {questionnaire.preferred_collection && questionnaire.preferred_collection.length > 0 && (
-            <DataRow label="Preferred Collection" value={questionnaire.preferred_collection.join(', ')} />
-          )}
-          {questionnaire.style_direction && questionnaire.style_direction.length > 0 && (
-            <DataRow label="Style Direction" value={questionnaire.style_direction.join(', ')} />
-          )}
-          {questionnaire.main_upholstery_color && questionnaire.main_upholstery_color.length > 0 && (
-            <DataRow label="Main Upholstery Color" value={questionnaire.main_upholstery_color.join(', ')} />
-          )}
-          {questionnaire.accent_fabric_color && questionnaire.accent_fabric_color.length > 0 && (
-            <DataRow label="Accent Fabric Color" value={questionnaire.accent_fabric_color.join(', ')} />
-          )}
-          {questionnaire.metal_tone && questionnaire.metal_tone.length > 0 && (
-            <DataRow label="Metal Tone" value={questionnaire.metal_tone.join(', ')} />
-          )}
-          {questionnaire.tone_preference && questionnaire.tone_preference.length > 0 && (
-            <DataRow label="Tone Preference" value={questionnaire.tone_preference.join(', ')} />
-          )}
-          {questionnaire.colors_to_avoid && (
-            <DataRow label="Colors to Avoid" value={questionnaire.colors_to_avoid} />
-          )}
+        {/* ─── 3. DESIGN AESTHETIC ─── */}
+        <CollapsibleSection icon="🎨" title="Design Aesthetic & Color Preferences"
+          isExpanded={expandedSections.design} onToggle={() => toggleSection('design')}>
+          <Row label="Unit Options"           value={questionnaire.unit_options} />
+          <Row label="Preferred Collection"   value={questionnaire.preferred_collection} />
+          <Row label="Style Direction"        value={questionnaire.style_direction} />
+          <Row label="Main Upholstery Color"  value={questionnaire.main_upholstery_color} />
+          <Row label="Accent Fabric Color"    value={questionnaire.accent_fabric_color} />
+          <Row label="Metal Tone"             value={questionnaire.metal_tone} />
+          <Row label="Tone Preference"        value={questionnaire.tone_preference} />
+          <Row label="Colors to Avoid"        value={questionnaire.colors_to_avoid} />
         </CollapsibleSection>
 
-        {/* Bedrooms & Comfort */}
-        <CollapsibleSection
-          icon="🛏️"
-          title="Bedrooms & Comfort"
-          isExpanded={expandedSections.bedrooms}
-          onToggle={() => toggleSection('bedrooms')}
-        >
-          {questionnaire.bed_sizes && questionnaire.bed_sizes.length > 0 && (
-            <DataRow label="Bed Sizes" value={questionnaire.bed_sizes.join(', ')} />
-          )}
-          {questionnaire.mattress_firmness && questionnaire.mattress_firmness.length > 0 && (
-            <DataRow label="Mattress Firmness" value={questionnaire.mattress_firmness.join(', ')} />
-          )}
-          {questionnaire.bedding_type && questionnaire.bedding_type.length > 0 && (
-            <DataRow label="Bedding Type" value={questionnaire.bedding_type.join(', ')} />
-          )}
-          {questionnaire.bedding_material_color && questionnaire.bedding_material_color.length > 0 && (
-            <DataRow label="Bedding Material/Color" value={questionnaire.bedding_material_color.join(', ')} />
-          )}
-          {questionnaire.lighting_mood && questionnaire.lighting_mood.length > 0 && (
-            <DataRow label="Lighting Mood" value={questionnaire.lighting_mood.join(', ')} />
-          )}
+        {/* ─── 4. BEDROOMS & COMFORT ─── */}
+        <CollapsibleSection icon="🛏️" title="Bedrooms & Comfort"
+          isExpanded={expandedSections.bedrooms} onToggle={() => toggleSection('bedrooms')}>
+          <Row label="Bed Sizes"               value={questionnaire.bed_sizes} />
+          <Row label="Mattress Firmness"       value={questionnaire.mattress_firmness} />
+          <Row label="Bedding Type"            value={questionnaire.bedding_type} />
+          <Row label="Bedding Material/Color"  value={questionnaire.bedding_material_color} />
+          <Row label="Lighting Mood"           value={questionnaire.lighting_mood} />
         </CollapsibleSection>
 
-        {/* Art & Accessories */}
-        <CollapsibleSection
-          icon="🖼️"
-          title="Art & Accessories"
-          isExpanded={expandedSections.art}
-          onToggle={() => toggleSection('art')}
-        >
-          {questionnaire.art_style && questionnaire.art_style.length > 0 && (
-            <DataRow label="Art Style" value={questionnaire.art_style.join(', ')} />
-          )}
-          {questionnaire.art_coverage && questionnaire.art_coverage.length > 0 && (
-            <DataRow label="Art Coverage" value={questionnaire.art_coverage.join(', ')} />
-          )}
-          {questionnaire.accessories_styling && questionnaire.accessories_styling.length > 0 && (
-            <DataRow label="Accessories Styling" value={questionnaire.accessories_styling.join(', ')} />
-          )}
-          {questionnaire.decorative_pillows && questionnaire.decorative_pillows.length > 0 && (
-            <DataRow label="Decorative Pillows" value={questionnaire.decorative_pillows.join(', ')} />
-          )}
-          {questionnaire.special_zones && questionnaire.special_zones.length > 0 && (
-            <DataRow label="Special Zones" value={questionnaire.special_zones.join(', ')} />
-          )}
-          {questionnaire.existing_furniture && questionnaire.existing_furniture.length > 0 && (
-            <>
-              <DataRow label="Existing Furniture" value={questionnaire.existing_furniture.join(', ')} />
-              {questionnaire.existing_furniture_details && (
-                <DataRow label="Furniture Details" value={questionnaire.existing_furniture_details} />
-              )}
-            </>
-          )}
-          {questionnaire.additional_notes && (
-            <DataRow label="Additional Notes" value={questionnaire.additional_notes} />
-          )}
+        {/* ─── 5. ART & ACCESSORIES ─── */}
+        <CollapsibleSection icon="🖼️" title="Art, Accessories & Finishing Touches"
+          isExpanded={expandedSections.art} onToggle={() => toggleSection('art')}>
+          <Row label="Art Style"           value={questionnaire.art_style} />
+          <Row label="Art Coverage"        value={questionnaire.art_coverage} />
+          <Row label="Accessories Styling" value={questionnaire.accessories_styling} />
+          <Row label="Decorative Pillows"  value={questionnaire.decorative_pillows} />
         </CollapsibleSection>
 
-        {/* Liked Designs - UI Section (bukan PDF) */}
-{questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 && (
-  <CollapsibleSection
-    icon="⭐"
-    title="Liked Designs"
-    isExpanded={expandedSections.likedDesigns}
-    onToggle={() => toggleSection('likedDesigns')}
-  >
-    <div className="space-y-4">
-      <p className="text-sm text-gray-700 mb-3">
-        Client selected <span className="font-bold text-[#005670]">{questionnaire.likedDesigns.length}</span> design image(s)
-      </p>
-      
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {questionnaire.likedDesigns.map((designId, index) => {
-          const imageUrl = DESIGN_IMAGES[designId];
-          const designTitle = DESIGN_TITLES[designId] || `Design ${designId}`;
-          if (!imageUrl) return null;
-          return (
-            <div
-              key={index}
-              className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-[#005670] transition-all cursor-pointer shadow-sm hover:shadow-lg"
-              onClick={() => setLightbox({ isOpen: true, imageUrl, designId, designTitle })}
-            >
-              <div className="aspect-square bg-gray-100">
-                <img
-                  src={imageUrl}
-                  alt={designTitle}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-300"
-                  loading="lazy"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="absolute bottom-2 left-2 right-2">
-                  <p className="text-white font-bold text-xs">{designTitle}</p>
-                </div>
-              </div>
-              <div className="absolute top-2 right-2">
-                <span className="px-2 py-0.5 bg-[#005670] text-white rounded-full text-xs font-bold shadow">
-                  #{designId}
-                </span>
+        {/* ─── 6. ADDITIONAL NOTES ─── */}
+        <CollapsibleSection icon="📝" title="Additional Design Notes"
+          isExpanded={expandedSections.misc} onToggle={() => toggleSection('misc')}>
+          <Row label="Special Zones"       value={questionnaire.special_zones} />
+          <Row label="Existing Furniture"  value={questionnaire.existing_furniture} />
+          <Row label="Furniture Details"   value={questionnaire.existing_furniture_details} />
+          <Row label="Additional Notes"    value={questionnaire.additional_notes} />
+        </CollapsibleSection>
+
+        {/* ─── 7. ADD-ON: CLOSET ─── */}
+        <CollapsibleSection icon="🚪" title="Add-On: Customized Closet Solutions"
+          isExpanded={expandedSections.closet} onToggle={() => toggleSection('closet')}>
+          <Row label="Closet Use"          value={questionnaire.closet_use} />
+          <Row label="Organization Style"  value={questionnaire.organization_style} />
+          <Row label="Additional Needs"    value={questionnaire.closet_additional_needs} />
+          <Row label="Finish"              value={questionnaire.closet_finish} />
+          <Row label="Locations"           value={questionnaire.closet_locations} />
+        </CollapsibleSection>
+
+        {/* ─── 8. ADD-ON: WINDOW ─── */}
+        <CollapsibleSection icon="🪟" title="Add-On: Window Coverings"
+          isExpanded={expandedSections.window} onToggle={() => toggleSection('window')}>
+          <Row label="Treatment Preference" value={questionnaire.window_treatment} />
+          <Row label="Operation"            value={questionnaire.window_operation} />
+          <Row label="Light Quality"        value={questionnaire.light_quality} />
+          <Row label="Shade Material"       value={questionnaire.shade_material} />
+          <Row label="Shade Style"          value={questionnaire.shade_style} />
+          <Row label="Locations"            value={questionnaire.window_locations} />
+          <Row label="Other Area"           value={questionnaire.window_other_area} />
+        </CollapsibleSection>
+
+        {/* ─── 9. ADD-ON: AV ─── */}
+        <CollapsibleSection icon="📺" title="Add-On: Audio/Visual"
+          isExpanded={expandedSections.av} onToggle={() => toggleSection('av')}>
+          <Row label="AV Usage Level" value={questionnaire.av_usage} />
+          <Row label="Areas to Equip" value={questionnaire.av_areas} />
+        </CollapsibleSection>
+
+        {/* ─── 10. ADD-ON: GREENERY ─── */}
+        <CollapsibleSection icon="🌿" title="Add-On: Greenery / Plants"
+          isExpanded={expandedSections.greenery} onToggle={() => toggleSection('greenery')}>
+          <Row label="Plant Type" value={questionnaire.plant_type} />
+          <Row label="Areas"      value={questionnaire.plant_areas} />
+        </CollapsibleSection>
+
+        {/* ─── 11. ADD-ON: KITCHEN ─── */}
+        <CollapsibleSection icon="🍳" title="Add-On: Kitchen & Household Essentials"
+          isExpanded={expandedSections.kitchen} onToggle={() => toggleSection('kitchen')}>
+          <Row label="Selected Items" value={questionnaire.kitchen_essentials} />
+        </CollapsibleSection>
+
+        {/* ─── 12. LIKED DESIGNS ─── */}
+        <CollapsibleSection icon="⭐" title="Visual Inspiration (Liked Designs)"
+          isExpanded={expandedSections.likedDesigns} onToggle={() => toggleSection('likedDesigns')}>
+          {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 ? (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 mb-3">
+                Client selected <span className="font-bold text-[#005670]">{questionnaire.likedDesigns.length}</span> design image(s)
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {questionnaire.likedDesigns.map((designId, index) => {
+                  const imageUrl = DESIGN_IMAGES[designId];
+                  const designTitle = DESIGN_TITLES[designId] || `Design ${designId}`;
+                  if (!imageUrl) return null;
+                  return (
+                    <div
+                      key={index}
+                      className="relative group overflow-hidden rounded-xl border-2 border-gray-200 hover:border-[#005670] transition-all cursor-pointer shadow-sm hover:shadow-lg"
+                      onClick={() => setLightbox({ isOpen: true, imageUrl, designId, designTitle })}
+                    >
+                      <div className="aspect-square bg-gray-100">
+                        <img
+                          src={imageUrl}
+                          alt={designTitle}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-300"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <p className="text-white font-bold text-xs">{designTitle}</p>
+                        </div>
+                      </div>
+                      <div className="absolute top-2 right-2">
+                        <span className="px-2 py-0.5 bg-[#005670] text-white rounded-full text-xs font-bold shadow">
+                          #{designId}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  </CollapsibleSection>
-)}
+          ) : (
+            <p className="text-sm text-gray-300 italic py-2">—</p>
+          )}
+        </CollapsibleSection>
 
-        {/* Add-On Services */}
-        {(questionnaire.closet_interested || 
-          questionnaire.window_interested || 
-          questionnaire.av_interested || 
-          questionnaire.greenery_interested || 
-          questionnaire.kitchen_interested) && (
-          <CollapsibleSection
-            icon="⚙️"
-            title="Add-On Services"
-            isExpanded={expandedSections.addons}
-            onToggle={() => toggleSection('addons')}
-          >
-            {questionnaire.closet_interested && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                <p className="font-bold text-blue-900 mb-2">Closet Solutions</p>
-                {questionnaire.closet_use && questionnaire.closet_use.length > 0 && (
-                  <p className="text-sm text-gray-700">Use: {questionnaire.closet_use.join(', ')}</p>
-                )}
-                {questionnaire.organization_style && questionnaire.organization_style.length > 0 && (
-                  <p className="text-sm text-gray-700">Style: {questionnaire.organization_style.join(', ')}</p>
-                )}
-                {questionnaire.closet_finish && questionnaire.closet_finish.length > 0 && (
-                  <p className="text-sm text-gray-700">Finish: {questionnaire.closet_finish.join(', ')}</p>
-                )}
-                {questionnaire.closet_locations && questionnaire.closet_locations.length > 0 && (
-                  <p className="text-sm text-gray-700">Locations: {questionnaire.closet_locations.join(', ')}</p>
-                )}
-              </div>
-            )}
-
-            {questionnaire.window_interested && (
-              <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-                <p className="font-bold text-green-900 mb-2">Window Coverings</p>
-                {questionnaire.window_treatment && questionnaire.window_treatment.length > 0 && (
-                  <p className="text-sm text-gray-700">Treatment: {questionnaire.window_treatment.join(', ')}</p>
-                )}
-                {questionnaire.window_operation && questionnaire.window_operation.length > 0 && (
-                  <p className="text-sm text-gray-700">Operation: {questionnaire.window_operation.join(', ')}</p>
-                )}
-                {questionnaire.shade_style && questionnaire.shade_style.length > 0 && (
-                  <p className="text-sm text-gray-700">Style: {questionnaire.shade_style.join(', ')}</p>
-                )}
-              </div>
-            )}
-
-            {questionnaire.av_interested && (
-              <div className="mb-4 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
-                <p className="font-bold text-purple-900 mb-2">Audio/Visual</p>
-                {questionnaire.av_usage && questionnaire.av_usage.length > 0 && (
-                  <p className="text-sm text-gray-700">Usage: {questionnaire.av_usage.join(', ')}</p>
-                )}
-                {questionnaire.av_areas && questionnaire.av_areas.length > 0 && (
-                  <p className="text-sm text-gray-700">Areas: {questionnaire.av_areas.join(', ')}</p>
-                )}
-              </div>
-            )}
-
-            {questionnaire.greenery_interested && (
-              <div className="mb-4 p-3 bg-emerald-50 rounded-lg border-l-4 border-emerald-400">
-                <p className="font-bold text-emerald-900 mb-2">Greenery/Plants</p>
-                {questionnaire.plant_type && questionnaire.plant_type.length > 0 && (
-                  <p className="text-sm text-gray-700">Type: {questionnaire.plant_type.join(', ')}</p>
-                )}
-                {questionnaire.plant_areas && questionnaire.plant_areas.length > 0 && (
-                  <p className="text-sm text-gray-700">Areas: {questionnaire.plant_areas.join(', ')}</p>
-                )}
-              </div>
-            )}
-
-            {questionnaire.kitchen_interested && (
-              <div className="mb-4 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
-                <p className="font-bold text-orange-900 mb-2">Kitchen Essentials</p>
-                {questionnaire.kitchen_essentials && questionnaire.kitchen_essentials.length > 0 && (
-                  <p className="text-sm text-gray-700">Items: {questionnaire.kitchen_essentials.join(', ')}</p>
-                )}
-              </div>
-            )}
-          </CollapsibleSection>
-        )}
       </div>
 
       <ImageLightbox

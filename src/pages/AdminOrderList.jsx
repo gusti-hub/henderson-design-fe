@@ -451,7 +451,7 @@ const AdminOrderList = ({ onOrderClick }) => {
             order={editingOrder}
             onSave={(products) => {
               console.log('✅ Custom products saved:', products);
-              fetchOrders();
+              // fetchOrders();
             }}
             onBack={handleBackToList}
           />

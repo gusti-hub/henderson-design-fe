@@ -112,10 +112,12 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   }, [totalClientPrice, quantity]);
 
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
+  const [netCostDisplay, setNetCostDisplay] = React.useState('');
+  const [netCostFocused, setNetCostFocused] = React.useState(false);
 
   const handleMsrpChange     = (v) => { upd('msrp', v); upd('netCostOverride', null); };
   const handleDiscountChange = (v) => { upd('discountPercent', v); upd('netCostOverride', null); };
-  const handleNetCostChange  = (v) => {
+  const handleNetCostChange = (v) => {
     const newNetCost = parseFloat(v) || 0;
     upd('netCostOverride', newNetCost === 0 ? null : newNetCost);
     const divisor = 1 - (discountPct / 100);
@@ -248,10 +250,34 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Net Cost</label>
-            <DecimalInput
-              value={noNetPurchase ? 0 : netCost}
-              onChange={handleNetCostChange}
+            <input
+              type="text"
+              inputMode="decimal"
+              value={netCostFocused ? netCostDisplay : (noNetPurchase ? '' : (netCost === 0 ? '' : netCost))}
+              onFocus={() => {
+                setNetCostFocused(true);
+                setNetCostDisplay(noNetPurchase ? '' : (netCost === 0 ? '' : String(netCost)));
+              }}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setNetCostDisplay(raw);
+                // Only propagate valid/complete numbers
+                if (raw === '' || raw === '.') return;
+                if (/^\d*\.?\d{0,4}$/.test(raw) && !raw.endsWith('.')) {
+                  handleNetCostChange(raw);
+                }
+              }}
+              onBlur={() => {
+                setNetCostFocused(false);
+                const val = netCostDisplay;
+                if (val === '' || val === '.') {
+                  handleNetCostChange('0');
+                } else {
+                  handleNetCostChange(val);
+                }
+              }}
               disabled={disabled || noNetPurchase}
+              placeholder="0.00"
               className={`${inp} ${!disabled && !noNetPurchase ? 'bg-blue-50 border-blue-200' : ''}`}
             />
           </div>
