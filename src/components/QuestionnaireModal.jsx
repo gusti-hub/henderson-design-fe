@@ -702,12 +702,21 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
   };
 
   const toggleImageLike = (imageId) => {
-    setLikedImages(prev =>
-      prev.includes(imageId)
-        ? prev.filter(id => id !== imageId)
-        : [...prev, imageId]
-    );
-    console.log('🖼️ Liked images updated:', likedImages);
+    const updatedImages = likedImages.includes(imageId)
+      ? likedImages.filter(id => id !== imageId)
+      : [...likedImages, imageId];
+
+    setLikedImages(updatedImages);
+
+    if (updatedImages.length >= 1 && errors.likedDesigns) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.likedDesigns;
+        return newErrors;
+      });
+    }
+
+    console.log('🖼️ Liked images updated:', updatedImages);
   };
 
   const validateCurrentStep = () => {
@@ -720,6 +729,12 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
     const newErrors = {};
 
     if (currentSection.isImageSelection) {
+      if (!likedImages || likedImages.length < 1) {
+        setErrors({ likedDesigns: 'Please select at least 1 design inspiration' });
+        return false;
+      }
+
+      setErrors({});
       return true;
     }
 
@@ -987,32 +1002,52 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {inspirationImages.map((image) => {
-                      const isLiked = likedImages.includes(image.id);
-                      return (
-                        <div
-                          key={image.id}
-                          className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all ${
-                            isLiked ? 'border-[#005670] shadow-lg scale-105' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                          onClick={() => toggleImageLike(image.id)}
-                        >
-                          <img
-                            src={image.src}
-                            alt={image.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            className={`absolute top-2 right-2 w-10 h-10 flex items-center justify-center rounded-full shadow-md transition-all ${
-                              isLiked ? 'bg-[#005670] scale-110' : 'bg-white/90 hover:scale-110'
+                  <div
+                    className={`rounded-2xl p-3 transition-all ${
+                      errors.likedDesigns
+                        ? 'border-2 border-red-300 bg-red-50/30'
+                        : 'border-2 border-transparent'
+                    }`}
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {inspirationImages.map((image) => {
+                        const isLiked = likedImages.includes(image.id);
+                        return (
+                          <div
+                            key={image.id}
+                            className={`group relative aspect-[4/3] overflow-hidden rounded-xl cursor-pointer border-2 transition-all ${
+                              isLiked
+                                ? 'border-[#005670] shadow-lg scale-[1.02]'
+                                : errors.likedDesigns
+                                ? 'border-red-400'
+                                : 'border-gray-200 hover:border-gray-300'
                             }`}
+                            onClick={() => toggleImageLike(image.id)}
                           >
-                            <Heart className={`w-5 h-5 ${isLiked ? 'fill-white text-white' : 'text-gray-700'}`} />
-                          </button>
-                        </div>
-                      );
-                    })}
+                            <img
+                              src={image.src}
+                              alt={image.title}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              className={`absolute top-2 right-2 w-10 h-10 flex items-center justify-center rounded-full shadow-md transition-all ${
+                                isLiked ? 'bg-[#005670] scale-110' : 'bg-white/90 hover:scale-110'
+                              }`}
+                            >
+                              <Heart className={`w-5 h-5 ${isLiked ? 'fill-white text-white' : 'text-gray-700'}`} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {errors.likedDesigns && (
+                      <div className="mt-4 flex items-center gap-2 text-red-600 text-sm">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>{errors.likedDesigns}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
