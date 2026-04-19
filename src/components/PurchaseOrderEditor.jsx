@@ -2,6 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Trash2, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
+// ─── Image with print-safe base64 conversion ──────────────────────────────────
+const PrintSafeImage = ({ src, alt, style, fallback }) => {
+  const [dataUrl, setDataUrl] = useState(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!src) { setFailed(true); return; }
+    let cancelled = false;
+
+    const toBase64 = async () => {
+      try {
+        // Try fetch with cors first
+        const res = await fetch(src, { mode: 'cors' });
+        if (!res.ok) throw new Error('fetch failed');
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (!cancelled) setDataUrl(reader.result);
+        };
+        reader.readAsDataURL(blob);
+      } catch {
+        // Fallback: load via Image element (works if CORS allows)
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          if (cancelled) return;
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            setDataUrl(canvas.toDataURL());
+          } catch {
+            setFailed(true);
+          }
+        };
+        img.onerror = () => { if (!cancelled) setFailed(true); };
+        img.src = src;
+      }
+    };
+
+    toBase64();
+    return () => { cancelled = true; };
+  }, [src]);
+
+  if (failed || (!dataUrl && !src)) return fallback || null;
+
+  return (
+    <img
+      src={dataUrl || src}
+      alt={alt || ''}
+      style={style}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,7 +95,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionNotes, setVersionNotes] = useState('');
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
-
+  const [isPrinting, setIsPrinting] = useState(false);
   const [originalTitle] = useState(document.title);
 
   useEffect(() => {
@@ -59,16 +117,77 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     try {
       const token = localStorage.getItem('token');
       const versionParam = version || 'latest';
-      const response = await fetch(
-        `${backendServer}/api/orders/${orderId}/po/${vendorId}/${versionParam}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const result = await response.json();
+
+      // Fetch PO data and order data in parallel
+      const [poResponse, orderResponse] = await Promise.all([
+        fetch(`${backendServer}/api/orders/${orderId}/po/${vendorId}/${versionParam}`,
+          { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${backendServer}/api/orders/${orderId}`,
+          { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      const result = await poResponse.json();
+      const orderData = await orderResponse.json();
+
+      // Build a lookup map: product_id -> order product (for image enrichment)
+      const orderProductMap = {};
+      (orderData.selectedProducts || []).forEach(p => {
+        if (p.product_id) orderProductMap[p.product_id] = p;
+        if (p._id) orderProductMap[p._id.toString()] = p;
+      });
 
       if (result.success) {
         const data = result.data;
         setPOData(data);
-        setProducts(data.products || []);
+
+        // Enrich PO products with uploadedImages & msrp from live order data
+        const enrichedProducts = (data.products || []).map(poProduct => {
+          const orderProduct = orderProductMap[poProduct.product_id] ||
+                               orderProductMap[poProduct._id?.toString()];
+          if (!orderProduct) return poProduct;
+
+          const hasImages = poProduct.selectedOptions?.uploadedImages?.length > 0;
+          const orderImages = orderProduct.selectedOptions?.uploadedImages || [];
+
+          // Net cost: use msrp from order if PO still has client price
+          const orderMsrp = orderProduct.selectedOptions?.msrp || 0;
+          const orderNetOverride = orderProduct.selectedOptions?.netCostOverride;
+          const netCost = (orderNetOverride != null && orderNetOverride !== '')
+            ? parseFloat(orderNetOverride)
+            : parseFloat(orderMsrp || 0);
+
+          return {
+            ...poProduct,
+            // Only override unitPrice if it looks like client price (much higher than msrp)
+            unitPrice: netCost > 0 ? netCost : poProduct.unitPrice,
+            totalPrice: netCost > 0 ? netCost * (poProduct.quantity || 1) : poProduct.totalPrice,
+            selectedOptions: {
+              ...poProduct.selectedOptions,
+              // Enrich images from order if PO doesn't have them
+              uploadedImages: hasImages
+                ? poProduct.selectedOptions.uploadedImages
+                : orderImages,
+              // Enrich msrp
+              msrp: orderMsrp || poProduct.selectedOptions?.msrp || 0,
+              // Enrich sidemark
+              sidemark: poProduct.selectedOptions?.sidemark ||
+                        orderProduct.selectedOptions?.sidemark || '',
+              // Enrich shipping destination
+              shipToName: poProduct.selectedOptions?.shipToName ||
+                          orderProduct.selectedOptions?.shipToName || '',
+              shippingStreet: poProduct.selectedOptions?.shippingStreet ||
+                              orderProduct.selectedOptions?.shippingStreet || '',
+              shippingCity: poProduct.selectedOptions?.shippingCity ||
+                            orderProduct.selectedOptions?.shippingCity || '',
+              shippingState: poProduct.selectedOptions?.shippingState ||
+                             orderProduct.selectedOptions?.shippingState || '',
+              shippingPostalCode: poProduct.selectedOptions?.shippingPostalCode ||
+                                  orderProduct.selectedOptions?.shippingPostalCode || '',
+            }
+          };
+        });
+
+        setProducts(enrichedProducts);
         setVendorInfo({
           name: data.vendorInfo?.name || '',
           vendorCode: data.vendorInfo?.vendorCode || '',
@@ -88,12 +207,26 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           },
           accountNumber: data.vendorInfo?.accountNumber || ''
         });
-        setShipTo(data.shipTo || {});
+        // FIX: Populate shipTo from product's shipping fields (first product that has them)
+        const firstProductWithShipping = (data.products || []).find(p => p.selectedOptions?.shippingStreet);
+        const enrichedShipTo = data.shipTo && (data.shipTo.name || data.shipTo.address) ? data.shipTo : {};
+        if (firstProductWithShipping && !enrichedShipTo.name) {
+          const opts = firstProductWithShipping.selectedOptions;
+          setShipTo({
+            name: opts.shipToName || '',
+            address: opts.shippingStreet || '',
+            city: [opts.shippingCity, opts.shippingState, opts.shippingPostalCode].filter(Boolean).join(', '),
+            attention: '',
+            phone: opts.shipToPhone || ''
+          });
+        } else {
+          setShipTo(enrichedShipTo);
+        }
         setClientInfo(data.clientInfo || {});
         setHeaderFields({
           poNumber: data.poNumber || '',
-          orderDate: data.orderDate 
-            ? new Date(data.orderDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) 
+          orderDate: data.orderDate
+            ? new Date(data.orderDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
             : '',
           accountNumber: data.accountNumber || '',
           repName: data.repName || '',
@@ -125,18 +258,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         `${backendServer}/api/orders/${orderId}/po/${vendorId}`,
         {
           method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            version: poData.version,
-            products,
-            vendorInfo,
-            shipTo,
-            clientInfo,
-            ...headerFields
-          })
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version: poData.version, products, vendorInfo, shipTo, clientInfo, ...headerFields })
         }
       );
       const result = await response.json();
@@ -155,10 +278,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   };
 
   const handleSaveAsNewVersion = async () => {
-    if (!versionNotes.trim()) {
-      alert('Please add notes for this new version');
-      return;
-    }
+    if (!versionNotes.trim()) { alert('Please add notes for this new version'); return; }
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
@@ -166,18 +286,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         `${backendServer}/api/orders/${orderId}/po/${vendorId}/new-version`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            products,
-            vendorInfo,
-            shipTo,
-            clientInfo,
-            versionNotes,
-            ...headerFields
-          })
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ products, vendorInfo, shipTo, clientInfo, versionNotes, ...headerFields })
         }
       );
       const result = await response.json();
@@ -219,14 +329,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
   const addEmptyProduct = () => {
     setProducts([...products, {
-      product_id: '',
-      name: '',
-      category: '',
-      spotName: '',
-      quantity: 1,
-      unitPrice: 0,
-      totalPrice: 0,
-      description: '',
+      product_id: '', name: '', category: '', spotName: '',
+      quantity: 1, unitPrice: 0, totalPrice: 0, description: '',
       selectedOptions: { finish: '', fabric: '', size: '', image: '', notes: '' }
     }]);
   };
@@ -235,14 +339,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     const subTotal = products.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
     const shipping = parseFloat(headerFields.shipping) || 0;
     const others = parseFloat(headerFields.others) || 0;
-    const total = subTotal + shipping + others;
-    return { subTotal, shipping, others, total };
+    return { subTotal, shipping, others, total: subTotal + shipping + others };
   };
 
-  const handlePrint = () => { setShowPrintInstructions(true); };
-
-  const doPrint = () => {
+  // FIX: Pre-convert all images to base64 before printing
+  const doPrint = async () => {
     setShowPrintInstructions(false);
+
     if (poData && vendorInfo.name) {
       const vendor = vendorInfo.name?.replace(/\s+/g, '_') || 'Vendor';
       const client = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
@@ -250,16 +353,14 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       const date = new Date().toISOString().split('T')[0];
       document.title = `PO_${client}_${vendor}_v${versionNum}_${date}`;
     }
-    setTimeout(() => { window.print(); }, 100);
-  };
 
-  // ✅ Helper: Format vendor address for display
-  const formatVendorAddress = () => {
-    const parts = [
-      vendorInfo.address?.street,
-      [vendorInfo.address?.city, vendorInfo.address?.state, vendorInfo.address?.zip].filter(Boolean).join(', ')
-    ].filter(Boolean);
-    return parts;
+    // Set isPrinting to remove borders via inline style, then print
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      // Restore after print dialog closes
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 150);
   };
 
   if (loading) {
@@ -276,6 +377,14 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const totals = calculateTotals();
   const printedDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
+  // ─── COMPANY ADDRESS: Updated to Royal Place (per Sara's 4/16 feedback) ───
+  const COMPANY_ADDRESS = {
+    street: '4343 Royal Place',
+    city: 'Honolulu, HI 96816',
+    phone: '(808) 315-8782',
+    fax: ''
+  };
+
   return (
     <>
       {/* ====== PRINT STYLES ====== */}
@@ -287,28 +396,78 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           .print-container, .print-container * { visibility: visible; }
           .print-container { position: absolute; left: 0; top: 0; width: 100%; }
           .no-print { display: none !important; }
+
+          /* FIX: Only ONE po-page, no page breaks causing blank pages */
           .po-page {
-            page-break-after: always;
-            page-break-inside: avoid;
-            padding: 0.5in;
-            min-height: 10in;
-            max-height: 10.5in;
-            position: relative;
-            margin: 0;
-            box-shadow: none;
-            background: white;
+            page-break-after: avoid !important;
+            page-break-inside: auto !important;
+            padding: 0.5in !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            background: white !important;
+            width: auto !important;
+            min-height: unset !important;
           }
-          input, textarea, select {
+
+          /* FIX: Remove extra blank page from table overflow */
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+
+          /* Remove borders from form inputs only, not table cells */
+          input, select {
             border: none !important;
             background: transparent !important;
             outline: none !important;
             box-shadow: none !important;
             padding: 0 !important;
           }
+          textarea {
+            border: none !important;
+            background: transparent !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            resize: none !important;
+            overflow: visible !important;
+            height: auto !important;
+          }
+          /* Table — outer border only */
+          .po-table { border: 1px solid #999 !important; }
+          .po-table th {
+            background: #666 !important;
+            color: white !important;
+            border: none !important;
+          }
+          .po-table td { border: none !important; }
+          .po-table tbody tr + tr td { border-top: 1px solid #f0f0f0 !important; }
+          .po-totals-row td { border: none !important; }
+          .po-totals-row.total-final td { border-top: 1px solid #333 !important; }
           .remove-btn { display: none !important; }
           .add-product-btn { display: none !important; }
+          /* Hide all placeholders when printing */
+          input::placeholder { color: transparent !important; }
+          textarea::placeholder { color: transparent !important; }
+          /* Hide gray background outside print area */
+          body { background: white !important; }
+          .bg-gray-100 { background: white !important; }
+          /* Unit cost: hide input, show formatted span */
+          .unit-cost-raw { display: none !important; }
+          .unit-cost-display { display: block !important; text-align: right; font-size: 11px; }
+          /* Sidemark label */
+          .sidemark-row { margin-top: 4px; font-size: 10px; }
+          /* Remove all borders from textarea and qty-input in print */
+          .po-table .desc-cell textarea,
+          .qty-input {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            resize: none !important;
+            overflow: visible !important;
+            height: auto !important;
+          }
         }
-        @page { size: letter; margin: 0.4in; }
+        @page { size: letter; margin: 0.5in; }
 
         .po-page {
           background: white;
@@ -331,34 +490,68 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           white-space: nowrap;
         }
         .po-input {
-          border: 1px solid #e5e7eb;
-          border-radius: 3px;
-          padding: 2px 6px;
+          border: none;
+          border-bottom: 1px solid transparent;
+          border-radius: 0;
+          padding: 0 2px;
+          margin: 0;
           font-size: 11px;
+          line-height: 1.4;
+          height: auto;
           width: 100%;
-          background: white;
+          background: transparent;
           outline: none;
+          display: block;
           transition: border-color 0.15s;
         }
-        .po-input:focus { border-color: #005670; }
+        .po-input:focus { border-bottom-color: #005670; }
+        /* Textarea - no border */
+        .po-table .desc-cell textarea {
+          border: none;
+          border-radius: 0;
+          background: transparent;
+        }
+        .qty-input {
+          border: none;
+          border-radius: 0;
+          background: transparent;
+        }
+        /* Compact left column rows */
+        .po-left-row {
+          line-height: 1.5;
+          margin: 0;
+          padding: 0;
+          font-size: 11px;
+        }
+        /* ── Product Table — outer border only ── */
         .po-table {
           width: 100%;
           border-collapse: collapse;
           font-size: 11px;
+          border: 1px solid #999;
         }
         .po-table th {
           background: #666;
           color: white;
-          padding: 6px 8px;
+          padding: 6px 10px;
           text-align: left;
           font-weight: 600;
           font-size: 10px;
+          border: none;
         }
+        .po-table th.th-cost { text-align: right; }
+        /* No inner borders on td at all */
         .po-table td {
-          border-bottom: 1px solid #e5e7eb;
-          padding: 8px;
+          border: none;
+          padding: 10px 10px;
           vertical-align: top;
         }
+        /* Thin separator between rows for readability */
+        .po-table tbody tr + tr td {
+          border-top: 1px solid #f0f0f0;
+        }
+
+        /* Description textarea — borderless, full width */
         .po-table .desc-cell textarea {
           width: 100%;
           font-size: 11px;
@@ -366,18 +559,96 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           border-radius: 3px;
           padding: 4px 6px;
           resize: vertical;
-          min-height: 60px;
-          line-height: 1.4;
+          min-height: 80px;
+          line-height: 1.5;
           font-family: Arial, sans-serif;
+          box-sizing: border-box;
         }
         .po-table .desc-cell textarea:focus { border-color: #005670; outline: none; }
-        .po-table .img-cell { width: 70px; }
-        .po-table .img-cell img { max-width: 60px; max-height: 60px; object-fit: contain; }
-        .po-table .price-cell { text-align: right; white-space: nowrap; }
-        .po-totals-row td { border-bottom: none; padding: 3px 8px; }
+
+        /* Image cell — centered */
+        .po-table .img-cell {
+          width: 90px;
+          min-width: 90px;
+          text-align: center;
+          vertical-align: middle;
+          padding: 8px;
+        }
+        .po-table .img-cell img {
+          max-width: 80px;
+          max-height: 80px;
+          object-fit: contain;
+          display: block;
+          margin: 0 auto;
+        }
+        .img-placeholder {
+          width: 80px;
+          height: 80px;
+          background: #f5f5f5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 8px;
+          color: #999;
+          border: 1px solid #eee;
+          margin: 0 auto;
+        }
+
+        /* Price cells */
+        .po-table .price-cell {
+          text-align: right;
+          white-space: nowrap;
+          vertical-align: top;
+          width: 100px;
+          font-size: 11px;
+        }
+
+        /* Totals rows — no side borders, right-aligned */
+        .po-totals-row td {
+          border: none !important;
+          padding: 2px 10px;
+          text-align: right;
+          font-size: 11px;
+        }
+        .po-totals-row.total-final td {
+          border-top: 2px solid #333 !important;
+          font-weight: bold;
+          font-size: 12px;
+        }
+
+        /* Quantity row inline */
+        .qty-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 6px;
+          font-size: 11px;
+        }
+        .qty-row label { font-weight: normal; color: #333; }
+        .qty-input {
+          border: 1px solid #e5e7eb;
+          border-radius: 3px;
+          padding: 1px 4px;
+          font-size: 11px;
+          width: 55px;
+          background: white;
+          outline: none;
+          text-align: center;
+        }
+        .qty-input:focus { border-color: #005670; }
+
+        /* Sidemark row */
+        .sidemark-row {
+          margin-top: 6px;
+          font-size: 10px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .sidemark-row span { font-weight: 600; color: #444; white-space: nowrap; }
       `}</style>
 
-      {/* ====== TOOLBAR (no-print) ====== */}
+      {/* ====== TOOLBAR ====== */}
       <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
@@ -397,7 +668,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             {poData?.status?.charAt(0).toUpperCase() + poData?.status?.slice(1) || 'Draft'}
           </span>
         </div>
-
         <div className="flex items-center gap-2">
           <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
             <Clock className="w-4 h-4" />
@@ -411,7 +681,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             <FileText className="w-4 h-4" />
             Save as New Version
           </button>
-          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
+          <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
             <Printer className="w-4 h-4" />
             Print / Save PDF
           </button>
@@ -421,263 +691,129 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       {/* ====== PRINTABLE PO CONTENT ====== */}
       <div className="print-container bg-gray-100 min-h-screen py-8">
         <div className="po-page">
-          {/* ---- TOP SECTION: Company Info + Logo ---- */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-            <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#333' }}>
-              <p>74-5518 Kaiwi Street Suite B</p>
-              <p>Kailua Kona, HI 96740-3145</p>
-              <p>(808) 315-8782</p>
-              <p>Fax:</p>
+
+          {/* ---- TOP: Company Address + Logo ---- */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+            {/* FIX: Updated to Royal Place address */}
+            <div style={{ fontSize: '11px', lineHeight: '1.6', color: '#333' }}>
+              <div>{COMPANY_ADDRESS.street}</div>
+              <div>{COMPANY_ADDRESS.city}</div>
+              <div>{COMPANY_ADDRESS.phone}</div>
+              <div>Fax: {COMPANY_ADDRESS.fax}</div>
             </div>
+            {/* Logo — Henderson blue filter */}
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '28px', fontWeight: '300', letterSpacing: '6px', color: '#4a4a4a', fontFamily: 'Georgia, serif' }}>
-                HENDERSON
-              </div>
-              <div style={{ fontSize: '14px', letterSpacing: '8px', color: '#6a6a6a', fontFamily: 'Georgia, serif' }}>
-                DESIGN GROUP
-              </div>
+              <img
+                src="/images/HDG-Logo.png"
+                alt="Henderson Design Group"
+                style={{
+                  height: '40px',
+                  width: 'auto',
+                  filter: 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)'
+                }}
+              />
             </div>
           </div>
 
           {/* ---- PURCHASE ORDER TITLE ---- */}
-          <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '15px 0 12px', color: '#333' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: '12px 0 10px', color: '#222', borderBottom: '2px solid #333', paddingBottom: '6px' }}>
             Purchase Order
           </h2>
 
           {/* ---- HEADER INFO GRID ---- */}
-          <div className="po-header-grid" style={{ borderBottom: '1px solid #ddd', paddingBottom: '15px', marginBottom: '12px' }}>
-            {/* LEFT COLUMN: Vendor / Ship To */}
-            <div style={{ paddingRight: '20px' }}>
-              <p className="po-field-label" style={{ marginBottom: '4px' }}>To:</p>
-              <input
-                className="po-input"
-                value={vendorInfo.name || ''}
-                onChange={(e) => setVendorInfo({ ...vendorInfo, name: e.target.value })}
-                placeholder="Vendor Name"
-                style={{ fontWeight: '500', marginBottom: '2px' }}
-              />
-              <input
-                className="po-input"
-                value={vendorInfo.address?.street || ''}
-                onChange={(e) => setVendorInfo({ 
-                  ...vendorInfo, 
-                  address: { ...vendorInfo.address, street: e.target.value } 
-                })}
-                placeholder="Street Address"
-                style={{ marginBottom: '2px' }}
-              />
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '2px' }}>
-                <input
-                  className="po-input"
-                  value={vendorInfo.address?.city || ''}
-                  onChange={(e) => setVendorInfo({ 
-                    ...vendorInfo, 
-                    address: { ...vendorInfo.address, city: e.target.value } 
-                  })}
-                  placeholder="City"
-                  style={{ flex: 2 }}
-                />
-                <input
-                  className="po-input"
-                  value={vendorInfo.address?.state || ''}
-                  onChange={(e) => setVendorInfo({ 
-                    ...vendorInfo, 
-                    address: { ...vendorInfo.address, state: e.target.value } 
-                  })}
-                  placeholder="State"
-                  style={{ flex: 1 }}
-                />
-                <input
-                  className="po-input"
-                  value={vendorInfo.address?.zip || ''}
-                  onChange={(e) => setVendorInfo({ 
-                    ...vendorInfo, 
-                    address: { ...vendorInfo.address, zip: e.target.value } 
-                  })}
-                  placeholder="ZIP"
-                  style={{ flex: 1 }}
-                />
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', borderBottom: '1px solid #ccc', paddingBottom: '12px', marginBottom: '12px' }}>
 
-              <div style={{ marginTop: '8px' }}>
+            {/* LEFT: Vendor + Ship To + Comments */}
+            <div style={{ paddingRight: '20px', borderRight: '1px solid #ccc', fontSize: '11px', lineHeight: '1.5' }}>
+              {/* Vendor */}
+              <div style={{ fontWeight: 'bold', marginBottom: '1px' }}>To:</div>
+              <input className="po-input" value={vendorInfo.name || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, name: e.target.value })} placeholder="Vendor Name" style={{ fontWeight: '500' }} />
+              <input className="po-input" value={vendorInfo.address?.street || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, street: e.target.value } })} placeholder="Street Address" />
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <input className="po-input" value={vendorInfo.address?.city || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, city: e.target.value } })} placeholder="City" style={{ flex: 2 }} />
+                <input className="po-input" value={vendorInfo.address?.state || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, state: e.target.value } })} placeholder="ST" style={{ flex: 1 }} />
+                <input className="po-input" value={vendorInfo.address?.zip || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, zip: e.target.value } })} placeholder="ZIP" style={{ flex: 1 }} />
+              </div>
+              <div>
                 <span className="po-field-label">Attention: </span>
-                <input
-                  className="po-input"
-                  value={vendorInfo.representativeName || ''}
-                  onChange={(e) => setVendorInfo({ ...vendorInfo, representativeName: e.target.value })}
-                  placeholder="Contact Name"
-                  style={{ width: '60%', display: 'inline-block' }}
-                />
+                <input className="po-input" value={vendorInfo.representativeName || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, representativeName: e.target.value })} placeholder="Contact Name" style={{ width: '60%', display: 'inline-block' }} />
               </div>
               <div>
                 <span className="po-field-label">Phone: </span>
-                <input
-                  className="po-input"
-                  value={vendorInfo.contactInfo?.phone || ''}
-                  onChange={(e) => setVendorInfo({ 
-                    ...vendorInfo, 
-                    contactInfo: { ...vendorInfo.contactInfo, phone: e.target.value } 
-                  })}
-                  placeholder="Phone"
-                  style={{ width: '35%', display: 'inline-block' }}
-                />
-                <span className="po-field-label" style={{ marginLeft: '12px' }}>Fax: </span>
-                <input
-                  className="po-input"
-                  value={vendorInfo.contactInfo?.fax || ''}
-                  onChange={(e) => setVendorInfo({ 
-                    ...vendorInfo, 
-                    contactInfo: { ...vendorInfo.contactInfo, fax: e.target.value } 
-                  })}
-                  placeholder="Fax"
-                  style={{ width: '25%', display: 'inline-block' }}
-                />
+                <input className="po-input" value={vendorInfo.contactInfo?.phone || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, contactInfo: { ...vendorInfo.contactInfo, phone: e.target.value } })} placeholder="Phone" style={{ width: '32%', display: 'inline-block' }} />
+                <span className="po-field-label" style={{ marginLeft: '10px' }}>Fax: </span>
+                <input className="po-input" value={vendorInfo.contactInfo?.fax || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, contactInfo: { ...vendorInfo.contactInfo, fax: e.target.value } })} placeholder="Fax" style={{ width: '25%', display: 'inline-block' }} />
               </div>
-
               {/* Ship To */}
-              <div style={{ marginTop: '10px' }}>
-                <p className="po-field-label">Ship To:</p>
-                <input
-                  className="po-input"
-                  value={shipTo.name || ''}
-                  onChange={(e) => setShipTo({ ...shipTo, name: e.target.value })}
-                  placeholder="Ship To Name"
-                  style={{ marginBottom: '2px' }}
-                />
-                <input
-                  className="po-input"
-                  value={shipTo.address || ''}
-                  onChange={(e) => setShipTo({ ...shipTo, address: e.target.value })}
-                  placeholder="Address"
-                  style={{ marginBottom: '2px' }}
-                />
-                <input
-                  className="po-input"
-                  value={shipTo.city || ''}
-                  onChange={(e) => setShipTo({ ...shipTo, city: e.target.value })}
-                  placeholder="City, State ZIP"
-                />
-                <div style={{ marginTop: '4px' }}>
-                  <span className="po-field-label">Attention: </span>
-                  <input
-                    className="po-input"
-                    value={shipTo.attention || ''}
-                    onChange={(e) => setShipTo({ ...shipTo, attention: e.target.value })}
-                    placeholder="Attention"
-                    style={{ width: '60%', display: 'inline-block' }}
-                  />
-                </div>
-                <div>
-                  <span className="po-field-label">Phone: </span>
-                  <input
-                    className="po-input"
-                    value={shipTo.phone || ''}
-                    onChange={(e) => setShipTo({ ...shipTo, phone: e.target.value })}
-                    placeholder="Phone"
-                    style={{ width: '50%', display: 'inline-block' }}
-                  />
-                </div>
+              <div style={{ fontWeight: 'bold', marginTop: '4px', marginBottom: '1px' }}>Ship To:</div>
+              <input className="po-input" value={shipTo.name || ''} onChange={(e) => setShipTo({ ...shipTo, name: e.target.value })} placeholder="Ship To Name / Location" />
+              <input className="po-input" value={shipTo.address || ''} onChange={(e) => setShipTo({ ...shipTo, address: e.target.value })} placeholder="Street Address" />
+              <input className="po-input" value={shipTo.city || ''} onChange={(e) => setShipTo({ ...shipTo, city: e.target.value })} placeholder="City, State ZIP" />
+              <div>
+                <span className="po-field-label">Attention: </span>
+                <input className="po-input" value={shipTo.attention || ''} onChange={(e) => setShipTo({ ...shipTo, attention: e.target.value })} placeholder="Attention" style={{ width: '60%', display: 'inline-block' }} />
               </div>
-
+              <div>
+                <span className="po-field-label">Phone: </span>
+                <input className="po-input" value={shipTo.phone || ''} onChange={(e) => setShipTo({ ...shipTo, phone: e.target.value })} placeholder="Phone" style={{ width: '50%', display: 'inline-block' }} />
+              </div>
               {/* Comments / Notes */}
-              <div style={{ marginTop: '10px' }}>
+              <div style={{ marginTop: '4px' }}>
                 <span className="po-field-label">Comments: </span>
-                <input
-                  className="po-input"
-                  value={headerFields.comments}
-                  onChange={(e) => setHeaderFields({ ...headerFields, comments: e.target.value })}
-                  placeholder=""
-                  style={{ width: '70%', display: 'inline-block' }}
-                />
+                <input className="po-input" value={headerFields.comments} onChange={(e) => setHeaderFields({ ...headerFields, comments: e.target.value })} style={{ width: '68%', display: 'inline-block' }} />
               </div>
               <div>
                 <span className="po-field-label">Notes: </span>
-                <input
-                  className="po-input"
-                  value={headerFields.notes}
-                  onChange={(e) => setHeaderFields({ ...headerFields, notes: e.target.value })}
-                  placeholder=""
-                  style={{ width: '75%', display: 'inline-block' }}
-                />
+                <input className="po-input" value={headerFields.notes} onChange={(e) => setHeaderFields({ ...headerFields, notes: e.target.value })} style={{ width: '74%', display: 'inline-block' }} />
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Order details */}
-            <div>
-              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
-                <tbody>
-                  {[
-                    { label: 'Order #:', field: 'poNumber', value: headerFields.poNumber },
-                    { label: 'Order Date:', field: 'orderDate', value: headerFields.orderDate },
-                    { label: 'Printed Date:', value: printedDate, readOnly: true },
-                  ].map((row, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '3px 8px 3px 0', fontWeight: 'bold', textAlign: 'right', width: '45%' }}>
-                        {row.label}
-                      </td>
-                      <td style={{ padding: '3px 0', textAlign: 'right' }}>
-                        {row.readOnly ? (
-                          <span>{row.value}</span>
-                        ) : (
-                          <input
-                            className="po-input"
-                            value={row.value || ''}
-                            onChange={(e) => setHeaderFields({ ...headerFields, [row.field]: e.target.value })}
-                            style={{ textAlign: 'right' }}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr><td colSpan={2} style={{ padding: '4px' }}></td></tr>
-                  {[
-                    { label: 'Account Number:', field: 'accountNumber', value: headerFields.accountNumber },
-                    { label: 'Rep Name:', field: 'repName', value: headerFields.repName },
-                    { label: 'Rep Phone:', field: 'repPhone', value: headerFields.repPhone },
-                    { label: 'Rep Email:', field: 'repEmail', value: headerFields.repEmail },
-                  ].map((row, i) => (
-                    <tr key={`extra-${i}`}>
-                      <td style={{ padding: '3px 8px 3px 0', fontWeight: 'bold', textAlign: 'right' }}>
-                        {row.label}
-                      </td>
-                      <td style={{ padding: '3px 0', textAlign: 'right' }}>
-                        <input
-                          className="po-input"
-                          value={row.value || ''}
-                          onChange={(e) => setHeaderFields({ ...headerFields, [row.field]: e.target.value })}
-                          style={{ textAlign: 'right' }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                  <tr><td colSpan={2} style={{ padding: '4px' }}></td></tr>
-                  {[
-                    { label: 'Terms:', field: 'terms', value: headerFields.terms },
-                    { label: 'Client:', value: clientInfo.name || '', field: '_clientName' },
-                    { label: 'Estimate #:', field: 'estimateNumber', value: headerFields.estimateNumber },
-                  ].map((row, i) => (
-                    <tr key={`terms-${i}`}>
-                      <td style={{ padding: '3px 8px 3px 0', fontWeight: 'bold', textAlign: 'right' }}>
-                        {row.label}
-                      </td>
-                      <td style={{ padding: '3px 0', textAlign: 'right' }}>
-                        <input
-                          className="po-input"
-                          value={row.value || ''}
-                          onChange={(e) => {
-                            if (row.field === '_clientName') {
-                              setClientInfo({ ...clientInfo, name: e.target.value });
-                            } else {
-                              setHeaderFields({ ...headerFields, [row.field]: e.target.value });
-                            }
-                          }}
-                          style={{ textAlign: 'right' }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* RIGHT: Order Details — clean rows, no borders */}
+            <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
+              {[
+                { label: 'Order #:',       field: 'poNumber',      value: headerFields.poNumber },
+                { label: 'Order Date:',    field: 'orderDate',     value: headerFields.orderDate },
+                { label: 'Printed Date:',  readOnly: true,         value: printedDate },
+                { label: 'Account Number:', field: 'accountNumber', value: headerFields.accountNumber },
+                { label: 'Rep Name:',      field: 'repName',       value: headerFields.repName },
+                { label: 'Rep Phone:',     field: 'repPhone',      value: headerFields.repPhone },
+                { label: 'Rep Email:',     field: 'repEmail',      value: headerFields.repEmail },
+                { label: 'Terms:',         field: 'terms',         value: headerFields.terms },
+                { label: 'Client:',        field: '_clientName',   value: clientInfo.name || '' },
+                { label: 'Estimate #:',    field: 'estimateNumber', value: headerFields.estimateNumber, required: true },
+              ].map((row, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
+                  <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>
+                    {row.label}
+                    {row.required && !headerFields.estimateNumber && (
+                      <span style={{ color: '#e53e3e', marginLeft: '2px' }}>*</span>
+                    )}
+                  </span>
+                  {row.readOnly ? (
+                    <span style={{ textAlign: 'right', fontSize: '11px' }}>{row.value}</span>
+                  ) : (
+                    <input
+                      className="po-input"
+                      value={row.value || ''}
+                      style={{
+                        textAlign: 'right',
+                        border: 'none',
+                        background: 'transparent',
+                        flex: 1,
+                        minWidth: 0,
+                        borderBottom: row.required && !headerFields.estimateNumber ? '1px solid #e53e3e' : '1px solid transparent',
+                      }}
+                      onChange={(e) => {
+                        if (row.field === '_clientName') {
+                          setClientInfo({ ...clientInfo, name: e.target.value });
+                        } else {
+                          setHeaderFields({ ...headerFields, [row.field]: e.target.value });
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -685,77 +821,105 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           <table className="po-table">
             <thead>
               <tr>
-                <th style={{ width: '70px' }}></th>
+                {/* FIX: Empty header for image column */}
+                <th style={{ width: '80px' }}></th>
                 <th>Description</th>
-                <th style={{ width: '100px', textAlign: 'right' }}>Unit Cost</th>
-                <th style={{ width: '100px', textAlign: 'right' }}>Total Cost</th>
-                <th className="no-print" style={{ width: '40px' }}></th>
+                {/* FIX: Unit Cost aligned right */}
+                <th className="th-cost" style={{ width: '110px' }}>Unit Cost</th>
+                <th className="th-cost" style={{ width: '110px' }}>Total Cost</th>
+                <th className="no-print" style={{ width: '36px' }}></th>
               </tr>
             </thead>
             <tbody>
               {products.map((product, index) => {
-                const imgSrc = product.selectedOptions?.image || 
-                               product.selectedOptions?.images?.[0] || null;
+                // FIX: Image is in selectedOptions.uploadedImages[0].url
+                const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
+                               product.selectedOptions?.image ||
+                               product.selectedOptions?.images?.[0] ||
+                               product.imageUrl || null;
+
+                // FIX: Net/purchase price = msrp (not unitPrice which is client price)
+                // If netCostOverride is set, use that; otherwise use msrp
+                const netCost = (product.selectedOptions?.netCostOverride != null && product.selectedOptions?.netCostOverride !== '')
+                  ? parseFloat(product.selectedOptions.netCostOverride)
+                  : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
+                const netTotal = netCost * (product.quantity || 1);
+
+                // FIX: Sidemark from selectedOptions.sidemark
+                const sidemark = product.selectedOptions?.sidemark || product.selectedOptions?.notes || '';
 
                 return (
                   <tr key={index}>
+                    {/* Image cell - uses uploadedImages */}
                     <td className="img-cell">
                       {imgSrc ? (
-                        <img src={imgSrc} alt={product.name || ''} />
+                        <PrintSafeImage
+                          src={imgSrc}
+                          alt={product.name || ''}
+                          style={{ maxWidth: '72px', maxHeight: '72px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                          fallback={<div className="img-placeholder">No Image</div>}
+                        />
                       ) : (
-                        <div style={{ width: '60px', height: '60px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', color: '#999' }}>
-                          No Image
-                        </div>
+                        <div className="img-placeholder">No Image</div>
                       )}
                     </td>
+
                     <td className="desc-cell">
-                      <div style={{ marginBottom: '4px' }}>
-                        <span style={{ fontSize: '10px', color: '#666' }}>Quantity : </span>
+                      <div className="qty-row">
+                        <label>Quantity :</label>
                         <input
-                          className="po-input"
+                          className="qty-input"
                           type="number"
                           value={product.quantity || 1}
                           onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
-                          style={{ width: '60px', display: 'inline-block' }}
                           min="1"
+
                         />
+                        <span style={{ fontSize: '10px', color: '#888' }}>{product.selectedOptions?.units || 'Each'}</span>
                       </div>
                       <textarea
                         value={product.description || ''}
                         onChange={(e) => updateProduct(index, 'description', e.target.value)}
                         placeholder={`Specs: ${product.name || 'Product name'}\nPattern:\nColor:\nSize:\nConstruction:\nComposition:`}
-                        rows={6}
+                        rows={Math.max(6, (product.description || '').split('\n').length + 1)}
+                        style={{ width: '100%', boxSizing: 'border-box' }}
                       />
-                      <div style={{ marginTop: '4px', fontSize: '10px' }}>
-                        <span style={{ color: '#666' }}>Sidemark: </span>
+                      <div className="sidemark-row">
+                        <span>Sidemark:</span>
                         <input
                           className="po-input"
-                          value={product.selectedOptions?.notes || ''}
-                          onChange={(e) => updateProduct(index, 'selectedOptions.notes', e.target.value)}
+                          value={sidemark}
+                          onChange={(e) => updateProduct(index, 'selectedOptions.sidemark', e.target.value)}
                           placeholder="Sidemark / Notes"
-                          style={{ width: '60%', display: 'inline-block' }}
+                          style={{ flex: 1 }}
                         />
                       </div>
                     </td>
+
+                    {/* FIX: Show net/purchase price (msrp), not client price (unitPrice) */}
                     <td className="price-cell">
                       <input
-                        className="po-input"
+                        className="po-input unit-cost-raw"
                         type="number"
-                        value={product.unitPrice || 0}
-                        onChange={(e) => updateProduct(index, 'unitPrice', e.target.value)}
-                        style={{ textAlign: 'right', width: '90px' }}
+                        value={netCost}
+                        onChange={(e) => updateProduct(index, 'selectedOptions.msrp', e.target.value)}
+                        style={{ textAlign: 'right', width: '95px' }}
                         step="0.01"
                       />
+                      <span className="unit-cost-display" style={{ display: 'none', textAlign: 'right', fontSize: '11px' }}>
+                        ${netCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <div className="no-print" style={{ fontSize: '10px', color: '#888', textAlign: 'right', marginTop: '2px' }}>
+                        ${netCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     </td>
-                    <td className="price-cell" style={{ fontWeight: '500' }}>
-                      $ {(product.totalPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+                    <td className="price-cell" style={{ fontWeight: '500', fontSize: '11px' }}>
+                      ${netTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="no-print remove-btn" style={{ textAlign: 'center' }}>
-                      <button
-                        onClick={() => removeProduct(index)}
-                        className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
-                        title="Remove product"
-                      >
+
+                    <td className="no-print remove-btn" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                      <button onClick={() => removeProduct(index)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Remove product">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </td>
@@ -763,13 +927,10 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 );
               })}
 
-              {/* Add Product Button Row */}
+              {/* Add Product */}
               <tr className="no-print add-product-btn">
-                <td colSpan={5} style={{ padding: '8px', textAlign: 'center' }}>
-                  <button
-                    onClick={addEmptyProduct}
-                    className="inline-flex items-center gap-1.5 text-xs text-[#005670] hover:text-[#004558] font-medium"
-                  >
+                <td colSpan={5} style={{ padding: '8px', textAlign: 'center', border: '1px dashed #ddd' }}>
+                  <button onClick={addEmptyProduct} className="inline-flex items-center gap-1.5 text-xs text-[#005670] hover:text-[#004558] font-medium">
                     <Plus className="w-3.5 h-3.5" />
                     Add Product
                   </button>
@@ -779,9 +940,9 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               {/* Totals */}
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
-                <td className="price-cell po-field-label">Sub Total:</td>
-                <td className="price-cell">
-                  $ {totals.subTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <td className="price-cell po-field-label" style={{ borderTop: '1px solid #ccc' }}>Sub Total:</td>
+                <td className="price-cell" style={{ borderTop: '1px solid #ccc' }}>
+                  ${totals.subTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </td>
                 <td className="no-print"></td>
               </tr>
@@ -789,14 +950,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label">Shipping:</td>
                 <td className="price-cell">
-                  <input
-                    className="po-input"
-                    type="number"
-                    value={headerFields.shipping || 0}
-                    onChange={(e) => setHeaderFields({ ...headerFields, shipping: parseFloat(e.target.value) || 0 })}
-                    style={{ textAlign: 'right', width: '90px' }}
-                    step="0.01"
-                  />
+                  <input className="po-input" type="number" value={headerFields.shipping || 0} onChange={(e) => setHeaderFields({ ...headerFields, shipping: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
                 <td className="no-print"></td>
               </tr>
@@ -804,22 +958,15 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label">Others:</td>
                 <td className="price-cell">
-                  <input
-                    className="po-input"
-                    type="number"
-                    value={headerFields.others || 0}
-                    onChange={(e) => setHeaderFields({ ...headerFields, others: parseFloat(e.target.value) || 0 })}
-                    style={{ textAlign: 'right', width: '90px' }}
-                    step="0.01"
-                  />
+                  <input className="po-input" type="number" value={headerFields.others || 0} onChange={(e) => setHeaderFields({ ...headerFields, others: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
                 <td className="no-print"></td>
               </tr>
-              <tr className="po-totals-row" style={{ borderTop: '2px solid #333' }}>
+              <tr className="po-totals-row total-final">
                 <td colSpan={2}></td>
-                <td className="price-cell po-field-label" style={{ fontWeight: 'bold' }}>Total:</td>
-                <td className="price-cell" style={{ fontWeight: 'bold', fontSize: '12px' }}>
-                  $ {totals.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <td className="price-cell po-field-label" style={{ fontWeight: 'bold', fontSize: '11px' }}>Total:</td>
+                <td className="price-cell" style={{ fontWeight: 'bold', fontSize: '11px' }}>
+                  ${totals.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </td>
                 <td className="no-print"></td>
               </tr>
@@ -835,9 +982,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           vendorId={vendorId}
           isOpen={showVersionModal}
           onClose={() => { setShowVersionModal(false); setVersionNotes(''); }}
-          onSelectVersion={(v) => {
-            window.location.href = `/admin/purchase-order/${orderId}/${vendorId}/${v}`;
-          }}
+          onSelectVersion={(v) => { window.location.href = `/admin/purchase-order/${orderId}/${vendorId}/${v}`; }}
           versionNotes={versionNotes}
           setVersionNotes={setVersionNotes}
           onSaveNewVersion={handleSaveAsNewVersion}
@@ -851,18 +996,16 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
             <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
               <h3 className="text-xl font-bold">Print / Save as PDF</h3>
-              <button onClick={() => setShowPrintInstructions(false)} className="p-2 hover:bg-white/20 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setShowPrintInstructions(false)} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
               <p className="text-gray-700 font-medium">For the best print quality, please configure:</p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 {[
                   { num: 1, title: 'Destination', desc: 'Select "Save as PDF" or your printer' },
-                  { num: 2, title: 'Disable Headers and Footers', desc: 'Uncheck "Headers and footers"' },
-                  { num: 3, title: 'Margins', desc: 'Select "None" or "Custom"' },
-                  { num: 4, title: 'Background Graphics', desc: 'Check "Background graphics" to print all colors' },
+                  { num: 2, title: 'Headers and Footers', desc: 'Uncheck "Headers and footers" — this removes the gray bars at top and bottom' },
+                  { num: 3, title: 'Margins', desc: 'Select "None" or "Minimum"' },
+                  { num: 4, title: 'Background Graphics', desc: 'Check "Background graphics" to print all colors and logo' },
                 ].map((step) => (
                   <div key={step.num} className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">{step.num}</div>
@@ -888,7 +1031,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   );
 };
 
-// ====== PO VERSION MODAL ======
+// ====== PO VERSION MODAL ====== (unchanged)
 const POVersionModal = ({
   orderId, vendorId, isOpen, onClose, onSelectVersion,
   versionNotes, setVersionNotes, onSaveNewVersion, saving
@@ -918,7 +1061,6 @@ const POVersionModal = ({
 
   if (!isOpen) return null;
 
-  // NEW VERSION FORM
   if (isOpen === 'new') {
     return (
       <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
@@ -929,24 +1071,12 @@ const POVersionModal = ({
           </div>
           <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Version Notes <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={versionNotes}
-                onChange={(e) => setVersionNotes(e.target.value)}
-                placeholder="Describe the changes in this version..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
-                rows={4}
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Version Notes <span className="text-red-500">*</span></label>
+              <textarea value={versionNotes} onChange={(e) => setVersionNotes(e.target.value)} placeholder="Describe the changes in this version..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]" rows={4} />
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button
-                onClick={onSaveNewVersion}
-                disabled={saving || !versionNotes.trim()}
-                className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
-              >
+              <button onClick={onSaveNewVersion} disabled={saving || !versionNotes.trim()} className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
                 {saving ? 'Saving...' : 'Save as New Version'}
               </button>
             </div>
@@ -956,7 +1086,6 @@ const POVersionModal = ({
     );
   }
 
-  // VERSION HISTORY LIST
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
@@ -967,12 +1096,9 @@ const POVersionModal = ({
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
         </div>
-
         <div className="overflow-auto max-h-[calc(80vh-88px)]">
           {loading ? (
-            <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto"></div>
-            </div>
+            <div className="p-12 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto"></div></div>
           ) : versions.length === 0 ? (
             <div className="p-12 text-center text-gray-500">No versions found</div>
           ) : (
@@ -982,20 +1108,14 @@ const POVersionModal = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
-                          Version {v.version}
-                        </span>
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Version {v.version}</span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                           v.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
                           v.status === 'sent' ? 'bg-blue-100 text-blue-700' :
                           v.status === 'confirmed' ? 'bg-green-100 text-green-700' :
                           'bg-red-100 text-red-700'
-                        }`}>
-                          {v.status?.charAt(0).toUpperCase() + v.status?.slice(1)}
-                        </span>
-                        {v.poNumber && (
-                          <span className="text-xs text-gray-500">PO#: {v.poNumber}</span>
-                        )}
+                        }`}>{v.status?.charAt(0).toUpperCase() + v.status?.slice(1)}</span>
+                        {v.poNumber && <span className="text-xs text-gray-500">PO#: {v.poNumber}</span>}
                       </div>
                       <p className="text-gray-700 mb-2">{v.versionNotes || v.notes || 'No notes'}</p>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -1003,12 +1123,7 @@ const POVersionModal = ({
                         <span>Total: ${(v.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => onSelectVersion(v.version)}
-                      className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap"
-                    >
-                      View/Edit
-                    </button>
+                    <button onClick={() => onSelectVersion(v.version)} className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap">View/Edit</button>
                   </div>
                 </div>
               ))}

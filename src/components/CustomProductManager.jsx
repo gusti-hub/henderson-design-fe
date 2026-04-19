@@ -1395,30 +1395,22 @@ const ProductCard = ({
             {/* ════ TAB: INSTALL BINDER ════ */}
             {activeTab === 'installbinder' && (
               <div className="space-y-5">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    Tracking info, proposal number, and delivery/order status are managed in the <strong>Status</strong> tab.
+                    Vendor order number is in the <strong>Item Details</strong> tab. All data is shared — no need to enter twice.
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Purchase Order (PO #)</label>
                     <input type="text" value={opts.poNumber || ''} onChange={(e) => upd('poNumber', e.target.value)} className={inputCls} placeholder="Tim-2289995" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor Order Number</label>
-                    <input type="text" value={opts.vendorOrderNumber || ''} onChange={(e) => upd('vendorOrderNumber', e.target.value)} className={inputCls} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                    <textarea value={opts.notes || ''} onChange={(e) => upd('notes', e.target.value)}
+                      className={`${inputCls} resize-none`} rows={3} />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipment Tracking Info</label>
-                    <input type="text" value={opts.trackingInfo || ''} onChange={(e) => upd('trackingInfo', e.target.value)} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Proposal Number</label>
-                    <input type="text" value={opts.proposalNumber || ''} onChange={(e) => upd('proposalNumber', e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Delivery / Order Status</label>
-                  <textarea value={opts.deliveryStatus || ''} onChange={(e) => upd('deliveryStatus', e.target.value)}
-                    className={`${inputCls} resize-none`} rows={3} placeholder={'12/23/25 Delivered\n12/18/25 Shipped'} />
                 </div>
               </div>
             )}
