@@ -298,7 +298,10 @@ useEffect(() => {
 }, [order]);
 
   // ─── Library ─────────────────────────────────────────────────────────────
-  const handleAddFromLibrary = (selectedProducts) => {
+  const handleAddFromLibrary = async (selectedProducts) => {
+    setShowLibraryModal(false);
+  
+    // Build new products dengan semua field yang diperlukan
     const newProducts = selectedProducts.map((product) => {
       const imageUrl =
         product.image?.url ||
@@ -310,18 +313,18 @@ useEffect(() => {
       const catalogPrice = product.price || 0;
   
       return {
-        _id:         product._id,
-        product_id:  product.product_id || `LIB-${Date.now()}`,
-        name:        product.name,
-        category:    product.category   || 'Library Selection',
-        package:     product.package    || '',          // ✅ NEW
-        spotName:    'Library Item',
-        quantity:    1,
-        unitPrice:   catalogPrice,
-        finalPrice:  catalogPrice,
-        vendor:      null,
-        sourceType:  'library',
-        isEditable:  false,
+        _id:        product._id,
+        product_id: product.product_id || `LIB-${Date.now()}`,
+        name:       product.name,
+        category:   product.category || 'Library Selection',
+        package:    product.package  || '',
+        spotName:   'Library Item',
+        quantity:   1,
+        unitPrice:  catalogPrice,
+        finalPrice: catalogPrice,
+        vendor:     null,
+        sourceType: 'library',
+        isEditable: false,
         selectedOptions: {
           ...defaultSelectedOptions(),
           image:                 imageUrl || '',
@@ -332,6 +335,7 @@ useEffect(() => {
           others:                product.others     || [],
           size:                  product.dimension  || '',
           specifications:        product.description || '',
+          // Pricing pre-fill dari catalog
           msrp:                  catalogPrice,
           discountPercent:       0,
           netCostOverride:       null,
@@ -355,8 +359,77 @@ useEffect(() => {
         }
       };
     });
-    setSavedProducts(prev => [...prev, ...newProducts]);
-    setShowLibraryModal(false);
+  
+    // ✅ Optimistic UI update dulu
+    const mergedProducts = [...savedProducts, ...newProducts];
+    setSavedProducts(mergedProducts);
+  
+    // ✅ Langsung save ke DB — library products tidak punya tombol Save sendiri
+    try {
+      const token = localStorage.getItem('token');
+  
+      // Build payload: gabungkan existing savedProducts + newProducts
+      const payload = mergedProducts.map(p => ({
+        ...(p._id && !p._id.toString().startsWith('temp_') && { _id: p._id }),
+        product_id:  p.product_id,
+        name:        p.name,
+        category:    p.category    || '',
+        package:     p.package     || '',
+        spotName:    p.spotName    || 'Custom Item',
+        quantity:    p.quantity    || 1,
+        unitPrice:   parseFloat(p.unitPrice)  || 0,
+        finalPrice:  parseFloat(p.finalPrice) || 0,
+        vendor:      p.vendor      || null,
+        sourceType:  p.sourceType  || 'library',
+        isEditable:  p.isEditable  !== undefined ? p.isEditable : false,
+        selectedOptions: p.selectedOptions || {},
+        placement:   p.placement   || null,
+      }));
+  
+      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          selectedProducts: payload,
+          status: 'ongoing',
+          step: 2,
+        }),
+      });
+  
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to save library products');
+      }
+  
+      const savedOrder = await res.json();
+      const finalProducts = savedOrder.selectedProducts || mergedProducts;
+      setSavedProducts(finalProducts);
+      if (onSave) onSave(finalProducts);
+  
+      addToast(
+        `${newProducts.length} product${newProducts.length > 1 ? 's' : ''} added from library`,
+        'success'
+      );
+  
+    } catch (error) {
+      addToast(`Failed to save library products: ${error.message}`, 'error');
+  
+      // Rollback optimistic update on error
+      setSavedProducts(savedProducts);
+  
+      // Refresh dari DB untuk sync
+      try {
+        const token = localStorage.getItem('token');
+        const freshRes = await fetch(`${backendServer}/api/orders/${order._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const freshOrder = await freshRes.json();
+        setSavedProducts(freshOrder.selectedProducts || []);
+      } catch (_) {}
+    }
   };
 
   // ─── Add manual — HANYA buat draft, TIDAK masuk savedProducts ─────────────

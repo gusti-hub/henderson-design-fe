@@ -21,12 +21,12 @@ const DecimalInput = ({ value, onChange, disabled, placeholder = '0.00', classNa
     if (raw === '.') { onChange(raw); return; }
     let cleaned = raw;
     if (/^0\d/.test(cleaned) && !cleaned.startsWith('0.')) cleaned = cleaned.replace(/^0+/, '');
-    if (/^\d*\.?\d{0,4}$/.test(cleaned)) onChange(cleaned);
+    if (/^\d*\.?\d{0,2}$/.test(cleaned)) onChange(cleaned);
   };
 
   const handleBlur = () => {
     if (value === '' || value === '.' || value === undefined || value === null) onChange(0);
-    else { const n = parseFloat(value); if (!isNaN(n)) onChange(n); }
+    else { const n = parseFloat(value); if (!isNaN(n)) onChange(Math.round(n * 100) / 100); }
   };
 
   return (
@@ -295,7 +295,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
                 const raw = e.target.value;
                 setNetCostDisplay(raw);
                 if (raw === '' || raw === '.') return;
-                if (/^\d*\.?\d{0,4}$/.test(raw) && !raw.endsWith('.')) {
+                if (/^\d*\.?\d{0,2}$/.test(raw) && !raw.endsWith('.')) {
                   handleNetCostChange(raw);
                 }
               }}
@@ -303,7 +303,11 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
                 setNetCostFocused(false);
                 const val = netCostDisplay;
                 if (val === '' || val === '.') handleNetCostChange('0');
-                else handleNetCostChange(val);
+                else {
+                  // Round to 2dp on blur
+                  const rounded = String(Math.round(parseFloat(val) * 100) / 100);
+                  handleNetCostChange(rounded);
+                }
               }}
               disabled={disabled || noNetPurchase}
               placeholder="0.00"
