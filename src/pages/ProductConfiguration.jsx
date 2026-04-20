@@ -1,1178 +1,648 @@
+// ProductConfiguration.jsx
+// Flat product (no variants). 1 SKU = 1 product.
+// Wood / Fabric / Others auto-parsed from SKU, manually overridable.
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Image as ImageIcon, Upload } from 'lucide-react';
-import Pagination from '../components/common/Pagination';
+import { Plus, Pencil, Trash2, X, Loader2, ImageIcon, Upload } from 'lucide-react';
 import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
-import BulkProductImport from '../pages/BulkProductImport'
+import BulkProductImport from '../pages/BulkProductImport';
 import BulkDeleteProducts from './BulkDeleteProduct';
 
-const ProductConfiguration = () => {
-  // Predefined attribute options
-  const attributeOptions = {
-    finish: {
-      'Light': { previewUrl: '/images/woods/Light Wood.jpg' },
-      'Dark': { previewUrl: '/images/woods/Dark Wood.png' },
-      'Medium': { previewUrl: '/images/woods/Dark Wood.png' }
-    },
-    fabric: {
-      'Cream - Lounge Chair': { type: 'Cream', previewUrl: '/images/fabrics/Cream Lounge Chair.png' },
-      'Cream - Modular Sofa': { type: 'Cream', previewUrl: '/images/fabrics/Cream Modular Sofa.png' },
-      'Tan - Lounge Chair': { type: 'Tan', previewUrl: '/images/fabrics/Tan Lounge Chair.png' },
-      'Tan - Modular Sofa': { type: 'Tan', previewUrl: '/images/fabrics/Tan Modular sofa.png' },
-      'Beige - Lounge Chair': { type: 'Beige', previewUrl: '/images/fabrics/Beige Lounge Chair.png' },
-      'Beige - Modular Sofa': { type: 'Beige', previewUrl: '/images/fabrics/Beige Modular Sofa.png' },
-      'Blue - Lounge Chair': { type: 'Blue', previewUrl: '/images/fabrics/Blue Lounge Chair.png' },
+// ─── Finish constants ──────────────────────────────────────────────────────
+const WOOD_CODES   = ['MD', 'DK'];
+const FABRIC_CODES = ['19','20','08','09','02','03','11','12','05','06','14','15','17','18','0B','0C','0E','0F','0I','0H','0L','0K','0O','0N','0U','0T'];
+const OTHER_CODES  = ['WV','SD','MD','DK','LT','FX','LR','SH'];
 
-      // New fabric options
-      'Shell': { type: 'Shell', previewUrl: '/images/fabrics/pearl.png' },
-      'Leather': { type: 'Leather', previewUrl: '/images/fabrics/leather.png' },
-      'Faux Linen': { type: 'Faux Linen', previewUrl: '/images/fabrics/faux linen.png' },
+const WOOD_LABELS  = { MD: 'MD — Medium', DK: 'DK — Dark' };
+const FABRIC_LABELS = {
+  '19':'19','20':'20','08':'08','09':'09','02':'02','03':'03',
+  '11':'11','12':'12','05':'05','06':'06','14':'14','15':'15',
+  '17':'17','18':'18','0B':'0B','0C':'0C','0E':'0E','0F':'0F',
+  '0I':'0I','0H':'0H','0L':'0L','0K':'0K','0O':'0O','0N':'0N',
+  '0U':'0U','0T':'0T',
+};
+const OTHER_LABELS = { WV:'WV',SD:'SD',MD:'MD',DK:'DK',LT:'LT',FX:'FX',LR:'LR',SH:'SH' };
 
-      'Light': { type: 'Light', previewUrl: '/images/fabrics/pearl.png' },
-      'Medium': { type: 'Medium', previewUrl: '/images/fabrics/leather.png' },
-      'Dark': { type: 'Dark', previewUrl: '/images/fabrics/faux linen.png' }
-    },
-    // New inset panel attribute
-    insetPanel: {
-      'Wood': { previewUrl: '/images/insetpanels/Wood.jpg' },
-      'Shell': { previewUrl: '/images/insetpanels/pearl.png' },
-      'Faux Linen': { previewUrl: '/images/insetpanels/Faux Linen.png' },
-      'Woven Material': { previewUrl: '/images/insetpanels/LIGHT WOOD.png' }
-    }
+// ─── SKU parser ────────────────────────────────────────────────────────────
+const parseSku = (sku) => {
+  if (!sku) return { woodFinish: '', fabric: '', others: [] };
+  const parts = sku.toUpperCase().split('-');
+  return {
+    woodFinish: WOOD_CODES.includes(parts[5])   ? parts[5] : '',
+    fabric:     FABRIC_CODES.includes(parts[6]) ? parts[6] : '',
+    others:     [parts[7], parts[8], parts[9]]
+                  .filter(Boolean)
+                  .filter(p => p !== '00' && OTHER_CODES.includes(p)),
   };
+};
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+// ─── Empty form ────────────────────────────────────────────────────────────
+const emptyForm = () => ({
+  product_id:  '',
+  name:        '',
+  description: '',
+  category:    '',
+  collection:  '',
+  package:     '',
+  dimension:   '',
+  price:       '',
+  woodFinish:  '',
+  fabric:      '',
+  others:      [],      // string[]
+  imageUrl:    '',      // URL from Excel / typed
+  imageFile:   null,    // File object for upload
+  imagePreview:'',      // object URL for preview
+});
+
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] bg-white';
+const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+
+// ─── ImageCell: handles load errors, shows URL tooltip on hover ───────────
+const ImageCell = ({ url, name }) => {
+  const [failed, setFailed] = React.useState(false);
+  if (!url || failed) {
+    return (
+      <div title={url || 'No image'} className="w-12 h-12 rounded-lg bg-gray-100 flex flex-col items-center justify-center border border-gray-200 cursor-default">
+        <ImageIcon className="w-5 h-5 text-gray-400" />
+        {url && <span className="text-[9px] text-gray-400 mt-0.5">Error</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="relative group w-12 h-12">
+      <img
+        src={url} alt={name}
+        className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+        onError={() => setFailed(true)}
+        referrerPolicy="no-referrer"
+      />
+      <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-10 pointer-events-none">
+        <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 max-w-[260px] break-all whitespace-normal shadow-lg">{url}</div>
+      </div>
+    </div>
+  );
+};
+
+// ==================== COMPONENT ====================
+
+const ProductConfiguration = () => {
+  const [products, setProducts]           = useState([]);
+  const [loading, setLoading]             = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
-    product_id: '',
-    name: '',
-    description: '',
-    basePrice: '',
-    variants: [] // Will store combinations of attributes with their specific prices and images
-  });
-  const [errors, setErrors] = useState({});
-  const [selectedAttributes, setSelectedAttributes] = useState({
-    finish: false,
-    fabric: false
-  });
+  const [isModalOpen, setIsModalOpen]     = useState(false);
+  const [modalMode, setModalMode]         = useState('create');
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [currentPage, setCurrentPage]     = useState(1);
+  const [totalPages, setTotalPages]       = useState(1);
+  const [itemsPerPage]                    = useState(10);
+  const [searchTerm, setSearchTerm]       = useState('');
+  const [formData, setFormData]           = useState(emptyForm());
+  const [errors, setErrors]               = useState({});
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
-  const previewContainerStyles = "flex flex-col items-center";
-  const previewImageContainerStyles = "w-[180px] h-[180px] relative rounded-lg overflow-hidden";
-  const previewImageStyles = "w-full h-full object-cover";
-  const previewLabelStyles = "absolute bottom-0 left-0 right-0 bg-gray-700 text-white p-2 text-center";
-  const previewTitleStyles = "block text-sm font-medium text-gray-600 mb-2";
-
-  // Initialize a new variant
-  const initializeVariant = () => ({
-    finish: '',
-    fabric: '',
-    size: '',
-    insetPanel: '',
-    price: '',
-    image: null,
-    imagePreview: null
-  });
-
-  // Add new variant
-  const addVariant = () => {
-    setFormData({
-      ...formData,
-      variants: [...formData.variants, initializeVariant()]
-    });
-  };
-
-  const getImageUrl = (image) => {
-    if (!image) return null;
-    return image.url || null;
-  };
-
-  // Remove variant
-  const removeVariant = (index) => {
-    const newVariants = formData.variants.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      variants: newVariants
-    });
-  };
-
-  const FabricPreview = ({ fabricKey }) => {
-    const fabricInfo = attributeOptions.fabric[fabricKey];
-    
-    if (!fabricInfo) return null;
-    
-    return (
-      <div className={previewContainerStyles}>
-        <label className={previewTitleStyles}>
-          Fabric Preview
-        </label>
-        <div className={previewImageContainerStyles}>
-          <img
-            src={fabricInfo.previewUrl}
-            alt={fabricKey}
-            className={previewImageStyles}
-          />
-          <div className={previewLabelStyles}>
-            {fabricInfo.type}
-          </div>
-        </div>
-      </div>
-    );
-  };
-  
-  // Update FinishPreview component
-  const FinishPreview = ({ finishValue }) => {
-    const finishInfo = attributeOptions.finish[finishValue];
-    
-    if (!finishInfo) return null;
-    
-    return (
-      <div className={previewContainerStyles}>
-        <label className={previewTitleStyles}>
-          Finish Preview
-        </label>
-        <div className={previewImageContainerStyles}>
-          <img
-            src={finishInfo.previewUrl}
-            alt={finishValue}
-            className={previewImageStyles}
-          />
-          <div className={previewLabelStyles}>
-            {finishValue}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // InsetPanel Preview component
-  const InsetPanelPreview = ({ insetPanelValue }) => {
-    const insetPanelInfo = attributeOptions.insetPanel[insetPanelValue];
-    
-    if (!insetPanelInfo) return null;
-    
-    return (
-      <div className={previewContainerStyles}>
-        <label className={previewTitleStyles}>
-          Inset Panel Preview
-        </label>
-        <div className={previewImageContainerStyles}>
-          <img
-            src={insetPanelInfo.previewUrl}
-            alt={insetPanelValue}
-            className={previewImageStyles}
-          />
-          <div className={previewLabelStyles}>
-            {insetPanelValue}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
+  // ─── Fetch ───────────────────────────────────────────────────────────────
+  useEffect(() => { fetchProducts(); }, [currentPage]);
   useEffect(() => {
-    fetchProducts();
-  }, [currentPage]);
-
-  // Add useEffect to handle search
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-        setCurrentPage(1); // Reset to first page when searching
-        fetchProducts();
-    }, 500); // Debounce search for 500ms
-
-    return () => clearTimeout(delayDebounceFn);
-}, [searchTerm]);
-
-  useEffect(() => {
-    // Update variants when attributes change
-    if (formData.variants.length > 0) {
-      const updatedVariants = formData.variants.map(variant => ({
-        ...variant,
-        finish: selectedAttributes.finish ? variant.finish : '',
-        fabric: selectedAttributes.fabric ? variant.fabric : '',
-        size: selectedAttributes.size ? variant.size : '',
-        insetPanel: selectedAttributes.insetPanel ? variant.insetPanel : ''
-      }));
-      setFormData(prev => ({ ...prev, variants: updatedVariants }));
-    }
-  }, [selectedAttributes]);
-
-  // Handle variant change
-  const handleVariantChange = (index, field, value) => {
-    const newVariants = [...formData.variants];
-    if (field === 'image') {
-      // Handle file upload
-      const file = value;
-      if (file && file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({ 
-          ...prev, 
-          [`variant_${index}_image`]: 'Image size should be less than 5MB' 
-        }));
-        return;
-      }
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      newVariants[index] = {
-        ...newVariants[index],
-        image: file,
-        imagePreview: previewUrl
-      };
-    } else {
-      // Handle other fields
-      newVariants[index] = {
-        ...newVariants[index],
-        [field]: value
-      };
-    }
-    setFormData({
-      ...formData,
-      variants: newVariants
-    });
-  };
-
-  const handleEdit = (product) => {
-    setSelectedProduct(product);
-    // First check which attributes are used in variants
-    const hasFinish = product.variants.some(v => v.finish);
-    const hasFabric = product.variants.some(v => v.fabric);
-    const hasSize = product.variants.some(v => v.size);
-    const hasInsetPanel = product.variants.some(v => v.insetPanel);
-  
-    setSelectedAttributes({
-      finish: hasFinish,
-      fabric: hasFabric,
-      size: hasSize,
-      insetPanel: hasInsetPanel
-    });
-  
-    setFormData({
-      product_id: product.product_id,
-      name: product.name,
-      description: product.description || '',
-      basePrice: product.basePrice,
-      variants: product.variants.map(v => ({
-        ...v,
-        finish: v.finish || '',
-        fabric: v.fabric || '',
-        size: v.size || '',
-        insetPanel: v.insetPanel || '',
-        price: v.price,
-        image: v.image,
-        imagePreview: v.image ? getImageUrl(v.image) : null
-      }))
-    });
-    
-    setModalMode('edit');
-    setIsModalOpen(true);
-  };
-
-  // Handle variant image change
-  const handleVariantImageChange = (index, file) => {
-    if (file) {
-      // Check file size
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors({ ...errors, [`variant_${index}_image`]: 'Image size should be less than 5MB' });
-        return;
-      }
-  
-      console.log('Handling new image for variant', index, file); // Debug log
-  
-      // Create preview URL
-      const objectUrl = URL.createObjectURL(file);
-      
-      const newVariants = [...formData.variants];
-      newVariants[index] = {
-        ...newVariants[index],
-        image: file, // Store the File object for upload
-        imagePreview: objectUrl // Store preview URL
-      };
-  
-      console.log('Updated variant:', newVariants[index]); // Debug log
-  
-      setFormData({
-        ...formData,
-        variants: newVariants
-      });
-  
-      // Clear any existing image error
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[`variant_${index}_image`];
-        return newErrors;
-      });
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      // Cleanup object URLs when component unmounts or modal closes
-      formData.variants.forEach(variant => {
-        if (variant.imagePreview && !variant.imagePreview.startsWith('http')) {
-          URL.revokeObjectURL(variant.imagePreview);
-        }
-      });
-    };
-  }, [])
-
-  const handleDeleteVariantImage = (variantIndex) => {
-    console.log('Deleting image for variant', variantIndex); // Debug log
-  
-    const newVariants = [...formData.variants];
-    const variant = newVariants[variantIndex];
-  
-    // Clean up object URL if it exists
-    if (variant.imagePreview && !variant.imagePreview.startsWith('http')) {
-      URL.revokeObjectURL(variant.imagePreview);
-    }
-  
-    // Reset image data
-    newVariants[variantIndex] = {
-      ...variant,
-      image: null,
-      imagePreview: null
-    };
-  
-    console.log('Updated variant after delete:', newVariants[variantIndex]); // Debug log
-  
-    setFormData({
-      ...formData,
-      variants: newVariants
-    });
-  
-    // Clear any existing image errors
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[`variant_${variantIndex}_image`];
-      return newErrors;
-    });
-  };
-
-  // Add this function near your other handler functions, before the return statement
-const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedProduct(null);
-    setFormData({
-      product_id: '',
-      name: '',
-      description: '',
-      basePrice: '',
-      variants: []
-    });
-    setSelectedAttributes({
-      finish: false,
-      fabric: false,
-      size: false,
-      insetPanel: false
-    });
-    setErrors({});
-  };
-  
-  // Also add the delete handler that was referenced but not defined
-  const handleDeleteProduct = async (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(
-          `${backendServer}/api/products/${productId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        );
-        
-        if (!response.ok) {
-          throw new Error('Failed to delete product');
-        }
-        
-        await fetchProducts();
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.product_id) newErrors.product_id = 'Product ID is required';
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.description) newErrors.description = 'Description is required';
-    if (!formData.basePrice || isNaN(formData.basePrice)) {
-      newErrors.basePrice = 'Valid base price is required';
-    }
-    
-    // Validate variants
-    formData.variants.forEach((variant, index) => {
-      if (selectedAttributes.finish && !variant.finish) {
-        newErrors[`variant_${index}_finish`] = 'Finish is required';
-      }
-      if (selectedAttributes.fabric && !variant.fabric) {
-        newErrors[`variant_${index}_fabric`] = 'Fabric is required';
-      }
-      if (selectedAttributes.size && !variant.size) {
-        newErrors[`variant_${index}_size`] = 'Size is required';
-      }
-      if (selectedAttributes.insetPanel && !variant.insetPanel) {
-        newErrors[`variant_${index}_insetPanel`] = 'Inset Panel is required';
-      }
-      if (!variant.price || isNaN(variant.price)) {
-        newErrors[`variant_${index}_price`] = 'Valid price is required';
-      }
-      // Check for either image File object or existing image preview
-      if (!variant.image && !variant.imagePreview) {
-        newErrors[`variant_${index}_image`] = 'Image is required';
-      }
-    });
-  
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    const t = setTimeout(() => { setCurrentPage(1); fetchProducts(); }, 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${backendServer}/api/products?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+      const res = await fetch(
+        `${backendServer}/api/products?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchTerm)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch products');
-      }
-  
-      console.log('Fetched products:', data); // Debug log
-      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
       setProducts(data.products || []);
       setTotalPages(Math.ceil(data.total / itemsPerPage));
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      setErrors(prev => ({ ...prev, fetch: error.message }));
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Custom pagination component to handle many pages
-  const CompactPagination = ({ currentPage, totalPages, onPageChange }) => {
-    // Calculate visible page range
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-    
-    // Adjust start if end is maxed out
-    if (endPage === totalPages) {
-      startPage = Math.max(1, endPage - 4);
-    }
-    
-    const pages = [];
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    
-    return (
-      <div className="flex justify-center items-center p-4 space-x-1">
-        <button
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
-        >
-          &laquo;
-        </button>
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
-        >
-          &lt;
-        </button>
-        
-        {startPage > 1 && (
-          <button onClick={() => onPageChange(1)} className="px-2 py-1 rounded border hover:bg-gray-100">
-            1
-          </button>
-        )}
-        {startPage > 2 && <span className="px-1">...</span>}
-        
-        {pages.map(page => (
-          <button
-            key={page}
-            onClick={() => onPageChange(page)}
-            className={`px-2 py-1 rounded border ${
-              currentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
-            }`}
-          >
-            {page}
-          </button>
-        ))}
-        
-        {endPage < totalPages - 1 && <span className="px-1">...</span>}
-        {endPage < totalPages && (
-          <button onClick={() => onPageChange(totalPages)} className="px-2 py-1 rounded border hover:bg-gray-100">
-            {totalPages}
-          </button>
-        )}
-        
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
-        >
-          &gt;
-        </button>
-        <button
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className="px-2 py-1 rounded border hover:bg-gray-100 disabled:opacity-50"
-        >
-          &raquo;
-        </button>
-      </div>
-    );
+  // ─── SKU auto-parse on change ─────────────────────────────────────────
+  const handleSkuChange = (value) => {
+    const parsed = parseSku(value);
+    setFormData(prev => ({
+      ...prev,
+      product_id: value,
+      // Only overwrite if field is currently empty (user hasn't manually set it)
+      woodFinish: prev.woodFinish || parsed.woodFinish,
+      fabric:     prev.fabric     || parsed.fabric,
+      others:     prev.others.length ? prev.others : parsed.others,
+    }));
   };
 
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  // ─── Others toggle ────────────────────────────────────────────────────
+  const toggleOther = (code) => {
+    setFormData(prev => ({
+      ...prev,
+      others: prev.others.includes(code)
+        ? prev.others.filter(c => c !== code)
+        : [...prev.others, code],
+    }));
+  };
 
+  // ─── Image file ───────────────────────────────────────────────────────
+  const handleImageFile = (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setErrors(e => ({ ...e, image: 'Max 5 MB' })); return; }
+    const preview = URL.createObjectURL(file);
+    setFormData(prev => ({ ...prev, imageFile: file, imagePreview: preview, imageUrl: '' }));
+    setErrors(e => { const n = { ...e }; delete n.image; return n; });
+  };
+
+  const clearImage = () => {
+    if (formData.imagePreview && !formData.imagePreview.startsWith('http'))
+      URL.revokeObjectURL(formData.imagePreview);
+    setFormData(prev => ({ ...prev, imageFile: null, imagePreview: '', imageUrl: '' }));
+  };
+
+  // ─── Edit ─────────────────────────────────────────────────────────────
+  const handleEdit = (product) => {
+    setSelectedProductId(product._id);
+    setFormData({
+      product_id:   product.product_id  || '',
+      name:         product.name        || '',
+      description:  product.description || '',
+      category:     product.category    || '',
+      collection:   product.collection  || '',
+      package:      product.package      || '',
+      dimension:    product.dimension   || '',
+      price:        product.price       ?? '',
+      woodFinish:   product.woodFinish  || '',
+      fabric:       product.fabric      || '',
+      others:       product.others      || [],
+      imageUrl:     product.image?.url  || '',
+      imageFile:    null,
+      imagePreview: product.image?.url  || '',
+    });
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  // ─── Close / reset ────────────────────────────────────────────────────
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedProductId(null);
+    setFormData(emptyForm());
+    setErrors({});
+  };
+
+  // ─── Delete ───────────────────────────────────────────────────────────
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${backendServer}/api/products/${id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchProducts();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ─── Validate ─────────────────────────────────────────────────────────
+  const validate = () => {
+    const e = {};
+    if (!formData.product_id.trim()) e.product_id = 'SKU is required';
+    if (!formData.name.trim())       e.name       = 'Name is required';
+    if (!formData.price || isNaN(parseFloat(formData.price))) e.price = 'Valid price required';
+    setErrors(e);
+    return !Object.keys(e).length;
+  };
+
+  // ─── Submit ───────────────────────────────────────────────────────────
+  const handleSubmit = async (ev) => {
+    ev.preventDefault();
+    if (!validate()) return;
     setSubmitLoading(true);
     try {
-      const formDataToSend = new FormData();
-      
-      // Append basic product data
-      formDataToSend.append('product_id', formData.product_id);
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('basePrice', formData.basePrice.toString());
-
-      // Track which variants have files to upload
-      let fileCount = 0;
-      
-      // Process variants and track their image status
-      const variantsForSubmission = formData.variants.map((variant, index) => {
-        // If there's a new file to upload
-        if (variant.image instanceof File) {
-          formDataToSend.append('images', variant.image);
-          fileCount++;
-          return {
-            finish: variant.finish || '',
-            fabric: variant.fabric || '',
-            size: variant.size || '',
-            insetPanel: variant.insetPanel || '',
-            price: parseFloat(variant.price),
-            imageIndex: fileCount - 1 // Track which uploaded file corresponds to this variant
-          };
-        } 
-        // If it's an existing image (has URL and key)
-        else if (variant.image?.url && variant.image?.key) {
-          return {
-            finish: variant.finish || '',
-            fabric: variant.fabric || '',
-            size: variant.size || '',
-            insetPanel: variant.insetPanel || '',
-            price: parseFloat(variant.price),
-            image: variant.image // Keep existing image data
-          };
-        }
-        // If no image
-        else {
-          return {
-            finish: variant.finish || '',
-            fabric: variant.fabric || '',
-            size: variant.size || '',
-            insetPanel: variant.insetPanel || '', 
-            price: parseFloat(variant.price),
-            image: null
-          };
-        }
-      });
-
-      formDataToSend.append('variants', JSON.stringify(variantsForSubmission));
-
-      console.log('Submitting variants:', variantsForSubmission); // Debug log
-      
       const token = localStorage.getItem('token');
-      const url = modalMode === 'create'
-        ? `${backendServer}/api/products`
-        : `${backendServer}/api/products/${selectedProduct._id}`;
-
-      const response = await fetch(url, {
-        method: modalMode === 'create' ? 'POST' : 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formDataToSend
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save product');
+      const fd = new FormData();
+      fd.append('product_id',  formData.product_id);
+      fd.append('name',        formData.name);
+      fd.append('description', formData.description);
+      fd.append('category',    formData.category    || 'General');
+      fd.append('collection',  formData.collection  || 'General');
+      fd.append('package',     formData.package     || '');
+      fd.append('dimension',   formData.dimension);
+      fd.append('price',       formData.price);
+      fd.append('woodFinish',  formData.woodFinish);
+      fd.append('fabric',      formData.fabric);
+      fd.append('others',      JSON.stringify(formData.others));
+      if (formData.imageFile) {
+        fd.append('image', formData.imageFile);
+      } else if (formData.imageUrl) {
+        fd.append('imageUrl', formData.imageUrl);
       }
 
-      const responseData = await response.json();
-      console.log('Server response:', responseData);
+      const url    = modalMode === 'create'
+        ? `${backendServer}/api/products`
+        : `${backendServer}/api/products/${selectedProductId}`;
+      const method = modalMode === 'create' ? 'POST' : 'PUT';
+
+      const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` }, body: fd });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
 
       await fetchProducts();
       handleCloseModal();
-    } catch (error) {
-      console.error('Error:', error);
-      setErrors(prev => ({ ...prev, submit: error.message }));
+    } catch (err) {
+      setErrors(e => ({ ...e, submit: err.message }));
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  const arrayBufferToBase64 = (buffer) => {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
+  // ─── Compact pagination ───────────────────────────────────────────────
+  const Pagination = () => {
+    let s = Math.max(1, currentPage - 2);
+    let e = Math.min(totalPages, s + 4);
+    if (e === totalPages) s = Math.max(1, e - 4);
+    const pages = [];
+    for (let i = s; i <= e; i++) pages.push(i);
+    const btn = (label, pg, disabled) => (
+      <button key={label} onClick={() => setCurrentPage(pg)} disabled={disabled}
+        className="px-2 py-1 rounded border text-sm hover:bg-gray-100 disabled:opacity-40">{label}</button>
+    );
+    return (
+      <div className="flex justify-center items-center p-4 gap-1">
+        {btn('«', 1,           currentPage === 1)}
+        {btn('‹', currentPage - 1, currentPage === 1)}
+        {s > 1 && <>{btn(1, 1, false)}{s > 2 && <span className="px-1 text-sm">…</span>}</>}
+        {pages.map(p => (
+          <button key={p} onClick={() => setCurrentPage(p)}
+            className={`px-2 py-1 rounded border text-sm ${p === currentPage ? 'bg-[#005670] text-white' : 'hover:bg-gray-100'}`}>{p}</button>
+        ))}
+        {e < totalPages - 1 && <span className="px-1 text-sm">…</span>}
+        {e < totalPages && btn(totalPages, totalPages, false)}
+        {btn('›', currentPage + 1, currentPage === totalPages)}
+        {btn('»', totalPages,  currentPage === totalPages)}
+      </div>
+    );
   };
 
+  // ─── Finish badge helper ──────────────────────────────────────────────
+  const FinishBadges = ({ product }) => (
+    <div className="flex flex-wrap gap-1">
+      {product.woodFinish && (
+        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-xs rounded font-mono">
+          🪵 {product.woodFinish}
+        </span>
+      )}
+      {product.fabric && (
+        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs rounded font-mono">
+          🧵 {product.fabric}
+        </span>
+      )}
+      {(product.others || []).map(o => (
+        <span key={o} className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded font-mono">{o}</span>
+      ))}
+    </div>
+  );
+
+  // ─── RENDER ───────────────────────────────────────────────────────────
   return (
     <div className="p-6">
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-light" style={{ color: '#005670' }}>
-          Product Configuration
-        </h2>
+        <h2 className="text-2xl font-light" style={{ color: '#005670' }}>Product Configuration</h2>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowBulkDelete(true)}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#dc2626' }}  // Red color for delete
-          >
-            <Trash2 className="w-4 h-4" />
-            Bulk Delete
+          <button onClick={() => setShowBulkDelete(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
+            <Trash2 className="w-4 h-4" /> Bulk Delete
           </button>
-          <button
-            onClick={() => setShowBulkImport(true)}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#005670' }}
-          >
-            <Upload className="w-4 h-4" />
-            Bulk Import
+          <button onClick={() => setShowBulkImport(true)}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: '#005670' }}>
+            <Upload className="w-4 h-4" /> Bulk Import
           </button>
-          <button
-            onClick={() => {
-              setModalMode('create');
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg"
-            style={{ backgroundColor: '#005670' }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Product
+          <button onClick={() => { setModalMode('create'); setIsModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: '#005670' }}>
+            <Plus className="w-4 h-4" /> Add Product
           </button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="mb-6">
-        <SearchFilter
-          value={searchTerm}
-          onSearch={setSearchTerm}
-          placeholder="Search by product ID or name..."
-        />
+      <div className="mb-4">
+        <SearchFilter value={searchTerm} onSearch={setSearchTerm} placeholder="Search by SKU, name, category..." />
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th> */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Base Price</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variants</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              {['Image','Category','Package','SKU','Name','Dimensions','Price','Finish','Actions'].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-          {loading ? (
-            <tr>
-              <td colSpan="5" className="px-6 py-4 text-center">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-              </td>
-            </tr>
-          ) : products.map((product) => (
-            <tr key={product._id}>
-              <td className="px-6 py-4">{product.product_id}</td>
-              <td className="px-6 py-4">{product.name}</td>
-              {/* <td className="px-6 py-4">
-                  <div className="max-w-xs overflow-hidden text-ellipsis">
-                    {product.description}
+          <tbody className="divide-y divide-gray-100">
+            {loading ? (
+              <tr><td colSpan="8" className="py-10 text-center">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+              </td></tr>
+            ) : products.length === 0 ? (
+              <tr><td colSpan="8" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
+            ) : products.map(p => (
+              <tr key={p._id} className="hover:bg-gray-50 transition-colors">
+                {/* Image */}
+                <td className="px-4 py-3">
+                  <ImageCell url={p.image?.url} name={p.name} />
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{p.category || '—'}</td>
+                <td className="px-4 py-3 text-xs font-mono text-gray-700">{p.package}</td>
+                <td className="px-4 py-3 text-xs font-mono text-gray-700">{p.product_id}</td>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{p.dimension || '—'}</td>
+                <td className="px-4 py-3 text-sm font-semibold text-gray-900">${Number(p.price).toFixed(2)}</td>
+                <td className="px-4 py-3"><FinishBadges product={p} /></td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEdit(p)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(p._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-              </td> */}
-              <td className="px-6 py-4">${product.basePrice}</td>
-              <td className="px-6 py-4">
-                <div className="space-y-2">
-                  {product.variants?.map((variant, index) => (
-                    <div key={index} className="flex items-center">
-                      <div className="text-sm text-gray-600">
-                        {[
-                          variant.finish && `Finish: ${variant.finish}`,
-                          variant.fabric && `Fabric: ${variant.fabric}`,
-                          variant.size && `Size: ${variant.size}`,
-                          variant.insetPanel && `Inset Panel: ${variant.insetPanel}`
-                        ].filter(Boolean).join(' | ')}
-                        <div className="text-sm font-medium text-gray-900">
-                          ${Number(variant.price).toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(product)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                  <button
-                    onClick={() => handleDeleteProduct(product._id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
-        <CompactPagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
-        />
+        <Pagination />
       </div>
 
-      {/* Modal */}
+      {/* ── Add / Edit Modal ── */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
-                {modalMode === 'create' ? 'Add New Product' : 'Edit Product'}
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[92vh] flex flex-col">
+
+            {/* Modal header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold" style={{ color: '#005670' }}>
+                {modalMode === 'create' ? '➕ Add Product' : '✏️ Edit Product'}
               </h3>
-              <button onClick={handleCloseModal}>
-                <X className="w-6 h-6" />
+              <button onClick={handleCloseModal} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Basic Information */}
+            <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-5 space-y-5 flex-1">
+
+              {/* ── Section: Identity ── */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.product_id}
-                    onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                  />
-                  {errors.product_id && (
-                    <p className="text-red-500 text-sm mt-1">{errors.product_id}</p>
+                  <label className={labelCls}>SKU / Product ID *</label>
+                  <input type="text" value={formData.product_id}
+                    onChange={e => handleSkuChange(e.target.value)}
+                    className={inputCls} placeholder="e.g. ST-11-N-0A-00-MD-19-00-00-00" />
+                  {errors.product_id && <p className="text-red-500 text-xs mt-1">{errors.product_id}</p>}
+                  {formData.product_id && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Parsed → Wood: <strong>{parseSku(formData.product_id).woodFinish || '—'}</strong>
+                      {' | '}Fabric: <strong>{parseSku(formData.product_id).fabric || '—'}</strong>
+                      {parseSku(formData.product_id).others?.length
+                        ? <> | Others: <strong>{parseSku(formData.product_id).others.join(', ')}</strong></>
+                        : null}
+                    </p>
                   )}
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                  )}
+                  <label className={labelCls}>Category</label>
+                  <input type="text" value={formData.category}
+                    onChange={e => setFormData(f => ({ ...f, category: e.target.value }))}
+                    className={inputCls} placeholder="e.g. Bench, Counter Stools" />
                 </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                    placeholder="Enter product details including dimensions, materials, and other specifications..."
-                  />
-                  {errors.description && (
-                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-                  )}
-                </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Base Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.basePrice}
-                    onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                  />
-                  {errors.basePrice && (
-                    <p className="text-red-500 text-sm mt-1">{errors.basePrice}</p>
-                  )}
+                  <label className={labelCls}>Item Name *</label>
+                  <input type="text" value={formData.name}
+                    onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
+                    className={inputCls} placeholder="e.g. Bench Style A" />
+                  {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-700">Available Attributes</h4>
-                <div className="flex gap-4 flex-wrap">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedAttributes.finish}
-                      onChange={(e) => setSelectedAttributes({
-                        ...selectedAttributes,
-                        finish: e.target.checked
-                      })}
-                      className="rounded text-[#005670]"
-                    />
-                    <span>Finish</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedAttributes.fabric}
-                      onChange={(e) => setSelectedAttributes({
-                        ...selectedAttributes,
-                        fabric: e.target.checked
-                      })}
-                      className="rounded text-[#005670]"
-                    />
-                    <span>Fabric</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedAttributes.size}
-                      onChange={(e) => setSelectedAttributes({
-                        ...selectedAttributes,
-                        size: e.target.checked
-                      })}
-                      className="rounded text-[#005670]"
-                    />
-                    <span>Size</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedAttributes.insetPanel}
-                      onChange={(e) => setSelectedAttributes({
-                        ...selectedAttributes,
-                        insetPanel: e.target.checked
-                      })}
-                      className="rounded text-[#005670]"
-                    />
-                    <span>Inset Panel</span>
-                  </label>
+                <div>
+                  <label className={labelCls}>Final Price ($) *</label>
+                  <input type="number" step="0.01" value={formData.price}
+                    onChange={e => setFormData(f => ({ ...f, price: e.target.value }))}
+                    className={inputCls} placeholder="852.00" />
+                  {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
                 </div>
-              </div>
-
-              {/* Variants Section */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-medium text-gray-700">Product Variants</h4>
-                  <button
-                    type="button"
-                    onClick={addVariant}
-                    className="text-sm text-[#005670] hover:text-[#003a4f] flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Variant
-                  </button>
+                <div>
+                  <label className={labelCls}>Dimensions</label>
+                  <input type="text" value={formData.dimension}
+                    onChange={e => setFormData(f => ({ ...f, dimension: e.target.value }))}
+                    className={inputCls} placeholder='48"W x 16"D x 17"H' />
                 </div>
-
-                {formData.variants.map((variant, index) => (
-                <div key={index} className="p-4 border rounded-lg space-y-4">
-                  <div className="flex justify-between items-start">
-                    <h5 className="font-medium text-gray-700">Variant {index + 1}</h5>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => removeVariant(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                <div>
+                  <label className={labelCls}>Collection</label>
+                  <input type="text" value={formData.collection}
+                    onChange={e => setFormData(f => ({ ...f, collection: e.target.value }))}
+                    className={inputCls} placeholder="e.g. Ālia" />
+                </div>
+                <div>
+                  <label className={labelCls}>📦 Package</label>
+                  <div className="flex gap-2 mt-1">
+                    {[
+                      { value: '',     label: 'None',  cls: 'border-gray-300 text-gray-600 hover:border-gray-400' },
+                      { value: 'Lani', label: 'Lani',  cls: 'hover:border-emerald-400' },
+                      { value: 'Nalu', label: 'Nalu',  cls: 'hover:border-violet-400' },
+                    ].map(({ value, label, cls }) => (
+                      <button key={value} type="button"
+                        onClick={() => setFormData(f => ({ ...f, package: value }))}
+                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                          formData.package === value
+                            ? value === ''
+                              ? 'bg-gray-600 text-white border-gray-600'
+                              : value === 'Lani'
+                                ? 'bg-gray-600 text-white border-gray-600'
+                                : 'bg-gray-600 text-white border-gray-600'
+                            : `bg-white ${cls}`
+                        }`}>
+                        {label}
                       </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Finish dropdown */}
-                    {selectedAttributes.finish && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Finish
-                        </label>
-                        <div className="space-y-2">
-                          <select
-                            value={variant.finish}
-                            onChange={(e) => handleVariantChange(index, 'finish', e.target.value)}
-                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                          >
-                            <option value="">Select Finish</option>
-                            <option value="Light">Light</option>
-                            <option value="Dark">Dark</option>
-                          </select>
-                          {variant.finish && <FinishPreview finishValue={variant.finish} />}
-                        </div>
-                        {errors[`variant_${index}_finish`] && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors[`variant_${index}_finish`]}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Fabric dropdown */}
-                    {selectedAttributes.fabric && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Fabric
-                        </label>
-                        <div className="space-y-2">
-                          <select
-                            value={variant.fabric}
-                            onChange={(e) => handleVariantChange(index, 'fabric', e.target.value)}
-                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                          >
-                            <option value="">Select Fabric</option>
-                            {Object.keys(attributeOptions.fabric).map((fabricKey) => (
-                              <option key={fabricKey} value={fabricKey}>
-                                {fabricKey}
-                              </option>
-                            ))}
-                          </select>
-                          {variant.fabric && <FabricPreview fabricKey={variant.fabric} />}
-                        </div>
-                        {errors[`variant_${index}_fabric`] && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors[`variant_${index}_fabric`]}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Size input - free text */}
-                    {selectedAttributes.size && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Size
-                        </label>
-                        <input
-                          type="text"
-                          value={variant.size}
-                          onChange={(e) => handleVariantChange(index, 'size', e.target.value)}
-                          placeholder="e.g. 60x30x18 in"
-                          className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                        />
-                        {errors[`variant_${index}_size`] && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors[`variant_${index}_size`]}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Inset Panel dropdown */}
-                    {selectedAttributes.insetPanel && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Inset Panel
-                        </label>
-                        <div className="space-y-2">
-                          <select
-                            value={variant.insetPanel}
-                            onChange={(e) => handleVariantChange(index, 'insetPanel', e.target.value)}
-                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                          >
-                            <option value="">Select Inset Panel</option>
-                            <option value="Wood">Wood</option>
-                            <option value="Shell">Shell</option>
-                            <option value="Faux Linen">Faux Linen</option>
-                            <option value="Woven Material">Woven Material</option>
-                          </select>
-                          {variant.insetPanel && <InsetPanelPreview insetPanelValue={variant.insetPanel} />}
-                        </div>
-                        {errors[`variant_${index}_insetPanel`] && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors[`variant_${index}_insetPanel`]}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Price input */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={variant.price}
-                        onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
-                        className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#005670]/20"
-                      />
-                      {errors[`variant_${index}_price`] && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors[`variant_${index}_price`]}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Variant Image */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Variant Image
-                    </label>
-                    <div className="mt-1">
-                      {variant.imagePreview || (variant.image?.url) ? (
-                        <div className="relative inline-block">
-                          <img
-                            src={variant.imagePreview || variant.image?.url}
-                            alt={`Variant ${index + 1}`}
-                            className="w-32 h-32 object-cover rounded"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteVariantImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <label className="w-32 h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
-                          <ImageIcon className="w-8 h-8 text-gray-400" />
-                          <span className="mt-2 text-sm text-gray-500">Upload Image</span>
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
-                          />
-                        </label>
-                      )}
-                      {errors[`variant_${index}_image`] && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors[`variant_${index}_image`]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+                <div className="col-span-2">
+                  <label className={labelCls}>Description</label>
+                  <textarea value={formData.description} rows={2}
+                    onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
+                    className={`${inputCls} resize-none`} placeholder="Material, specs, notes..." />
+                </div>
               </div>
 
-              {/* Form Actions */}
-              <div className="flex justify-end gap-2 mt-6">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 border rounded hover:bg-gray-50"
-                  disabled={submitLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitLoading}
-                  className="px-4 py-2 text-white rounded-lg flex items-center gap-2"
-                  style={{ backgroundColor: '#005670' }}
-                >
-                  {submitLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {modalMode === 'create' ? 'Creating...' : 'Saving...'}
-                    </>
-                  ) : (
-                    modalMode === 'create' ? 'Create' : 'Save Changes'
+              {/* ── Section: Finish (auto from SKU, overridable) ── */}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-800">🎨 Finish Attributes</h4>
+                  <p className="text-xs text-gray-400">Auto-parsed from SKU · override if needed</p>
+                </div>
+
+                {/* Wood Finish */}
+                <div>
+                  <label className={labelCls}>🪵 Wood Finish</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setFormData(f => ({ ...f, woodFinish: '' }))}
+                      className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${!formData.woodFinish ? 'bg-[#005670] text-white border-[#005670]' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}`}>
+                      None
+                    </button>
+                    {WOOD_CODES.map(code => (
+                      <button key={code} type="button"
+                        onClick={() => setFormData(f => ({ ...f, woodFinish: f.woodFinish === code ? '' : code }))}
+                        className={`px-3 py-1.5 rounded-lg border text-sm font-mono font-medium transition-colors ${
+                          formData.woodFinish === code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400'
+                        }`}>
+                        {WOOD_LABELS[code]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fabric */}
+                <div>
+                  <label className={labelCls}>🧵 Fabric Code</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button type="button" onClick={() => setFormData(f => ({ ...f, fabric: '' }))}
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-medium transition-colors ${!formData.fabric ? 'bg-[#005670] text-white border-[#005670]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                      None
+                    </button>
+                    {FABRIC_CODES.map(code => (
+                      <button key={code} type="button"
+                        onClick={() => setFormData(f => ({ ...f, fabric: f.fabric === code ? '' : code }))}
+                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-medium transition-colors ${
+                          formData.fabric === code ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-200 hover:border-purple-400'
+                        }`}>
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Others */}
+                <div>
+                  <label className={labelCls}>⚙️ Others (multi-select)</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {OTHER_CODES.map(code => (
+                      <button key={code} type="button" onClick={() => toggleOther(code)}
+                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-medium transition-colors ${
+                          formData.others.includes(code) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400'
+                        }`}>
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                  {formData.others.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">Selected: {formData.others.join(', ')}</p>
                   )}
-                </button>
+                </div>
               </div>
+
+              {/* ── Section: Image ── */}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <h4 className="text-sm font-semibold text-gray-800">🖼 Image</h4>
+                <div className="flex items-start gap-4">
+                  {/* Preview */}
+                  <div className="flex-shrink-0">
+                    {(formData.imagePreview || formData.imageUrl) ? (
+                      <div className="relative">
+                        <img src={formData.imagePreview || formData.imageUrl} alt="preview"
+                          className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                        <button type="button" onClick={clearImage}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#005670] hover:bg-blue-50 transition-colors">
+                        <ImageIcon className="w-7 h-7 text-gray-400" />
+                        <span className="text-xs text-gray-400 mt-1">Upload</span>
+                        <input type="file" className="hidden" accept="image/*"
+                          onChange={e => handleImageFile(e.target.files[0])} />
+                      </label>
+                    )}
+                  </div>
+                  {/* URL input */}
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Or paste image URL</label>
+                    <input type="url" value={formData.imageFile ? '' : (formData.imageUrl || '')}
+                      disabled={!!formData.imageFile}
+                      onChange={e => setFormData(f => ({ ...f, imageUrl: e.target.value, imagePreview: e.target.value }))}
+                      className={`${inputCls} text-xs ${formData.imageFile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      placeholder="https://..." />
+                    <p className="text-xs text-gray-400 mt-1">
+                      {formData.imageFile ? 'File upload active — clear to use URL instead' : 'From Excel "Link Image" column'}
+                    </p>
+                    {errors.image && <p className="text-red-500 text-xs mt-1">{errors.image}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Submit error ── */}
+              {errors.submit && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{errors.submit}</p>
+                </div>
+              )}
             </form>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button type="button" onClick={handleCloseModal} disabled={submitLoading}
+                className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={handleSubmit} disabled={submitLoading}
+                className="px-5 py-2 text-white rounded-lg text-sm font-semibold flex items-center gap-2"
+                style={{ backgroundColor: '#005670' }}>
+                {submitLoading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />{modalMode === 'create' ? 'Creating...' : 'Saving...'}</>
+                  : modalMode === 'create' ? 'Create Product' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Bulk Import Modal */}
       {showBulkImport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-xl font-light" style={{ color: '#005670' }}>
-                Bulk Import Products
-              </h3>
-              <button onClick={() => setShowBulkImport(false)}>
-                <X className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b">
+              <h3 className="text-lg font-semibold" style={{ color: '#005670' }}>Bulk Import Products</h3>
+              <button onClick={() => setShowBulkImport(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <BulkProductImport 
-              onComplete={() => {
-                setShowBulkImport(false);
-                fetchProducts();
-              }} 
-            />
+            <BulkProductImport onComplete={() => { setShowBulkImport(false); fetchProducts(); }} />
           </div>
         </div>
       )}
 
       {/* Bulk Delete Modal */}
       {showBulkDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-xl font-light text-red-600">
-                Bulk Delete Products
-              </h3>
-              <button onClick={() => setShowBulkDelete(false)}>
-                <X className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b">
+              <h3 className="text-lg font-semibold text-red-600">Bulk Delete Products</h3>
+              <button onClick={() => setShowBulkDelete(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <BulkDeleteProducts 
-              onComplete={() => {
-                setShowBulkDelete(false);
-                fetchProducts();
-              }}
+            <BulkDeleteProducts
+              onComplete={() => { setShowBulkDelete(false); fetchProducts(); }}
               backendServer={backendServer}
             />
           </div>

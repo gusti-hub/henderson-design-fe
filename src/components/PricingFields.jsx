@@ -1,16 +1,16 @@
 // components/PricingFields.jsx
-// ✅ Layout aligned with ProductConfiguration screenshot
+// ✅ Pre-fill aware: shows catalog price source when msrp comes from library
 //    Net Cost is bidirectional (direct input or computed from MSRP × discount)
 
 import React, { useEffect, useRef } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Tag } from 'lucide-react';
 
 const UNIT_OPTIONS = [
   'Each', 'Set', 'Pair', 'Box', 'Case', 'Roll',
   'Yard', 'Foot', 'Meter', 'Square Foot', 'Linear Foot',
 ];
 
-// ── Decimal Input ──
+// ── Decimal Input ──────────────────────────────────────────────────────────
 const DecimalInput = ({ value, onChange, disabled, placeholder = '0.00', className = '' }) => {
   const displayValue =
     value === 0 || value === '0' || value === undefined || value === null ? '' : value;
@@ -43,13 +43,14 @@ const DecimalInput = ({ value, onChange, disabled, placeholder = '0.00', classNa
   );
 };
 
+// ── Main component ─────────────────────────────────────────────────────────
 const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   const opts = product.selectedOptions || {};
 
   const num = (v) => parseFloat(v) || 0;
   const fmt = (v) => num(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // ── Core values ──
+  // ── Core values ────────────────────────────────────────────────────────
   const msrp          = num(opts.msrp);
   const discountPct   = num(opts.discountPercent);
   const quantity      = num(product.quantity) || 1;
@@ -94,7 +95,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   const totalSalesTax    = taxableAmount * (salesTaxRate / 100);
   const totalClientPrice = clientSubtotal + totalSalesTax;
 
-  // ── Sync unitPrice / finalPrice back to parent ──
+  // ── Sync unitPrice / finalPrice back to parent ──────────────────────────
   const prevTotalRef = useRef(null);
   useEffect(() => {
     const rounded = Math.round(totalClientPrice * 100) / 100;
@@ -112,19 +113,26 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   }, [totalClientPrice, quantity]);
 
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
+
+  // ── Net Cost input local state ─────────────────────────────────────────
   const [netCostDisplay, setNetCostDisplay] = React.useState('');
   const [netCostFocused, setNetCostFocused] = React.useState(false);
 
   const handleMsrpChange     = (v) => { upd('msrp', v); upd('netCostOverride', null); };
   const handleDiscountChange = (v) => { upd('discountPercent', v); upd('netCostOverride', null); };
-  const handleNetCostChange = (v) => {
+  const handleNetCostChange  = (v) => {
     const newNetCost = parseFloat(v) || 0;
     upd('netCostOverride', newNetCost === 0 ? null : newNetCost);
     const divisor = 1 - (discountPct / 100);
     upd('msrp', Math.round((divisor !== 0 ? newNetCost / divisor : newNetCost) * 100) / 100);
   };
 
-  // ── Shared styles ──
+  // ── Detect if msrp was pre-filled from catalog (library product) ────────
+  // product.sourceType === 'library' AND msrp matches catalog price signal
+  const isFromLibrary = product.sourceType === 'library';
+  const catalogPrice  = isFromLibrary ? (product.unitPrice || 0) : 0;
+
+  // ── Shared styles ───────────────────────────────────────────────────────
   const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed';
   const ro  = 'w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold text-gray-800';
 
@@ -145,6 +153,17 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   return (
     <div className="space-y-0 border border-gray-200 rounded-xl overflow-hidden">
 
+      {/* ── Catalog price banner (library products only) ── */}
+      {isFromLibrary && msrp > 0 && (
+        <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+          <Tag className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+          <p className="text-xs text-amber-800">
+            <strong>Catalog price: ${fmt(msrp)}</strong> — pre-filled as MSRP.
+            Adjust discount % or Net Cost as needed.
+          </p>
+        </div>
+      )}
+
       {/* ── Column Headers ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] bg-[#1e2d3d]">
         <div className="py-3 px-5 text-white font-bold text-xs tracking-widest uppercase text-center border-r border-white/20">
@@ -158,7 +177,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
         </div>
       </div>
 
-      {/* ── Row 1: Units + Qty | Qty mirror + Sales Tax Rate | — ── */}
+      {/* ── Row 1: Units + Qty | Qty mirror + Sales Tax Rate ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] border-b border-gray-100 bg-gray-50">
         <div className="px-5 py-4 border-r border-gray-200 flex gap-3">
           <div className="flex-1">
@@ -203,14 +222,17 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
         <div className="px-5 py-4" />
       </div>
 
-      {/* No net purchase cost */}
+      {/* ── No net purchase cost ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] bg-white border-b border-gray-100">
         <div className="px-5 py-3 border-r border-gray-200">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={noNetPurchase}
-              onChange={(e) => { upd('noNetPurchaseCost', e.target.checked); if (e.target.checked) upd('netCostOverride', null); }}
+              onChange={(e) => {
+                upd('noNetPurchaseCost', e.target.checked);
+                if (e.target.checked) upd('netCostOverride', null);
+              }}
               disabled={disabled}
               className="w-4 h-4 rounded border-gray-300 text-[#005670] focus:ring-[#005670]"
             />
@@ -221,17 +243,24 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
         <div className="px-5 py-3" />
       </div>
 
-      {/* ── Row 2: MSRP / Discount / Net Cost | Markup / Product Subtotal | Cost + Markup ── */}
+      {/* ── Row 2: MSRP / Discount / Net Cost | Markup / Product Subtotal | Taxable ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] border-b border-gray-100 bg-white">
         <div className="px-5 py-4 border-r border-gray-200 space-y-3">
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 mb-1">MSRP</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                MSRP
+                {isFromLibrary && msrp > 0 && (
+                  <span className="ml-1.5 text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">
+                    from catalog
+                  </span>
+                )}
+              </label>
               <DecimalInput
                 value={opts.msrp}
                 onChange={handleMsrpChange}
                 disabled={disabled || noNetPurchase}
-                className={inp}
+                className={`${inp} ${isFromLibrary && msrp > 0 && !disabled ? 'border-amber-300 bg-amber-50/30' : ''}`}
               />
             </div>
             <div className="w-28">
@@ -253,7 +282,11 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
             <input
               type="text"
               inputMode="decimal"
-              value={netCostFocused ? netCostDisplay : (noNetPurchase ? '' : (netCost === 0 ? '' : netCost))}
+              value={
+                netCostFocused
+                  ? netCostDisplay
+                  : noNetPurchase ? '' : (netCost === 0 ? '' : netCost)
+              }
               onFocus={() => {
                 setNetCostFocused(true);
                 setNetCostDisplay(noNetPurchase ? '' : (netCost === 0 ? '' : String(netCost)));
@@ -261,7 +294,6 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
               onChange={(e) => {
                 const raw = e.target.value;
                 setNetCostDisplay(raw);
-                // Only propagate valid/complete numbers
                 if (raw === '' || raw === '.') return;
                 if (/^\d*\.?\d{0,4}$/.test(raw) && !raw.endsWith('.')) {
                   handleNetCostChange(raw);
@@ -270,11 +302,8 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
               onBlur={() => {
                 setNetCostFocused(false);
                 const val = netCostDisplay;
-                if (val === '' || val === '.') {
-                  handleNetCostChange('0');
-                } else {
-                  handleNetCostChange(val);
-                }
+                if (val === '' || val === '.') handleNetCostChange('0');
+                else handleNetCostChange(val);
               }}
               disabled={disabled || noNetPurchase}
               placeholder="0.00"
@@ -282,6 +311,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
             />
           </div>
         </div>
+
         <div className="px-5 py-4 border-r border-gray-200 space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Markup %</label>
@@ -298,13 +328,14 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
             <div className={ro}>{fmt(productSubtotal)}</div>
           </div>
         </div>
+
         <div className="px-5 py-4 space-y-3">
           <Chk checked={taxCost}   onChange={(v) => upd('taxableCost', v)}   label="Cost" />
           <Chk checked={taxMarkup} onChange={(v) => upd('taxableMarkup', v)} label="Markup" />
         </div>
       </div>
 
-      {/* ── Row 3: Discount Taken + Shipping Cost | Shipping Markup + Subtotal | Cost + Markup ── */}
+      {/* ── Row 3: Discount Taken + Shipping Cost | Markup + Subtotal | Taxable ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] border-b border-gray-100 bg-gray-50">
         <div className="px-5 py-4 border-r border-gray-200 space-y-3">
           <div>
@@ -352,7 +383,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
         </div>
       </div>
 
-      {/* ── Row 4: Other Cost | Other Markup + Subtotal | Cost + Markup ── */}
+      {/* ── Row 4: Other Cost | Markup + Subtotal | Taxable ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] border-b border-gray-100 bg-white">
         <div className="px-5 py-4 border-r border-gray-200">
           <label className="block text-xs font-medium text-gray-500 mb-1">Other Cost</label>
