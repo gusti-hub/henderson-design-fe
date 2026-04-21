@@ -315,6 +315,42 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
           ]
         },
         {
+          id: 'pillow_insert_preference',
+          label: 'Pillow insert preference:',
+          type: 'radio',
+          options: [
+            'Down',
+            'Down Alternative'
+          ],
+          required: true,
+          showIfCheckbox: {
+            field: 'bedding_type',
+            values: [
+              'Coverlet & Sheet Set',
+              'Duvet & Sheet Set',
+              'Two set for each bedroom (Duvet & Sheets)',
+              'Two set for each bedroom (Coverlet & Sheets)'
+            ]
+          }
+        },
+        {
+          id: 'duvet_insert_preference',
+          label: 'Duvet insert preference:',
+          type: 'radio',
+          options: [
+            'Down',
+            'Down Alternative'
+          ],
+          required: true,
+          showIfCheckbox: {
+            field: 'bedding_type',
+            values: [
+              'Duvet & Sheet Set',
+              'Two set for each bedroom (Duvet & Sheets)'
+            ]
+          }
+        },
+        {
           id: 'bedding_material_color',
           label: 'Bedding Material & Color Options:',
           type: 'checkbox',
@@ -687,7 +723,37 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
       const newValues = currentValues.includes(value)
         ? currentValues.filter(v => v !== value)
         : [...currentValues, value];
-      setFormData(prev => ({ ...prev, [questionId]: newValues }));
+
+      setFormData(prev => {
+        const updated = { ...prev, [questionId]: newValues };
+
+        // Reset pillow & duvet jika bedding_type berubah
+        if (questionId === 'bedding_type') {
+          const beddingValues = newValues;
+
+          // Reset pillow jika tidak ada bedding yang dipilih sama sekali
+          const pillowTriggers = [
+            'Coverlet & Sheet Set',
+            'Duvet & Sheet Set',
+            'Two set for each bedroom (Duvet & Sheets)',
+            'Two set for each bedroom (Coverlet & Sheets)'
+          ];
+          const duvetTriggers = [
+            'Duvet & Sheet Set',
+            'Two set for each bedroom (Duvet & Sheets)'
+          ];
+
+          if (!pillowTriggers.some(v => beddingValues.includes(v))) {
+            updated.pillow_insert_preference = undefined;
+          }
+          if (!duvetTriggers.some(v => beddingValues.includes(v))) {
+            updated.duvet_insert_preference = undefined;
+          }
+        }
+
+        return updated;
+      });
+
     } else {
       setFormData(prev => ({ ...prev, [questionId]: value }));
     }
@@ -740,10 +806,21 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
 
     currentSection.questions?.forEach(question => {
       if (question.required) {
+        // Skip jika showIf condition tidak terpenuhi
         if (question.showIf) {
           const [conditionKey, conditionValue] = Object.entries(question.showIf)[0];
           if (formData[conditionKey] !== conditionValue) {
             return;
+          }
+        }
+
+        // Skip jika showIfCheckbox condition tidak terpenuhi (field tidak visible)
+        if (question.showIfCheckbox) {
+          const { field, value, values } = question.showIfCheckbox;
+          const fieldValue = formData[field];
+          const checkValues = values || [value];
+          if (!Array.isArray(fieldValue) || !checkValues.some(v => fieldValue.includes(v))) {
+            return; // Field tidak visible, skip validasi
           }
         }
 
@@ -1063,10 +1140,11 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
 
                     // Handle showIfCheckbox (for checkbox arrays)
                     if (question.showIfCheckbox) {
-                      const { field, value } = question.showIfCheckbox;
+                      const { field, value, values } = question.showIfCheckbox;
                       const fieldValue = formData[field];
-                      if (!Array.isArray(fieldValue) || !fieldValue.includes(value)) {
-                        return null;
+                      const checkValues = values || [value];
+                      if (!Array.isArray(fieldValue) || !checkValues.some(v => fieldValue.includes(v))) {
+                        return;
                       }
                     }
 

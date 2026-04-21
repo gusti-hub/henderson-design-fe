@@ -13,7 +13,6 @@ const PrintSafeImage = ({ src, alt, style, fallback }) => {
 
     const toBase64 = async () => {
       try {
-        // Try fetch with cors first
         const res = await fetch(src, { mode: 'cors' });
         if (!res.ok) throw new Error('fetch failed');
         const blob = await res.blob();
@@ -23,7 +22,6 @@ const PrintSafeImage = ({ src, alt, style, fallback }) => {
         };
         reader.readAsDataURL(blob);
       } catch {
-        // Fallback: load via Image element (works if CORS allows)
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -118,7 +116,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       const token = localStorage.getItem('token');
       const versionParam = version || 'latest';
 
-      // Fetch PO data and order data in parallel
       const [poResponse, orderResponse] = await Promise.all([
         fetch(`${backendServer}/api/orders/${orderId}/po/${vendorId}/${versionParam}`,
           { headers: { Authorization: `Bearer ${token}` } }),
@@ -129,7 +126,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       const result = await poResponse.json();
       const orderData = await orderResponse.json();
 
-      // Build a lookup map: product_id -> order product (for image enrichment)
       const orderProductMap = {};
       (orderData.selectedProducts || []).forEach(p => {
         if (p.product_id) orderProductMap[p.product_id] = p;
@@ -140,7 +136,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         const data = result.data;
         setPOData(data);
 
-        // Enrich PO products with uploadedImages & msrp from live order data
+        // ── Step 1: Enrich existing PO products from order ──
         const enrichedProducts = (data.products || []).map(poProduct => {
           const orderProduct = orderProductMap[poProduct.product_id] ||
                                orderProductMap[poProduct._id?.toString()];
@@ -148,8 +144,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
           const hasImages = poProduct.selectedOptions?.uploadedImages?.length > 0;
           const orderImages = orderProduct.selectedOptions?.uploadedImages || [];
-
-          // Net cost: use msrp from order if PO still has client price
           const orderMsrp = orderProduct.selectedOptions?.msrp || 0;
           const orderNetOverride = orderProduct.selectedOptions?.netCostOverride;
           const netCost = (orderNetOverride != null && orderNetOverride !== '')
@@ -158,36 +152,72 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
           return {
             ...poProduct,
-            // Only override unitPrice if it looks like client price (much higher than msrp)
             unitPrice: netCost > 0 ? netCost : poProduct.unitPrice,
             totalPrice: netCost > 0 ? netCost * (poProduct.quantity || 1) : poProduct.totalPrice,
             selectedOptions: {
               ...poProduct.selectedOptions,
-              // Enrich images from order if PO doesn't have them
-              uploadedImages: hasImages
-                ? poProduct.selectedOptions.uploadedImages
-                : orderImages,
-              // Enrich msrp
+              uploadedImages: hasImages ? poProduct.selectedOptions.uploadedImages : orderImages,
               msrp: orderMsrp || poProduct.selectedOptions?.msrp || 0,
-              // Enrich sidemark
-              sidemark: poProduct.selectedOptions?.sidemark ||
-                        orderProduct.selectedOptions?.sidemark || '',
-              // Enrich shipping destination
-              shipToName: poProduct.selectedOptions?.shipToName ||
-                          orderProduct.selectedOptions?.shipToName || '',
-              shippingStreet: poProduct.selectedOptions?.shippingStreet ||
-                              orderProduct.selectedOptions?.shippingStreet || '',
-              shippingCity: poProduct.selectedOptions?.shippingCity ||
-                            orderProduct.selectedOptions?.shippingCity || '',
-              shippingState: poProduct.selectedOptions?.shippingState ||
-                             orderProduct.selectedOptions?.shippingState || '',
-              shippingPostalCode: poProduct.selectedOptions?.shippingPostalCode ||
-                                  orderProduct.selectedOptions?.shippingPostalCode || '',
+              sidemark: poProduct.selectedOptions?.sidemark || orderProduct.selectedOptions?.sidemark || '',
+              shipToName: poProduct.selectedOptions?.shipToName || orderProduct.selectedOptions?.shipToName || '',
+              shippingStreet: poProduct.selectedOptions?.shippingStreet || orderProduct.selectedOptions?.shippingStreet || '',
+              shippingCity: poProduct.selectedOptions?.shippingCity || orderProduct.selectedOptions?.shippingCity || '',
+              shippingState: poProduct.selectedOptions?.shippingState || orderProduct.selectedOptions?.shippingState || '',
+              shippingPostalCode: poProduct.selectedOptions?.shippingPostalCode || orderProduct.selectedOptions?.shippingPostalCode || '',
             }
           };
         });
 
-        setProducts(enrichedProducts);
+        // ── Step 2: Add new order products for this vendor not yet in PO ──
+        const poProductIds = new Set((data.products || []).map(p => p.product_id));
+        const vendorIdNorm = vendorId?.toString();
+
+        const newProducts = (orderData.selectedProducts || [])
+          .filter(p => {
+            const pVendorId = p.vendor?._id?.toString() || p.vendor?.toString();
+            return pVendorId === vendorIdNorm && !poProductIds.has(p.product_id);
+          })
+          .map(p => {
+            const opts = p.selectedOptions || {};
+            const netCost = (opts.netCostOverride != null && opts.netCostOverride !== '')
+              ? parseFloat(opts.netCostOverride) : parseFloat(opts.msrp || 0);
+            const qty = p.quantity || 1;
+            const specs = [];
+            if (opts.vendorDescription) specs.push(opts.vendorDescription);
+            else if (opts.specifications) specs.push(opts.specifications);
+            if (opts.finish) specs.push(`Finish: ${opts.finish}`);
+            if (opts.fabric) specs.push(`Fabric: ${opts.fabric}`);
+            if (opts.size) specs.push(`Size: ${opts.size}`);
+            return {
+              product_id: p.product_id || '',
+              name: p.name || '',
+              category: p.category || '',
+              spotName: p.spotName || '',
+              quantity: qty,
+              unitPrice: netCost,
+              totalPrice: netCost * qty,
+              description: specs.join('\n') || '',
+              selectedOptions: {
+                finish: opts.finish || '', fabric: opts.fabric || '', size: opts.size || '',
+                specifications: opts.specifications || '', vendorDescription: opts.vendorDescription || '',
+                image: opts.image || '', images: opts.images || [],
+                uploadedImages: (opts.uploadedImages || []).map(img => ({
+                  filename: img.filename || '', contentType: img.contentType || '',
+                  url: img.url || '', key: img.key || '',
+                  size: img.size || 0, uploadedAt: img.uploadedAt || new Date(),
+                })),
+                notes: opts.notes || '', poNumber: opts.poNumber || '',
+                sidemark: opts.sidemark || '', units: opts.units || 'Each',
+                msrp: parseFloat(opts.msrp) || 0, netCostOverride: opts.netCostOverride ?? null,
+                shipToName: opts.shipToName || '', shippingStreet: opts.shippingStreet || '',
+                shippingCity: opts.shippingCity || '', shippingState: opts.shippingState || '',
+                shippingPostalCode: opts.shippingPostalCode || '', shipToPhone: opts.shipToPhone || '',
+              }
+            };
+          });
+
+        setProducts([...enrichedProducts, ...newProducts]);
+
         setVendorInfo({
           name: data.vendorInfo?.name || '',
           vendorCode: data.vendorInfo?.vendorCode || '',
@@ -207,7 +237,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           },
           accountNumber: data.vendorInfo?.accountNumber || ''
         });
-        // FIX: Populate shipTo from product's shipping fields (first product that has them)
+
         const firstProductWithShipping = (data.products || []).find(p => p.selectedOptions?.shippingStreet);
         const enrichedShipTo = data.shipTo && (data.shipTo.name || data.shipTo.address) ? data.shipTo : {};
         if (firstProductWithShipping && !enrichedShipTo.name) {
@@ -222,6 +252,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         } else {
           setShipTo(enrichedShipTo);
         }
+
         setClientInfo(data.clientInfo || {});
         setHeaderFields({
           poNumber: data.poNumber || '',
@@ -342,10 +373,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     return { subTotal, shipping, others, total: subTotal + shipping + others };
   };
 
-  // FIX: Pre-convert all images to base64 before printing
   const doPrint = async () => {
     setShowPrintInstructions(false);
-
     if (poData && vendorInfo.name) {
       const vendor = vendorInfo.name?.replace(/\s+/g, '_') || 'Vendor';
       const client = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
@@ -353,12 +382,9 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       const date = new Date().toISOString().split('T')[0];
       document.title = `PO_${client}_${vendor}_v${versionNum}_${date}`;
     }
-
-    // Set isPrinting to remove borders via inline style, then print
     setIsPrinting(true);
     setTimeout(() => {
       window.print();
-      // Restore after print dialog closes
       setTimeout(() => setIsPrinting(false), 1000);
     }, 150);
   };
@@ -377,17 +403,14 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const totals = calculateTotals();
   const printedDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
-  // ─── COMPANY ADDRESS: Updated to Royal Place (per Sara's 4/16 feedback) ───
   const COMPANY_ADDRESS = {
     street: '4343 Royal Place',
     city: 'Honolulu, HI 96816',
     phone: '(808) 315-8782',
-    fax: ''
   };
 
   return (
     <>
-      {/* ====== PRINT STYLES ====== */}
       <style>{`
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -396,8 +419,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           .print-container, .print-container * { visibility: visible; }
           .print-container { position: absolute; left: 0; top: 0; width: 100%; }
           .no-print { display: none !important; }
-
-          /* FIX: Only ONE po-page, no page breaks causing blank pages */
           .po-page {
             page-break-after: avoid !important;
             page-break-inside: auto !important;
@@ -408,12 +429,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             width: auto !important;
             min-height: unset !important;
           }
-
-          /* FIX: Remove extra blank page from table overflow */
           table { page-break-inside: auto; }
           tr { page-break-inside: avoid; page-break-after: auto; }
-
-          /* Remove borders from form inputs only, not table cells */
           input, select {
             border: none !important;
             background: transparent !important;
@@ -431,33 +448,22 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             overflow: visible !important;
             height: auto !important;
           }
-          /* Table — outer border only */
           .po-table { border: 1px solid #999 !important; }
-          .po-table th {
-            background: #666 !important;
-            color: white !important;
-            border: none !important;
-          }
+          .po-table th { background: #666 !important; color: white !important; border: none !important; }
           .po-table td { border: none !important; }
           .po-table tbody tr + tr td { border-top: 1px solid #f0f0f0 !important; }
           .po-totals-row td { border: none !important; }
           .po-totals-row.total-final td { border-top: 1px solid #333 !important; }
           .remove-btn { display: none !important; }
           .add-product-btn { display: none !important; }
-          /* Hide all placeholders when printing */
           input::placeholder { color: transparent !important; }
           textarea::placeholder { color: transparent !important; }
-          /* Hide gray background outside print area */
           body { background: white !important; }
           .bg-gray-100 { background: white !important; }
-          /* Unit cost: hide input, show formatted span */
           .unit-cost-raw { display: none !important; }
           .unit-cost-display { display: block !important; text-align: right; font-size: 11px; }
-          /* Sidemark label */
           .sidemark-row { margin-top: 4px; font-size: 10px; }
-          /* Remove all borders from textarea and qty-input in print */
-          .po-table .desc-cell textarea,
-          .qty-input {
+          .po-table .desc-cell textarea, .qty-input {
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
@@ -477,11 +483,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           margin: 0 auto 20px;
           box-shadow: 0 0 10px rgba(0,0,0,0.1);
           position: relative;
-        }
-        .po-header-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0;
         }
         .po-field-label {
           font-weight: bold;
@@ -505,30 +506,17 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           transition: border-color 0.15s;
         }
         .po-input:focus { border-bottom-color: #005670; }
-        /* Textarea - no border */
-        .po-table .desc-cell textarea {
-          border: none;
-          border-radius: 0;
-          background: transparent;
-        }
         .qty-input {
           border: none;
           border-radius: 0;
           background: transparent;
         }
-        /* Compact left column rows */
-        .po-left-row {
-          line-height: 1.5;
-          margin: 0;
-          padding: 0;
-          font-size: 11px;
-        }
-        /* ── Product Table — outer border only ── */
         .po-table {
           width: 100%;
           border-collapse: collapse;
           font-size: 11px;
           border: 1px solid #999;
+          table-layout: fixed;
         }
         .po-table th {
           background: #666;
@@ -540,33 +528,28 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           border: none;
         }
         .po-table th.th-cost { text-align: right; }
-        /* No inner borders on td at all */
         .po-table td {
           border: none;
           padding: 10px 10px;
           vertical-align: top;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          max-width: 0;
         }
-        /* Thin separator between rows for readability */
-        .po-table tbody tr + tr td {
-          border-top: 1px solid #f0f0f0;
-        }
-
-        /* Description textarea — borderless, full width */
+        .po-table tbody tr + tr td { border-top: 1px solid #f0f0f0; }
         .po-table .desc-cell textarea {
           width: 100%;
           font-size: 11px;
-          border: 1px solid #e5e7eb;
-          border-radius: 3px;
-          padding: 4px 6px;
+          border: none;
+          border-radius: 0;
+          background: transparent;
+          padding: 0;
           resize: vertical;
-          min-height: 80px;
+          min-height: 60px;
           line-height: 1.5;
           font-family: Arial, sans-serif;
           box-sizing: border-box;
         }
-        .po-table .desc-cell textarea:focus { border-color: #005670; outline: none; }
-
-        /* Image cell — centered */
         .po-table .img-cell {
           width: 90px;
           min-width: 90px;
@@ -593,17 +576,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           border: 1px solid #eee;
           margin: 0 auto;
         }
-
-        /* Price cells */
         .po-table .price-cell {
           text-align: right;
-          white-space: nowrap;
+          white-space: normal;
           vertical-align: top;
-          width: 100px;
+          width: 90px;
           font-size: 11px;
         }
-
-        /* Totals rows — no side borders, right-aligned */
         .po-totals-row td {
           border: none !important;
           padding: 2px 10px;
@@ -615,37 +594,46 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           font-weight: bold;
           font-size: 12px;
         }
-
-        /* Quantity row inline */
         .qty-row {
           display: flex;
           align-items: center;
           gap: 6px;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
           font-size: 11px;
         }
         .qty-row label { font-weight: normal; color: #333; }
         .qty-input {
-          border: 1px solid #e5e7eb;
-          border-radius: 3px;
-          padding: 1px 4px;
+          border: none;
+          padding: 0;
           font-size: 11px;
-          width: 55px;
-          background: white;
+          width: 40px;
+          background: transparent;
           outline: none;
-          text-align: center;
+          text-align: left;
         }
-        .qty-input:focus { border-color: #005670; }
-
-        /* Sidemark row */
         .sidemark-row {
-          margin-top: 6px;
+          margin-top: 4px;
           font-size: 10px;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 4px;
+          flex-wrap: wrap;
         }
         .sidemark-row span { font-weight: 600; color: #444; white-space: nowrap; }
+        /* Vendor address compact — no extra spacing between lines */
+        .vendor-addr-line {
+          font-size: 11px;
+          line-height: 1.4;
+          padding: 0;
+          margin: 0;
+          display: block;
+        }
+        .vendor-city-row {
+          display: flex;
+          gap: 0;
+          font-size: 11px;
+          line-height: 1.4;
+        }
       `}</style>
 
       {/* ====== TOOLBAR ====== */}
@@ -694,14 +682,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
           {/* ---- TOP: Company Address + Logo ---- */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            {/* FIX: Updated to Royal Place address */}
-            <div style={{ fontSize: '11px', lineHeight: '1.6', color: '#333' }}>
+            <div style={{ fontSize: '11px', lineHeight: '1.4', color: '#333' }}>
               <div>{COMPANY_ADDRESS.street}</div>
               <div>{COMPANY_ADDRESS.city}</div>
               <div>{COMPANY_ADDRESS.phone}</div>
-              <div>Fax: {COMPANY_ADDRESS.fax}</div>
             </div>
-            {/* Logo — Henderson blue filter */}
             <div style={{ textAlign: 'right' }}>
               <img
                 src="/images/HDG-Logo.png"
@@ -716,49 +701,42 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           </div>
 
           {/* ---- PURCHASE ORDER TITLE ---- */}
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: '12px 0 10px', color: '#222', borderBottom: '2px solid #333', paddingBottom: '6px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: '10px 0 8px', color: '#222', borderBottom: '2px solid #333', paddingBottom: '5px' }}>
             Purchase Order
           </h2>
 
           {/* ---- HEADER INFO GRID ---- */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', borderBottom: '1px solid #ccc', paddingBottom: '12px', marginBottom: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', borderBottom: '1px solid #ccc', paddingBottom: '10px', marginBottom: '10px' }}>
 
-            {/* LEFT: Vendor + Ship To + Comments */}
-            <div style={{ paddingRight: '20px', borderRight: '1px solid #ccc', fontSize: '11px', lineHeight: '1.5' }}>
-              {/* Vendor */}
-              <div style={{ fontWeight: 'bold', marginBottom: '1px' }}>To:</div>
-              <input className="po-input" value={vendorInfo.name || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, name: e.target.value })} placeholder="Vendor Name" style={{ fontWeight: '500' }} />
-              <input className="po-input" value={vendorInfo.address?.street || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, street: e.target.value } })} placeholder="Street Address" />
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <input className="po-input" value={vendorInfo.address?.city || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, city: e.target.value } })} placeholder="City" style={{ flex: 2 }} />
-                <input className="po-input" value={vendorInfo.address?.state || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, state: e.target.value } })} placeholder="ST" style={{ flex: 1 }} />
-                <input className="po-input" value={vendorInfo.address?.zip || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, address: { ...vendorInfo.address, zip: e.target.value } })} placeholder="ZIP" style={{ flex: 1 }} />
-              </div>
-              <div>
-                <span className="po-field-label">Attention: </span>
-                <input className="po-input" value={vendorInfo.representativeName || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, representativeName: e.target.value })} placeholder="Contact Name" style={{ width: '60%', display: 'inline-block' }} />
-              </div>
-              <div>
-                <span className="po-field-label">Phone: </span>
-                <input className="po-input" value={vendorInfo.contactInfo?.phone || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, contactInfo: { ...vendorInfo.contactInfo, phone: e.target.value } })} placeholder="Phone" style={{ width: '32%', display: 'inline-block' }} />
-                <span className="po-field-label" style={{ marginLeft: '10px' }}>Fax: </span>
-                <input className="po-input" value={vendorInfo.contactInfo?.fax || ''} onChange={(e) => setVendorInfo({ ...vendorInfo, contactInfo: { ...vendorInfo.contactInfo, fax: e.target.value } })} placeholder="Fax" style={{ width: '25%', display: 'inline-block' }} />
-              </div>
+            {/* LEFT: Vendor + Ship To + Comments — read-only */}
+            <div style={{ paddingRight: '20px', borderRight: '1px solid #ccc', fontSize: '11px', lineHeight: '1.6' }}>
+              {/* To: */}
+              <div style={{ fontWeight: 'bold' }}>To:</div>
+              {vendorInfo.name && <div style={{ fontWeight: '500' }}>{vendorInfo.name}</div>}
+              {vendorInfo.address?.street && <div>{vendorInfo.address.street}</div>}
+              {(vendorInfo.address?.city || vendorInfo.address?.state || vendorInfo.address?.zip) && (
+                <div>{[vendorInfo.address?.city, vendorInfo.address?.state, vendorInfo.address?.zip].filter(Boolean).join(', ')}</div>
+              )}
+              {vendorInfo.representativeName && (
+                <div><span className="po-field-label">Attention: </span>{vendorInfo.representativeName}</div>
+              )}
+              {(vendorInfo.contactInfo?.phone || vendorInfo.contactInfo?.fax) && (
+                <div>
+                  {vendorInfo.contactInfo?.phone && <><span className="po-field-label">Phone: </span>{vendorInfo.contactInfo.phone}</>}
+                  {vendorInfo.contactInfo?.fax && <><span className="po-field-label" style={{ marginLeft: '10px' }}>Fax: </span>{vendorInfo.contactInfo.fax}</>}
+                </div>
+              )}
+
               {/* Ship To */}
-              <div style={{ fontWeight: 'bold', marginTop: '4px', marginBottom: '1px' }}>Ship To:</div>
-              <input className="po-input" value={shipTo.name || ''} onChange={(e) => setShipTo({ ...shipTo, name: e.target.value })} placeholder="Ship To Name / Location" />
-              <input className="po-input" value={shipTo.address || ''} onChange={(e) => setShipTo({ ...shipTo, address: e.target.value })} placeholder="Street Address" />
-              <input className="po-input" value={shipTo.city || ''} onChange={(e) => setShipTo({ ...shipTo, city: e.target.value })} placeholder="City, State ZIP" />
-              <div>
-                <span className="po-field-label">Attention: </span>
-                <input className="po-input" value={shipTo.attention || ''} onChange={(e) => setShipTo({ ...shipTo, attention: e.target.value })} placeholder="Attention" style={{ width: '60%', display: 'inline-block' }} />
-              </div>
-              <div>
-                <span className="po-field-label">Phone: </span>
-                <input className="po-input" value={shipTo.phone || ''} onChange={(e) => setShipTo({ ...shipTo, phone: e.target.value })} placeholder="Phone" style={{ width: '50%', display: 'inline-block' }} />
-              </div>
-              {/* Comments / Notes */}
-              <div style={{ marginTop: '4px' }}>
+              <div style={{ fontWeight: 'bold', marginTop: '6px' }}>Ship To:</div>
+              {shipTo.name && <div>{shipTo.name}</div>}
+              {shipTo.address && <div>{shipTo.address}</div>}
+              {shipTo.city && <div>{shipTo.city}</div>}
+              {shipTo.attention && <div><span className="po-field-label">Attention: </span>{shipTo.attention}</div>}
+              {shipTo.phone && <div><span className="po-field-label">Phone: </span>{shipTo.phone}</div>}
+
+              {/* Comments / Notes — still editable */}
+              <div style={{ marginTop: '6px' }}>
                 <span className="po-field-label">Comments: </span>
                 <input className="po-input" value={headerFields.comments} onChange={(e) => setHeaderFields({ ...headerFields, comments: e.target.value })} style={{ width: '68%', display: 'inline-block' }} />
               </div>
@@ -768,19 +746,19 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               </div>
             </div>
 
-            {/* RIGHT: Order Details — clean rows, no borders */}
+            {/* RIGHT: Order Details */}
             <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
               {[
-                { label: 'Order #:',       field: 'poNumber',      value: headerFields.poNumber },
-                { label: 'Order Date:',    field: 'orderDate',     value: headerFields.orderDate },
-                { label: 'Printed Date:',  readOnly: true,         value: printedDate },
-                { label: 'Account Number:', field: 'accountNumber', value: headerFields.accountNumber },
-                { label: 'Rep Name:',      field: 'repName',       value: headerFields.repName },
-                { label: 'Rep Phone:',     field: 'repPhone',      value: headerFields.repPhone },
-                { label: 'Rep Email:',     field: 'repEmail',      value: headerFields.repEmail },
-                { label: 'Terms:',         field: 'terms',         value: headerFields.terms },
-                { label: 'Client:',        field: '_clientName',   value: clientInfo.name || '' },
-                { label: 'Estimate #:',    field: 'estimateNumber', value: headerFields.estimateNumber, required: true },
+                { label: 'Order #:',        field: 'poNumber',       value: headerFields.poNumber },
+                { label: 'Order Date:',     field: 'orderDate',      value: headerFields.orderDate },
+                { label: 'Printed Date:',   readOnly: true,          value: printedDate },
+                { label: 'Account Number:', field: 'accountNumber',  value: headerFields.accountNumber },
+                { label: 'Rep Name:',       field: 'repName',        value: headerFields.repName },
+                { label: 'Rep Phone:',      field: 'repPhone',       value: headerFields.repPhone },
+                { label: 'Rep Email:',      field: 'repEmail',       value: headerFields.repEmail },
+                { label: 'Terms:',          field: 'terms',          value: headerFields.terms },
+                { label: 'Client:',         field: '_clientName',    value: clientInfo.name || '' },
+                { label: 'Estimate #:',     field: 'estimateNumber', value: headerFields.estimateNumber, required: true },
               ].map((row, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
                   <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>
@@ -796,11 +774,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       className="po-input"
                       value={row.value || ''}
                       style={{
-                        textAlign: 'right',
-                        border: 'none',
-                        background: 'transparent',
-                        flex: 1,
-                        minWidth: 0,
+                        textAlign: 'right', border: 'none', background: 'transparent',
+                        flex: 1, minWidth: 0,
                         borderBottom: row.required && !headerFields.estimateNumber ? '1px solid #e53e3e' : '1px solid transparent',
                       }}
                       onChange={(e) => {
@@ -821,10 +796,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           <table className="po-table">
             <thead>
               <tr>
-                {/* FIX: Empty header for image column */}
                 <th style={{ width: '80px' }}></th>
                 <th>Description</th>
-                {/* FIX: Unit Cost aligned right */}
                 <th className="th-cost" style={{ width: '110px' }}>Unit Cost</th>
                 <th className="th-cost" style={{ width: '110px' }}>Total Cost</th>
                 <th className="no-print" style={{ width: '36px' }}></th>
@@ -832,25 +805,18 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             </thead>
             <tbody>
               {products.map((product, index) => {
-                // FIX: Image is in selectedOptions.uploadedImages[0].url
                 const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
                                product.selectedOptions?.image ||
                                product.selectedOptions?.images?.[0] ||
                                product.imageUrl || null;
-
-                // FIX: Net/purchase price = msrp (not unitPrice which is client price)
-                // If netCostOverride is set, use that; otherwise use msrp
                 const netCost = (product.selectedOptions?.netCostOverride != null && product.selectedOptions?.netCostOverride !== '')
                   ? parseFloat(product.selectedOptions.netCostOverride)
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
                 const netTotal = netCost * (product.quantity || 1);
-
-                // FIX: Sidemark from selectedOptions.sidemark
                 const sidemark = product.selectedOptions?.sidemark || product.selectedOptions?.notes || '';
 
                 return (
                   <tr key={index}>
-                    {/* Image cell - uses uploadedImages */}
                     <td className="img-cell">
                       {imgSrc ? (
                         <PrintSafeImage
@@ -873,7 +839,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           value={product.quantity || 1}
                           onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
                           min="1"
-
                         />
                         <span style={{ fontSize: '10px', color: '#888' }}>{product.selectedOptions?.units || 'Each'}</span>
                       </div>
@@ -884,19 +849,14 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         rows={Math.max(6, (product.description || '').split('\n').length + 1)}
                         style={{ width: '100%', boxSizing: 'border-box' }}
                       />
-                      <div className="sidemark-row">
-                        <span>Sidemark:</span>
-                        <input
-                          className="po-input"
-                          value={sidemark}
-                          onChange={(e) => updateProduct(index, 'selectedOptions.sidemark', e.target.value)}
-                          placeholder="Sidemark / Notes"
-                          style={{ flex: 1 }}
-                        />
-                      </div>
+                      {sidemark && (
+                        <div className="sidemark-row">
+                          <span style={{ whiteSpace: 'nowrap' }}>Sidemark:</span>
+                          <span style={{ fontSize: '10px', color: '#444', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{sidemark}</span>
+                        </div>
+                      )}
                     </td>
 
-                    {/* FIX: Show net/purchase price (msrp), not client price (unitPrice) */}
                     <td className="price-cell">
                       <input
                         className="po-input unit-cost-raw"
@@ -927,7 +887,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 );
               })}
 
-              {/* Add Product */}
               <tr className="no-print add-product-btn">
                 <td colSpan={5} style={{ padding: '8px', textAlign: 'center', border: '1px dashed #ddd' }}>
                   <button onClick={addEmptyProduct} className="inline-flex items-center gap-1.5 text-xs text-[#005670] hover:text-[#004558] font-medium">
@@ -937,7 +896,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 </td>
               </tr>
 
-              {/* Totals */}
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label" style={{ borderTop: '1px solid #ccc' }}>Sub Total:</td>
@@ -1031,7 +989,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   );
 };
 
-// ====== PO VERSION MODAL ====== (unchanged)
+// ====== PO VERSION MODAL ======
 const POVersionModal = ({
   orderId, vendorId, isOpen, onClose, onSelectVersion,
   versionNotes, setVersionNotes, onSaveNewVersion, saving

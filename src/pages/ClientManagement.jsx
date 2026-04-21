@@ -2380,6 +2380,8 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <PdfRow label="Bed Sizes"               value={questionnaire.bed_sizes} />
               <PdfRow label="Mattress Firmness"       value={questionnaire.mattress_firmness} />
               <PdfRow label="Bedding Type"            value={questionnaire.bedding_type} />
+              <PdfRow label="Pillow Insert Preference" value={questionnaire.pillow_insert_preference} />
+              <PdfRow label="Duvet Insert Preference"  value={questionnaire.duvet_insert_preference} />
               <PdfRow label="Bedding Material/Color"  value={questionnaire.bedding_material_color} />
               <PdfRow label="Lighting Mood"           value={questionnaire.lighting_mood} />
             </View>
@@ -2665,6 +2667,8 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           <Row label="Bed Sizes"               value={questionnaire.bed_sizes} />
           <Row label="Mattress Firmness"       value={questionnaire.mattress_firmness} />
           <Row label="Bedding Type"            value={questionnaire.bedding_type} />
+          <Row label="Pillow Insert Preference" value={questionnaire.pillow_insert_preference} />
+          <Row label="Duvet Insert Preference"  value={questionnaire.duvet_insert_preference} />
           <Row label="Bedding Material/Color"  value={questionnaire.bedding_material_color} />
           <Row label="Lighting Mood"           value={questionnaire.lighting_mood} />
         </CollapsibleSection>
