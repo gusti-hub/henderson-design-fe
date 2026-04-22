@@ -37,7 +37,7 @@ const DESIGN_IMAGES = {
 };
 
 const TEAM_OPTIONS = {
-  designer: ['Joanna Staniszewski', 'Janelle Balci', 'Ash Agustin'],
+  designer: ['Janelle Balci', 'Ash Agustin', 'Madeline Clifford', 'Savanna Gonzales'],
   projectManager: ['Madeline Clifford', 'Daiki Matsumaru', 'Savanna Gonzales'],
   projectManagerAssistant: ['Haley Spitz', 'Florence Sosrita'],
   designerAssistant: ['Benny Kristanto']
@@ -455,7 +455,7 @@ const ClientManagement = () => {
     password: '',
     unitNumber: '',
     floorPlan: '',
-    propertyType: 'Lock 2025 Pricing',
+    propertyType: '',
     collection: '',
     bedroomCount: '',
     packageType: 'investor', // ✅ ADD THIS NEW FIELD
@@ -734,7 +734,7 @@ const ClientManagement = () => {
       floorPlan4: '',
       unitNumber5: '',
       floorPlan5: '',                  
-      propertyType: 'Lock 2025 Pricing',
+      propertyType: '',
       collection: '',
       bedroomCount: '',
       packageType: 'investor', // ✅ ADD THIS
