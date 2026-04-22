@@ -77,6 +77,10 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.shippingStreet', 'selectedOptions.shippingCity',
   'selectedOptions.shippingState', 'selectedOptions.shippingPostalCode',
   'selectedOptions.shippingCountry',
+  'selectedOptions.shipToVendorId', 'selectedOptions.shipToName',
+  'selectedOptions.shippingStreet', 'selectedOptions.shippingCity',
+  'selectedOptions.shippingState', 'selectedOptions.shippingPostalCode',
+  'selectedOptions.shippingCountry', 'selectedOptions.shipToPhone',
   'selectedOptions.room', 'selectedOptions.statusCategory',
   'selectedOptions.proposalNumber', 'selectedOptions.shipTo',
   'selectedOptions.orderDate', 'selectedOptions.expectedShipDate',
@@ -1485,38 +1489,80 @@ const ProductCard = ({
             {activeTab === 'shipping' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
                 <h3 className="text-base font-bold text-gray-900">Shipping</h3>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ship To</label>
-                    <ShipToVendorDropdown selectedVendorId={opts.shipToVendorId || null} onSelect={handleShipToSelect} onClear={handleShipToClear} disabled={false} />
+                    <ShipToVendorDropdown
+                      selectedVendorId={opts.shipToVendorId || null}
+                      onSelect={handleShipToSelect}
+                      onClear={handleShipToClear}
+                      disabled={false}
+                    />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ship To Name</label>
-                    <input type="text" value={opts.shipToName || ''} disabled className={`${inputCls} bg-gray-50`} />
+                    <input
+                      type="text"
+                      value={opts.shipToName || ''}
+                      onChange={(e) => upd('shipToName', e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping Street</label>
-                    <input type="text" value={opts.shippingStreet || ''} disabled className={`${inputCls} bg-gray-50`} />
+                    <input
+                      type="text"
+                      value={opts.shippingStreet || ''}
+                      onChange={(e) => upd('shippingStreet', e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping City</label>
-                    <input type="text" value={opts.shippingCity || ''} disabled className={`${inputCls} bg-gray-50`} />
+                    <input
+                      type="text"
+                      value={opts.shippingCity || ''}
+                      onChange={(e) => upd('shippingCity', e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">State</label>
-                    <input type="text" value={opts.shippingState || ''} disabled className={`${inputCls} bg-gray-50`} />
+                    <input
+                      type="text"
+                      value={opts.shippingState || ''}
+                      onChange={(e) => upd('shippingState', e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Postal Code</label>
-                    <input type="text" value={opts.shippingPostalCode || ''} disabled className={`${inputCls} bg-gray-50`} />
+                    <input
+                      type="text"
+                      value={opts.shippingPostalCode || ''}
+                      onChange={(e) => upd('shippingPostalCode', e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                    <input type="text" value={opts.shipToPhone || ''} disabled className={`${inputCls} bg-gray-50`} />
+                    <input
+                      type="text"
+                      value={opts.shipToPhone || ''}
+                      onChange={(e) => upd('shipToPhone', e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
               </div>
