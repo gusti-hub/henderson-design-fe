@@ -266,9 +266,13 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
   const [detailProduct, setDetailProduct] = useState(null);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPackage, setFilterPackage]   = useState('');
+  const [allCategories, setAllCategories]   = useState([]);  // fetched from API
 
   useEffect(() => {
-    if (isOpen) fetchProducts();
+    if (isOpen) {
+      fetchProducts();
+      fetchCategories();
+    }
   }, [isOpen, currentPage, searchTerm, filterCategory, filterPackage]);
 
   useEffect(() => {
@@ -301,6 +305,21 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
       setProducts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ─── Fetch all unique categories from DB ────────────────────────────────
+  const fetchCategories = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/products/categories`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setAllCategories(data.categories || []);
+    } catch (err) {
+      console.error('fetchCategories error:', err);
     }
   };
 
@@ -346,9 +365,7 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
-  // Derive unique categories and packages from current page for filter dropdowns
-  const allCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
-  const allPackages   = ['Lani', 'Nalu'];
+  // allCategories is now fetched from API (see fetchCategories)
 
   // Filter out already-selected
   const filteredProducts = products.filter(p => !alreadySelected.includes(p._id));
@@ -391,16 +408,17 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
             </select>
             {/* Package filter */}
             <div className="flex gap-1 items-center">
-              {['', 'Lani', 'Nalu'].map(pkg => (
-                <button key={pkg} type="button" onClick={() => setFilterPackage(pkg)}
+              {[
+                { value: '',         label: 'All',      on: 'bg-gray-700 text-white border-gray-700' },
+                { value: 'Lani',     label: 'Lani',     on: 'bg-emerald-600 text-white border-emerald-600' },
+                { value: 'Nalu',     label: 'Nalu',     on: 'bg-violet-600 text-white border-violet-600' },
+                { value: 'Mainland', label: 'Mainland', on: 'bg-sky-600 text-white border-sky-600' },
+              ].map(({ value, label, on }) => (
+                <button key={value} type="button" onClick={() => setFilterPackage(value)}
                   className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap ${
-                    filterPackage === pkg
-                      ? pkg === '' ? 'bg-gray-700 text-white border-gray-700'
-                        : pkg === 'Lani' ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-violet-600 text-white border-violet-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                    filterPackage === value ? on : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
                   }`}>
-                  {pkg || 'All'}
+                  {label}
                 </button>
               ))}
             </div>
@@ -478,7 +496,11 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
                           </span>
                         )}
                         {product.package && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${product.package === 'Lani' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            product.package === 'Lani' ? 'bg-emerald-100 text-emerald-800'
+                            : product.package === 'Nalu' ? 'bg-violet-100 text-violet-800'
+                            : 'bg-sky-100 text-sky-800'
+                          }`}>
                             {product.package}
                           </span>
                         )}

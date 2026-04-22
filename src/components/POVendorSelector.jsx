@@ -42,7 +42,6 @@ const POVendorSelector = ({ isOpen, onClose, orderId, orderClientInfo }) => {
       alert('Cannot create PO for products without a vendor. Please assign a vendor first.');
       return;
     }
-    // Open PO editor in new tab
     window.open(`/admin/purchase-order/${orderId}/${vendorId}`, '_blank');
     onClose();
   };
@@ -126,15 +125,15 @@ const POVendorSelector = ({ isOpen, onClose, orderId, orderClientInfo }) => {
                         </div>
                       </div>
 
-                      {/* Product count & amount */}
+                      {/* Product count & PO amount */}
                       <div className="flex items-center gap-4 ml-[52px]">
                         <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">
                           <Package className="w-3 h-3" />
                           {group.productCount} product{group.productCount !== 1 ? 's' : ''}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full" title="Net Purchase Cost">
                           <DollarSign className="w-3 h-3" />
-                          ${group.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          PO: ${group.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
 
                         {/* Latest PO status */}

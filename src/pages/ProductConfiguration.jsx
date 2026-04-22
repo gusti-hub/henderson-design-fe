@@ -362,7 +362,15 @@ const ProductConfiguration = () => {
                   <ImageCell url={p.image?.url} name={p.name} />
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{p.category || '—'}</td>
-                <td className="px-4 py-3 text-xs font-mono text-gray-700">{p.package}</td>
+                <td className="px-4 py-3">
+                  {p.package
+                    ? <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        p.package === 'Lani' ? 'bg-emerald-100 text-emerald-800'
+                        : p.package === 'Nalu' ? 'bg-violet-100 text-violet-800'
+                        : 'bg-sky-100 text-sky-800'
+                      }`}>{p.package}</span>
+                    : <span className="text-gray-300 text-xs">—</span>}
+                </td>
                 <td className="px-4 py-3 text-xs font-mono text-gray-700">{p.product_id}</td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{p.dimension || '—'}</td>
@@ -456,20 +464,15 @@ const ProductConfiguration = () => {
                   <label className={labelCls}>📦 Package</label>
                   <div className="flex gap-2 mt-1">
                     {[
-                      { value: '',     label: 'None',  cls: 'border-gray-300 text-gray-600 hover:border-gray-400' },
-                      { value: 'Lani', label: 'Lani',  cls: 'hover:border-emerald-400' },
-                      { value: 'Nalu', label: 'Nalu',  cls: 'hover:border-violet-400' },
-                    ].map(({ value, label, cls }) => (
+                      { value: '',         label: 'None',     active: 'bg-gray-600 text-white border-gray-600',     inactive: 'border-gray-300 text-gray-600 hover:border-gray-400' },
+                      { value: 'Lani',     label: 'Lani',     active: 'bg-emerald-600 text-white border-emerald-600', inactive: 'border-gray-300 text-gray-700 hover:border-emerald-400' },
+                      { value: 'Nalu',     label: 'Nalu',     active: 'bg-violet-600 text-white border-violet-600',   inactive: 'border-gray-300 text-gray-700 hover:border-violet-400' },
+                      { value: 'Mainland', label: 'Mainland', active: 'bg-sky-600 text-white border-sky-600',         inactive: 'border-gray-300 text-gray-700 hover:border-sky-400' },
+                    ].map(({ value, label, active, inactive }) => (
                       <button key={value} type="button"
                         onClick={() => setFormData(f => ({ ...f, package: value }))}
                         className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors ${
-                          formData.package === value
-                            ? value === ''
-                              ? 'bg-gray-600 text-white border-gray-600'
-                              : value === 'Lani'
-                                ? 'bg-gray-600 text-white border-gray-600'
-                                : 'bg-gray-600 text-white border-gray-600'
-                            : `bg-white ${cls}`
+                          formData.package === value ? active : `bg-white ${inactive}`
                         }`}>
                         {label}
                       </button>

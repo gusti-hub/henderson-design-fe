@@ -238,10 +238,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           accountNumber: data.vendorInfo?.accountNumber || ''
         });
 
-        const firstProductWithShipping = (data.products || []).find(p => p.selectedOptions?.shippingStreet);
-        const enrichedShipTo = data.shipTo && (data.shipTo.name || data.shipTo.address) ? data.shipTo : {};
-        if (firstProductWithShipping && !enrichedShipTo.name) {
-          const opts = firstProductWithShipping.selectedOptions;
+        // Always use shipping data from order (Shipping tab in CustomProductManager)
+        // Use first product that has shipping data set
+        const orderProductWithShipping = (orderData.selectedProducts || []).find(
+          p => p.selectedOptions?.shippingStreet || p.selectedOptions?.shipToName
+        );
+        if (orderProductWithShipping) {
+          const opts = orderProductWithShipping.selectedOptions;
           setShipTo({
             name: opts.shipToName || '',
             address: opts.shippingStreet || '',
@@ -249,8 +252,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             attention: '',
             phone: opts.shipToPhone || ''
           });
-        } else {
-          setShipTo(enrichedShipTo);
+        } else if (data.shipTo && (data.shipTo.name || data.shipTo.address)) {
+          setShipTo(data.shipTo);
         }
 
         setClientInfo(data.clientInfo || {});
@@ -746,47 +749,23 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               </div>
             </div>
 
-            {/* RIGHT: Order Details */}
+            {/* RIGHT: Order Details — all read-only, from vendor master */}
             <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
               {[
-                { label: 'Order #:',        field: 'poNumber',       value: headerFields.poNumber },
-                { label: 'Order Date:',     field: 'orderDate',      value: headerFields.orderDate },
-                { label: 'Printed Date:',   readOnly: true,          value: printedDate },
-                { label: 'Account Number:', field: 'accountNumber',  value: headerFields.accountNumber },
-                { label: 'Rep Name:',       field: 'repName',        value: headerFields.repName },
-                { label: 'Rep Phone:',      field: 'repPhone',       value: headerFields.repPhone },
-                { label: 'Rep Email:',      field: 'repEmail',       value: headerFields.repEmail },
-                { label: 'Terms:',          field: 'terms',          value: headerFields.terms },
-                { label: 'Client:',         field: '_clientName',    value: clientInfo.name || '' },
-                { label: 'Estimate #:',     field: 'estimateNumber', value: headerFields.estimateNumber, required: true },
+                { label: 'Order #:',        value: headerFields.poNumber },
+                { label: 'Order Date:',     value: headerFields.orderDate },
+                { label: 'Printed Date:',   value: printedDate },
+                { label: 'Account Number:', value: headerFields.accountNumber },
+                { label: 'Rep Name:',       value: headerFields.repName },
+                { label: 'Rep Phone:',      value: headerFields.repPhone },
+                { label: 'Rep Email:',      value: headerFields.repEmail },
+                { label: 'Terms:',          value: headerFields.terms },
+                { label: 'Client:',         value: clientInfo.name || '' },
+                { label: 'Estimate #:',     value: headerFields.estimateNumber },
               ].map((row, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
-                  <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>
-                    {row.label}
-                    {row.required && !headerFields.estimateNumber && (
-                      <span style={{ color: '#e53e3e', marginLeft: '2px' }}>*</span>
-                    )}
-                  </span>
-                  {row.readOnly ? (
-                    <span style={{ textAlign: 'right', fontSize: '11px' }}>{row.value}</span>
-                  ) : (
-                    <input
-                      className="po-input"
-                      value={row.value || ''}
-                      style={{
-                        textAlign: 'right', border: 'none', background: 'transparent',
-                        flex: 1, minWidth: 0,
-                        borderBottom: row.required && !headerFields.estimateNumber ? '1px solid #e53e3e' : '1px solid transparent',
-                      }}
-                      onChange={(e) => {
-                        if (row.field === '_clientName') {
-                          setClientInfo({ ...clientInfo, name: e.target.value });
-                        } else {
-                          setHeaderFields({ ...headerFields, [row.field]: e.target.value });
-                        }
-                      }}
-                    />
-                  )}
+                  <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>{row.label}</span>
+                  <span style={{ textAlign: 'right', fontSize: '11px', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{row.value || ''}</span>
                 </div>
               ))}
             </div>

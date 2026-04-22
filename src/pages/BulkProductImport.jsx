@@ -173,7 +173,7 @@ const BulkProductImport = ({ onComplete }) => {
           description: row.description || '',
           category:    row.category    || 'General',
           dimension:   row.dimension   || '',
-          package:     (['Lani','Nalu'].includes(row.package) ? row.package : ''),
+          package:     (['Lani','Nalu','Mainland'].includes(row.package) ? row.package : ''),
           price:       parseFloat(row.price) || 0,
           woodFinish,
           fabric,
