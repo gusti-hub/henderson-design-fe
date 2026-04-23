@@ -240,20 +240,27 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
         // Always use shipping data from order (Shipping tab in CustomProductManager)
         // Use first product that has shipping data set
-        const orderProductWithShipping = (orderData.selectedProducts || []).find(
-          p => p.selectedOptions?.shippingStreet || p.selectedOptions?.shipToName
-        );
-        if (orderProductWithShipping) {
-          const opts = orderProductWithShipping.selectedOptions;
-          setShipTo({
-            name: opts.shipToName || '',
-            address: opts.shippingStreet || '',
-            city: [opts.shippingCity, opts.shippingState, opts.shippingPostalCode].filter(Boolean).join(', '),
-            attention: '',
-            phone: opts.shipToPhone || ''
-          });
-        } else if (data.shipTo && (data.shipTo.name || data.shipTo.address)) {
+        // Always use shipTo from backend (already synced from order Shipping tab)
+        // Backend sync ensures this is always latest from CustomProductManager Shipping tab
+        if (data.shipTo && (data.shipTo.name || data.shipTo.address)) {
           setShipTo(data.shipTo);
+        } else {
+          // Fallback: find from order products for this vendor
+          const vendorIdStr = vendorId?.toString();
+          const orderProductWithShipping = (orderData.selectedProducts || []).find(p => {
+            const pVendorId = p.vendor?._id?.toString() || p.vendor?.toString();
+            return pVendorId === vendorIdStr && (p.selectedOptions?.shippingStreet || p.selectedOptions?.shipToName);
+          });
+          if (orderProductWithShipping) {
+            const opts = orderProductWithShipping.selectedOptions;
+            setShipTo({
+              name:      opts.shipToName || '',
+              address:   opts.shippingStreet || '',
+              city:      [opts.shippingCity, opts.shippingState, opts.shippingPostalCode].filter(Boolean).join(', '),
+              attention: '',
+              phone:     opts.shipToPhone || ''
+            });
+          }
         }
 
         setClientInfo(data.clientInfo || {});
