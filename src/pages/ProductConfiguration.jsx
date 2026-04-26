@@ -1,6 +1,10 @@
 // ProductConfiguration.jsx
-// Flat product (no variants). 1 SKU = 1 product.
-// Wood / Fabric / Others auto-parsed from SKU, manually overridable.
+// ✅ PATCHED: Added fields to product form so they pre-fill in CustomProductManager library:
+//   - Client Description (specifications)
+//   - Vendor Description
+//   - Item URL (link)
+//   - Color / Finish
+//   - Item Class (with custom free-text via datalist)
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, ImageIcon, Upload } from 'lucide-react';
@@ -24,6 +28,14 @@ const FABRIC_LABELS = {
 };
 const OTHER_LABELS = { WV:'WV',SD:'SD',MD:'MD',DK:'DK',LT:'LT',FX:'FX',LR:'LR',SH:'SH' };
 
+// ✅ Item Class options (same list as CustomProductManager)
+const ITEM_CLASS_OPTIONS = [
+  'Accessories','Accessories & Art','Accessories-1','Appliances','Case Goods',
+  'Custom - soft goods (decorative pillows)','Fabric','Flooring','Lighting',
+  'Wall Covering','Window Covering','Construction Scope','Furniture','Labor',
+  'Reupholstery','Rugs','Upholstery',
+];
+
 // ─── SKU parser ────────────────────────────────────────────────────────────
 const parseSku = (sku) => {
   if (!sku) return { woodFinish: '', fabric: '', others: [] };
@@ -39,26 +51,30 @@ const parseSku = (sku) => {
 
 // ─── Empty form ────────────────────────────────────────────────────────────
 const emptyForm = () => ({
-  product_id:  '',
-  name:        '',
-  description: '',
-  category:    '',
-  collection:  '',
-  package:     '',
-  dimension:   '',
-  price:       '',
-  woodFinish:  '',
-  fabric:      '',
-  others:      [],      // string[]
-  imageUrl:    '',      // URL from Excel / typed
-  imageFile:   null,    // File object for upload
-  imagePreview:'',      // object URL for preview
+  product_id:          '',
+  name:                '',
+  description:         '',   // client description
+  vendorDescription:   '',   // ✅ NEW
+  itemUrl:             '',   // ✅ NEW
+  colorFinish:         '',   // ✅ NEW
+  itemClass:           '',   // ✅ NEW
+  category:            '',
+  collection:          '',
+  package:             '',
+  dimension:           '',
+  price:               '',
+  woodFinish:          '',
+  fabric:              '',
+  others:              [],
+  imageUrl:            '',
+  imageFile:           null,
+  imagePreview:        '',
 });
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] bg-white';
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 
-// ─── ImageCell: handles load errors, shows URL tooltip on hover ───────────
+// ─── ImageCell ─────────────────────────────────────────────────────────────
 const ImageCell = ({ url, name }) => {
   const [failed, setFailed] = React.useState(false);
   if (!url || failed) {
@@ -71,8 +87,7 @@ const ImageCell = ({ url, name }) => {
   }
   return (
     <div className="relative group w-12 h-12">
-      <img
-        src={url} alt={name}
+      <img src={url} alt={name}
         className="w-12 h-12 rounded-lg object-cover border border-gray-200"
         onError={() => setFailed(true)}
         referrerPolicy="no-referrer"
@@ -128,13 +143,12 @@ const ProductConfiguration = () => {
     }
   };
 
-  // ─── SKU auto-parse on change ─────────────────────────────────────────
+  // ─── SKU auto-parse ───────────────────────────────────────────────────
   const handleSkuChange = (value) => {
     const parsed = parseSku(value);
     setFormData(prev => ({
       ...prev,
       product_id: value,
-      // Only overwrite if field is currently empty (user hasn't manually set it)
       woodFinish: prev.woodFinish || parsed.woodFinish,
       fabric:     prev.fabric     || parsed.fabric,
       others:     prev.others.length ? prev.others : parsed.others,
@@ -170,20 +184,24 @@ const ProductConfiguration = () => {
   const handleEdit = (product) => {
     setSelectedProductId(product._id);
     setFormData({
-      product_id:   product.product_id  || '',
-      name:         product.name        || '',
-      description:  product.description || '',
-      category:     product.category    || '',
-      collection:   product.collection  || '',
-      package:      product.package      || '',
-      dimension:    product.dimension   || '',
-      price:        product.price       ?? '',
-      woodFinish:   product.woodFinish  || '',
-      fabric:       product.fabric      || '',
-      others:       product.others      || [],
-      imageUrl:     product.image?.url  || '',
-      imageFile:    null,
-      imagePreview: product.image?.url  || '',
+      product_id:        product.product_id       || '',
+      name:              product.name             || '',
+      description:       product.description      || '',
+      vendorDescription: product.vendorDescription || '',  // ✅ NEW
+      itemUrl:           product.itemUrl          || '',   // ✅ NEW
+      colorFinish:       product.colorFinish      || '',   // ✅ NEW
+      itemClass:         product.itemClass        || '',   // ✅ NEW
+      category:          product.category         || '',
+      collection:        product.collection       || '',
+      package:           product.package          || '',
+      dimension:         product.dimension        || '',
+      price:             product.price            ?? '',
+      woodFinish:        product.woodFinish       || '',
+      fabric:            product.fabric           || '',
+      others:            product.others           || [],
+      imageUrl:          product.image?.url       || '',
+      imageFile:         null,
+      imagePreview:      product.image?.url       || '',
     });
     setModalMode('edit');
     setIsModalOpen(true);
@@ -229,17 +247,21 @@ const ProductConfiguration = () => {
     try {
       const token = localStorage.getItem('token');
       const fd = new FormData();
-      fd.append('product_id',  formData.product_id);
-      fd.append('name',        formData.name);
-      fd.append('description', formData.description);
-      fd.append('category',    formData.category    || 'General');
-      fd.append('collection',  formData.collection  || 'General');
-      fd.append('package',     formData.package     || '');
-      fd.append('dimension',   formData.dimension);
-      fd.append('price',       formData.price);
-      fd.append('woodFinish',  formData.woodFinish);
-      fd.append('fabric',      formData.fabric);
-      fd.append('others',      JSON.stringify(formData.others));
+      fd.append('product_id',        formData.product_id);
+      fd.append('name',              formData.name);
+      fd.append('description',       formData.description);
+      fd.append('vendorDescription', formData.vendorDescription || ''); // ✅ NEW
+      fd.append('itemUrl',           formData.itemUrl           || ''); // ✅ NEW
+      fd.append('colorFinish',       formData.colorFinish       || ''); // ✅ NEW
+      fd.append('itemClass',         formData.itemClass         || ''); // ✅ NEW
+      fd.append('category',          formData.category    || 'General');
+      fd.append('collection',        formData.collection  || 'General');
+      fd.append('package',           formData.package     || '');
+      fd.append('dimension',         formData.dimension);
+      fd.append('price',             formData.price);
+      fd.append('woodFinish',        formData.woodFinish);
+      fd.append('fabric',            formData.fabric);
+      fd.append('others',            JSON.stringify(formData.others));
       if (formData.imageFile) {
         fd.append('image', formData.imageFile);
       } else if (formData.imageUrl) {
@@ -263,7 +285,7 @@ const ProductConfiguration = () => {
     }
   };
 
-  // ─── Compact pagination ───────────────────────────────────────────────
+  // ─── Pagination ───────────────────────────────────────────────────────
   const Pagination = () => {
     let s = Math.max(1, currentPage - 2);
     let e = Math.min(totalPages, s + 4);
@@ -276,7 +298,7 @@ const ProductConfiguration = () => {
     );
     return (
       <div className="flex justify-center items-center p-4 gap-1">
-        {btn('«', 1,           currentPage === 1)}
+        {btn('«', 1, currentPage === 1)}
         {btn('‹', currentPage - 1, currentPage === 1)}
         {s > 1 && <>{btn(1, 1, false)}{s > 2 && <span className="px-1 text-sm">…</span>}</>}
         {pages.map(p => (
@@ -286,7 +308,7 @@ const ProductConfiguration = () => {
         {e < totalPages - 1 && <span className="px-1 text-sm">…</span>}
         {e < totalPages && btn(totalPages, totalPages, false)}
         {btn('›', currentPage + 1, currentPage === totalPages)}
-        {btn('»', totalPages,  currentPage === totalPages)}
+        {btn('»', totalPages, currentPage === totalPages)}
       </div>
     );
   };
@@ -350,14 +372,13 @@ const ProductConfiguration = () => {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan="8" className="py-10 text-center">
+              <tr><td colSpan="9" className="py-10 text-center">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
               </td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan="8" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
+              <tr><td colSpan="9" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
             ) : products.map(p => (
               <tr key={p._id} className="hover:bg-gray-50 transition-colors">
-                {/* Image */}
                 <td className="px-4 py-3">
                   <ImageCell url={p.image?.url} name={p.name} />
                 </td>
@@ -479,15 +500,67 @@ const ProductConfiguration = () => {
                     ))}
                   </div>
                 </div>
+
+                {/* ✅ NEW: Item Class */}
+                <div>
+                  <label className={labelCls}>Item Class</label>
+                  <input
+                    type="text"
+                    list="prod-item-class-options"
+                    value={formData.itemClass}
+                    onChange={e => setFormData(f => ({ ...f, itemClass: e.target.value }))}
+                    className={inputCls}
+                    placeholder="Select or type custom..."
+                  />
+                  <datalist id="prod-item-class-options">
+                    {ITEM_CLASS_OPTIONS.map(opt => <option key={opt} value={opt} />)}
+                  </datalist>
+                </div>
+
+                {/* ✅ NEW: Color / Finish */}
+                <div>
+                  <label className={labelCls}>Color / Finish</label>
+                  <input type="text" value={formData.colorFinish}
+                    onChange={e => setFormData(f => ({ ...f, colorFinish: e.target.value }))}
+                    className={inputCls} placeholder="e.g. Brushed Nickel, Ivory White" />
+                </div>
+
+                {/* ✅ NEW: Item URL */}
                 <div className="col-span-2">
-                  <label className={labelCls}>Description</label>
-                  <textarea value={formData.description} rows={2}
-                    onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                    className={`${inputCls} resize-none`} placeholder="Material, specs, notes..." />
+                  <label className={labelCls}>Item URL</label>
+                  <input type="url" value={formData.itemUrl}
+                    onChange={e => setFormData(f => ({ ...f, itemUrl: e.target.value }))}
+                    className={inputCls} placeholder="https://vendor.com/product/..." />
                 </div>
               </div>
 
-              {/* ── Section: Finish (auto from SKU, overridable) ── */}
+              {/* ✅ NEW: Descriptions section */}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50">
+                <h4 className="text-sm font-semibold text-gray-800">📝 Descriptions</h4>
+                <div>
+                  <label className={labelCls}>Client Description</label>
+                  <textarea value={formData.description} rows={3}
+                    onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
+                    className={`${inputCls} resize-none`} placeholder="Visible to client — material, style, specs..." />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className={`${labelCls} mb-0`}>Vendor Description</label>
+                    {formData.description && (
+                      <button type="button"
+                        onClick={() => setFormData(f => ({ ...f, vendorDescription: f.description }))}
+                        className="text-xs text-blue-600 hover:underline">
+                        Copy from Client
+                      </button>
+                    )}
+                  </div>
+                  <textarea value={formData.vendorDescription} rows={3}
+                    onChange={e => setFormData(f => ({ ...f, vendorDescription: e.target.value }))}
+                    className={`${inputCls} resize-none`} placeholder="Internal / vendor-facing notes..." />
+                </div>
+              </div>
+
+              {/* ── Section: Finish ── */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-gray-800">🎨 Finish Attributes</h4>
@@ -557,7 +630,6 @@ const ProductConfiguration = () => {
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <h4 className="text-sm font-semibold text-gray-800">🖼 Image</h4>
                 <div className="flex items-start gap-4">
-                  {/* Preview */}
                   <div className="flex-shrink-0">
                     {(formData.imagePreview || formData.imageUrl) ? (
                       <div className="relative">
@@ -577,7 +649,6 @@ const ProductConfiguration = () => {
                       </label>
                     )}
                   </div>
-                  {/* URL input */}
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Or paste image URL</label>
                     <input type="url" value={formData.imageFile ? '' : (formData.imageUrl || '')}
@@ -593,7 +664,7 @@ const ProductConfiguration = () => {
                 </div>
               </div>
 
-              {/* ── Submit error ── */}
+              {/* Submit error */}
               {errors.submit && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-700">{errors.submit}</p>

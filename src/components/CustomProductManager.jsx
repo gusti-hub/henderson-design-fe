@@ -1,9 +1,11 @@
 // components/CustomProductManager.jsx
-// ✅ PATCHED: Fix duplicate/hilang product
-//    - Pisahkan draftProduct dari savedProducts
-//    - draftProduct tidak masuk DB sampai save berhasil
-//    - handleSaveProduct pakai allProducts (savedProducts) yang selalu bersih
-//    - Group by room
+// ✅ PATCHED v2:
+//    1. Sales Tax default: 8.75 → 4.5
+//    2. Auto-fill markupPercent dari vendor saat dipilih (via vendor.defaultMarkup)
+//    3. Library item: boleh add item yang sama berkali-kali (berbeda room)
+//       → alreadySelected tidak lagi memblok, hanya info badge
+//    4. Library items isEditable: true — semua field bisa diedit
+//    5. Item Class: tambah option "Custom..." + free-text input jika dipilih
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -34,6 +36,15 @@ const ITEM_CLASS_OPTIONS = [
   'Custom - soft goods (decorative pillows)','Fabric','Flooring','Lighting',
   'Wall Covering','Window Covering','Construction Scope','Furniture','Labor',
   'Reupholstery','Rugs','Upholstery',
+  // ✅ PATCH 5: sentinel for custom free-text
+  '__custom__',
+];
+
+const ITEM_CLASS_DISPLAY_OPTIONS = [
+  'Accessories','Accessories & Art','Accessories-1','Appliances','Case Goods',
+  'Custom - soft goods (decorative pillows)','Fabric','Flooring','Lighting',
+  'Wall Covering','Window Covering','Construction Scope','Furniture','Labor',
+  'Reupholstery','Rugs','Upholstery',
 ];
 
 const ROOM_OPTIONS = [
@@ -50,6 +61,7 @@ const ROOM_OPTIONS = [
 
 const CFA_OPTIONS = ['Approved','Rejected','Waived','Pending'];
 
+// ✅ PATCH 1: salesTaxRate default 4.5 (was 8.75)
 const defaultSelectedOptions = () => ({
   image: '', images: [], links: [], specifications: '', notes: '',
   finish: '', fabric: '', size: '', sidemark: '', group: '', tags: [],
@@ -65,7 +77,8 @@ const defaultSelectedOptions = () => ({
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
   noNetPurchaseCost: false, discountTaken: '', shippingCost: 0, otherCost: 0,
   markupPercent: 50, shippingMarkupPercent: 50, otherMarkupPercent: 50,
-  depositPercent: 90, vendorDepositPercent: 0, salesTaxRate: 8.75,
+  depositPercent: 90, vendorDepositPercent: 0,
+  salesTaxRate: 4.5, // ✅ PATCH 1
   taxableCost: true, taxableMarkup: true, taxableShippingCost: true,
   taxableShippingMarkup: true, taxableOtherCost: true, taxableOtherMarkup: true,
 });
@@ -76,13 +89,9 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.shipToVendorId', 'selectedOptions.shipToName',
   'selectedOptions.shippingStreet', 'selectedOptions.shippingCity',
   'selectedOptions.shippingState', 'selectedOptions.shippingPostalCode',
-  'selectedOptions.shippingCountry',
-  'selectedOptions.shipToVendorId', 'selectedOptions.shipToName',
-  'selectedOptions.shippingStreet', 'selectedOptions.shippingCity',
-  'selectedOptions.shippingState', 'selectedOptions.shippingPostalCode',
   'selectedOptions.shippingCountry', 'selectedOptions.shipToPhone',
   'selectedOptions.room', 'selectedOptions.statusCategory',
-  'selectedOptions.proposalNumber', 'selectedOptions.shipTo',
+  'selectedOptions.shipTo',  // proposalNumber intentionally excluded — read-only
   'selectedOptions.orderDate', 'selectedOptions.expectedShipDate',
   'selectedOptions.expectedArrivalDate', 'selectedOptions.dateReceived',
   'selectedOptions.dateInspected', 'selectedOptions.estimatedDeliveryDate',
@@ -130,7 +139,6 @@ const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confir
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className={`px-6 pt-6 pb-4`}>
           <div className="flex items-start gap-4">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -152,8 +160,6 @@ const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confir
             </div>
           </div>
         </div>
- 
-        {/* Actions */}
         <div className="px-6 pb-6 flex gap-3 justify-end">
           <button
             onClick={onCancel}
@@ -219,7 +225,6 @@ const Toast = ({ toasts, onDismiss }) => {
 
 const useToast = () => {
   const [toasts, setToasts] = React.useState([]);
- 
   const addToast = React.useCallback((message, type = 'info', duration = 3500) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -227,21 +232,20 @@ const useToast = () => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, duration);
   }, []);
- 
   const dismiss = React.useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
- 
   return { toasts, addToast, dismiss };
 };
 
 // ==================== MAIN COMPONENT ====================
 
 const CustomProductManager = ({ order, onSave, onBack }) => {
-  // ✅ KUNCI FIX: pisah savedProducts (sudah di DB) vs draftProduct (belum di-save)
   const [savedProducts, setSavedProducts] = useState([]);
   const [draftProduct, setDraftProduct] = useState(null);
   const [expandedProduct, setExpandedProduct] = useState(null);
+  // ✅ liveOrder: fresh fetch from API to always have proposalNumber
+  const [liveOrder, setLiveOrder] = useState(order);
 
   const [floorPlanFile, setFloorPlanFile] = useState(null);
   const [floorPlanNotes, setFloorPlanNotes] = useState('');
@@ -251,61 +255,75 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const { toasts, addToast, dismiss: dismissToast } = useToast();
   const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    confirmLabel: 'Confirm',
-    confirmVariant: 'danger',
-    onConfirm: null,
+    isOpen: false, title: '', message: '',
+    confirmLabel: 'Confirm', confirmVariant: 'danger', onConfirm: null,
   });
-  
-  
+
   const showConfirm = ({ title, message, confirmLabel, confirmVariant = 'danger', onConfirm }) => {
     setConfirmModal({ isOpen: true, title, message, confirmLabel, confirmVariant, onConfirm });
   };
-  
   const closeConfirm = () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false, onConfirm: null }));
   };
 
-useEffect(() => {
-  if (order?.selectedProducts) {
-    console.log('=== useEffect jalan, products count:', order.selectedProducts.length);
-    console.log('_ids:', order.selectedProducts.map(p => ({ id: p._id?.toString(), name: p.name })));
-    // ✅ Dedup: filter products yang tidak punya _id kecuali unik by product_id
-    const products = order.selectedProducts;
-    const seen = new Set();
-    const deduped = products.filter(p => {
-      if (p._id) {
-        const id = p._id.toString();
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
+  // ✅ Fetch fresh order on mount + ensure proposalNumber via backend
+  // Backend generates it deterministically from orderId (1 project = 1 number, unique)
+  useEffect(() => {
+    const fetchLiveOrder = async () => {
+      try {
+        const token = localStorage.getItem('token');
+
+        // Step 1: fetch fresh order
+        const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const fresh = await res.json();
+
+        // Step 2: if no proposalNumber yet, ask backend to generate & persist it
+        // Backend uses orderId-based formula — deterministic, unique, idempotent
+        if (!fresh.proposalNumber) {
+          try {
+            const genRes = await fetch(
+              `${backendServer}/api/proposals/${order._id}/ensure-number`,
+              {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+              }
+            );
+            if (genRes.ok) {
+              const genData = await genRes.json();
+              fresh.proposalNumber = genData.proposalNumber;
+              console.log('[CPM] ✅ proposalNumber:', fresh.proposalNumber);
+            }
+          } catch (_) {}
+        }
+
+        setLiveOrder(fresh);
+      } catch (err) {
+        console.error('Failed to fetch live order:', err);
       }
-      // Products tanpa _id (corrupt dari sebelumnya): keep hanya 1 per product_id
-      const key = `no_id_${p.product_id}_${p.name}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    
-    if (deduped.length !== products.length) {
-      console.warn(`⚠️ Deduped ${products.length - deduped.length} duplicate products from DB`);
+    };
+    if (order?._id) fetchLiveOrder();
+  }, [order?._id]);
+
+  useEffect(() => {
+    if (order?.selectedProducts) {
+      console.log('=== useEffect jalan, products count:', order.selectedProducts.length);
+      // ✅ No dedup — library items are allowed to be added multiple times
+      // Each instance has a unique _id from the backend after save
+      setSavedProducts(order.selectedProducts);
     }
-    
-    setSavedProducts(deduped);
-  }
-  if (order?.customFloorPlan) {
-    setExistingFloorPlan(order.customFloorPlan);
-    setFloorPlanNotes(order.customFloorPlan.notes || '');
-  }
-}, [order]);
+    if (order?.customFloorPlan) {
+      setExistingFloorPlan(order.customFloorPlan);
+      setFloorPlanNotes(order.customFloorPlan.notes || '');
+    }
+  }, [order]);
 
   // ─── Library ─────────────────────────────────────────────────────────────
   const handleAddFromLibrary = async (selectedProducts) => {
     setShowLibraryModal(false);
-  
-    // Build new products dengan semua field yang diperlukan
+
     const newProducts = selectedProducts.map((product) => {
       const imageUrl =
         product.image?.url ||
@@ -313,11 +331,13 @@ useEffect(() => {
         product.images?.find(i => i.isPrimary)?.url ||
         product.images?.[0]?.url ||
         null;
-  
+
       const catalogPrice = product.price || 0;
-  
+
       return {
-        _id:        product._id,
+        // ✅ PATCH 3: Jangan pakai _id dari catalog sebagai _id product di order
+        // Generate temp ID unik agar item yang sama bisa ditambah berkali-kali
+        _id:        `temp_lib_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         product_id: product.product_id || `LIB-${Date.now()}`,
         name:       product.name,
         category:   product.category || 'Library Selection',
@@ -328,18 +348,22 @@ useEffect(() => {
         finalPrice: catalogPrice,
         vendor:     null,
         sourceType: 'library',
-        isEditable: false,
+        isEditable: true, // ✅ PATCH 4: library items are now fully editable
+        // Keep a reference to the original catalog _id for display/tracking
+        libraryProductId: product._id,
         selectedOptions: {
           ...defaultSelectedOptions(),
           image:                 imageUrl || '',
           images:                product.images?.map(i => i.url).filter(Boolean) || [],
-          finish:                product.woodFinish || '',
-          woodFinish:            product.woodFinish || '',
-          fabric:                product.fabric     || '',
-          others:                product.others     || [],
-          size:                  product.dimension  || '',
-          specifications:        product.description || '',
-          // Pricing pre-fill dari catalog
+          finish:                product.colorFinish || product.woodFinish || '',
+          woodFinish:            product.woodFinish   || '',
+          fabric:                product.fabric       || '',
+          others:                product.others       || [],
+          size:                  product.dimension    || '',
+          specifications:        product.description  || '',  // client description
+          vendorDescription:     product.vendorDescription || '',  // ✅ NEW
+          links:                 product.itemUrl ? [product.itemUrl] : [],  // ✅ NEW
+          itemClass:             product.itemClass    || '',  // ✅ NEW
           msrp:                  catalogPrice,
           discountPercent:       0,
           netCostOverride:       null,
@@ -352,7 +376,7 @@ useEffect(() => {
           otherCost:             0,
           depositPercent:        90,
           vendorDepositPercent:  0,
-          salesTaxRate:          8.75,
+          salesTaxRate:          4.5, // ✅ PATCH 1
           taxableCost:            true,
           taxableMarkup:          true,
           taxableShippingCost:    true,
@@ -363,68 +387,52 @@ useEffect(() => {
         }
       };
     });
-  
-    // ✅ Optimistic UI update dulu
+
     const mergedProducts = [...savedProducts, ...newProducts];
     setSavedProducts(mergedProducts);
-  
-    // ✅ Langsung save ke DB — library products tidak punya tombol Save sendiri
+
     try {
       const token = localStorage.getItem('token');
-  
-      // Build payload: gabungkan existing savedProducts + newProducts
       const payload = mergedProducts.map(p => ({
         ...(p._id && !p._id.toString().startsWith('temp_') && { _id: p._id }),
-        product_id:  p.product_id,
-        name:        p.name,
-        category:    p.category    || '',
-        package:     p.package     || '',
-        spotName:    p.spotName    || 'Custom Item',
-        quantity:    p.quantity    || 1,
-        unitPrice:   parseFloat(p.unitPrice)  || 0,
-        finalPrice:  parseFloat(p.finalPrice) || 0,
-        vendor:      p.vendor      || null,
-        sourceType:  p.sourceType  || 'library',
-        isEditable:  p.isEditable  !== undefined ? p.isEditable : false,
+        product_id:      p.product_id,
+        name:            p.name,
+        category:        p.category    || '',
+        package:         p.package     || '',
+        spotName:        p.spotName    || 'Custom Item',
+        quantity:        p.quantity    || 1,
+        unitPrice:       parseFloat(p.unitPrice)  || 0,
+        finalPrice:      parseFloat(p.finalPrice) || 0,
+        vendor:          p.vendor      || null,
+        sourceType:      p.sourceType  || 'library',
+        isEditable:      true, // ✅ PATCH 4
+        libraryProductId: p.libraryProductId || null,
         selectedOptions: p.selectedOptions || {},
-        placement:   p.placement   || null,
+        placement:       p.placement   || null,
       }));
-  
+
       const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          selectedProducts: payload,
-          status: 'ongoing',
-          step: 2,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
       });
-  
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || 'Failed to save library products');
       }
-  
+
       const savedOrder = await res.json();
       const finalProducts = savedOrder.selectedProducts || mergedProducts;
       setSavedProducts(finalProducts);
       if (onSave) onSave(finalProducts);
-  
       addToast(
         `${newProducts.length} product${newProducts.length > 1 ? 's' : ''} added from library`,
         'success'
       );
-  
     } catch (error) {
       addToast(`Failed to save library products: ${error.message}`, 'error');
-  
-      // Rollback optimistic update on error
       setSavedProducts(savedProducts);
-  
-      // Refresh dari DB untuk sync
       try {
         const token = localStorage.getItem('token');
         const freshRes = await fetch(`${backendServer}/api/orders/${order._id}`, {
@@ -436,7 +444,7 @@ useEffect(() => {
     }
   };
 
-  // ─── Add manual — HANYA buat draft, TIDAK masuk savedProducts ─────────────
+  // ─── Add manual ──────────────────────────────────────────────────────────
   const addManualProduct = () => {
     const createDraft = () => {
       const newDraft = {
@@ -444,7 +452,7 @@ useEffect(() => {
         product_id: `CUSTOM-${Date.now().toString().slice(-6)}`,
         name:       '',
         category:   '',
-        package:    '',                                 // ✅ NEW
+        package:    '',
         spotName:   'Custom Item',
         quantity:   1,
         unitPrice:  0,
@@ -466,7 +474,7 @@ useEffect(() => {
           otherCost:             0,
           depositPercent:        90,
           vendorDepositPercent:  0,
-          salesTaxRate:          8.75,
+          salesTaxRate:          4.5, // ✅ PATCH 1
           taxableCost:            true,
           taxableMarkup:          true,
           taxableShippingCost:    true,
@@ -479,7 +487,7 @@ useEffect(() => {
       setDraftProduct(newDraft);
       setExpandedProduct('draft');
     };
-  
+
     if (draftProduct) {
       showConfirm({
         title: 'Unsaved Product',
@@ -493,7 +501,7 @@ useEffect(() => {
     createDraft();
   };
 
-  // ─── Update — index 'draft' → draftProduct, number → savedProducts ────────
+  // ─── Update ───────────────────────────────────────────────────────────────
   const updateProduct = (index, field, value) => {
     if (index === 'draft') {
       setDraftProduct(prev => {
@@ -529,7 +537,7 @@ useEffect(() => {
       });
       return;
     }
-  
+
     const productName = savedProducts[index]?.name || 'this product';
     showConfirm({
       title: 'Remove Product',
@@ -543,7 +551,7 @@ useEffect(() => {
           const updatedProducts = savedProducts.filter((_, i) => i !== index);
           setSavedProducts(updatedProducts);
           if (expandedProduct === index) setExpandedProduct(null);
-  
+
           const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -567,20 +575,18 @@ useEffect(() => {
               step: 2,
             }),
           });
-  
+
           if (!res.ok) {
             const err = await res.json();
             throw new Error(err.message || 'Failed to delete product');
           }
-  
+
           const savedOrder = await res.json();
           setSavedProducts(savedOrder.selectedProducts || updatedProducts);
           if (onSave) onSave(savedOrder.selectedProducts || updatedProducts);
           addToast('Product removed successfully', 'success');
-  
         } catch (error) {
           addToast(`Failed to delete: ${error.message}`, 'error');
-          // Rollback
           try {
             const token = localStorage.getItem('token');
             const freshRes = await fetch(`${backendServer}/api/orders/${order._id}`, {
@@ -594,7 +600,7 @@ useEffect(() => {
     });
   };
 
-  // ─── Floor plan handlers (tidak berubah) ──────────────────────────────────
+  // ─── Floor plan handlers ──────────────────────────────────────────────────
   const handleFloorPlanSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -648,7 +654,7 @@ useEffect(() => {
     }
   };
 
-  // ─── Group by room helper ─────────────────────────────────────────────────
+  // ─── Group by room ────────────────────────────────────────────────────────
   const groupProductsByRoom = (products) => {
     const groups = {};
     products.forEach((p, idx) => {
@@ -671,9 +677,19 @@ useEffect(() => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">🎨 Custom Product Manager</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {order?.clientInfo?.name} • Unit {order?.clientInfo?.unitNumber}
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-sm text-gray-600">
+                {order?.clientInfo?.name} • Unit {order?.clientInfo?.unitNumber}
+              </p>
+              {liveOrder?.proposalNumber && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005670]/10 text-[#005670] rounded-lg text-xs font-semibold font-mono">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {liveOrder.proposalNumber}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
@@ -796,7 +812,6 @@ useEffect(() => {
           </div>
         ) : (
           <>
-            {/* Summary header */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">
                 Products ({savedProducts.length})
@@ -805,7 +820,7 @@ useEffect(() => {
               <span className="text-xs text-gray-500">Grouped by room</span>
             </div>
 
-            {/* ── Draft product (unsaved) — selalu di atas ── */}
+            {/* ── Draft product ── */}
             {draftProduct && (
               <div className="space-y-2">
                 <div className="flex items-center gap-3 px-1">
@@ -818,29 +833,35 @@ useEffect(() => {
                   </div>
                   <div className="flex-1 h-px bg-amber-100" />
                 </div>
-                <ProductCard                  
+                <ProductCard
                   product={draftProduct}
                   index="draft"
-                  order={order}
+                  order={liveOrder}
                   allProducts={savedProducts}
                   expanded={expandedProduct === 'draft'}
                   onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
                   onUpdate={updateProduct}
                   onRemove={removeProduct}
-                  onSaved={(newSavedProducts) => {
-                    console.log('=== onSaved DRAFT ===', newSavedProducts?.map(p => ({ id: p._id, name: p.name })));
-                    // ✅ draft berhasil disimpan: masuk ke savedProducts, draft dihapus
+                  onSaved={async (newSavedProducts) => {
                     setSavedProducts(newSavedProducts);
                     setDraftProduct(null);
                     setExpandedProduct(null);
                     if (onSave) onSave(newSavedProducts);
+                    // ✅ Refresh order to pick up proposalNumber if newly generated
+                    try {
+                      const token = localStorage.getItem('token');
+                      const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                      });
+                      if (res.ok) setLiveOrder(await res.json());
+                    } catch (_) {}
                   }}
                   onToast={addToast}
                 />
               </div>
             )}
 
-            {/* ── Saved products, grouped by room ── */}
+            {/* ── Saved products grouped by room ── */}
             {Object.entries(groupProductsByRoom(savedProducts)).map(([room, items]) => (
               <div key={room} className="space-y-3">
                 <div className="flex items-center gap-3 px-1">
@@ -856,17 +877,16 @@ useEffect(() => {
 
                 {items.map(({ product, originalIndex }) => (
                   <ProductCard
-                    key={`product-${originalIndex}`}
+                    key={`product-${product._id || originalIndex}`}
                     product={product}
                     index={originalIndex}
-                    order={order}
+                    order={liveOrder}
                     allProducts={savedProducts}
                     expanded={expandedProduct === originalIndex}
                     onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
                     onUpdate={updateProduct}
                     onRemove={removeProduct}
                     onSaved={(newSavedProducts) => {
-                      console.log('=== onSaved DRAFT ===', newSavedProducts?.map(p => ({ id: p._id, name: p.name })));
                       setSavedProducts(newSavedProducts);
                       if (onSave) onSave(newSavedProducts);
                     }}
@@ -926,17 +946,149 @@ useEffect(() => {
         onCancel={closeConfirm}
       />
 
+      {/* ✅ PATCH 3: alreadySelected dihapus — user boleh add item yang sama berkali-kali */}
       <ProductSelectionModal
         isOpen={showLibraryModal}
         onClose={() => setShowLibraryModal(false)}
         onSelectProducts={handleAddFromLibrary}
-        alreadySelected={savedProducts.filter(p => p.sourceType === 'library').map(p => p._id)}
+        alreadySelected={[]}
       />
     </div>
   );
 };
 
 // ==================== PRODUCT CARD COMPONENT ====================
+
+// Item Class: custom combobox — pilih dari list atau ketik bebas
+const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const containerRef = useRef(null);
+
+  // Sync query dengan value dari luar (load dari DB)
+  useEffect(() => {
+    setQuery(value || '');
+  }, [value]);
+
+  // Tutup dropdown saat klik luar
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = query.trim()
+    ? ITEM_CLASS_DISPLAY_OPTIONS.filter(o =>
+        o.toLowerCase().includes(query.toLowerCase())
+      )
+    : ITEM_CLASS_DISPLAY_OPTIONS;
+
+  const handleInputChange = (e) => {
+    setQuery(e.target.value);
+    onChange(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (opt) => {
+    setQuery(opt);
+    onChange(opt);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    onChange('');
+    setOpen(false);
+  };
+
+  const isCustom = query && !ITEM_CLASS_DISPLAY_OPTIONS.includes(query);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => setOpen(true)}
+          disabled={disabled}
+          placeholder="Select or type custom..."
+          className={`${inputCls} pr-8`}
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {query && !disabled && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => !disabled && setOpen(o => !o)}
+            disabled={disabled}
+            className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {open && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          {/* Custom value badge */}
+          {isCustom && (
+            <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+              <span className="text-xs text-blue-700 font-medium">
+                Custom: <span className="font-semibold">"{query}"</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => { onChange(query); setOpen(false); }}
+                className="text-xs text-blue-600 font-semibold hover:text-blue-800 px-2 py-0.5 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
+              >
+                Use this ↵
+              </button>
+            </div>
+          )}
+
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                No matches — your custom value will be saved
+              </div>
+            ) : (
+              filtered.map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => handleSelect(opt)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-[#005670]/5 transition-colors flex items-center justify-between group ${
+                    opt === value ? 'bg-[#005670]/8 text-[#005670] font-medium' : 'text-gray-700'
+                  }`}
+                >
+                  <span>{opt}</span>
+                  {opt === value && (
+                    <Check className="w-3.5 h-3.5 text-[#005670] flex-shrink-0" />
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const ProductCard = ({
   product, index, order, allProducts, expanded,
@@ -950,13 +1102,8 @@ const ProductCard = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const productRef = useRef(product);
-  
+
   useEffect(() => {
-    console.log('=== productRef update ===', {
-      id: product._id,
-      name: product.name,
-      index
-    });
     productRef.current = product;
   }, [product]);
 
@@ -987,17 +1134,22 @@ const ProductCard = ({
 
   const buildProductPayload = (src) => ({
     ...(src._id && !src._id.toString().startsWith('temp_') && { _id: src._id }),
-    product_id:  src.product_id,
-    name:        src.name,
-    category:    src.category   || '',
-    package:     src.package    || '',                 // ✅ NEW
-    spotName:    src.spotName   || 'Custom Item',
-    quantity:    src.quantity   || 1,
-    unitPrice:   parseFloat(src.unitPrice)  || 0,
-    finalPrice:  parseFloat(src.finalPrice) || 0,
-    vendor:      src.vendor     || null,
-    sourceType:  src.sourceType || 'manual',
-    isEditable:  src.isEditable !== undefined ? src.isEditable : true,
+    product_id:      src.product_id,
+    name:            src.name,
+    category:        src.category   || '',
+    package:         src.package    || '',
+    spotName:        src.spotName   || 'Custom Item',
+    quantity:        src.quantity   || 1,
+    unitPrice:       parseFloat(src.unitPrice)  || 0,
+    finalPrice:      parseFloat(src.finalPrice) || 0,
+    // ✅ Vendor: simpan hanya _id ke DB (bukan full object)
+    // Backward compat: src.vendor bisa berupa string ID atau full object
+    vendor: src.vendor
+      ? (typeof src.vendor === 'object' ? src.vendor._id : src.vendor)
+      : null,
+    sourceType:      src.sourceType || 'manual',
+    isEditable:      src.isEditable !== undefined ? src.isEditable : true,
+    libraryProductId: src.libraryProductId || null,
     selectedOptions: {
       finish:                src.selectedOptions?.finish                || '',
       woodFinish:            src.selectedOptions?.woodFinish            || '',
@@ -1085,9 +1237,6 @@ const ProductCard = ({
     upd('customAttributes', updated);
   };
 
-  // ✅ KUNCI: handleSaveProduct sekarang BERSIH karena
-  // allProducts = savedProducts (tidak pernah include draft)
-  // Tidak ada risiko duplicate karena draft terpisah
   const handleSaveProduct = async () => {
     const currentProduct = productRef.current;
 
@@ -1100,32 +1249,19 @@ const ProductCard = ({
 
     try {
       const token = localStorage.getItem('token');
-
-      // ── Tentukan apakah CREATE atau UPDATE ──────────────────────────
-      // CREATE: index === 'draft' (product belum pernah ada di DB)
-      // UPDATE: index adalah number (product sudah ada di savedProducts)
       const isCreate = index === 'draft';
-
       let updatedProducts;
 
       if (isCreate) {
-        // ── CREATE: strip temp _id, append ke list ──────────────────
         const { _id, ...cleanProduct } = currentProduct;
         updatedProducts = [
           ...allProducts.map(buildProductPayload),
           buildProductPayload(cleanProduct),
         ];
-
       } else {
-        // ── UPDATE: ambil data terbaru dari state (allProducts[index])
-        // bukan dari productRef yang mungkin stale
         const productToSave = allProducts[index];
+        if (!productToSave) throw new Error('Product not found — please refresh the page.');
 
-        if (!productToSave) {
-          throw new Error('Product not found — please refresh the page.');
-        }
-
-        // Fetch fresh dari DB untuk hindari overwrite product lain
         const freshRes = await fetch(`${backendServer}/api/orders/${order._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -1133,8 +1269,6 @@ const ProductCard = ({
         const freshOrder = await freshRes.json();
         const freshProducts = freshOrder.selectedProducts || [];
 
-        // Replace product yang matching by index posisi
-        // (lebih reliable daripada match by _id yang mungkin undefined)
         updatedProducts = freshProducts.map((p, i) =>
           i === index
             ? buildProductPayload(productToSave)
@@ -1164,6 +1298,36 @@ const ProductCard = ({
     }
   };
 
+  // ✅ PATCH 2: auto-fill markupPercent dari vendor
+  // Cek semua kemungkinan nama field — sesuaikan dengan schema vendor di DB
+  const handleVendorSelect = (vendor) => {
+    onUpdate(index, 'vendor', vendor);
+
+    if (!vendor) return;
+
+    // Debug: log vendor object supaya bisa lihat field yang tersedia
+    console.log('[handleVendorSelect] vendor object:', JSON.stringify(vendor, null, 2));
+
+    // Cek semua kemungkinan nama field markup dari vendor
+    const markup =
+      vendor.defaultMarkup     ??
+      vendor.markupPercent     ??
+      vendor.markup            ??
+      vendor.default_markup    ??
+      vendor.defaultMarkupPercent ??
+      null;
+
+    if (markup != null && markup !== '') {
+      const markupNum = parseFloat(markup);
+      if (!isNaN(markupNum)) {
+        console.log('[handleVendorSelect] applying markupPercent:', markupNum);
+        upd('markupPercent', markupNum);
+      }
+    } else {
+      console.warn('[handleVendorSelect] No markup field found on vendor. Available keys:', Object.keys(vendor));
+    }
+  };
+
   const handleShipToSelect = ({ vendorId, shipToName, street, city, state, postalCode, country }) => {
     upd('shipToVendorId', vendorId);
     upd('shipToName', shipToName);
@@ -1184,7 +1348,6 @@ const ProductCard = ({
     upd('shippingCountry', '');
   };
 
-  // Numbering display: draft = "New", saved = urutan di savedProducts (originalIndex + 1)
   const displayNumber = index === 'draft' ? 'New' : `#${index + 1}`;
 
   return (
@@ -1214,7 +1377,7 @@ const ProductCard = ({
                 product.sourceType === 'library' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
               }`}>
                 {product.sourceType === 'library'
-                  ? <><Lock className="w-3 h-3" /> Library {displayNumber}</>
+                  ? <><Library className="w-3 h-3" /> Library {displayNumber}</>
                   : <><Edit2 className="w-3 h-3" /> Manual {displayNumber}</>}
               </span>
               {index === 'draft' && (
@@ -1229,15 +1392,15 @@ const ProductCard = ({
               )}
             </div>
             <h4 className="font-bold text-gray-900 truncate">{product.name || 'Untitled Product'}</h4>
-               {product.package && (
-                  <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    product.package === 'Lani'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-violet-100 text-violet-800'
-                  }`}>
-                    📦 {product.package}
-                  </span>
-                )}
+            {product.package && (
+              <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                product.package === 'Lani'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-violet-100 text-violet-800'
+              }`}>
+                📦 {product.package}
+              </span>
+            )}
             <p className="text-xs text-gray-500 mt-1">
               {product.product_id} • Qty: {product.quantity} • ${parseFloat(product.finalPrice || 0).toFixed(2)}
               {opts.room && <span className="text-teal-600"> • {opts.room}</span>}
@@ -1300,17 +1463,6 @@ const ProductCard = ({
       {/* ── Expanded Content with Tabs ── */}
       {expanded && (
         <div className="border-t border-gray-200">
-          {product.sourceType === 'library' && (
-            <div className="mx-6 mt-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-              <div className="flex items-start gap-3">
-                <Lock className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-purple-900">Read-Only Product</p>
-                  <p className="text-xs text-purple-700 mt-1">Library product — quantity, vendor, pricing, shipping, and status/binder fields can be changed.</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Tab Bar */}
           <div className="flex border-b border-gray-200 px-6 pt-4 gap-1 overflow-x-auto">
@@ -1336,7 +1488,7 @@ const ProductCard = ({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
                   <input type="text" value={product.name} onChange={(e) => onUpdate(index, 'name', e.target.value)}
-                    disabled={!product.isEditable} className={inputCls} placeholder="e.g. Living Room - Sofa Pillow" />
+                    className={inputCls} placeholder="e.g. Living Room - Sofa Pillow" />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
@@ -1350,22 +1502,24 @@ const ProductCard = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags</label>
                     <input type="text" value={Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || '')}
                       onChange={(e) => upd('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
-                      disabled={!product.isEditable} className={inputCls} placeholder="tag1, tag2" />
+                      className={inputCls} placeholder="tag1, tag2" />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Group</label>
                     <input type="text" value={opts.group || ''} onChange={(e) => upd('group', e.target.value)}
-                      disabled={!product.isEditable} className={inputCls} />
+                      className={inputCls} />
                   </div>
                   <div>
+                    {/* ✅ PATCH 5: Custom Item Class */}
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Class</label>
-                    <select value={opts.itemClass || ''} onChange={(e) => upd('itemClass', e.target.value)}
-                      disabled={!product.isEditable} className={`${inputCls} bg-white`}>
-                      <option value="">Select...</option>
-                      {ITEM_CLASS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
+                    <ItemClassField
+                      value={opts.itemClass || ''}
+                      onChange={(v) => upd('itemClass', v)}
+                      disabled={false}
+                      inputCls={inputCls}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
@@ -1376,7 +1530,7 @@ const ProductCard = ({
                       }} className="text-xs text-blue-600 hover:underline font-normal">Set Default</button>
                     </label>
                     <input type="text" value={opts.sidemark || ''} onChange={(e) => upd('sidemark', e.target.value)}
-                      disabled={!product.isEditable} className={inputCls} />
+                      className={inputCls} />
                   </div>
                 </div>
               </div>
@@ -1389,12 +1543,17 @@ const ProductCard = ({
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor</label>
-                    <VendorSearchDropdown selectedVendor={product.vendor} onSelectVendor={(v) => onUpdate(index, 'vendor', v)} disabled={false} />
+                    {/* ✅ PATCH 2: handleVendorSelect auto-fills markup */}
+                    <VendorSearchDropdown
+                      selectedVendor={product.vendor}
+                      onSelectVendor={handleVendorSelect}
+                      disabled={false}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">SKU / Item #</label>
                     <input type="text" value={product.product_id} onChange={(e) => onUpdate(index, 'product_id', e.target.value)}
-                      disabled={!product.isEditable} className={inputCls} />
+                      className={inputCls} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor Order Number</label>
@@ -1405,7 +1564,7 @@ const ProductCard = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
                     <textarea value={opts.specifications || ''} onChange={(e) => upd('specifications', e.target.value)}
-                      disabled={!product.isEditable} className={`${inputCls} resize-none`} rows={5} />
+                      className={`${inputCls} resize-none`} rows={5} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
@@ -1414,24 +1573,24 @@ const ProductCard = ({
                         className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
                     </label>
                     <textarea value={opts.vendorDescription || ''} onChange={(e) => upd('vendorDescription', e.target.value)}
-                      disabled={!product.isEditable} className={`${inputCls} resize-none`} rows={5} />
+                      className={`${inputCls} resize-none`} rows={5} />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Color / Finish</label>
-                    <input type="text" value={opts.finish || ''} onChange={(e) => upd('finish', e.target.value)} disabled={!product.isEditable} className={inputCls} />
+                    <input type="text" value={opts.finish || ''} onChange={(e) => upd('finish', e.target.value)} className={inputCls} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Dimensions</label>
-                    <input type="text" value={opts.size || ''} onChange={(e) => upd('size', e.target.value)} disabled={!product.isEditable} className={inputCls} />
+                    <input type="text" value={opts.size || ''} onChange={(e) => upd('size', e.target.value)} className={inputCls} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item URL</label>
                     <input type="text" value={opts.links?.[0] || ''} onChange={(e) => {
                       const rest = opts.links?.slice(1) || [];
                       upd('links', e.target.value ? [e.target.value, ...rest] : rest);
-                    }} disabled={!product.isEditable} className={inputCls} />
+                    }} className={inputCls} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1444,44 +1603,40 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Fabric</label>
-                    <input type="text" value={opts.fabric || ''} onChange={(e) => upd('fabric', e.target.value)} disabled={!product.isEditable} className={inputCls} />
+                    <input type="text" value={opts.fabric || ''} onChange={(e) => upd('fabric', e.target.value)} className={inputCls} />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category / Location</label>
-                  <input type="text" value={product.category} onChange={(e) => onUpdate(index, 'category', e.target.value)} disabled={!product.isEditable} className={inputCls} />
+                  <input type="text" value={product.category} onChange={(e) => onUpdate(index, 'category', e.target.value)} className={inputCls} />
                 </div>
 
-                {product.isEditable && (
-                  <>
-                    <div className="space-y-3 pt-3 border-t border-gray-100">
-                      <h4 className="font-semibold text-gray-800 text-sm">Custom Attributes</h4>
-                      {Object.keys(customAttrs).length > 0 && (
-                        <div className="space-y-2">
-                          {Object.entries(customAttrs).map(([key, value]) => (
-                            <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                              <div className="flex-1 grid grid-cols-2 gap-3">
-                                <div><p className="text-xs font-medium text-gray-500">Attribute</p><p className="text-sm font-semibold text-gray-900">{key}</p></div>
-                                <div><p className="text-xs font-medium text-gray-500">Value</p><p className="text-sm text-gray-900">{value}</p></div>
-                              </div>
-                              <button onClick={() => removeCustomAttribute(key)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><X className="w-4 h-4" /></button>
-                            </div>
-                          ))}
+                <div className="space-y-3 pt-3 border-t border-gray-100">
+                  <h4 className="font-semibold text-gray-800 text-sm">Custom Attributes</h4>
+                  {Object.keys(customAttrs).length > 0 && (
+                    <div className="space-y-2">
+                      {Object.entries(customAttrs).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1 grid grid-cols-2 gap-3">
+                            <div><p className="text-xs font-medium text-gray-500">Attribute</p><p className="text-sm font-semibold text-gray-900">{key}</p></div>
+                            <div><p className="text-xs font-medium text-gray-500">Value</p><p className="text-sm text-gray-900">{value}</p></div>
+                          </div>
+                          <button onClick={() => removeCustomAttribute(key)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><X className="w-4 h-4" /></button>
                         </div>
-                      )}
-                      <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl">
-                        <p className="text-sm font-medium text-gray-700 mb-3">Add Custom Attribute</p>
-                        <div className="flex gap-3">
-                          <input type="text" value={newAttrKey} onChange={(e) => setNewAttrKey(e.target.value)} placeholder="Attribute name" className={inputCls} />
-                          <input type="text" value={newAttrValue} onChange={(e) => setNewAttrValue(e.target.value)} placeholder="Value" className={inputCls} />
-                          <button onClick={addCustomAttribute} disabled={!newAttrKey.trim()}
-                            className="px-6 py-2 bg-[#005670] text-white rounded-lg hover:bg-[#007a9a] disabled:opacity-50 transition-colors whitespace-nowrap">Add</button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                    <ImageUploadField orderId={order._id} images={opts.uploadedImages || []} onImagesChange={(images) => upd('uploadedImages', images)} />
-                  </>
-                )}
+                  )}
+                  <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Add Custom Attribute</p>
+                    <div className="flex gap-3">
+                      <input type="text" value={newAttrKey} onChange={(e) => setNewAttrKey(e.target.value)} placeholder="Attribute name" className={inputCls} />
+                      <input type="text" value={newAttrValue} onChange={(e) => setNewAttrValue(e.target.value)} placeholder="Value" className={inputCls} />
+                      <button onClick={addCustomAttribute} disabled={!newAttrKey.trim()}
+                        className="px-6 py-2 bg-[#005670] text-white rounded-lg hover:bg-[#007a9a] disabled:opacity-50 transition-colors whitespace-nowrap">Add</button>
+                    </div>
+                  </div>
+                </div>
+                <ImageUploadField orderId={order._id} images={opts.uploadedImages || []} onImagesChange={(images) => upd('uploadedImages', images)} />
               </div>
             )}
 
@@ -1489,7 +1644,6 @@ const ProductCard = ({
             {activeTab === 'shipping' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
                 <h3 className="text-base font-bold text-gray-900">Shipping</h3>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ship To</label>
@@ -1500,69 +1654,33 @@ const ProductCard = ({
                       disabled={false}
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ship To Name</label>
-                    <input
-                      type="text"
-                      value={opts.shipToName || ''}
-                      onChange={(e) => upd('shipToName', e.target.value)}
-                      className={inputCls}
-                    />
+                    <input type="text" value={opts.shipToName || ''} onChange={(e) => upd('shipToName', e.target.value)} className={inputCls} />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping Street</label>
-                    <input
-                      type="text"
-                      value={opts.shippingStreet || ''}
-                      onChange={(e) => upd('shippingStreet', e.target.value)}
-                      className={inputCls}
-                    />
+                    <input type="text" value={opts.shippingStreet || ''} onChange={(e) => upd('shippingStreet', e.target.value)} className={inputCls} />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping City</label>
-                    <input
-                      type="text"
-                      value={opts.shippingCity || ''}
-                      onChange={(e) => upd('shippingCity', e.target.value)}
-                      className={inputCls}
-                    />
+                    <input type="text" value={opts.shippingCity || ''} onChange={(e) => upd('shippingCity', e.target.value)} className={inputCls} />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">State</label>
-                    <input
-                      type="text"
-                      value={opts.shippingState || ''}
-                      onChange={(e) => upd('shippingState', e.target.value)}
-                      className={inputCls}
-                    />
+                    <input type="text" value={opts.shippingState || ''} onChange={(e) => upd('shippingState', e.target.value)} className={inputCls} />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Postal Code</label>
-                    <input
-                      type="text"
-                      value={opts.shippingPostalCode || ''}
-                      onChange={(e) => upd('shippingPostalCode', e.target.value)}
-                      className={inputCls}
-                    />
+                    <input type="text" value={opts.shippingPostalCode || ''} onChange={(e) => upd('shippingPostalCode', e.target.value)} className={inputCls} />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                    <input
-                      type="text"
-                      value={opts.shipToPhone || ''}
-                      onChange={(e) => upd('shipToPhone', e.target.value)}
-                      className={inputCls}
-                    />
+                    <input type="text" value={opts.shipToPhone || ''} onChange={(e) => upd('shipToPhone', e.target.value)} className={inputCls} />
                   </div>
                 </div>
               </div>
@@ -1572,12 +1690,6 @@ const ProductCard = ({
             {activeTab === 'pricing' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 className="text-base font-bold text-gray-900 mb-5">Item Pricing</h3>
-                {product.sourceType === 'library' && (
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
-                    <p className="text-xs text-amber-800"><strong>Library Product</strong> — pricing inherited from catalog.</p>
-                  </div>
-                )}
-                {/* <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={product.sourceType === 'library'} /> */}
                 <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={false} />
               </div>
             )}
@@ -1609,7 +1721,19 @@ const ProductCard = ({
             {activeTab === 'status' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 className="text-base font-bold text-gray-900 mb-5">Status</h3>
-                <StatusReportFields product={product} index={index} onUpdate={onUpdate} disabled={false} />
+
+                <StatusReportFields
+                  product={product}
+                  index={index}
+                  onUpdate={(idx, field, value) => {
+                    // proposalNumber is always blocked — it's auto-generated
+                    if (field === 'selectedOptions.proposalNumber') return;
+                    onUpdate(idx, field, value);
+                  }}
+                  disabled={false}
+                  readOnlyFields={['proposalNumber']}
+                  orderProposalNumber={order?.proposalNumber || null}
+                />
               </div>
             )}
 

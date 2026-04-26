@@ -1,4 +1,6 @@
 // components/VendorSearchDropdown.jsx
+// ✅ FIX: handleSelect kirim full vendor object ke parent (bukan hanya _id)
+//         supaya handleVendorSelect di CustomProductManager bisa baca defaultMarkup
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Building2, Loader2 } from 'lucide-react';
@@ -16,9 +18,18 @@ const VendorSearchDropdown = ({
   const [selectedVendorData, setSelectedVendorData] = useState(null);
   const dropdownRef = useRef(null);
 
-  // Fetch vendor data jika ada selectedVendor
+  // Fetch vendor data jika selectedVendor adalah string ID
+  // (backward compat: kalau sudah object, langsung pakai)
   useEffect(() => {
-    if (selectedVendor && !selectedVendorData) {
+    if (!selectedVendor) {
+      setSelectedVendorData(null);
+      return;
+    }
+    if (typeof selectedVendor === 'object' && selectedVendor._id) {
+      // Sudah full object — langsung set
+      setSelectedVendorData(selectedVendor);
+    } else if (typeof selectedVendor === 'string' && !selectedVendorData) {
+      // Legacy: masih berupa string ID — fetch dari API
       fetchVendorById(selectedVendor);
     }
   }, [selectedVendor]);
@@ -37,7 +48,6 @@ const VendorSearchDropdown = ({
         setIsOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -78,7 +88,7 @@ const VendorSearchDropdown = ({
 
   const handleSelect = (vendor) => {
     setSelectedVendorData(vendor);
-    onSelectVendor(vendor._id);
+    onSelectVendor(vendor); // ✅ kirim full object — bukan vendor._id
     setIsOpen(false);
     setSearchTerm('');
   };

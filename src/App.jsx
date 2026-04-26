@@ -14,6 +14,7 @@ import ProposalEditor from './components/ProposalEditor';
 import AdminInstallBinder from './pages/AdminInstallBinder';
 import PurchaseOrderEditor from './components/PurchaseOrderEditor';
 import PurchaseOrderPage from './pages/PurchaseOrderPage';
+import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 
 // ✅ Protected Route untuk Client
 const ClientProtectedRoute = ({ children }) => {
@@ -67,7 +68,10 @@ function App() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<BrochureLandingPage />} />
-      <Route path="/portal-login" element={<PortalLogin />} />
+      <Route
+        path="/portal-login"
+        element={<PublicRoute element={<PortalLogin />} />}
+      />
       
       {/* Backward compatibility */}
       <Route path="/designer-login" element={<Navigate to="/portal-login" replace />} />

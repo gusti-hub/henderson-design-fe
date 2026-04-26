@@ -30,36 +30,19 @@ import Dashboard from './Dashboard';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import VendorManagement from './VendorManagement';
+import { useAuth } from '../hooks/useAuth';
 
 const AdminPanel = () => {
+  const { user, logout } = useAuth();  // ← ganti ini
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState('/dashboard');
   const [showHelp, setShowHelp] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [adminName, setAdminName] = useState('Admin');
 
   // Check authentication on mount
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userName = localStorage.getItem('userName');
-    if (!token) {
-      window.location.href = '/';
-    }
-    if (userName) {
-      setAdminName(userName);
-    }
-  }, []);
+  const adminName = user?.name || 'Admin';  // ← dari useAuth langsung
 
-  const handleLogout = () => {
-    try {
-      localStorage.clear();
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-      localStorage.clear();
-      navigate('/', { replace: true });
-    }
-  };
+  const handleLogout = () => logout();  // ← simple
 
   const menuItems = [
     { 
