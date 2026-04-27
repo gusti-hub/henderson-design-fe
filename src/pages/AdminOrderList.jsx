@@ -3,8 +3,10 @@
 //   - Client name: lighter (font-medium)
 //   - Hapus "Order Details" 
 //   - Status pill di-klik → inline dropdown untuk ganti status
+//   - ActionMenu: portal dropdown dengan auto-flip (atas/bawah)
 
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Loader2, Download, FileText, Edit2, ArrowLeft, X, Check,
   Search, ChevronDown, BarChart2, BookOpen,
@@ -125,14 +127,52 @@ const PackageBadge = ({ packageType, floorPlan }) => {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>{cfg.label}</span>;
 };
 
+// ─── Portal dropdown hook ─────────────────────────────────────────────────────
+const usePortalDropdown = (triggerRef, open) => {
+  const [pos, setPos] = useState({ top: 0, right: 0, openUpward: false });
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
+
+    const calculate = () => {
+      const r = triggerRef.current.getBoundingClientRect();
+      const menuHeight = menuRef.current?.offsetHeight || 320;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const openUpward = spaceBelow < menuHeight + 10;
+
+      setPos({
+        top: openUpward
+          ? r.top + window.scrollY - menuHeight - 6
+          : r.bottom + window.scrollY + 6,
+        right: window.innerWidth - r.right,
+        openUpward,
+      });
+    };
+
+    const raf = requestAnimationFrame(calculate);
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
+  return { pos, menuRef };
+};
+
 // ─── Action dropdown menu ─────────────────────────────────────────────────────
 const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDownload, onCOGExcel, onCOGPdf, onPO }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const { pos, menuRef } = usePortalDropdown(triggerRef, open);
   const canEdit = order.status === 'ongoing';
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        menuRef.current && !menuRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -153,7 +193,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDown
   );
 
   return (
-    <div ref={ref} className="relative flex items-center gap-1.5 justify-end">
+    <div ref={triggerRef} className="relative flex items-center gap-1.5 justify-end">
       {/* Primary: Edit */}
       <button
         onClick={onEdit}
@@ -165,7 +205,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDown
         <Edit2 className="w-3.5 h-3.5" /> Edit
       </button>
 
-      {/* More actions */}
+      {/* More actions trigger */}
       <button
         onClick={() => setOpen(o => !o)}
         className={`p-1.5 rounded-lg border transition-all
@@ -176,22 +216,34 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDown
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl border border-gray-200 shadow-xl z-50 overflow-hidden py-1">
+      {/* Portal dropdown — keluar dari overflow:hidden tabel, auto-flip atas/bawah */}
+      {open && ReactDOM.createPortal(
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            right: pos.right,
+            zIndex: 9999,
+            transition: 'opacity 0.08s ease',
+          }}
+          className="w-52 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden py-1"
+        >
           <Group label="View" />
-          <Item icon={Eye}         label="View Order"         onClick={onView}                              color="text-gray-700" />
+          <Item icon={Eye}          label="View Order"         onClick={onView}                              color="text-gray-700" />
           <Sep />
           <Group label="Documents" />
-          <Item icon={FileText}    label="Proposal Editor"    onClick={onProposal}                          color="text-blue-600" />
-          <Item icon={BookOpen}    label="Install Binder"     onClick={onInstallBinder}                     color="text-green-600" />
+          <Item icon={FileText}     label="Proposal Editor"    onClick={onProposal}                          color="text-blue-600" />
+          <Item icon={BookOpen}     label="Install Binder"     onClick={onInstallBinder}                     color="text-green-600" />
           <Sep />
-          <Item icon={Download}    label="Summary (Excel)"    onClick={() => onDownload('summary')}         color="text-gray-700" />
-          <Item icon={TrendingUp}  label="Status Report"      onClick={() => onDownload('status-report')}   color="text-teal-600" />
-          <Item icon={BarChart2}   label="COG Report (Excel)" onClick={onCOGExcel}                          color="text-purple-600" />
-          <Item icon={Eye}         label="COG Report (PDF)"   onClick={onCOGPdf}                            color="text-violet-600" />
+          <Item icon={Download}     label="Summary (Excel)"    onClick={() => onDownload('summary')}         color="text-gray-700" />
+          <Item icon={TrendingUp}   label="Status Report"      onClick={() => onDownload('status-report')}   color="text-teal-600" />
+          <Item icon={BarChart2}    label="COG Report (Excel)" onClick={onCOGExcel}                          color="text-purple-600" />
+          <Item icon={Eye}          label="COG Report (PDF)"   onClick={onCOGPdf}                            color="text-violet-600" />
           <Sep />
-          <Item icon={ShoppingCart} label="Purchase Orders"   onClick={onPO}                                color="text-amber-600" />
-        </div>
+          <Item icon={ShoppingCart} label="Purchase Orders"    onClick={onPO}                                color="text-amber-600" />
+        </div>,
+        document.body
       )}
     </div>
   );
