@@ -192,271 +192,206 @@ const LineRow = ({ line, onChange, onRemove, index }) => {
   );
 };
 
-// ─── Print View ──────────────────────────────────────────────────────────────
+// ─── Print View — renders to new window for clean PDF output ────────────────
+// Avoids all CSS footer/positioning issues by generating a standalone HTML page
+const buildPrintHTML = (expense, subtotal, taxes, total) => {
+  const fmtDate = (d) => {
+    if (!d) return '';
+    try { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }); } catch { return d; }
+  };
+
+  const rows = (expense.lines || []).map(line => {
+    const svc = SERVICE_TYPES.find(s => s.id === line.serviceType);
+    const svcLabel = (svc && svc.id !== 'custom') ? `<div style="font-weight:bold;margin-bottom:3px">${svc.label}:</div>` : '';
+    return `
+      <tr>
+        <td style="padding:8px;vertical-align:top;font-size:9.5pt;white-space:nowrap">${fmtDate(line.date)}</td>
+        <td style="padding:8px;vertical-align:top;font-size:9.5pt">${svcLabel}<div style="white-space:pre-wrap">${line.description || ''}</div></td>
+        <td style="padding:8px;vertical-align:top;font-size:9.5pt;text-align:right">${parseFloat(line.hours||0).toFixed(2)}</td>
+        <td style="padding:8px;vertical-align:top;font-size:9.5pt;text-align:right">$${parseFloat(line.rate||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td style="padding:8px;vertical-align:top;font-size:9.5pt;text-align:right;font-weight:bold">$${parseFloat(line.amount||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      </tr>`;
+  }).join('');
+
+  const fmt2 = (n) => `$${parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const clientName = expense.clientInfo?.name || '';
+  const addr       = expense.clientInfo?.address || '';
+  const csz        = expense.clientInfo?.cityStateZip || '';
+  const email      = expense.clientInfo?.email || '';
+  const logoFilter = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Expense_${expense.expenseNumber}</title>
+  <style>
+    @page { size: letter; margin: 0.65in; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 11pt;
+      color: #1a1a1a;
+      background: white;
+    }
+    .wrap { width: 100%; }
+    .top-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18pt; }
+    .top-header h2 { font-size: 16pt; font-weight: normal; margin-bottom: 2px; }
+    .top-header h3 { font-size: 13pt; font-weight: normal; color: #444; }
+    .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14pt; font-size: 10pt; line-height: 1.7; }
+    .meta-right { text-align: right; }
+    .project-line { font-size: 10pt; margin-bottom: 14pt; }
+    table.lines {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #ccc;
+      margin-bottom: 16pt;
+    }
+    table.lines th {
+      background: #f5f5f5;
+      border-bottom: 1px solid #ccc;
+      padding: 6px 8px;
+      font-size: 9.5pt;
+      font-weight: bold;
+    }
+    table.lines th.r { text-align: right; }
+    table.lines td { border: none; }
+    .notes { font-size: 9.5pt; color: #444; white-space: pre-wrap; margin-bottom: 16pt; }
+    table.totals { margin-left: auto; font-size: 10pt; border-collapse: collapse; min-width: 200pt; }
+    table.totals td { padding: 3px 0 3px 16px; }
+    table.totals td.lbl { text-align: right; font-weight: bold; padding-right: 16px; padding-left: 0; }
+    table.totals td.amt { text-align: right; min-width: 70pt; }
+    .total-row td { border-top: 1px solid #999; padding-top: 6px; font-weight: bold; }
+    /* Footer in normal flow — pushed down by spacer */
+    .spacer { height: 40pt; }
+    .footer {
+      text-align: center;
+      font-size: 9pt;
+      color: #555;
+      border-top: 1px solid #ddd;
+      padding-top: 8pt;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="top-header">
+    <div>
+      <h2>Henderson Design Group</h2>
+      <h3>Time &amp; Expenses Invoice</h3>
+    </div>
+    <div>
+      <img src="/images/HDG-Logo.png" alt="Henderson Design Group"
+        style="height:44px;width:auto;filter:${logoFilter}" />
+    </div>
+  </div>
+
+  <!-- Client + Meta -->
+  <div class="meta-row">
+    <div>
+      ${clientName ? `<div style="font-weight:bold">${clientName}</div>` : ''}
+      ${addr  ? `<div>${addr}</div>` : ''}
+      ${csz   ? `<div>${csz}</div>` : ''}
+      ${email ? `<div>${email}</div>` : ''}
+    </div>
+    <div class="meta-right">
+      <div><strong>Expense # :</strong>&nbsp;${expense.expenseNumber}</div>
+      <div><strong>Expense Date:</strong>&nbsp;${fmtDate(expense.expenseDate)}</div>
+    </div>
+  </div>
+
+  ${expense.projectName ? `<div class="project-line"><strong>Project:</strong> ${expense.projectName}</div>` : ''}
+
+  <!-- Line items -->
+  <table class="lines">
+    <thead>
+      <tr>
+        <th style="width:72pt">Date</th>
+        <th>Description / Service</th>
+        <th class="r" style="width:44pt">Hours</th>
+        <th class="r" style="width:56pt">Rate</th>
+        <th class="r" style="width:64pt">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  ${expense.notes ? `<div class="notes">${expense.notes}</div>` : ''}
+
+  <!-- Totals -->
+  <table class="totals">
+    <tbody>
+      <tr><td class="lbl">Subtotal:</td><td class="amt">${fmt2(subtotal)}</td></tr>
+      <tr><td class="lbl">Taxes:</td><td class="amt">${fmt2(taxes)}</td></tr>
+      <tr class="total-row"><td class="lbl">Total:</td><td class="amt">${fmt2(total)}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="spacer"></div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Henderson Design Group . 4343 Royal Place, Honolulu, HI, 96816.<br>
+    Phone: (808) 315-8782 . Fax: . Email: ami@henderson.house
+  </div>
+
+</div>
+</body>
+</html>`;
+};
+
 const PrintView = ({ expense, onClose }) => {
-  const [originalTitle] = useState(document.title);
-  const [showInstructions, setShowInstructions] = useState(false);
-
-  useEffect(() => {
-    const client = expense.clientInfo?.name?.replace(/\s+/g, '_') || 'Client';
-    document.title = `Expense_${expense.expenseNumber}_${client}`;
-    return () => { document.title = originalTitle; };
-  }, [expense, originalTitle]);
-
-  const subtotal = expense.lines.reduce((s, l) => s + parseFloat(l.amount || 0), 0);
+  const subtotal = (expense.lines || []).reduce((s, l) => s + parseFloat(l.amount || 0), 0);
   const taxes    = subtotal * (parseFloat(expense.taxRate || 0) / 100);
   const total    = subtotal + taxes;
 
-  const doPrint = () => {
-    setShowInstructions(false);
-    setTimeout(() => window.print(), 150);
+  const openPrint = () => {
+    const html  = buildPrintHTML(expense, subtotal, taxes, total);
+    const win   = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { alert('Pop-up blocked. Please allow pop-ups and try again.'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    // Small delay so images load before print dialog
+    setTimeout(() => { win.print(); }, 600);
   };
 
+  // Auto-open print window on mount
+  useEffect(() => { openPrint(); }, []);
+
   return (
-    <>
-      <style>{`
-        @media print {
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          body { margin: 0 !important; padding: 0 !important; }
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100%; }
-          .no-print { display: none !important; }
-        }
-        @page { size: letter; margin: 0.6in; }
-
-        .expense-page {
-          background: white;
-          width: 8.5in;
-          min-height: 11in;
-          margin: 0 auto;
-          padding: 0.5in;
-          font-family: 'Times New Roman', serif;
-          font-size: 11pt;
-          color: #1a1a1a;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-        }
-        .inv-header-left h2 {
-          font-size: 16pt;
-          font-weight: normal;
-          margin: 0 0 2px;
-          color: #1a1a1a;
-        }
-        .inv-header-left h3 {
-          font-size: 13pt;
-          font-weight: normal;
-          margin: 0;
-          color: #444;
-        }
-        .inv-logo img {
-          height: 44px;
-          width: auto;
-          filter: brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%);
-        }
-        .inv-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20pt;
-          font-size: 10pt;
-          border: 1px solid #ccc;
-        }
-        .inv-table th {
-          background: #f5f5f5;
-          border-bottom: 1px solid #ccc;
-          padding: 6px 8px;
-          text-align: left;
-          font-weight: bold;
-        }
-        .inv-table th.right { text-align: right; }
-        .inv-table td {
-          border: none;
-          padding: 8px;
-          vertical-align: top;
-        }
-        .inv-table td.right { text-align: right; }
-        .inv-table td.center { text-align: center; }
-        .inv-table tbody tr:last-child td { padding-bottom: 10px; }
-        /* Footer always at bottom of page */
-        .expense-page {
-          display: flex;
-          flex-direction: column;
-        }
-        .expense-page-body {
-          flex: 1;
-        }
-        .inv-footer-address {
-          text-align: center;
-          font-size: 9pt;
-          color: #555;
-          border-top: 1px solid #ddd;
-          padding-top: 8pt;
-          margin-top: auto;
-          padding-bottom: 0;
-        }
-      `}</style>
-
-      {/* Toolbar */}
-      <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
-            <ChevronLeft className="w-5 h-5" /> Back
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-4 p-8">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center max-w-sm w-full space-y-4">
+        <div className="w-12 h-12 bg-[#005670]/10 rounded-full flex items-center justify-center mx-auto">
+          <Printer className="w-6 h-6 text-[#005670]" />
+        </div>
+        <div>
+          <p className="font-semibold text-gray-800">{expense.expenseNumber}</p>
+          <p className="text-sm text-gray-500 mt-1">Print window opened</p>
+        </div>
+        <div className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3 text-left space-y-1">
+          <p>In the print dialog:</p>
+          <p>• <strong>Destination:</strong> Save as PDF</p>
+          <p>• <strong>Margins:</strong> Default</p>
+          <p>• <strong>Background graphics:</strong> On</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={openPrint}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
+            <Printer className="w-4 h-4" /> Re-open
           </button>
-          <div className="h-5 w-px bg-gray-300" />
-          <span className="text-sm font-semibold text-[#005670]">{expense.expenseNumber}</span>
-          <span className="text-sm text-gray-500">— {expense.projectName}</span>
-        </div>
-        <button onClick={() => setShowInstructions(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
-          <Printer className="w-4 h-4" /> Print / Save PDF
-        </button>
-      </div>
-
-      {/* Printable expense */}
-      <div className="print-area bg-gray-100 min-h-screen py-8">
-        <div className="expense-page shadow-md">
-
-          {/* Top header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20pt' }}>
-            <div className="inv-header-left">
-              <h2>Henderson Design Group</h2>
-              <h3>Time &amp; Expenses Invoice</h3>
-            </div>
-            <div className="inv-logo">
-              <img src="/images/HDG-Logo.png" alt="Henderson Design Group" />
-            </div>
-          </div>
-
-          {/* Client + Expense meta */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16pt' }}>
-            <div style={{ fontSize: '10pt', lineHeight: '1.7' }}>
-              <div style={{ fontWeight: 'bold' }}>{expense.clientInfo?.name || '—'}</div>
-              {expense.clientInfo?.address && <div>{expense.clientInfo.address}</div>}
-              {expense.clientInfo?.cityStateZip && <div>{expense.clientInfo.cityStateZip}</div>}
-              {expense.clientInfo?.email && <div>{expense.clientInfo.email}</div>}
-            </div>
-            <div style={{ fontSize: '10pt', textAlign: 'right', lineHeight: '1.7' }}>
-              <div><strong>Expense # :</strong>&nbsp; {expense.expenseNumber}</div>
-              <div><strong>Expense Date:</strong>&nbsp; {new Date(expense.expenseDate + 'T12:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-            </div>
-          </div>
-
-          {/* Project */}
-          {expense.projectName && (
-            <div style={{ fontSize: '10pt', marginBottom: '16pt' }}>
-              <strong>Project:</strong> {expense.projectName}
-            </div>
-          )}
-
-          {/* Body — fills available space, pushes footer down */}
-          <div className="expense-page-body">
-          {/* Line items table */}
-          <table className="inv-table">
-            <thead>
-              <tr>
-                <th style={{ width: '72pt' }}>Date</th>
-                <th>Description / Service</th>
-                <th className="right" style={{ width: '44pt' }}>Hours</th>
-                <th className="right" style={{ width: '56pt' }}>Rate</th>
-                <th className="right" style={{ width: '64pt' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expense.lines.map((line, i) => {
-                const svc = SERVICE_TYPES.find(s => s.id === line.serviceType);
-                return (
-                  <tr key={i}>
-                    <td style={{ fontSize: '9.5pt', whiteSpace: 'nowrap' }}>
-                      {line.date ? new Date(line.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : ''}
-                    </td>
-                    <td style={{ fontSize: '9.5pt' }}>
-                      {svc && svc.id !== 'custom' && (
-                        <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>{svc.label}:</div>
-                      )}
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{line.description}</div>
-                    </td>
-                    <td className="right" style={{ fontSize: '9.5pt' }}>
-                      {parseFloat(line.hours || 0).toFixed(2)}
-                    </td>
-                    <td className="right" style={{ fontSize: '9.5pt' }}>{fmt(line.rate)}</td>
-                    <td className="right" style={{ fontSize: '9.5pt', fontWeight: 'bold' }}>{fmt(line.amount)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Notes */}
-          {expense.notes && (
-            <div style={{ marginTop: '14pt', fontSize: '9.5pt', color: '#444', whiteSpace: 'pre-wrap' }}>
-              {expense.notes}
-            </div>
-          )}
-
-          {/* Totals */}
-          <div style={{ marginTop: '20pt', display: 'flex', justifyContent: 'flex-end' }}>
-            <table style={{ fontSize: '10pt', borderCollapse: 'collapse', minWidth: '220pt' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '3px 16px 3px 0', textAlign: 'right' }}><strong>Subtotal:</strong></td>
-                  <td style={{ padding: '3px 0', textAlign: 'right', minWidth: '70pt' }}>{fmt(subtotal)}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '3px 16px 3px 0', textAlign: 'right' }}><strong>Taxes:</strong></td>
-                  <td style={{ padding: '3px 0', textAlign: 'right' }}>{fmt(taxes)}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '6px 16px 3px 0', textAlign: 'right', borderTop: '1px solid #999' }}><strong>Total:</strong></td>
-                  <td style={{ padding: '6px 0 3px 0', textAlign: 'right', borderTop: '1px solid #999', fontWeight: 'bold' }}>{fmt(total)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          </div>{/* end expense-page-body */}
-
-          {/* Footer — always at bottom */}
-          <div className="inv-footer-address">
-            Henderson Design Group . 4343 Royal Place, Honolulu, HI, 96816.<br />
-            Phone: (808) 315-8782 . Fax: . Email: ami@henderson.house
-          </div>
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-medium hover:bg-[#004558]">
+            Back
+          </button>
         </div>
       </div>
-
-      {/* Print instructions modal */}
-      {showInstructions && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 no-print">
-          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
-            <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-5 rounded-t-xl flex justify-between items-center">
-              <h3 className="font-semibold">Print / Save as PDF</h3>
-              <button onClick={() => setShowInstructions(false)}><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-5 space-y-3">
-              {[
-                { n: 1, t: 'Destination', d: 'Select "Save as PDF" or your printer' },
-                { n: 2, t: 'Headers & Footers', d: 'Uncheck to remove browser headers' },
-                { n: 3, t: 'Margins', d: 'Set to "None" or "Minimum"' },
-                { n: 4, t: 'Background Graphics', d: 'Enable for full color output' },
-              ].map(s => (
-                <div key={s.n} className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-[#005670] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{s.n}</div>
-                  <div><p className="font-semibold text-sm text-gray-900">{s.t}</p><p className="text-xs text-gray-500">{s.d}</p></div>
-                </div>
-              ))}
-              <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => setShowInstructions(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm">Cancel</button>
-                <button onClick={doPrint} className="px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                  <Printer className="w-4 h-4" /> Print
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
+
 
 // ─── Expense Editor ──────────────────────────────────────────────────────────
 const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {

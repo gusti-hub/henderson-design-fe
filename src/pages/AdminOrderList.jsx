@@ -230,16 +230,16 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDown
           className="w-52 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden py-1"
         >
           <Group label="View" />
-          <Item icon={Eye}          label="View Order"         onClick={onView}                              color="text-gray-700" />
+          <Item icon={Eye}          label="View Client Summary Order"         onClick={onView}                              color="text-gray-700" />
           <Sep />
           <Group label="Documents" />
           <Item icon={FileText}     label="Proposal Editor"    onClick={onProposal}                          color="text-blue-600" />
           <Item icon={BookOpen}     label="Install Binder"     onClick={onInstallBinder}                     color="text-green-600" />
           <Sep />
-          <Item icon={Download}     label="Summary (Excel)"    onClick={() => onDownload('summary')}         color="text-gray-700" />
+          <Item icon={Download}     label="View Client Summary Order (Excel)"    onClick={() => onDownload('summary')}         color="text-gray-700" />
           <Item icon={TrendingUp}   label="Status Report"      onClick={() => onDownload('status-report')}   color="text-teal-600" />
           <Item icon={BarChart2}    label="COG Report (Excel)" onClick={onCOGExcel}                          color="text-purple-600" />
-          <Item icon={Eye}          label="COG Report (PDF)"   onClick={onCOGPdf}                            color="text-violet-600" />
+          {/* <Item icon={Eye}          label="COG Report (PDF)"   onClick={onCOGPdf}                            color="text-violet-600" /> */}
           <Sep />
           <Item icon={ShoppingCart} label="Purchase Orders"    onClick={onPO}                                color="text-amber-600" />
         </div>,

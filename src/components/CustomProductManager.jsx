@@ -1,11 +1,16 @@
 // components/CustomProductManager.jsx
-// ✅ PATCHED v2:
+// ✅ PATCHED v4:
 //    1. Sales Tax default: 8.75 → 4.5
 //    2. Auto-fill markupPercent dari vendor saat dipilih (via vendor.defaultMarkup)
 //    3. Library item: boleh add item yang sama berkali-kali (berbeda room)
 //       → alreadySelected tidak lagi memblok, hanya info badge
 //    4. Library items isEditable: true — semua field bisa diedit
 //    5. Item Class: tambah option "Custom..." + free-text input jika dipilih
+//    6. Fix isEditable check: undefined dianggap true (default editable)
+//    7. Fix typing issue: localFields state di ProductCard supaya input smooth
+//    8. [NEW] Fix save: localFields di-merge ke product saat save
+//       → productRef tidak reliable untuk localFields karena upd() tidak selalu
+//          sampai ke parent state sebelum save diklik
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -36,7 +41,6 @@ const ITEM_CLASS_OPTIONS = [
   'Custom - soft goods (decorative pillows)','Fabric','Flooring','Lighting',
   'Wall Covering','Window Covering','Construction Scope','Furniture','Labor',
   'Reupholstery','Rugs','Upholstery',
-  // ✅ PATCH 5: sentinel for custom free-text
   '__custom__',
 ];
 
@@ -78,12 +82,12 @@ const defaultSelectedOptions = () => ({
   noNetPurchaseCost: false, discountTaken: '', shippingCost: 0, otherCost: 0,
   markupPercent: 50, shippingMarkupPercent: 50, otherMarkupPercent: 50,
   depositPercent: 90, vendorDepositPercent: 0,
-  salesTaxRate: 4.5, // ✅ PATCH 1
+  salesTaxRate: 4.5,
   taxableCost: true, taxableMarkup: true, taxableShippingCost: true,
   taxableShippingMarkup: true, taxableOtherCost: true, taxableOtherMarkup: true,
 });
 
-// ─── ALLOWED FIELDS WHEN LOCKED (shared constant) ───────────────────────────
+// ─── ALLOWED FIELDS WHEN LOCKED ─────────────────────────────────────────────
 const ALLOWED_WHEN_LOCKED = new Set([
   'quantity', 'vendor', 'unitPrice', 'finalPrice',
   'selectedOptions.shipToVendorId', 'selectedOptions.shipToName',
@@ -91,7 +95,7 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.shippingState', 'selectedOptions.shippingPostalCode',
   'selectedOptions.shippingCountry', 'selectedOptions.shipToPhone',
   'selectedOptions.room', 'selectedOptions.statusCategory',
-  'selectedOptions.shipTo',  // proposalNumber intentionally excluded — read-only
+  'selectedOptions.shipTo',
   'selectedOptions.orderDate', 'selectedOptions.expectedShipDate',
   'selectedOptions.expectedArrivalDate', 'selectedOptions.dateReceived',
   'selectedOptions.dateInspected', 'selectedOptions.estimatedDeliveryDate',
@@ -244,7 +248,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [savedProducts, setSavedProducts] = useState([]);
   const [draftProduct, setDraftProduct] = useState(null);
   const [expandedProduct, setExpandedProduct] = useState(null);
-  // ✅ liveOrder: fresh fetch from API to always have proposalNumber
   const [liveOrder, setLiveOrder] = useState(order);
 
   const [floorPlanFile, setFloorPlanFile] = useState(null);
@@ -266,22 +269,16 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     setConfirmModal(prev => ({ ...prev, isOpen: false, onConfirm: null }));
   };
 
-  // ✅ Fetch fresh order on mount + ensure proposalNumber via backend
-  // Backend generates it deterministically from orderId (1 project = 1 number, unique)
   useEffect(() => {
     const fetchLiveOrder = async () => {
       try {
         const token = localStorage.getItem('token');
-
-        // Step 1: fetch fresh order
         const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) return;
         const fresh = await res.json();
 
-        // Step 2: if no proposalNumber yet, ask backend to generate & persist it
-        // Backend uses orderId-based formula — deterministic, unique, idempotent
         if (!fresh.proposalNumber) {
           try {
             const genRes = await fetch(
@@ -294,7 +291,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             if (genRes.ok) {
               const genData = await genRes.json();
               fresh.proposalNumber = genData.proposalNumber;
-              console.log('[CPM] ✅ proposalNumber:', fresh.proposalNumber);
             }
           } catch (_) {}
         }
@@ -309,9 +305,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
 
   useEffect(() => {
     if (order?.selectedProducts) {
-      console.log('=== useEffect jalan, products count:', order.selectedProducts.length);
-      // ✅ No dedup — library items are allowed to be added multiple times
-      // Each instance has a unique _id from the backend after save
       setSavedProducts(order.selectedProducts);
     }
     if (order?.customFloorPlan) {
@@ -335,8 +328,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       const catalogPrice = product.price || 0;
 
       return {
-        // ✅ PATCH 3: Jangan pakai _id dari catalog sebagai _id product di order
-        // Generate temp ID unik agar item yang sama bisa ditambah berkali-kali
         _id:        `temp_lib_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         product_id: product.product_id || `LIB-${Date.now()}`,
         name:       product.name,
@@ -348,8 +339,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         finalPrice: catalogPrice,
         vendor:     null,
         sourceType: 'library',
-        isEditable: true, // ✅ PATCH 4: library items are now fully editable
-        // Keep a reference to the original catalog _id for display/tracking
+        isEditable: true,
         libraryProductId: product._id,
         selectedOptions: {
           ...defaultSelectedOptions(),
@@ -360,10 +350,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           fabric:                product.fabric       || '',
           others:                product.others       || [],
           size:                  product.dimension    || '',
-          specifications:        product.description  || '',  // client description
-          vendorDescription:     product.vendorDescription || '',  // ✅ NEW
-          links:                 product.itemUrl ? [product.itemUrl] : [],  // ✅ NEW
-          itemClass:             product.itemClass    || '',  // ✅ NEW
+          specifications:        product.description  || '',
+          vendorDescription:     product.vendorDescription || '',
+          links:                 product.itemUrl ? [product.itemUrl] : [],
+          itemClass:             product.itemClass    || '',
           msrp:                  catalogPrice,
           discountPercent:       0,
           netCostOverride:       null,
@@ -376,7 +366,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           otherCost:             0,
           depositPercent:        90,
           vendorDepositPercent:  0,
-          salesTaxRate:          4.5, // ✅ PATCH 1
+          salesTaxRate:          4.5,
           taxableCost:            true,
           taxableMarkup:          true,
           taxableShippingCost:    true,
@@ -405,7 +395,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         finalPrice:      parseFloat(p.finalPrice) || 0,
         vendor:          p.vendor      || null,
         sourceType:      p.sourceType  || 'library',
-        isEditable:      true, // ✅ PATCH 4
+        isEditable:      true,
         libraryProductId: p.libraryProductId || null,
         selectedOptions: p.selectedOptions || {},
         placement:       p.placement   || null,
@@ -423,7 +413,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       }
 
       const savedOrder = await res.json();
-      const finalProducts = savedOrder.selectedProducts || mergedProducts;
+      // ✅ PATCH 6: normalize isEditable saat set dari response backend
+      const finalProducts = (savedOrder.selectedProducts || mergedProducts).map(p => ({
+        ...p,
+        isEditable: p.isEditable !== false,
+      }));
       setSavedProducts(finalProducts);
       if (onSave) onSave(finalProducts);
       addToast(
@@ -439,7 +433,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           headers: { Authorization: `Bearer ${token}` }
         });
         const freshOrder = await freshRes.json();
-        setSavedProducts(freshOrder.selectedProducts || []);
+        // ✅ PATCH 6: normalize juga di rollback
+        setSavedProducts((freshOrder.selectedProducts || []).map(p => ({
+          ...p,
+          isEditable: p.isEditable !== false,
+        })));
       } catch (_) {}
     }
   };
@@ -474,7 +472,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           otherCost:             0,
           depositPercent:        90,
           vendorDepositPercent:  0,
-          salesTaxRate:          4.5, // ✅ PATCH 1
+          salesTaxRate:          4.5,
           taxableCost:            true,
           taxableMarkup:          true,
           taxableShippingCost:    true,
@@ -502,11 +500,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   };
 
   // ─── Update ───────────────────────────────────────────────────────────────
+  // ✅ PATCH 6: isEditable === false (bukan falsy) supaya undefined = editable
   const updateProduct = (index, field, value) => {
     if (index === 'draft') {
       setDraftProduct(prev => {
         if (!prev) return prev;
-        if (!prev.isEditable && !ALLOWED_WHEN_LOCKED.has(field)) return prev;
+        if (prev.isEditable === false && !ALLOWED_WHEN_LOCKED.has(field)) return prev;
         return applyFieldUpdate(prev, field, value);
       });
       return;
@@ -515,7 +514,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       const updated = [...prev];
       const item = updated[index];
       if (!item) return prev;
-      if (!item.isEditable && !ALLOWED_WHEN_LOCKED.has(field)) return prev;
+      if (item.isEditable === false && !ALLOWED_WHEN_LOCKED.has(field)) return prev;
       updated[index] = applyFieldUpdate(item, field, value);
       return updated;
     });
@@ -567,7 +566,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                 finalPrice: parseFloat(p.finalPrice) || 0,
                 vendor: p.vendor || null,
                 sourceType: p.sourceType || 'manual',
-                isEditable: p.isEditable !== undefined ? p.isEditable : true,
+                isEditable: p.isEditable !== false,
                 selectedOptions: p.selectedOptions || {},
                 placement: p.placement || null,
               })),
@@ -582,7 +581,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           }
 
           const savedOrder = await res.json();
-          setSavedProducts(savedOrder.selectedProducts || updatedProducts);
+          // ✅ PATCH 6: normalize di sini juga
+          setSavedProducts((savedOrder.selectedProducts || updatedProducts).map(p => ({
+            ...p,
+            isEditable: p.isEditable !== false,
+          })));
           if (onSave) onSave(savedOrder.selectedProducts || updatedProducts);
           addToast('Product removed successfully', 'success');
         } catch (error) {
@@ -593,7 +596,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               headers: { Authorization: `Bearer ${token}` }
             });
             const freshOrder = await freshRes.json();
-            setSavedProducts(freshOrder.selectedProducts || []);
+            setSavedProducts((freshOrder.selectedProducts || []).map(p => ({
+              ...p,
+              isEditable: p.isEditable !== false,
+            })));
           } catch (_) {}
         }
       },
@@ -843,11 +849,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   onUpdate={updateProduct}
                   onRemove={removeProduct}
                   onSaved={async (newSavedProducts) => {
-                    setSavedProducts(newSavedProducts);
+                    // ✅ PATCH 6: normalize isEditable
+                    setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                     setDraftProduct(null);
                     setExpandedProduct(null);
                     if (onSave) onSave(newSavedProducts);
-                    // ✅ Refresh order to pick up proposalNumber if newly generated
                     try {
                       const token = localStorage.getItem('token');
                       const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
@@ -887,7 +893,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     onUpdate={updateProduct}
                     onRemove={removeProduct}
                     onSaved={(newSavedProducts) => {
-                      setSavedProducts(newSavedProducts);
+                      // ✅ PATCH 6: normalize isEditable
+                      setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                       if (onSave) onSave(newSavedProducts);
                     }}
                     onToast={addToast}
@@ -946,7 +953,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         onCancel={closeConfirm}
       />
 
-      {/* ✅ PATCH 3: alreadySelected dihapus — user boleh add item yang sama berkali-kali */}
       <ProductSelectionModal
         isOpen={showLibraryModal}
         onClose={() => setShowLibraryModal(false)}
@@ -957,20 +963,17 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   );
 };
 
-// ==================== PRODUCT CARD COMPONENT ====================
+// ==================== ITEM CLASS FIELD ====================
 
-// Item Class: custom combobox — pilih dari list atau ketik bebas
 const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef(null);
 
-  // Sync query dengan value dari luar (load dari DB)
   useEffect(() => {
     setQuery(value || '');
   }, [value]);
 
-  // Tutup dropdown saat klik luar
   useEffect(() => {
     const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -1044,7 +1047,6 @@ const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
 
       {open && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-          {/* Custom value badge */}
           {isCustom && (
             <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
               <span className="text-xs text-blue-700 font-medium">
@@ -1059,7 +1061,6 @@ const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
               </button>
             </div>
           )}
-
           <div className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <div className="px-4 py-3 text-sm text-gray-400 text-center">
@@ -1089,6 +1090,7 @@ const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
   );
 };
 
+// ==================== PRODUCT CARD COMPONENT ====================
 
 const ProductCard = ({
   product, index, order, allProducts, expanded,
@@ -1103,15 +1105,59 @@ const ProductCard = ({
   const [saving, setSaving] = useState(false);
   const productRef = useRef(product);
 
+  // ✅ PATCH 7: localFields — typing smooth tanpa re-render dari parent
+  const opts = product.selectedOptions || {};
+
+  const [localFields, setLocalFields] = useState({
+    name:              product.name              || '',
+    product_id:        product.product_id        || '',
+    category:          product.category          || '',
+    specifications:    opts.specifications       || '',
+    vendorDescription: opts.vendorDescription    || '',
+    notes:             opts.notes                || '',
+    finish:            opts.finish               || '',
+    fabric:            opts.fabric               || '',
+    size:              opts.size                 || '',
+    sidemark:          opts.sidemark             || '',
+    group:             opts.group                || '',
+    links0:            opts.links?.[0]           || '',
+    vendorOrderNumber: opts.vendorOrderNumber    || '',
+    poNumber:          opts.poNumber             || '',
+    tags:              Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || ''),
+  });
+
+  // Sync localFields hanya ketika _id berubah (pindah ke product berbeda)
+  // TIDAK sync setiap re-render — ini kuncinya supaya typing smooth
+  useEffect(() => {
+    const o = product.selectedOptions || {};
+    setLocalFields({
+      name:              product.name              || '',
+      product_id:        product.product_id        || '',
+      category:          product.category          || '',
+      specifications:    o.specifications          || '',
+      vendorDescription: o.vendorDescription       || '',
+      notes:             o.notes                   || '',
+      finish:            o.finish                  || '',
+      fabric:            o.fabric                  || '',
+      size:              o.size                    || '',
+      sidemark:          o.sidemark                || '',
+      group:             o.group                   || '',
+      links0:            o.links?.[0]              || '',
+      vendorOrderNumber: o.vendorOrderNumber        || '',
+      poNumber:          o.poNumber                || '',
+      tags:              Array.isArray(o.tags) ? o.tags.join(', ') : (o.tags || ''),
+    });
+    setCustomAttrs(o.customAttributes || {});
+  }, [product._id]);
+
+  const setLocal = (field, value) => {
+    setLocalFields(prev => ({ ...prev, [field]: value }));
+  };
+
   useEffect(() => {
     productRef.current = product;
   }, [product]);
 
-  useEffect(() => {
-    setCustomAttrs(product.selectedOptions?.customAttributes || {});
-  }, [product._id, product.selectedOptions?.customAttributes]);
-
-  const opts = product.selectedOptions || {};
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
 
   const inputCls =
@@ -1142,13 +1188,11 @@ const ProductCard = ({
     quantity:        src.quantity   || 1,
     unitPrice:       parseFloat(src.unitPrice)  || 0,
     finalPrice:      parseFloat(src.finalPrice) || 0,
-    // ✅ Vendor: simpan hanya _id ke DB (bukan full object)
-    // Backward compat: src.vendor bisa berupa string ID atau full object
     vendor: src.vendor
       ? (typeof src.vendor === 'object' ? src.vendor._id : src.vendor)
       : null,
     sourceType:      src.sourceType || 'manual',
-    isEditable:      src.isEditable !== undefined ? src.isEditable : true,
+    isEditable:      src.isEditable !== false,
     libraryProductId: src.libraryProductId || null,
     selectedOptions: {
       finish:                src.selectedOptions?.finish                || '',
@@ -1238,9 +1282,34 @@ const ProductCard = ({
   };
 
   const handleSaveProduct = async () => {
-    const currentProduct = productRef.current;
+    // ✅ PATCH 8: merge localFields ke productRef.current sebelum save
+    // productRef tidak reliable untuk field2 yang dikontrol localFields
+    // karena upd() → setSavedProducts() di parent bisa belum selesai saat save diklik
+    const mergedProduct = {
+      ...productRef.current,
+      name:       localFields.name,
+      product_id: localFields.product_id,
+      category:   localFields.category,
+      selectedOptions: {
+        ...productRef.current.selectedOptions,
+        specifications:    localFields.specifications,
+        vendorDescription: localFields.vendorDescription,
+        notes:             localFields.notes,
+        finish:            localFields.finish,
+        fabric:            localFields.fabric,
+        size:              localFields.size,
+        sidemark:          localFields.sidemark,
+        group:             localFields.group,
+        vendorOrderNumber: localFields.vendorOrderNumber,
+        poNumber:          localFields.poNumber,
+        tags:              localFields.tags.split(',').map(t => t.trim()).filter(Boolean),
+        links: localFields.links0
+          ? [localFields.links0, ...(productRef.current.selectedOptions?.links?.slice(1) || [])]
+          : (productRef.current.selectedOptions?.links?.slice(1) || []),
+      },
+    };
 
-    if (!currentProduct.name?.trim()) {
+    if (!mergedProduct.name?.trim()) {
       onToast('Product must have a Name!', 'error');
       return;
     }
@@ -1253,13 +1322,14 @@ const ProductCard = ({
       let updatedProducts;
 
       if (isCreate) {
-        const { _id, ...cleanProduct } = currentProduct;
+        const { _id, ...cleanProduct } = mergedProduct;
         updatedProducts = [
           ...allProducts.map(buildProductPayload),
           buildProductPayload(cleanProduct),
         ];
       } else {
-        const productToSave = allProducts[index];
+        // ✅ PATCH 8: pakai mergedProduct, bukan allProducts[index]
+        const productToSave = mergedProduct;
         if (!productToSave) throw new Error('Product not found — please refresh the page.');
 
         const freshRes = await fetch(`${backendServer}/api/orders/${order._id}`, {
@@ -1299,16 +1369,11 @@ const ProductCard = ({
   };
 
   // ✅ PATCH 2: auto-fill markupPercent dari vendor
-  // Cek semua kemungkinan nama field — sesuaikan dengan schema vendor di DB
   const handleVendorSelect = (vendor) => {
     onUpdate(index, 'vendor', vendor);
 
     if (!vendor) return;
 
-    // Debug: log vendor object supaya bisa lihat field yang tersedia
-    console.log('[handleVendorSelect] vendor object:', JSON.stringify(vendor, null, 2));
-
-    // Cek semua kemungkinan nama field markup dari vendor
     const markup =
       vendor.defaultMarkup     ??
       vendor.markupPercent     ??
@@ -1320,11 +1385,8 @@ const ProductCard = ({
     if (markup != null && markup !== '') {
       const markupNum = parseFloat(markup);
       if (!isNaN(markupNum)) {
-        console.log('[handleVendorSelect] applying markupPercent:', markupNum);
         upd('markupPercent', markupNum);
       }
-    } else {
-      console.warn('[handleVendorSelect] No markup field found on vendor. Available keys:', Object.keys(vendor));
     }
   };
 
@@ -1487,8 +1549,14 @@ const ProductCard = ({
                 <h3 className="text-base font-bold text-gray-900">General Information</h3>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
-                  <input type="text" value={product.name} onChange={(e) => onUpdate(index, 'name', e.target.value)}
-                    className={inputCls} placeholder="e.g. Living Room - Sofa Pillow" />
+                  {/* ✅ PATCH 7: pakai localFields.name */}
+                  <input
+                    type="text"
+                    value={localFields.name}
+                    onChange={(e) => { setLocal('name', e.target.value); onUpdate(index, 'name', e.target.value); }}
+                    className={inputCls}
+                    placeholder="e.g. Living Room - Sofa Pillow"
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
@@ -1500,19 +1568,31 @@ const ProductCard = ({
                   </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags</label>
-                    <input type="text" value={Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || '')}
-                      onChange={(e) => upd('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
-                      className={inputCls} placeholder="tag1, tag2" />
+                    {/* ✅ PATCH 7: pakai localFields.tags */}
+                    <input
+                      type="text"
+                      value={localFields.tags}
+                      onChange={(e) => {
+                        setLocal('tags', e.target.value);
+                        upd('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean));
+                      }}
+                      className={inputCls}
+                      placeholder="tag1, tag2"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Group</label>
-                    <input type="text" value={opts.group || ''} onChange={(e) => upd('group', e.target.value)}
-                      className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.group */}
+                    <input
+                      type="text"
+                      value={localFields.group}
+                      onChange={(e) => { setLocal('group', e.target.value); upd('group', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                   <div>
-                    {/* ✅ PATCH 5: Custom Item Class */}
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Class</label>
                     <ItemClassField
                       value={opts.itemClass || ''}
@@ -1526,11 +1606,17 @@ const ProductCard = ({
                       <span>Sidemark</span>
                       <button type="button" onClick={() => {
                         const defaultSidemark = `Henderson Design Group / ${order?.clientInfo?.name || ''} / ${product.name || ''}`.replace(/\s*\/\s*\/\s*/g, ' / ').trim();
+                        setLocal('sidemark', defaultSidemark); // ✅ sync local juga
                         upd('sidemark', defaultSidemark);
                       }} className="text-xs text-blue-600 hover:underline font-normal">Set Default</button>
                     </label>
-                    <input type="text" value={opts.sidemark || ''} onChange={(e) => upd('sidemark', e.target.value)}
-                      className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.sidemark */}
+                    <input
+                      type="text"
+                      value={localFields.sidemark}
+                      onChange={(e) => { setLocal('sidemark', e.target.value); upd('sidemark', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
               </div>
@@ -1543,7 +1629,6 @@ const ProductCard = ({
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor</label>
-                    {/* ✅ PATCH 2: handleVendorSelect auto-fills markup */}
                     <VendorSearchDropdown
                       selectedVendor={product.vendor}
                       onSelectVendor={handleVendorSelect}
@@ -1552,45 +1637,88 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">SKU / Item #</label>
-                    <input type="text" value={product.product_id} onChange={(e) => onUpdate(index, 'product_id', e.target.value)}
-                      className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.product_id */}
+                    <input
+                      type="text"
+                      value={localFields.product_id}
+                      onChange={(e) => { setLocal('product_id', e.target.value); onUpdate(index, 'product_id', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor Order Number</label>
-                    <input type="text" value={opts.vendorOrderNumber || ''} onChange={(e) => upd('vendorOrderNumber', e.target.value)} className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.vendorOrderNumber */}
+                    <input
+                      type="text"
+                      value={localFields.vendorOrderNumber}
+                      onChange={(e) => { setLocal('vendorOrderNumber', e.target.value); upd('vendorOrderNumber', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
-                    <textarea value={opts.specifications || ''} onChange={(e) => upd('specifications', e.target.value)}
-                      className={`${inputCls} resize-none`} rows={5} />
+                    {/* ✅ PATCH 7: pakai localFields.specifications */}
+                    <textarea
+                      value={localFields.specifications}
+                      onChange={(e) => { setLocal('specifications', e.target.value); upd('specifications', e.target.value); }}
+                      className={`${inputCls} resize-none`}
+                      rows={5}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
                       <span>Vendor Description</span>
-                      <button type="button" onClick={() => upd('vendorDescription', opts.specifications || '')}
-                        className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
+                      {/* ✅ PATCH 7: copy dari localFields, bukan opts */}
+                      <button type="button" onClick={() => {
+                        setLocal('vendorDescription', localFields.specifications);
+                        upd('vendorDescription', localFields.specifications);
+                      }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
                     </label>
-                    <textarea value={opts.vendorDescription || ''} onChange={(e) => upd('vendorDescription', e.target.value)}
-                      className={`${inputCls} resize-none`} rows={5} />
+                    {/* ✅ PATCH 7: pakai localFields.vendorDescription */}
+                    <textarea
+                      value={localFields.vendorDescription}
+                      onChange={(e) => { setLocal('vendorDescription', e.target.value); upd('vendorDescription', e.target.value); }}
+                      className={`${inputCls} resize-none`}
+                      rows={5}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Color / Finish</label>
-                    <input type="text" value={opts.finish || ''} onChange={(e) => upd('finish', e.target.value)} className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.finish */}
+                    <input
+                      type="text"
+                      value={localFields.finish}
+                      onChange={(e) => { setLocal('finish', e.target.value); upd('finish', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Dimensions</label>
-                    <input type="text" value={opts.size || ''} onChange={(e) => upd('size', e.target.value)} className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.size */}
+                    <input
+                      type="text"
+                      value={localFields.size}
+                      onChange={(e) => { setLocal('size', e.target.value); upd('size', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item URL</label>
-                    <input type="text" value={opts.links?.[0] || ''} onChange={(e) => {
-                      const rest = opts.links?.slice(1) || [];
-                      upd('links', e.target.value ? [e.target.value, ...rest] : rest);
-                    }} className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.links0 */}
+                    <input
+                      type="text"
+                      value={localFields.links0}
+                      onChange={(e) => {
+                        setLocal('links0', e.target.value);
+                        const rest = opts.links?.slice(1) || [];
+                        upd('links', e.target.value ? [e.target.value, ...rest] : rest);
+                      }}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1603,12 +1731,24 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Fabric</label>
-                    <input type="text" value={opts.fabric || ''} onChange={(e) => upd('fabric', e.target.value)} className={inputCls} />
+                    {/* ✅ PATCH 7: pakai localFields.fabric */}
+                    <input
+                      type="text"
+                      value={localFields.fabric}
+                      onChange={(e) => { setLocal('fabric', e.target.value); upd('fabric', e.target.value); }}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category / Location</label>
-                  <input type="text" value={product.category} onChange={(e) => onUpdate(index, 'category', e.target.value)} className={inputCls} />
+                  {/* ✅ PATCH 7: pakai localFields.category */}
+                  <input
+                    type="text"
+                    value={localFields.category}
+                    onChange={(e) => { setLocal('category', e.target.value); onUpdate(index, 'category', e.target.value); }}
+                    className={inputCls}
+                  />
                 </div>
 
                 <div className="space-y-3 pt-3 border-t border-gray-100">
@@ -1706,12 +1846,24 @@ const ProductCard = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Purchase Order (PO #)</label>
-                    <input type="text" value={opts.poNumber || ''} onChange={(e) => upd('poNumber', e.target.value)} className={inputCls} placeholder="Tim-2289995" />
+                    {/* ✅ PATCH 7: pakai localFields.poNumber */}
+                    <input
+                      type="text"
+                      value={localFields.poNumber}
+                      onChange={(e) => { setLocal('poNumber', e.target.value); upd('poNumber', e.target.value); }}
+                      className={inputCls}
+                      placeholder="Tim-2289995"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
-                    <textarea value={opts.notes || ''} onChange={(e) => upd('notes', e.target.value)}
-                      className={`${inputCls} resize-none`} rows={3} />
+                    {/* ✅ PATCH 7: pakai localFields.notes */}
+                    <textarea
+                      value={localFields.notes}
+                      onChange={(e) => { setLocal('notes', e.target.value); upd('notes', e.target.value); }}
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                    />
                   </div>
                 </div>
               </div>
@@ -1721,12 +1873,10 @@ const ProductCard = ({
             {activeTab === 'status' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 className="text-base font-bold text-gray-900 mb-5">Status</h3>
-
                 <StatusReportFields
                   product={product}
                   index={index}
                   onUpdate={(idx, field, value) => {
-                    // proposalNumber is always blocked — it's auto-generated
                     if (field === 'selectedOptions.proposalNumber') return;
                     onUpdate(idx, field, value);
                   }}

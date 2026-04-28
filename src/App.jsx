@@ -1,8 +1,7 @@
-// App.js - FIXED VERSION
+// App.jsx - CLEAN VERSION
 import React from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
-// Import your components
 import BrochureLandingPage from './pages/BrochureLandingPage';
 import PortalLogin from './components/PortalLogin';
 import ClientPortal from './components/ClientPortal';
@@ -12,126 +11,50 @@ import QuickBooksConnect from './components/QuickBooksConnect';
 import AgreementViewer from './components/AgreementViewer';
 import ProposalEditor from './components/ProposalEditor';
 import AdminInstallBinder from './pages/AdminInstallBinder';
-import PurchaseOrderEditor from './components/PurchaseOrderEditor';
 import PurchaseOrderPage from './pages/PurchaseOrderPage';
-import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
+import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute'; // ← pakai ini
 
-// ✅ Protected Route untuk Client
-const ClientProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
-  
-  if (!token) {
-    return <Navigate to="/portal-login" replace />;
-  }
-  
-  if (role !== 'user') {
-    return <Navigate to="/portal-login" replace />;
-  }
-  
-  return children;
-};
+// ─── Hapus ClientProtectedRoute & AdminProtectedRoute yang lama ───────────────
 
-// ✅ Protected Route untuk Admin/Designer
-const AdminProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
-  
-  if (!token) {
-    return <Navigate to="/portal-login" replace />;
-  }
-  
-  if (role !== 'admin' && role !== 'designer') {
-    return <Navigate to="/portal-login" replace />;
-  }
-  
-  return children;
-};
-
-// ✅ NEW: Wrapper component untuk ProposalEditor
 const ProposalEditorWrapper = () => {
   const { orderId, version } = useParams();
-  
   return (
-    <AdminProtectedRoute>
-      <ProposalEditor 
-        orderId={orderId}
-        version={version}
-        onClose={() => window.close()}
-      />
-    </AdminProtectedRoute>
+    <ProtectedRoute allowedRoles={['admin', 'designer']} element={
+      <ProposalEditor orderId={orderId} version={version} onClose={() => window.close()} />
+    } />
   );
 };
 
 function App() {
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/" element={<BrochureLandingPage />} />
-      <Route
-        path="/portal-login"
-        element={<PublicRoute element={<PortalLogin />} />}
-      />
-      
-      {/* Backward compatibility */}
+
+      <Route path="/portal-login" element={<PublicRoute element={<PortalLogin />} />} />
       <Route path="/designer-login" element={<Navigate to="/portal-login" replace />} />
-      
-      {/* Protected Client Route */}
-      <Route 
-        path="/client-portal" 
-        element={
-          <ClientProtectedRoute>
-            <ClientPortal />
-          </ClientProtectedRoute>
-        } 
-      />
-      
-      {/* Protected Admin Route */}
-      <Route 
-        path="/admin-panel" 
-        element={
-          <AdminProtectedRoute>
-            <AdminPanel />
-          </AdminProtectedRoute>
-        } 
-      />
-      
-      {/* Invoice Route */}
-      <Route 
-        path="/invoice/:clientId/:invoiceNumber" 
-        element={<InvoiceHTML />} 
-      />
-      
-      {/* ✅ FIXED: Proposal Editor Route */}
-      <Route 
-        path="/admin/proposal/:orderId/:version?" 
-        element={<ProposalEditorWrapper />}
-      />
 
-      {/* QuickBooks Route */}
-      <Route 
-        path="/admin/quickbooks" 
-        element={
-          <AdminProtectedRoute>
-            <QuickBooksConnect />
-          </AdminProtectedRoute>
-        } 
-      />
-      
-      {/* Agreement Route */}
-      <Route 
-        path="/agreement/:clientId/:agreementNumber" 
-        element={<AgreementViewer />} 
-      />
-      
+      <Route path="/client-portal" element={
+        <ProtectedRoute element={<ClientPortal />} allowedRoles={['user']} />
+      } />
+
+      <Route path="/admin-panel" element={
+        <ProtectedRoute element={<AdminPanel />} allowedRoles={['admin', 'designer']} />
+      } />
+
+      <Route path="/invoice/:clientId/:invoiceNumber" element={<InvoiceHTML />} />
+
+      <Route path="/admin/proposal/:orderId/:version?" element={<ProposalEditorWrapper />} />
+
+      <Route path="/admin/quickbooks" element={
+        <ProtectedRoute element={<QuickBooksConnect />} allowedRoles={['admin', 'designer']} />
+      } />
+
+      <Route path="/agreement/:clientId/:agreementNumber" element={<AgreementViewer />} />
       <Route path="/admin/install-binder/:orderId" element={<AdminInstallBinder />} />
-      
-      {/* Catch all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-
       <Route path="/admin/purchase-order/:orderId/:vendorId/:version?" element={<PurchaseOrderPage />} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    
   );
 }
 
