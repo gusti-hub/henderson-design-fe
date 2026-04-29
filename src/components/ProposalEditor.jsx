@@ -1,535 +1,676 @@
 // components/ProposalEditor.jsx
-import React, { useState, useEffect } from 'react';
+//
+// STRATEGY:
+// 1. Render ALL products in a hidden off-screen div at exact print width
+// 2. After 300ms (images + fonts settled), read each row's real height
+// 3. Bin-pack rows into 8.5×11in pages — room header always with its first row
+// 4. Each final page is exactly 8.5×11in with footer pinned at bottom
+// 5. Web view = PDF view (identical fixed pages)
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Clock, Printer, ChevronLeft } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
-const FooterContent = () => (
-  <>
-    <p>Henderson Design Group 4343 Royal Place, Honolulu, HI, (808) 315-8782</p>
-    <p>Phone: (808) 315-8782</p>
-  </>
+// ── Constants ────────────────────────────────────────────────────────────────
+const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
+const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
+const resolveFinish = c => { if (!c) return ''; const u = c.trim().toUpperCase(); return FINISH_LABELS[u] || c; };
+
+// Page geometry at 96dpi
+const PAGE_W_IN  = 8.5;
+const PAGE_H_IN  = 11;
+const PAD_IN     = 0.5;   // top/left/right padding inside page
+const FOOT_IN    = 0.85;  // bottom reserved for footer
+const SAFE_PX    = 24;    // extra safety buffer
+
+const PX         = 96;
+const CONTENT_H  = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX; // ≈ 840px usable
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const getImgSrc = p => {
+  const o = p.selectedOptions || {};
+  return [o?.uploadedImages?.[0]?.url, o?.image, o?.images?.[0], p.image, p.imageUrl]
+    .find(s => s && typeof s === 'string' && s.trim()) || null;
+};
+
+const preloadImages = urls =>
+  Promise.all(urls.map(url => new Promise(res => {
+    const img = new window.Image();
+    img.onload = img.onerror = res;
+    img.src = url;
+  })));
+
+// ── Footer (absolute bottom of every page) ───────────────────────────────────
+const PageFooter = () => (
+  <div style={{
+    position: 'absolute',
+    bottom: '0.28in',
+    left: `${PAD_IN}in`, right: `${PAD_IN}in`,
+    borderTop: '1px solid #d1d5db',
+    paddingTop: '5px',
+    textAlign: 'center',
+    fontSize: '9px',
+    color: 'rgb(0,86,112)',
+    lineHeight: '1.5',
+    background: 'white',
+  }}>
+    <p style={{ margin: 0 }}>Henderson Design Group 4343 Royal Place, Honolulu, HI, 96816</p>
+    <p style={{ margin: 0 }}>Phone: (808) 315-8782</p>
+  </div>
 );
 
-const ProposalEditor = ({ orderId, version, onClose, mode = 'edit' }) => {
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
-  const [proposalData, setProposalData] = useState(null);
-  const [products, setProducts]     = useState([]);
-  const [clientInfo, setClientInfo] = useState({});
-  const [proposalNumber, setProposalNumber] = useState(null);
-  const [showVersionModal, setShowVersionModal]       = useState(false);
-  const [versionNotes, setVersionNotes]               = useState('');
-  const [showPrintInstructions, setShowPrintInstructions] = useState(false);
-  const [originalTitle] = useState(document.title);
+// ── ProductRow ───────────────────────────────────────────────────────────────
+const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
+  const o = product.selectedOptions || {};
+  const imgSrc = getImgSrc(product);
+  const qty = product.quantity || 1;
+  const net = o.netCostOverride != null
+    ? parseFloat(o.netCostOverride)
+    : (parseFloat(o.msrp) || 0) * (1 - (parseFloat(o.discountPercent) || 0) / 100);
+  const sell = net * (1 + (parseFloat(o.markupPercent) || 0) / 100);
+  const sub  = sell * qty;
+  const taxRate = parseFloat(o.salesTaxRate) || 0;
+  const tax  = taxRate > 0 ? sub * (taxRate / 100) : 0;
+  const total = sub + tax;
+  const bt = isFirst ? 'none' : '1px solid #e5e7eb';
+  const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
 
+  return (
+    <tr ref={ref}>
+      <td style={{ ...tdBase, width: '76px', padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+        {imgSrc
+          ? <img src={imgSrc} alt={product.name} style={{ width: '64px', height: '64px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
+          : <div style={{ width: '64px', height: '64px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#9ca3af', margin: '0 auto' }}>No Image</div>
+        }
+      </td>
+      <td style={{ ...tdBase, padding: '6px 8px', fontSize: '9.5px', lineHeight: '1.5', textAlign: 'left', verticalAlign: 'top' }}>
+        <div style={{ fontWeight: '600', marginBottom: '2px', fontSize: '10px' }}>{product.name || 'Untitled'}</div>
+        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
+        {o.finish    && <div><strong>Finish:</strong> {resolveFinish(o.finish)}</div>}
+        {o.fabric    && <div><strong>Fabric:</strong> {o.fabric}</div>}
+        {o.size      && <div><strong>Size:</strong> {o.size}</div>}
+        {o.itemClass && <div><strong>Class:</strong> {o.itemClass}</div>}
+        {o.sidemark  && <div><strong>Sidemark:</strong> {o.sidemark}</div>}
+      </td>
+      <td style={{ ...tdBase, width: '140px', padding: '6px 4px', fontSize: '9.5px', textAlign: 'right', verticalAlign: 'top' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Unit:</span><span>${sell.toFixed(2)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Subtotal:</span><span>${sub.toFixed(2)}</span></div>
+        {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Tax ({taxRate}%):</span><span>${tax.toFixed(2)}</span></div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid #d1d5db', paddingTop: '2px', marginTop: '2px' }}>
+          <span>Total:</span><span>${total.toFixed(2)}</span>
+        </div>
+      </td>
+    </tr>
+  );
+});
+ProductRow.displayName = 'ProductRow';
+
+// ── RoomTable (used in both measure pass and final render) ───────────────────
+const RoomTable = ({ room, rows }) => (
+  <div style={{ marginBottom: '10px' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed',
+      borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
+      <colgroup>
+        <col style={{ width: '76px' }} /><col /><col style={{ width: '140px' }} />
+      </colgroup>
+      <thead>
+        <tr>
+          <th colSpan={3} style={{
+            background: '#f0f0f0', padding: '5px 7px', textAlign: 'center',
+            fontWeight: '600', fontSize: '10.5px',
+            borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #ccc',
+          }}>
+            {room}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ product, isFirst }, i) => (
+          <ProductRow key={i} product={product} isFirst={i === 0} />
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// ── Render items → grouped RoomTables ────────────────────────────────────────
+const renderItems = items => {
+  const sections = []; let cur = null;
+  items.forEach(item => {
+    if (item.type === 'room-header') {
+      if (cur) sections.push(cur);
+      cur = { room: item.room, rows: [] };
+    } else {
+      if (!cur) cur = { room: item.room, rows: [] };
+      cur.rows.push({ product: item.product, isFirst: item.isFirst });
+    }
+  });
+  if (cur) sections.push(cur);
+  return sections.map(({ room, rows }) => <RoomTable key={room} room={room} rows={rows} />);
+};
+
+// ── VersionModal ─────────────────────────────────────────────────────────────
+const VersionModal = ({ orderId, isOpen, onClose, onSelectVersion, versionNotes, setVersionNotes, onSaveNewVersion, saving }) => {
+  const [versions, setVersions] = useState([]);
+  const [lv, setLv] = useState(true);
+  useEffect(() => { if (isOpen === true) load(); }, [isOpen]);
+  const load = async () => {
+    try {
+      const t = localStorage.getItem('token');
+      const r = await (await fetch(`${backendServer}/api/proposals/${orderId}/versions/all`, { headers: { Authorization: `Bearer ${t}` } })).json();
+      if (r.success) setVersions(r.data);
+    } catch (e) { console.error(e); } finally { setLv(false); }
+  };
+  if (!isOpen) return null;
+  if (isOpen === 'new') return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
+        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
+          <h3 className="text-xl font-bold">Save as New Version</h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Version Notes <span className="text-red-500">*</span></label>
+          <textarea value={versionNotes} onChange={e => setVersionNotes(e.target.value)} placeholder="Describe the changes..." className="w-full p-3 border border-gray-300 rounded-lg" rows={4} />
+          <div className="flex justify-end gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={onSaveNewVersion} disabled={saving || !versionNotes.trim()} className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">{saving ? 'Saving...' : 'Save as New Version'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
+        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
+          <div><h3 className="text-xl font-bold">Version History</h3><p className="text-sm text-white/80 mt-1">View and manage all proposal versions</p></div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="overflow-auto max-h-[calc(80vh-88px)]">
+          {lv ? <div className="p-12 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto" /></div>
+            : versions.length === 0 ? <div className="p-12 text-center text-gray-500">No versions found</div>
+              : <div className="divide-y">{versions.map(v => (
+                <div key={v._id} className="p-6 hover:bg-gray-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Version {v.version}</span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${v.status === 'draft' ? 'bg-gray-100 text-gray-700' : v.status === 'sent' ? 'bg-blue-100 text-blue-700' : v.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.status.charAt(0).toUpperCase() + v.status.slice(1)}</span>
+                      </div>
+                      <p className="text-gray-700 mb-2">{v.notes}</p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>Created: {new Date(v.createdAt).toLocaleDateString()} by {v.createdBy?.name || 'Unknown'}</span>
+                        {v.updatedAt && v.updatedAt !== v.createdAt && <span>Updated: {new Date(v.updatedAt).toLocaleDateString()}</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => onSelectVersion(v.version)} className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap">View/Edit</button>
+                  </div>
+                </div>
+              ))}</div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+const ProposalEditor = ({ orderId, version, onClose }) => {
+  const [loading, setLoading]           = useState(true);
+  const [saving, setSaving]             = useState(false);
+  const [proposalData, setProposalData] = useState(null);
+  const [products, setProducts]         = useState([]);
+  const [clientInfo, setClientInfo]     = useState({});
+  const [proposalNumber, setProposalNumber]               = useState(null);
+  const [showVersionModal, setShowVersionModal]           = useState(false);
+  const [versionNotes, setVersionNotes]                   = useState('');
+  const [showPrintInstructions, setShowPrintInstructions] = useState(false);
+  const [originalTitle]                                   = useState(document.title);
+
+  // pages = null → measuring; array → done
+  const [pages, setPages]   = useState(null);
+  const [ready, setReady]   = useState(false);
+
+  // Measure refs
+  const measureRef  = useRef(null);
+  const headerRef   = useRef(null);
+  const rowRefs     = useRef({});
+  const roomHdRefs  = useRef({});
+  const didPaginate = useRef(false);
+
+  // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => { loadProposalData(); }, [orderId, version]);
 
   useEffect(() => {
     if (proposalData && clientInfo.name) {
-      const clientName = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
-      const unitNumber = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      const versionNum = proposalData.version || 1;
-      const date = new Date().toISOString().split('T')[0];
-      document.title = `Proposal_${clientName}${unitNumber ? '_' + unitNumber : ''}_v${versionNum}_${date}`;
+      const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
+      const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
+      document.title = `Proposal_${cn}${un ? '_' + un : ''}_v${proposalData.version || 1}_${new Date().toISOString().split('T')[0]}`;
     }
     return () => { document.title = originalTitle; };
   }, [proposalData, clientInfo, originalTitle]);
 
   const loadProposalData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const versionParam = version || 'latest';
-      const response = await fetch(
-        `${backendServer}/api/proposals/${orderId}/${versionParam}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const result = await response.json();
-      if (result.success) {
-        setProposalData(result.data);
-        const sorted = (result.data.selectedProducts || []).slice().sort((a, b) => {
-          const roomA = (a.selectedOptions?.room || a.spotName || '').toLowerCase();
-          const roomB = (b.selectedOptions?.room || b.spotName || '').toLowerCase();
-          return roomA.localeCompare(roomB);
+      const t = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/${version || 'latest'}`, { headers: { Authorization: `Bearer ${t}` } });
+      const r = await res.json();
+      if (r.success) {
+        setProposalData(r.data);
+        setProducts(r.data.selectedProducts || []);
+        const u = r.data.user || {};
+        const addr = u.address || {};
+        const parts = [addr.street, addr.city, addr.state, addr.zipcode, addr.country].filter(p => p && p.trim());
+        setClientInfo({
+          ...(r.data.clientInfo || {}),
+          email: r.data.clientInfo?.email || u.email || '',
+          address: parts.join(', '),
         });
-        setProducts(sorted);
-        setClientInfo(result.data.clientInfo || {});
-        setProposalNumber(result.data.proposalNumber || null);
+        setProposalNumber(r.data.proposalNumber || null);
       }
-    } catch (error) {
-      console.error('Error loading proposal:', error);
-      alert('Failed to load proposal data');
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); alert('Failed to load proposal data'); }
+    finally { setLoading(false); }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${backendServer}/api/proposals/${orderId}`,
-        {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            version: proposalData.version,
-            products,
-            clientInfo,
-            notes: versionNotes || 'Updated proposal'
-          })
-        }
-      );
-      const result = await response.json();
-      if (result.success) {
-        if (result.proposalNumber) setProposalNumber(result.proposalNumber);
-        alert('✅ Proposal saved successfully');
-      }
-    } catch (error) {
-      console.error('Error saving:', error);
-      alert('Failed to save proposal');
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Reset pagination when products change
+  useEffect(() => {
+    if (products.length === 0) { setPages([[]]); setReady(true); return; }
+    didPaginate.current = false;
+    rowRefs.current = {};
+    roomHdRefs.current = {};
+    setPages(null);
+    setReady(false);
+  }, [products]);
 
   const handleSaveAsNewVersion = async () => {
     if (!versionNotes.trim()) { alert('Please add notes for this new version'); return; }
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${backendServer}/api/proposals/${orderId}/new-version`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ products, clientInfo, notes: versionNotes })
-        }
-      );
-      const result = await response.json();
-      if (result.success) {
-        if (result.proposalNumber) setProposalNumber(result.proposalNumber);
-        setProposalData(prev => ({ ...prev, version: result.data.version }));
-        alert(`✅ Version ${result.data.version} created successfully`);
-        setShowVersionModal(false);
-        setVersionNotes('');
-        loadProposalData();
+      const t = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
+        method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products, clientInfo, notes: versionNotes })
+      });
+      const r = await res.json();
+      if (r.success) {
+        if (r.proposalNumber) setProposalNumber(r.proposalNumber);
+        setProposalData(prev => ({ ...prev, version: r.data.version }));
+        alert(`✅ Version ${r.data.version} created successfully`);
+        setShowVersionModal(false); setVersionNotes(''); loadProposalData();
       }
-    } catch (error) {
-      console.error('Error creating version:', error);
-      alert('Failed to create new version');
-    } finally {
-      setSaving(false);
-    }
+    } catch (e) { console.error(e); alert('Failed to create new version'); }
+    finally { setSaving(false); }
   };
 
-  const calculateTotals = () => {
-    let subtotal = 0;
-    let salesTaxTotal = 0;
+  const calcTotals = () => {
+    let sub = 0, taxT = 0;
     products.forEach(p => {
-      const opts     = p.selectedOptions || {};
-      const qty      = p.quantity || 1;
-      const msrp     = parseFloat(opts.msrp) || 0;
-      const discount = parseFloat(opts.discountPercent) || 0;
-      const netCost  = opts.netCostOverride != null ? parseFloat(opts.netCostOverride) : msrp * (1 - discount / 100);
-      const markup   = parseFloat(opts.markupPercent) || 0;
-      const unitSell = netCost * (1 + markup / 100);
-      const lineSub  = unitSell * qty;
-      const taxRate  = parseFloat(opts.salesTaxRate) || 0;
-      subtotal      += lineSub;
-      salesTaxTotal += taxRate > 0 ? lineSub * (taxRate / 100) : 0;
+      const o = p.selectedOptions || {}, qty = p.quantity || 1;
+      const net = o.netCostOverride != null ? parseFloat(o.netCostOverride) : (parseFloat(o.msrp) || 0) * (1 - (parseFloat(o.discountPercent) || 0) / 100);
+      const sell = net * (1 + (parseFloat(o.markupPercent) || 0) / 100);
+      const line = sell * qty, tax = parseFloat(o.salesTaxRate) || 0;
+      sub += line; taxT += tax > 0 ? line * (tax / 100) : 0;
     });
-    const total   = subtotal + salesTaxTotal;
-    const deposit = total * 0.9;
-    return { subtotal, salesTax: salesTaxTotal, total, deposit };
+    const total = sub + taxT;
+    return { subtotal: sub, salesTax: taxT, total, deposit: total * 0.9 };
   };
+
+  const buildRoomGroups = useCallback(() => {
+    const map = new Map();
+    products.forEach(p => {
+      const room = p.selectedOptions?.room?.trim() || '-';
+      if (!map.has(room)) map.set(room, []);
+      map.get(room).push(p);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => {
+      if (a === '-') return 1; if (b === '-') return -1; return a.localeCompare(b);
+    });
+  }, [products]);
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  const paginate = useCallback(() => {
+    if (didPaginate.current) return;
+    didPaginate.current = true;
+
+    const rg = buildRoomGroups();
+    const headerH = headerRef.current?.getBoundingClientRect().height || 195;
+
+    // Flatten into items with measured heights
+    const items = [];
+    rg.forEach(([room, rps]) => {
+      const rhH = roomHdRefs.current[room]?.getBoundingClientRect().height || 26;
+      items.push({ type: 'room-header', room, height: rhH });
+      rps.forEach((p, i) => {
+        const el = rowRefs.current[`${room}__${i}`];
+        const h  = el ? el.getBoundingClientRect().height : 82;
+        items.push({ type: 'product', room, product: p, isFirst: i === 0, height: h });
+      });
+    });
+
+    // Bin-pack: room header always with first product row (no orphan)
+    const result = [];
+    let cur = [], used = headerH;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type === 'room-header') {
+        const nextH = items[i + 1]?.height || 0;
+        if (used + item.height + nextH > CONTENT_H && cur.length > 0) {
+          result.push(cur); cur = []; used = 0;
+        }
+        cur.push(item); used += item.height;
+      } else {
+        if (used + item.height > CONTENT_H && cur.length > 0) {
+          result.push(cur); cur = []; used = 0;
+        }
+        cur.push(item); used += item.height;
+      }
+    }
+    if (cur.length > 0) result.push(cur);
+    if (result.length === 0) result.push([]);
+
+    setPages(result);
+    setReady(true);
+  }, [buildRoomGroups]);
+
+  // Trigger: preload images → 300ms settle → paginate
+  useEffect(() => {
+    if (pages !== null || products.length === 0) return;
+    const urls = products.map(getImgSrc).filter(Boolean);
+    preloadImages(urls).then(() => {
+      setTimeout(() => paginate(), 300);
+    });
+  }, [pages, products, paginate]);
 
   const doPrint = () => {
     setShowPrintInstructions(false);
     if (proposalData && clientInfo.name) {
-      const clientName = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
-      const unitNumber = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      const versionNum = proposalData.version || 1;
-      const date = new Date().toISOString().split('T')[0];
-      document.title = `Proposal_${clientName}${unitNumber ? '_' + unitNumber : ''}_v${versionNum}_${date}`;
+      const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
+      const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
+      document.title = `Proposal_${cn}${un ? '_' + un : ''}_v${proposalData.version || 1}_${new Date().toISOString().split('T')[0]}`;
     }
     setTimeout(() => window.print(), 100);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670]" />
+  if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670]" /></div>;
+
+  const totals = calcTotals();
+  const dpn    = proposalNumber || '—';
+  const today  = new Date().toLocaleDateString();
+  const rg     = buildRoomGroups();
+  const totalPP = pages?.length || 0;
+
+  // ── Shared page 1 header content ──────────────────────────────────────────
+  const P1Header = ({ forMeasure = false }) => (
+    <div ref={forMeasure ? headerRef : undefined}>
+      <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+        <img src="/images/HDG-Logo.png" alt="Henderson Design Group"
+          style={{ height: '40px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
       </div>
-    );
-  }
+      <div style={{ color: '#7f1d1d', fontWeight: '700', marginBottom: '10px', fontSize: '12px' }}>Proposal</div>
+      <div style={{ marginBottom: '12px', fontSize: '10.5px', lineHeight: '1.6' }}>
+        <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
+        {clientInfo.unitNumber && <p style={{ margin: 0 }}>{clientInfo.unitNumber}</p>}
+        {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
+        {clientInfo.address && <p style={{ margin: 0 }}>{clientInfo.address}</p>}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '10.5px' }}>
+        <div style={{ color: '#1e3a5f' }}>Project: Ālia</div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ margin: 0 }}><strong>Proposal #:</strong> {dpn}</p>
+          <p style={{ margin: 0 }}>Proposal Date: {today}</p>
+        </div>
+      </div>
+    </div>
+  );
 
-  const totals = calculateTotals();
-  const displayProposalNumber = proposalNumber || '—';
+  const ContHeader = () => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '9.5px', color: '#6b7280', borderBottom: '1px solid #e5e7eb', paddingBottom: '5px' }}>
+      <span>{clientInfo.name} — Products (continued)</span>
+      <span>Proposal #: {dpn}</span>
+    </div>
+  );
 
-  // Group products 2 per screen page
-  const PRODUCTS_PER_PAGE = 2;
-  const productPages = [];
-  for (let i = 0; i < products.length; i += PRODUCTS_PER_PAGE) {
-    productPages.push(products.slice(i, i + PRODUCTS_PER_PAGE));
-  }
+  // Content slot style (inside every page)
+  const slotStyle = {
+    position: 'absolute',
+    top: `${PAD_IN}in`,
+    left: `${PAD_IN}in`,
+    right: `${PAD_IN}in`,
+    bottom: `${FOOT_IN}in`,
+    overflow: 'hidden',
+  };
 
   return (
     <>
       <style>{`
-        /* ============================================================
-           PRINT STYLES
-        ============================================================ */
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          body { margin: 0 !important; padding: 0 !important; background: white !important; }
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
           body * { visibility: hidden; }
-          .print-container, .print-container * { visibility: visible; }
-          .print-container {
-            position: absolute; left: 0; top: 0;
-            width: 100%; margin: 0; padding: 0;
-            background: white !important;
+          .print-area, .print-area * { visibility: visible; }
+          .print-area { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+          .no-print, .mbox { display: none !important; }
+          .lp {
+            width: 8.5in !important; height: 11in !important;
+            overflow: hidden !important;
+            page-break-after: always !important; break-after: page !important;
+            box-shadow: none !important; margin: 0 !important; position: relative !important;
           }
-          .no-print { display: none !important; }
-          .screen-only { display: none !important; }
-
-          .page {
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            background: white !important;
-            display: block !important;
-          }
-          .page.force-break {
-            page-break-before: always !important;
-            break-before: page !important;
-          }
-          .section-header { page-break-after: avoid !important; break-after: avoid !important; }
-          .section-content { page-break-inside: avoid !important; break-inside: avoid !important; }
-
-          /* Repeating footer via fixed positioning */
-          .page-footer-fixed {
-            display: block !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            text-align: center;
-            font-size: 11px;
-            color: rgb(0, 86, 112) !important;
-            padding: 6px 0.5in 10px;
-            background: white !important;
-            border-top: 1px solid #e5e7eb !important;
-            visibility: visible !important;
-          }
-
-          input, textarea { border: none !important; background: transparent !important; outline: none !important; }
-          p, li { orphans: 3; widows: 3; }
+          .lp.last { page-break-after: avoid !important; break-after: avoid !important; }
         }
+        @page { size: 8.5in 11in; margin: 0; }
 
-        @page { size: letter; margin: 0.5in 0.5in 0.85in 0.5in; }
+        /* Screen */
+        .pw  { background: #b8b8b8; padding: 20px 0 40px; }
+        .pgl {
+          display: block; width: 8.5in; margin: 0 auto;
+          background: #005670; color: white; font-size: 10px; font-weight: 600;
+          padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box;
+          letter-spacing: 0.03em;
+        }
+        .lp {
+          position: relative; background: white;
+          width: 8.5in; height: 11in;
+          overflow: hidden;
+          box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+          margin: 0 auto; box-sizing: border-box;
+        }
+        .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
 
-        /* ============================================================
-           SCREEN STYLES
-        ============================================================ */
-        .page-footer-fixed { display: none; }
-
-        .page {
-          background: white;
-          max-width: 780px;
-          padding: 40px;
-          margin: 0 auto;
-          box-shadow: 0 0 10px rgba(0,0,0,0.1);
-          position: relative;
+        /* Measure box: off-screen, exact content width, never display:none */
+        .mbox {
+          position: fixed; top: -9999px; left: -9999px;
+          width: ${(PAGE_W_IN - PAD_IN * 2)}in;
+          background: white; visibility: hidden;
+          pointer-events: none; z-index: -999;
+          overflow: visible;
         }
-
-        /* Screen page divider */
-        .screen-page-divider {
-          max-width: 780px;
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          border-top: 3px dashed #d1d5db;
-          padding: 10px 0 0 0;
-        }
-        .screen-page-divider span {
-          font-size: 11px;
-          color: #9ca3af;
-          background: #f3f4f6;
-          padding: 2px 10px;
-          border-radius: 4px;
-          white-space: nowrap;
-        }
-
-        /* Inline footer on screen */
-        .footer-text-inline {
-          text-align: center;
-          font-size: 11px;
-          color: rgb(0,86,112);
-          margin-top: 24px;
-          padding-top: 10px;
-          border-top: 1px solid #e5e7eb;
-        }
-
-        .section-header {
-          background: #f0f0f0;
-          padding: 8px;
-          text-align: center;
-          border: 1px solid #000;
-          border-bottom: none;
-          font-weight: 600;
-        }
-        .section-content {
-          border: 1px solid #000;
-          padding: 20px;
-          margin-bottom: 20px;
-        }
-        .product-grid {
-          display: grid;
-          grid-template-columns: 120px 1fr 200px;
-          gap: 20px;
-        }
-        input[type="text"], input[type="number"], textarea {
-          width: 100%; padding: 4px 8px;
-          border: 1px solid #ddd; border-radius: 4px; font-size: 12px;
-        }
-        input:read-only, textarea:read-only { background: #f9f9f9; border-color: #eee; }
       `}</style>
 
       {/* ── Toolbar ── */}
       <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-            <ChevronLeft className="w-5 h-5" />
-            Back to Orders
-          </button>
+          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900"><ChevronLeft className="w-5 h-5" /> Back to Orders</button>
           <div className="h-6 w-px bg-gray-300" />
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#005670] font-mono">{displayProposalNumber}</span>
+            <span className="text-sm font-semibold text-[#005670] font-mono">{dpn}</span>
             <span className="text-gray-400 text-sm">·</span>
             <span className="text-sm text-gray-500">Version {proposalData?.version || 1}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowVersionModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
-            <Clock className="w-4 h-4" /> Version History
-          </button>
-          <button onClick={() => setShowPrintInstructions(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
-            <Printer className="w-4 h-4" /> Print
-          </button>
+          <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"><Clock className="w-4 h-4" /> Version History</button>
+          <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Print / Save PDF</button>
         </div>
       </div>
 
-      {/* ── Printable Content ── */}
-      <div className="print-container bg-gray-100 py-8">
+      {/* ── Hidden measure box ── */}
+      <div className="mbox" ref={measureRef}>
+        <P1Header forMeasure={true} />
+        {rg.map(([room, rps]) => (
+          <table key={room} style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup><col style={{ width: '76px' }} /><col /><col style={{ width: '140px' }} /></colgroup>
+            <tbody>
+              <tr ref={el => { if (el) roomHdRefs.current[room] = el; }}>
+                <td colSpan={3} style={{ padding: '5px 7px', fontWeight: '600', fontSize: '10.5px', background: '#f0f0f0' }}>{room}</td>
+              </tr>
+              {rps.map((p, i) => {
+                const key = `${room}__${i}`;
+                return (
+                  <ProductRow key={key} product={p} isFirst={i === 0}
+                    ref={el => { if (el) rowRefs.current[key] = el; }} />
+                );
+              })}
+            </tbody>
+          </table>
+        ))}
+      </div>
 
-        {/* Single .page div — products flow naturally for print */}
-        <div className="page">
-
-          {/* Logo */}
-          <div style={{ width: '100%', textAlign: 'center', marginBottom: '24px' }}>
-            <img
-              src="/images/HDG-Logo.png"
-              alt="Henderson Design Group"
-              style={{
-                height: '50px', width: 'auto', display: 'inline-block',
-                filter: 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)'
-              }}
-            />
-          </div>
-
-          {/* Client info */}
-          <div className="text-red-900 font-bold mb-4">Proposal</div>
-          <div className="mb-6 space-y-1 text-sm">
-            <p className="font-medium">{clientInfo.name || '—'}</p>
-            <p>{clientInfo.unitNumber || ''}</p>
-            <p>{clientInfo.address || 'Kailua Kona, Hawaii 96740'}</p>
-            <p>{clientInfo.email || proposalData?.user?.email || ''}</p>
-          </div>
-          <div className="flex justify-between mb-6 text-sm">
-            <div className="text-blue-900"><p>Project: Alia</p></div>
-            <div className="text-right">
-              <p><strong>Proposal #:</strong> {displayProposalNumber}</p>
-              <p>Proposal Date: {new Date().toLocaleDateString()}</p>
+      {/* ── Pages ── */}
+      <div className="pw">
+        <div className="print-area">
+          {!ready ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '500px' }}>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#005670]" />
             </div>
-          </div>
-
-          {/*
-            Products grouped for screen view (with footer after each group),
-            but rendered as a flat list in DOM for print continuity.
-          */}
-          {productPages.map((pageProducts, pageIdx) => (
-            <React.Fragment key={pageIdx}>
-              {/* Screen-only: page divider before each group (except first) */}
-              {pageIdx > 0 && (
-                <div className="screen-only screen-page-divider" style={{ margin: '0 -40px 24px -40px', padding: '10px 40px 0 40px' }}>
-                  <span>— Page {pageIdx + 1} —</span>
-                </div>
-              )}
-
-              {/* Products in this group */}
-              {pageProducts.map((product, productIdx) => (
-                <ProductSection key={`${pageIdx}-${productIdx}`} product={product} />
+          ) : (
+            <>
+              {/* Product pages */}
+              {(pages || []).map((items, pi) => (
+                <React.Fragment key={pi}>
+                  <span className="pgl no-print">
+                    Page {pi + 1}{(pages || []).length > 1 ? ` — Products (${pi + 1}/${(pages || []).length})` : ' — Products'}
+                  </span>
+                  <div className="lp">
+                    <div style={slotStyle}>
+                      {pi === 0 ? <P1Header /> : <ContHeader />}
+                      {renderItems(items)}
+                    </div>
+                    <PageFooter />
+                  </div>
+                  <div className="pgap no-print" />
+                </React.Fragment>
               ))}
 
-              {/* Screen-only: footer after each group */}
-              <div className="screen-only footer-text-inline">
-                <FooterContent />
+              {/* Warranty page */}
+              <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
+              <div className="lp">
+                <div style={slotStyle}>
+                  <div style={{ textAlign: 'right', marginBottom: '14px', fontSize: '10.5px', lineHeight: '1.8' }}>
+                    <p style={{ margin: 0 }}>Sub Total: ${totals.subtotal.toFixed(2)}</p>
+                    <p style={{ margin: 0 }}>Sales Tax: ${totals.salesTax.toFixed(2)}</p>
+                    <p style={{ margin: 0 }}>Total: ${totals.total.toFixed(2)}</p>
+                    <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit: ${totals.deposit.toFixed(2)}</p>
+                  </div>
+                  <div style={{ color: '#7f1d1d', fontWeight: '700', marginBottom: '10px', fontSize: '12px' }}>
+                    Proposal Terms: Henderson Design Group Warranty Terms and Conditions
+                  </div>
+                  <div style={{ fontSize: '9.5px', lineHeight: '1.6' }}>
+                    <p style={{ marginTop: 0 }}><strong>Coverage Period:</strong> Furniture is warranted to be free from defects in workmanship, materials, and functionality for a period of 30 days from the date of installation.</p>
+                    <p><strong>Scope of Warranty:</strong></p>
+                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
+                      <li>Workmanship, Materials, and Functionality: The warranty covers defects in workmanship, materials, and functionality under normal wear and tear conditions.</li>
+                      <li>Repair or Replacement: If a defect is identified within the 30-day period, Henderson Design Group will, at its discretion, either repair or replace the defective item.</li>
+                    </ul>
+                    <p><strong>Returns and Exchanges:</strong></p>
+                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
+                      <li>No Returns: Items are not eligible for returns.</li>
+                      <li>No Exchanges: Exchanges are not permitted except in cases of defects.</li>
+                      <li>Custom Items: Custom items, including upholstery, are not eligible for returns or exchanges.</li>
+                    </ul>
+                    <p><strong>Exclusions:</strong></p>
+                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
+                      <li>Negligence, Misuse, or Accidents: The warranty does not cover defects resulting from negligence, misuse, or accidents after installation.</li>
+                      <li>Maintenance and Commercial Use: Void for any condition resulting from incorrect or inadequate maintenance.</li>
+                      <li>Non-Residential Use: Void for any condition resulting from other than ordinary residential wear.</li>
+                      <li>Natural Material Variations: Does not cover matching of color, grain, or texture of wood, leather, or fabrics.</li>
+                      <li>Environmental Responses: Wood may expand and contract in response to temperature and humidity changes.</li>
+                      <li>Fabric and Leather Wear: Does not cover colorfastness, dye lot variations, wrinkling, or wear of fabrics or leather.</li>
+                      <li>Sun Exposure: Extensive exposure to the sun is not covered.</li>
+                      <li>Fabric Protectants: Applying a fabric protectant could void the Henderson warranty.</li>
+                    </ul>
+                  </div>
+                </div>
+                <PageFooter />
               </div>
-            </React.Fragment>
-          ))}
+              <div className="pgap no-print" />
 
-        </div>{/* end .page */}
-
-        {/* ── Warranty page ── */}
-        <div className="screen-only screen-page-divider" style={{ maxWidth: '780px', margin: '0 auto', borderTop: '3px dashed #d1d5db', padding: '10px 0 0 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '11px', color: '#9ca3af', background: '#f3f4f6', padding: '2px 10px', borderRadius: '4px' }}>— Warranty Page —</span>
+              {/* Signature page */}
+              <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
+              <div className="lp last">
+                <div style={slotStyle}>
+                  <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                    <img src="/images/HDG-Logo.png" alt="Henderson Design Group"
+                      style={{ height: '40px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+                  </div>
+                  <div style={{ color: '#7f1d1d', fontWeight: '700', marginBottom: '10px', fontSize: '12px' }}>Proposal</div>
+                  <div style={{ marginBottom: '12px', fontSize: '10.5px', lineHeight: '1.6' }}>
+                    <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name}</p>
+                    {clientInfo.unitNumber && <p style={{ margin: 0 }}>{clientInfo.unitNumber}</p>}
+                    {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
+                    {clientInfo.address && <p style={{ margin: 0 }}>{clientInfo.address}</p>}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '10.5px' }}>
+                    <p style={{ margin: 0 }}>Project: Ālia</p>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: 0 }}><strong>Proposal #:</strong> {dpn}</p>
+                      <p style={{ margin: 0 }}>Proposal Date: {today}</p>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '9.5px', lineHeight: '1.6' }}>
+                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
+                      <li>Original Buyer: The warranty applies to the original buyer only.</li>
+                      <li>Original Installation Location: Valid only for furnishings in the space where they were originally installed.</li>
+                      <li>Repair, Touch-Up, or Replacement Only: No refunds.</li>
+                      <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
+                      <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
+                    </ul>
+                    <p style={{ marginTop: '30px', fontWeight: '700' }}>100% Deposit</p>
+                    <p style={{ marginTop: '30px' }}>Accept and Approve:</p>
+                    <div style={{ borderTop: '1px solid black', marginTop: '56px', paddingTop: '6px', fontSize: '10.5px' }}>Signature</div>
+                  </div>
+                </div>
+                <PageFooter />
+              </div>
+              <div className="no-print" style={{ height: '20px', width: '8.5in', margin: '0 auto', background: '#b8b8b8' }} />
+            </>
+          )}
         </div>
-
-        <div className="page force-break">
-          <div className="text-right mb-6 text-sm space-y-1">
-            <p>Sub Total: ${totals.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <p>Sales Tax: ${totals.salesTax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <p>Total: ${totals.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <p className="font-bold">Required Deposit: ${totals.deposit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-          </div>
-          <div className="text-red-900 font-bold mb-4">
-            Proposal Terms: Henderson Design Group Warranty Terms and Conditions
-          </div>
-          <div className="text-xs space-y-3 leading-relaxed">
-            <p><strong>Coverage Period:</strong> Furniture is warranted to be free from defects in workmanship, materials, and functionality for a period of 30 days from the date of installation.</p>
-            <p><strong>Scope of Warranty:</strong></p>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>Workmanship, Materials, and Functionality: The warranty covers defects in workmanship, materials, and functionality under normal wear and tear conditions.</li>
-              <li>Repair or Replacement: If a defect is identified within the 30-day period, Henderson Design Group will, at its discretion, either repair or replace the defective item.</li>
-            </ul>
-            <p><strong>Returns and Exchanges:</strong></p>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>No Returns: Items are not eligible for returns.</li>
-              <li>No Exchanges: Exchanges are not permitted except in cases of defects.</li>
-              <li>Custom Items: Custom items, including upholstery, are not eligible for returns or exchanges.</li>
-            </ul>
-            <p><strong>Exclusions:</strong></p>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>Negligence, Misuse, or Accidents: The warranty does not cover defects resulting from negligence, misuse, or accidents after installation.</li>
-              <li>Maintenance and Commercial Use: The warranty is void for any condition resulting from incorrect or inadequate maintenance.</li>
-              <li>Non-Residential Use: The warranty is void for any condition resulting from other than ordinary residential wear.</li>
-              <li>Natural Material Variations: The warranty does not cover the matching of color, grain, or texture of wood, leather, or fabrics.</li>
-              <li>Environmental Responses: Wood may expand and contract in response to temperature and humidity variations.</li>
-              <li>Fabric and Leather Wear: The warranty does not cover colorfastness, dye lot variations, wrinkling, or wear of fabrics or leather.</li>
-              <li>Sun Exposure: Extensive exposure to the sun is not covered.</li>
-              <li>Fabric Protectants: Applying a fabric protectant could void the Henderson warranty.</li>
-            </ul>
-          </div>
-          {/* Screen footer */}
-          <div className="footer-text-inline">
-            <FooterContent />
-          </div>
-        </div>
-
-        {/* ── Signature page ── */}
-        <div className="screen-only screen-page-divider" style={{ maxWidth: '780px', margin: '0 auto', borderTop: '3px dashed #d1d5db', padding: '10px 0 0 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '11px', color: '#9ca3af', background: '#f3f4f6', padding: '2px 10px', borderRadius: '4px' }}>— Signature Page —</span>
-        </div>
-
-        <div className="page force-break">
-          <div style={{ width: '100%', textAlign: 'center', marginBottom: '24px' }}>
-            <img
-              src="/images/HDG-Logo.png"
-              alt="Henderson Design Group"
-              style={{
-                height: '50px', width: 'auto', display: 'inline-block',
-                filter: 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)'
-              }}
-            />
-          </div>
-          <div className="text-red-900 font-bold mb-4">Proposal</div>
-          <div className="mb-6 text-sm space-y-1">
-            <p>{clientInfo.name}</p>
-            <p>{clientInfo.unitNumber}</p>
-            <p>{clientInfo.address || 'Kailua Kona, Hawaii 96740'}</p>
-          </div>
-          <div className="flex justify-between mb-6 text-sm">
-            <p>Project: Alia</p>
-            <div className="text-right">
-              <p><strong>Proposal #:</strong> {displayProposalNumber}</p>
-              <p>Proposal Date: {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-          <div className="text-xs space-y-3 leading-relaxed">
-            <ul className="list-disc ml-5 space-y-1">
-              <li>Original Buyer: The warranty applies to the original buyer only.</li>
-              <li>Original Installation Location: The warranty is valid only for furnishings in the space where they were originally installed.</li>
-              <li>Repair, Touch-Up, or Replacement Only: No refunds.</li>
-              <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
-              <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
-            </ul>
-            <p className="mt-8 font-bold">100% Deposit</p>
-            <p className="mt-8">Accept and Approve:</p>
-            <div className="border-t border-black mt-16 pt-2">Signature</div>
-          </div>
-          {/* Screen footer */}
-          <div className="footer-text-inline">
-            <FooterContent />
-          </div>
-        </div>
-
-        {/* ── Fixed footer: repeats on every PRINTED page ── */}
-        <div className="page-footer-fixed">
-          <FooterContent />
-        </div>
-
-      </div>{/* end print-container */}
+      </div>
 
       {/* ── Version Modal ── */}
       {showVersionModal && (
-        <VersionModal
-          orderId={orderId}
-          isOpen={showVersionModal}
+        <VersionModal orderId={orderId} isOpen={showVersionModal}
           onClose={() => { setShowVersionModal(false); setVersionNotes(''); }}
-          onSelectVersion={(v) => { window.location.href = `/admin/proposal/${orderId}/${v}`; }}
-          versionNotes={versionNotes}
-          setVersionNotes={setVersionNotes}
-          onSaveNewVersion={handleSaveAsNewVersion}
-          saving={saving}
-        />
+          onSelectVersion={v => { window.location.href = `/admin/proposal/${orderId}/${v}`; }}
+          versionNotes={versionNotes} setVersionNotes={setVersionNotes}
+          onSaveNewVersion={handleSaveAsNewVersion} saving={saving} />
       )}
 
-      {/* ── Print Instructions Modal ── */}
+      {/* ── Print Instructions ── */}
       {showPrintInstructions && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
             <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
-              <h3 className="text-xl font-bold">Print Setup Instructions</h3>
-              <button onClick={() => setShowPrintInstructions(false)} className="p-2 hover:bg-white/20 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
+              <h3 className="text-xl font-bold">Save as PDF / Print</h3>
+              <button onClick={() => setShowPrintInstructions(false)} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-gray-700 font-medium">For the best print quality, please configure your print settings:</p>
+              <p className="text-gray-700 font-medium">Configure these settings before printing:</p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 {[
-                  { n: 1, title: 'Disable Headers and Footers', desc: 'Uncheck "Headers and footers" in print dialog' },
-                  { n: 2, title: 'Margins',                     desc: 'Set to "Default" — do NOT use None or Minimum' },
-                  { n: 3, title: 'Enable Background Graphics',  desc: 'Check "Background graphics" to print all colors and logo' },
+                  { n: 1, title: 'Margins → None', desc: 'Set margins to None — margins are built into the document' },
+                  { n: 2, title: 'Scale → 100%', desc: 'Must be exactly 100% — do NOT use Fit to Page' },
+                  { n: 3, title: 'Disable Headers & Footers', desc: 'Uncheck "Headers and footers" in the print dialog' },
+                  { n: 4, title: 'Background Graphics → On', desc: 'Check Background graphics so colors print correctly' },
                 ].map(s => (
                   <div key={s.n} className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">{s.n}</div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{s.title}</p>
-                      <p className="text-sm text-gray-600">{s.desc}</p>
-                    </div>
+                    <div><p className="font-semibold text-gray-900">{s.title}</p><p className="text-sm text-gray-600">{s.desc}</p></div>
                   </div>
                 ))}
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm text-amber-800">
-                  <strong>💡 Tip:</strong> Footer appears automatically on every page. Keep Margins = Default so the footer is not cut off.
-                </p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button onClick={() => setShowPrintInstructions(false)} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
@@ -542,234 +683,6 @@ const ProposalEditor = ({ orderId, version, onClose, mode = 'edit' }) => {
         </div>
       )}
     </>
-  );
-};
-
-// ─── ProductSection ────────────────────────────────────────────────────────
-const ProductSection = ({ product }) => {
-  const opts = product.selectedOptions || {};
-
-  const getProductImage = (p) => {
-    const sources = [
-      p.selectedOptions?.uploadedImages?.[0]?.url,
-      p.selectedOptions?.image,
-      p.selectedOptions?.images?.[0],
-      p.image,
-      p.imageUrl,
-    ];
-    return sources.find(s => s && typeof s === 'string' && s.trim()) || null;
-  };
-  const productImage = getProductImage(product);
-
-  const qty      = product.quantity || 1;
-  const msrp     = parseFloat(opts.msrp) || 0;
-  const discount = parseFloat(opts.discountPercent) || 0;
-  const netCost  = opts.netCostOverride != null ? parseFloat(opts.netCostOverride) : msrp * (1 - discount / 100);
-  const markup   = parseFloat(opts.markupPercent) || 0;
-  const unitSell = netCost * (1 + markup / 100);
-  const subtotal = unitSell * qty;
-  const taxRate  = parseFloat(opts.salesTaxRate) || 0;
-  const salesTax = taxRate > 0 ? subtotal * (taxRate / 100) : 0;
-  const lineTotal = subtotal + salesTax;
-
-  return (
-    <div className="mb-6">
-      <div className="section-header">
-        {product.selectedOptions?.room || product.spotName || product.name || 'Untitled'}
-      </div>
-      <div className="section-content">
-        <div className="product-grid">
-
-          {/* Col 1: Image */}
-          <div>
-            {productImage ? (
-              <img
-                src={productImage}
-                alt={product.name || 'Product'}
-                style={{ width: '120px', height: '120px', objectFit: 'contain', display: 'block' }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            <div style={{
-              display: productImage ? 'none' : 'flex',
-              width: '120px', height: '120px',
-              background: '#f3f4f6',
-              alignItems: 'center', justifyContent: 'center',
-              fontSize: '11px', color: '#9ca3af',
-              border: '1px solid #e5e7eb'
-            }}>
-              No Image
-            </div>
-          </div>
-
-          {/* Col 2: Details */}
-          <div className="space-y-1 text-xs">
-            {product.product_id && <p><strong>SKU:</strong> {product.product_id}</p>}
-            {opts.specifications && (
-              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{opts.specifications}</p>
-            )}
-            {opts.finish    && <p><strong>Finish:</strong> {opts.finish}</p>}
-            {opts.fabric    && <p><strong>Fabric:</strong> {opts.fabric}</p>}
-            {opts.size      && <p><strong>Size:</strong> {opts.size}</p>}
-            {opts.itemClass && <p><strong>Class:</strong> {opts.itemClass}</p>}
-            {opts.sidemark  && <p><strong>Sidemark:</strong> {opts.sidemark}</p>}
-          </div>
-
-          {/* Col 3: Pricing */}
-          <div className="text-right text-xs space-y-1.5">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Quantity:</span>
-              <span className="font-medium">{qty} {opts.units || 'Each'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Unit Price:</span>
-              <span className="font-medium">${unitSell.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Subtotal:</span>
-              <span>${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-            </div>
-            {taxRate > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Sales Tax ({taxRate}%):</span>
-                <span>${salesTax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold pt-1.5 border-t border-gray-300">
-              <span>Line Total:</span>
-              <span>${lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── VersionModal ──────────────────────────────────────────────────────────
-const VersionModal = ({ orderId, isOpen, onClose, onSelectVersion, versionNotes, setVersionNotes, onSaveNewVersion, saving }) => {
-  const [versions, setVersions] = useState([]);
-  const [loading, setLoading]   = useState(true);
-
-  useEffect(() => {
-    if (isOpen === true) loadVersions();
-  }, [isOpen]);
-
-  const loadVersions = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${backendServer}/api/proposals/${orderId}/versions/all`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const result = await response.json();
-      if (result.success) setVersions(result.data);
-    } catch (error) {
-      console.error('Error loading versions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  if (isOpen === 'new') {
-    return (
-      <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
-        <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
-          <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
-            <h3 className="text-xl font-bold">Save as New Version</h3>
-            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Version Notes <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={versionNotes}
-                onChange={(e) => setVersionNotes(e.target.value)}
-                placeholder="Describe the changes in this version..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
-                rows={4}
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button
-                onClick={onSaveNewVersion}
-                disabled={saving || !versionNotes.trim()}
-                className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
-              >
-                {saving ? 'Saving...' : 'Save as New Version'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
-        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
-          <div>
-            <h3 className="text-xl font-bold">Version History</h3>
-            <p className="text-sm text-white/80 mt-1">View and manage all proposal versions</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="overflow-auto max-h-[calc(80vh-88px)]">
-          {loading ? (
-            <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto" />
-            </div>
-          ) : versions.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">No versions found</div>
-          ) : (
-            <div className="divide-y">
-              {versions.map((v) => (
-                <div key={v._id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Version {v.version}</span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          v.status === 'draft'    ? 'bg-gray-100 text-gray-700'   :
-                          v.status === 'sent'     ? 'bg-blue-100 text-blue-700'   :
-                          v.status === 'approved' ? 'bg-green-100 text-green-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {v.status.charAt(0).toUpperCase() + v.status.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 mb-2">{v.notes}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>Created: {new Date(v.createdAt).toLocaleDateString()} by {v.createdBy?.name || 'Unknown'}</span>
-                        {v.updatedAt && v.updatedAt !== v.createdAt && (
-                          <span>Updated: {new Date(v.updatedAt).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => onSelectVersion(v.version)}
-                      className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap"
-                    >
-                      View/Edit
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 };
 

@@ -4,7 +4,7 @@ import {
   Search, Filter, Sparkles, AlertCircle, Mail, Phone,
   User, Building2, CheckCircle, Clock, ClipboardList, MapPin, TrendingUp,
   Calendar, Activity, ChevronLeft, ChevronRight, ClipboardCheck,
-  ShoppingBag, Download, Users, Edit3 // Tambahkan ini
+  ShoppingBag, Download, Users, Edit3
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { pdf } from '@react-pdf/renderer';
@@ -58,7 +58,6 @@ const DESIGN_TITLES = {
   16: 'Design 12',
 };
 
-// AFTER
 const PRICING_TABLE = {
   'Nalu Foundation Collection': { '1': 2500, '2': 3500, '3': 4500, '1B': 2500, '2B': 3500, '3B': 4500 },
   'Nalu Collection':            { '1': 5000, '2': 7500,  '3': 10000, '1B': 5000, '2B': 7500,  '3B': 10000 },
@@ -66,9 +65,8 @@ const PRICING_TABLE = {
   'Lani (Developer)':           { '1': 10000, '2': 15000, '3': 20000, '1B': 10000, '2B': 15000, '3B': 20000 },
 };
 
-// TAMBAH BARIS INI
-const CUSTOM_COLLECTIONS = ['Custom']; // hanya pure Custom yang tidak butuh floor plan
-const CLIENT_COLLECTIONS = ['Nalu (Client)', 'Lani (Client)']; // butuh floor plan, tidak butuh bedroom/harga
+const CUSTOM_COLLECTIONS = ['Custom'];
+const CLIENT_COLLECTIONS = ['Nalu (Client)', 'Lani (Client)'];
 const DEVELOPER_COLLECTIONS = ['Nalu (Developer)', 'Lani (Developer)'];
 
 const COLLECTIONS = Object.keys(PRICING_TABLE);
@@ -81,6 +79,9 @@ const BEDROOM_OPTIONS = [
   { value: '3B', label: '3 Bedroom' },
   { value: 'custom', label: 'Custom (Input Qty)' },
 ];
+
+// ── Empty address template ──────────────────────────────────
+const EMPTY_ADDRESS = { street: '', city: '', state: '', zipcode: '', country: '', fax: '' };
 
 
 // ==================== IMAGE LIGHTBOX COMPONENT ====================
@@ -274,7 +275,6 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-        {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center rounded-t-3xl">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -293,7 +293,6 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto flex-grow">
           {downloading && (
             <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm">
@@ -312,9 +311,7 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
             <div className="text-center py-20">
               <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Orders Yet</h3>
-              <p className="text-gray-600">
-                This client hasn't created any orders yet.
-              </p>
+              <p className="text-gray-600">This client hasn't created any orders yet.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -323,7 +320,6 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
                   key={order._id}
                   className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#005670] transition-all"
                 >
-                  {/* Order Header */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
@@ -351,26 +347,6 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
                     </div>
                   </div>
 
-                  {/* Order Details */}
-                  {order.selections && Object.keys(order.selections).length > 0 && (
-                    <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-                      <p className="text-xs font-bold text-gray-700 uppercase mb-2">
-                        Selected Areas
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {Object.entries(order.selections).map(([areaName, items]) => (
-                          <div key={areaName} className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-[#005670] rounded-full" />
-                            <span className="text-sm text-gray-700">
-                              {areaName} ({items.length})
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Order Notes */}
                   {order.notes && (
                     <div className="mb-4 p-4 bg-blue-50 rounded-xl border-l-4 border-blue-400">
                       <p className="text-xs font-bold text-blue-900 mb-1">Admin Notes</p>
@@ -378,7 +354,6 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
                     <button
                       onClick={() => handleDownload(order._id, 'summary')}
@@ -424,12 +399,10 @@ const ClientManagement = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [modalMode, setModalMode] = useState('create');
   const [selectedClient, setSelectedClient] = useState(null);
-  // 2️⃣ ADD STATE FOR SHOWING FILL MODAL
   const [showFillQuestionnaireModal, setShowFillQuestionnaireModal] = useState(false);
   const [clientForQuestionnaire, setClientForQuestionnaire] = useState(null);
   const [exporting, setExporting] = useState(false);
 
-  // 3️⃣ ADD HANDLER FUNCTIONS
   const openFillQuestionnaireModal = useCallback((client) => {
     setClientForQuestionnaire(client);
     setShowFillQuestionnaireModal(true);
@@ -438,7 +411,7 @@ const ClientManagement = () => {
   const handleQuestionnaireComplete = () => {
     setShowFillQuestionnaireModal(false);
     setClientForQuestionnaire(null);
-    fetchClients(); // Refresh data
+    fetchClients();
   };
 
   const handleCloseQuestionnaire = () => {
@@ -448,7 +421,6 @@ const ClientManagement = () => {
     }
   };
 
-  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -458,7 +430,7 @@ const ClientManagement = () => {
     propertyType: '',
     collection: '',
     bedroomCount: '',
-    packageType: 'investor', // ✅ ADD THIS NEW FIELD
+    packageType: 'investor',
     calculatedAmount: 0,
     designer: '',
     projectManager: '',
@@ -468,13 +440,15 @@ const ClientManagement = () => {
     unitNumber3: '', floorPlan3: '',
     unitNumber4: '', floorPlan4: '',
     unitNumber5: '', floorPlan5: '',
+    // ✅ NEW: Address
+    address: { ...EMPTY_ADDRESS },
   });
   const [errors, setErrors] = useState({});
   const [showPasswordField, setShowPasswordField] = useState(false);
 
   const [approvalMode, setApprovalMode] = useState('approve');
   const [approvalData, setApprovalData] = useState({ clientCode: '', floorPlan: '', rejectionReason: '' });
-  const [bedroomMode, setBedroomMode] = useState(''); // '1' | '2' | '3' | 'custom' | ''
+  const [bedroomMode, setBedroomMode] = useState('');
 
   const handleExportExcel = useCallback(async () => {
     setExporting(true);
@@ -551,7 +525,6 @@ const ClientManagement = () => {
         journeyData = await journeyRes.json();
       }
 
-      
       const questionnaireRes = await fetch(`${backendServer}/api/questionnaires/client/${clientId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -641,25 +614,24 @@ const ClientManagement = () => {
 
   useEffect(() => {
     if (formData.collection) {
-      let autoPackageType = 'investor'; // default
+      let autoPackageType = 'investor';
       
       if (formData.collection === 'Nalu Foundation Collection') {
         autoPackageType = 'library';
-      } else if (CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection) ||  DEVELOPER_COLLECTIONS.includes(formData.collection)) {
+      } else if (CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection) || DEVELOPER_COLLECTIONS.includes(formData.collection)) {
         autoPackageType = 'custom';
       }
       
       setFormData(prev => ({ ...prev, packageType: autoPackageType }));
     }
 
-    // ✅ Calculate pricing (skip untuk library dan custom)
     if (formData.packageType === 'library' || formData.packageType === 'custom') {
       setFormData(prev => ({ ...prev, calculatedAmount: 0 }));
       return;
     }
     
     if (formData.collection && formData.bedroomCount) {
-      const amount = PRICING_TABLE[formData.collection][formData.bedroomCount] || 0;
+      const amount = PRICING_TABLE[formData.collection]?.[formData.bedroomCount] || 0;
       setFormData(prev => ({ ...prev, calculatedAmount: amount }));
     } else {
       setFormData(prev => ({ ...prev, calculatedAmount: 0 }));
@@ -669,12 +641,10 @@ const ClientManagement = () => {
   const validateForm = useCallback(() => {
     const newErrors = {};
     
-    // Basic required fields
     if (!formData.name) newErrors.name = 'Required';
     if (formData.email && !formData.email.match(/^\S+@\S+\.\S+$/)) {
       newErrors.email = 'Invalid email format';
     }
-    // Email wajib hanya untuk create mode
     const emailOptionalTypes = ['Design Hold Fee', 'Developer'];
     if (modalMode === 'create' && !formData.email && !emailOptionalTypes.includes(formData.propertyType)) {
       newErrors.email = 'Required';
@@ -682,17 +652,13 @@ const ClientManagement = () => {
     if (!formData.unitNumber) newErrors.unitNumber = 'Required';
     if (!formData.propertyType) newErrors.propertyType = 'Required';
     
-    // ✅ Floor plan TIDAK required untuk Custom package
     if (CUSTOM_COLLECTIONS.includes(formData.collection) === false && !formData.floorPlan) {
       newErrors.floorPlan = 'Required';
     }
     
-    // ✅ Collection dan bedroom HANYA untuk CREATE mode
     if (modalMode === 'create') {
-      // Collection required untuk create dan edit
       if (!formData.collection) newErrors.collection = 'Required';
 
-      // Bedroom count tidak required untuk Custom atau Library
       if (formData.packageType !== 'library' && formData.packageType !== 'custom') {
         if (!formData.bedroomCount) {
           newErrors.bedroomCount = 'Required';
@@ -706,7 +672,6 @@ const ClientManagement = () => {
       }
     }
     
-    // Password validation
     if (modalMode === 'create' && !formData.password) {
       newErrors.password = 'Required';
     }
@@ -737,8 +702,14 @@ const ClientManagement = () => {
       propertyType: '',
       collection: '',
       bedroomCount: '',
-      packageType: 'investor', // ✅ ADD THIS
-      calculatedAmount: 0
+      packageType: 'investor',
+      calculatedAmount: 0,
+      designer: '',
+      projectManager: '',
+      projectManagerAssistant: '',
+      designerAssistant: '',
+      // ✅ NEW: Address reset
+      address: { ...EMPTY_ADDRESS },
     });
     setApprovalData({ clientCode: '', floorPlan: '', rejectionReason: '' });
     setErrors({});
@@ -779,7 +750,16 @@ const ClientManagement = () => {
         designer: client.teamAssignment?.designer || '',
         projectManager: client.teamAssignment?.projectManager || '',
         projectManagerAssistant: client.teamAssignment?.projectManagerAssistant || '',
-        designerAssistant: client.teamAssignment?.designerAssistant || ''
+        designerAssistant: client.teamAssignment?.designerAssistant || '',
+        // ✅ NEW: Populate address from client
+        address: {
+          street:  client.address?.street  || '',
+          city:    client.address?.city    || '',
+          state:   client.address?.state   || '',
+          zipcode: client.address?.zipcode || '',
+          country: client.address?.country || '',
+          fax:     client.address?.fax     || '',
+        },
       });
     } else if (mode === 'create') {
       resetFormState();
@@ -809,7 +789,6 @@ const ClientManagement = () => {
     setActiveModal('questionnaire');
   }, []);
 
-  // ✅ NEW: Open Orders Modal
   const openOrdersModal = useCallback((client) => {
     setSelectedClient(client);
     setActiveModal('orders');
@@ -880,7 +859,6 @@ const ClientManagement = () => {
         ? `${backendServer}/api/clients`
         : `${backendServer}/api/clients/${selectedClient._id}`;
 
-      // ✅ BASE SUBMIT DATA - ONLY required fields
       const submitData = {
         name: formData.name,
         email: formData.email,
@@ -896,15 +874,24 @@ const ClientManagement = () => {
         propertyType: formData.propertyType,
         packageType: formData.packageType,
         floorPlan: CUSTOM_COLLECTIONS.includes(formData.collection)
-        ? 'Custom Project'
-        : formData.floorPlan,
-        collection: formData.collection,  // ✅ selalu kirim, create & edit
+          ? 'Custom Project'
+          : formData.floorPlan,
+        collection: formData.collection,
         teamAssignment: {
           designer: formData.designer || '',
           projectManager: formData.projectManager || '',
           projectManagerAssistant: formData.projectManagerAssistant || '',
           designerAssistant: formData.designerAssistant || ''
-        }
+        },
+        // ✅ NEW: Include address
+        address: {
+          street:  formData.address?.street  || '',
+          city:    formData.address?.city    || '',
+          state:   formData.address?.state   || '',
+          zipcode: formData.address?.zipcode || '',
+          country: formData.address?.country || '',
+          fax:     formData.address?.fax     || '',
+        },
       };
 
       const isClientCollection = CLIENT_COLLECTIONS.includes(formData.collection);
@@ -915,12 +902,10 @@ const ClientManagement = () => {
         submitData.bedroomCount = formData.bedroomCount;
       }
 
-      // Custom notes untuk custom package
       if (formData.packageType === 'custom' && formData.customNotes) {
         submitData.customNotes = formData.customNotes;
       }
 
-      // Password handling
       if (modalMode === 'create') {
         submitData.password = formData.password;
       } else if (showPasswordField && formData.password) {
@@ -1045,50 +1030,47 @@ const ClientManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Client Management</h1>
-            {pendingCount > 0 && (
-              <div className="flex items-center gap-2 mt-2">
-                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                <p className="text-sm text-amber-600 font-medium">
-                  {pendingCount} pending approval
-                </p>
-              </div>
-            )}
-          </div>
-      
-          {/* Action buttons */}
-          <div className="flex items-center gap-3">
-            {/* ── Download Report ── */}
-            <button
-              onClick={handleExportExcel}
-              disabled={exporting}
-              className="group flex items-center gap-2 px-5 py-2.5 border-2 border-[#005670] text-[#005670] rounded-xl hover:bg-[#005670] hover:text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-              title="Export all clients to Excel"
-            >
-              {exporting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="font-semibold">Exporting...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
-                  <span className="font-semibold">Download Report</span>
-                </>
-              )}
-            </button>
-      
-            {/* ── Add Client ── */}
-            <button
-              onClick={() => openFormModal('create')}
-              className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all"
-            >
-              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-              <span className="font-semibold">Add Client</span>
-            </button>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Client Management</h1>
+          {pendingCount > 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              <p className="text-sm text-amber-600 font-medium">
+                {pendingCount} pending approval
+              </p>
+            </div>
+          )}
         </div>
+    
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting}
+            className="group flex items-center gap-2 px-5 py-2.5 border-2 border-[#005670] text-[#005670] rounded-xl hover:bg-[#005670] hover:text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Export all clients to Excel"
+          >
+            {exporting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="font-semibold">Exporting...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
+                <span className="font-semibold">Download Report</span>
+              </>
+            )}
+          </button>
+    
+          <button
+            onClick={() => openFormModal('create')}
+            className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+            <span className="font-semibold">Add Client</span>
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
         <div className="flex flex-col md:flex-row gap-3">
@@ -1210,9 +1192,9 @@ const ClientManagement = () => {
       {showFillQuestionnaireModal && clientForQuestionnaire && (
         <QuestionnaireModal 
           onComplete={handleQuestionnaireComplete}
-          onClose={handleCloseQuestionnaire} // ✅ ADD THIS - admin bisa close
+          onClose={handleCloseQuestionnaire}
           userData={clientForQuestionnaire}
-          isAdminMode={true} // ✅ ADD THIS - flag untuk admin mode
+          isAdminMode={true}
         />
       )}
     </div>
@@ -1226,14 +1208,14 @@ const ClientTable = React.memo(
     clients,
     clientJourneys,
     getBadge,
-    getPackageTypeBadge, // ✅ ADD THIS
+    getPackageTypeBadge,
     onOpenFormModal,
     onOpenApprovalModal,
     onDeleteClient,
     onOpenJourneyModal,
     onOpenQuestionnaireModal,
     onOpenOrdersModal,
-    onOpenFillQuestionnaireModal // ✅ ADD THIS PROP
+    onOpenFillQuestionnaireModal
   }) => {
     
     const getJourneyStatus = (clientId) => {
@@ -1322,39 +1304,45 @@ const ClientTable = React.memo(
                             {client.phoneNumber}
                           </p>
                         )}
+                        {/* ✅ Show city/country in table if available */}
+                        {(client.address?.city || client.address?.country) && (
+                          <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            {[client.address?.city, client.address?.country].filter(Boolean).join(', ')}
+                          </p>
+                        )}
                       </div>
                     </td>
 
-                  <td className="px-4 py-3">
-                    <div className="space-y-1">
-                      {[
-                        { un: client.unitNumber, fp: client.floorPlan, primary: true },
-                        { un: client.unitNumber2, fp: client.floorPlan2 },
-                        { un: client.unitNumber3, fp: client.floorPlan3 },
-                        { un: client.unitNumber4, fp: client.floorPlan4 },
-                        { un: client.unitNumber5, fp: client.floorPlan5 },
-                      ].filter(u => u.un).map((u, i) => (
-                        <div key={i} className="flex items-center gap-1.5">
-                          <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <div>
-                            <span className={`text-sm font-medium ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>
-                              Unit {u.un}
-                            </span>
-                            {u.primary && i === 0 && (
-                              <span className="ml-1 text-xs text-[#005670] font-bold">★</span>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              {(CLIENT_COLLECTIONS.includes(client.collection) || DEVELOPER_COLLECTIONS.includes(client.collection))
-                                ? `${client.collection} • ${u.fp || '-'}`
-                                : u.fp || '-'}
-                            </p>
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        {[
+                          { un: client.unitNumber, fp: client.floorPlan, primary: true },
+                          { un: client.unitNumber2, fp: client.floorPlan2 },
+                          { un: client.unitNumber3, fp: client.floorPlan3 },
+                          { un: client.unitNumber4, fp: client.floorPlan4 },
+                          { un: client.unitNumber5, fp: client.floorPlan5 },
+                        ].filter(u => u.un).map((u, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                            <div>
+                              <span className={`text-sm font-medium ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>
+                                Unit {u.un}
+                              </span>
+                              {u.primary && i === 0 && (
+                                <span className="ml-1 text-xs text-[#005670] font-bold">★</span>
+                              )}
+                              <p className="text-xs text-gray-500">
+                                {(CLIENT_COLLECTIONS.includes(client.collection) || DEVELOPER_COLLECTIONS.includes(client.collection))
+                                  ? `${client.collection} • ${u.fp || '-'}`
+                                  : u.fp || '-'}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
+                        ))}
+                      </div>
+                    </td>
 
-                    {/* ✅ NEW: Team Assignment Column */}
                     <td className="px-4 py-3">
                       <div className="space-y-1">
                         {client.teamAssignment?.designer && (
@@ -1374,7 +1362,6 @@ const ClientTable = React.memo(
                         )}
                       </div>
                     </td>
-
 
                     <td className="px-4 py-3">
                       <div className="space-y-1">
@@ -1453,7 +1440,6 @@ const ClientTable = React.memo(
                               size="sm"
                             />
 
-                             {/* ✅ EXISTING BUTTON - VIEW QUESTIONNAIRE */}
                             <ActionButton
                               icon={hasQuest ? ClipboardCheck : ClipboardList}
                               color={hasQuest ? 'green' : 'amber'}
@@ -1463,24 +1449,15 @@ const ClientTable = React.memo(
                               pulse={!hasQuest}
                             />
 
-                            {/* ✅ NEW BUTTON - FILL QUESTIONNAIRE */}
                             {!hasQuest && (
                               <ActionButton
-                                icon={Edit3}  // ✅ Changed icon
+                                icon={Edit3}
                                 color="purple"
                                 onClick={() => onOpenFillQuestionnaireModal(client)}
                                 title="Fill Questionnaire for Client"
                                 size="sm"
                               />
                             )}
-
-                            {/* <ActionButton
-                              icon={ShoppingBag}
-                              color="indigo"
-                              onClick={() => onOpenOrdersModal(client)}
-                              title="View Orders"
-                              size="sm"
-                            /> */}
 
                             <ActionButton
                               icon={Trash2}
@@ -1503,7 +1480,6 @@ const ClientTable = React.memo(
     );
   }
 );
-
 
 
 // ==================== MODALS ====================
@@ -1561,6 +1537,11 @@ const FormModal = React.memo(
     bedroomMode,
     setBedroomMode
   }) => {
+
+    // ── Helper: update a single address field ──────────────────
+    const setAddr = (field, value) =>
+      setFormData(prev => ({ ...prev, address: { ...prev.address, [field]: value } }));
+
     return (
       <Modal
         title={
@@ -1698,28 +1679,25 @@ const FormModal = React.memo(
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-[#005670] text-white' : 'bg-gray-200 text-gray-600'}`}>{f.label}</span>
                         {idx > 0 && (
                           <button type="button" onClick={() => {
-                          // Shift semua unit di atas idx ke bawah, clear yang terakhir
-                          setFormData(prev => {
-                            const next = { ...prev };
-                            const fields = [
-                              { un: 'unitNumber', fp: 'floorPlan' },
-                              { un: 'unitNumber2', fp: 'floorPlan2' },
-                              { un: 'unitNumber3', fp: 'floorPlan3' },
-                              { un: 'unitNumber4', fp: 'floorPlan4' },
-                              { un: 'unitNumber5', fp: 'floorPlan5' },
-                            ];
-                            // Geser ke atas mulai dari posisi idx
-                            for (let i = idx; i < visibleCount - 1; i++) {
-                              next[fields[i].un] = prev[fields[i + 1].un];
-                              next[fields[i].fp] = prev[fields[i + 1].fp];
-                            }
-                            // Clear yang terakhir
-                            next[fields[visibleCount - 1].un] = '';
-                            next[fields[visibleCount - 1].fp] = '';
-                            return next;
-                          });
-                          setVisibleCount(v => v - 1);
-                        }} className="p-1 text-red-400 hover:text-red-600 rounded">
+                            setFormData(prev => {
+                              const next = { ...prev };
+                              const fields = [
+                                { un: 'unitNumber', fp: 'floorPlan' },
+                                { un: 'unitNumber2', fp: 'floorPlan2' },
+                                { un: 'unitNumber3', fp: 'floorPlan3' },
+                                { un: 'unitNumber4', fp: 'floorPlan4' },
+                                { un: 'unitNumber5', fp: 'floorPlan5' },
+                              ];
+                              for (let i = idx; i < visibleCount - 1; i++) {
+                                next[fields[i].un] = prev[fields[i + 1].un];
+                                next[fields[i].fp] = prev[fields[i + 1].fp];
+                              }
+                              next[fields[visibleCount - 1].un] = '';
+                              next[fields[visibleCount - 1].fp] = '';
+                              return next;
+                            });
+                            setVisibleCount(v => v - 1);
+                          }} className="p-1 text-red-400 hover:text-red-600 rounded">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -1750,7 +1728,7 @@ const FormModal = React.memo(
               );
             })()}
 
-            {/* ✅ NEW: Team Assignment Section */}
+            {/* Team Assignment Section */}
             <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
               <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" /> Team Assignment (Optional)
@@ -1796,7 +1774,58 @@ const FormModal = React.memo(
                     ...TEAM_OPTIONS.projectManagerAssistant.map(name => ({ value: name, label: name }))
                   ]}
                 />
-                
+              </div>
+            </div>
+
+            {/* ✅ NEW: Address Section */}
+            <div className="p-6 bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border border-gray-200">
+              <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-gray-500" />
+                Address
+                <span className="text-xs font-normal text-gray-400 ml-1">(Optional)</span>
+              </h4>
+
+              <div className="space-y-3">
+                <Input
+                  label="Street"
+                  value={formData.address?.street || ''}
+                  onChange={(v) => setAddr('street', v)}
+                  placeholder="e.g. 123 Ocean Drive"
+                />
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Input
+                    label="City"
+                    value={formData.address?.city || ''}
+                    onChange={(v) => setAddr('city', v)}
+                    placeholder="e.g. Miami"
+                  />
+                  <Input
+                    label="State / Province"
+                    value={formData.address?.state || ''}
+                    onChange={(v) => setAddr('state', v)}
+                    placeholder="e.g. FL"
+                  />
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Input
+                    label="Zip / Postal Code"
+                    value={formData.address?.zipcode || ''}
+                    onChange={(v) => setAddr('zipcode', v)}
+                    placeholder="e.g. 33139"
+                  />
+                  <Input
+                    label="Country"
+                    value={formData.address?.country || ''}
+                    onChange={(v) => setAddr('country', v)}
+                    placeholder="e.g. United States"
+                  />
+                </div>
+                <Input
+                  label="Fax"
+                  value={formData.address?.fax || ''}
+                  onChange={(v) => setAddr('fax', v)}
+                  placeholder="e.g. +1 305 000 0000"
+                />
               </div>
             </div>
 
@@ -1806,7 +1835,6 @@ const FormModal = React.memo(
                   <Sparkles className="w-5 h-5" /> Pricing Information
                 </h4>
                 
-                {/* ✅ COLLECTION DROPDOWN - TAMBAH OPTION CUSTOM */}
                 <div className="mb-4">
                   <Select
                     label="Collection"
@@ -1815,10 +1843,9 @@ const FormModal = React.memo(
                       ...prev, 
                       collection: v,
                       bedroomCount: (CUSTOM_COLLECTIONS.includes(v) || CLIENT_COLLECTIONS.includes(v)) ? '' : prev.bedroomCount,
-                      floorPlan: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.floorPlan  // Client collections tetap simpan floor plan
+                      floorPlan: CUSTOM_COLLECTIONS.includes(v) ? '' : prev.floorPlan
                     }))}
                     options={[
-                      // { value: 'Nalu Foundation Collection', label: 'Nalu Foundation Collection' },
                       { value: 'Nalu (Client)', label: 'Nalu (Client)' },
                       { value: 'Lani (Client)', label: 'Lani (Client)' },
                       { value: 'Nalu (Developer)', label: 'Nalu (Developer)' },
@@ -1830,31 +1857,26 @@ const FormModal = React.memo(
                   />
                 </div>
 
-                {/* ✅ CONDITIONAL RENDERING */}
                 {(CUSTOM_COLLECTIONS.includes(formData.collection) || CLIENT_COLLECTIONS.includes(formData.collection)) ? (
-                  // ========================================
-                  // TAMPILAN UNTUK CUSTOM PACKAGE
-                  // ========================================
                   <div className="space-y-4">
-                  {CUSTOM_COLLECTIONS.includes(formData.collection) && (
-                    <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-300">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-purple-900 mb-1">
-                            🎨 Custom Package Selected
-                          </p>
-                          <p className="text-xs text-purple-700 leading-relaxed">
-                            • The designer will manually input the items<br/>
-                            • No floor plan selection is required<br/>
-                            • Images, links, and detailed specifications can be added
-                          </p>
+                    {CUSTOM_COLLECTIONS.includes(formData.collection) && (
+                      <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-300">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-purple-900 mb-1">
+                              🎨 Custom Package Selected
+                            </p>
+                            <p className="text-xs text-purple-700 leading-relaxed">
+                              • The designer will manually input the items<br/>
+                              • No floor plan selection is required<br/>
+                              • Images, links, and detailed specifications can be added
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                    {/* Optional Custom Notes */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Project Notes (Optional)
@@ -1872,58 +1894,49 @@ const FormModal = React.memo(
                     </div>
                   </div>
                 ) : (
-                  // ========================================
-                  // TAMPILAN UNTUK PACKAGE BIASA (Nalu/Lani)
-                  // ========================================
                   <div className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
-                    {/* Bedroom Count (1/2/3/custom) */}
-                    <Select
-                      label="Bedroom Count"
-                      value={
-                        bedroomMode
-                          ? bedroomMode
-                          : (['1', '2', '3', '1B', '2B', '3B'].includes(String(formData.bedroomCount))
-                              ? String(formData.bedroomCount)
-                              : '')
-                      }
-                      onChange={(v) => {
-                        setBedroomMode(v);
-                        if (v === 'custom') {
-                          setFormData(prev => ({ ...prev, bedroomCount: '' }));
-                        } else {
-                          setFormData(prev => ({ ...prev, bedroomCount: v }));
+                      <Select
+                        label="Bedroom Count"
+                        value={
+                          bedroomMode
+                            ? bedroomMode
+                            : (['1', '2', '3', '1B', '2B', '3B'].includes(String(formData.bedroomCount))
+                                ? String(formData.bedroomCount)
+                                : '')
                         }
-                      }}
-                      options={BEDROOM_OPTIONS}
-                      error={errors.bedroomCount}
-                      required
-                    />
+                        onChange={(v) => {
+                          setBedroomMode(v);
+                          if (v === 'custom') {
+                            setFormData(prev => ({ ...prev, bedroomCount: '' }));
+                          } else {
+                            setFormData(prev => ({ ...prev, bedroomCount: v }));
+                          }
+                        }}
+                        options={BEDROOM_OPTIONS}
+                        error={errors.bedroomCount}
+                        required
+                      />
 
-                    {/* Custom bedroom input */}
-                    {bedroomMode === 'custom' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Bedroom Qty <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={formData.bedroomCount || ''}
-                          onChange={(e) => {
-                            const val = e.target.value; // string
-                            // ✅ tetap pakai existing field bedroomCount
-                            setFormData(prev => ({ ...prev, bedroomCount: val }));
-                          }}
-                          placeholder="e.g. 4"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition-all"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Bedroom + Den
-                        </p>
-                      </div>
-                    )}
-
+                      {bedroomMode === 'custom' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Bedroom Qty <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={formData.bedroomCount || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, bedroomCount: val }));
+                            }}
+                            placeholder="e.g. 4"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition-all"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Bedroom + Den</p>
+                        </div>
+                      )}
                     </div>
                     
                     {formData.calculatedAmount > 0 && (
@@ -1939,7 +1952,6 @@ const FormModal = React.memo(
                   </div>
                 )}
 
-                {/* Package Type Badge */}
                 {formData.collection && (
                   <div className="mt-4 p-3 bg-white rounded-xl border-2 border-emerald-300">
                     <div className="flex items-center justify-between">
@@ -2051,15 +2063,9 @@ const ApprovalModal = React.memo(
         }
       >
         <div className="mb-6 p-4 bg-gray-50 rounded-xl space-y-1">
-          <p className="text-sm">
-            <strong>Client:</strong> {selectedClient?.name}
-          </p>
-          <p className="text-sm">
-            <strong>Email:</strong> {selectedClient?.email}
-          </p>
-          <p className="text-sm">
-            <strong>Unit:</strong> {selectedClient?.unitNumber}
-          </p>
+          <p className="text-sm"><strong>Client:</strong> {selectedClient?.name}</p>
+          <p className="text-sm"><strong>Email:</strong> {selectedClient?.email}</p>
+          <p className="text-sm"><strong>Unit:</strong> {selectedClient?.unitNumber}</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -2068,23 +2074,13 @@ const ApprovalModal = React.memo(
               <Input
                 label="Client Code"
                 value={approvalData.clientCode}
-                onChange={(v) =>
-                  setApprovalData((prev) => ({
-                    ...prev,
-                    clientCode: v
-                  }))
-                }
+                onChange={(v) => setApprovalData((prev) => ({ ...prev, clientCode: v }))}
                 required
               />
               <Select
                 label="Floor Plan"
                 value={approvalData.floorPlan}
-                onChange={(v) =>
-                  setApprovalData((prev) => ({
-                    ...prev,
-                    floorPlan: v
-                  }))
-                }
+                onChange={(v) => setApprovalData((prev) => ({ ...prev, floorPlan: v }))}
                 options={floorPlans.map((fp) => ({ value: fp, label: fp }))}
                 required
               />
@@ -2096,12 +2092,7 @@ const ApprovalModal = React.memo(
               </label>
               <textarea
                 value={approvalData.rejectionReason}
-                onChange={(e) =>
-                  setApprovalData((prev) => ({
-                    ...prev,
-                    rejectionReason: e.target.value
-                  }))
-                }
+                onChange={(e) => setApprovalData((prev) => ({ ...prev, rejectionReason: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 resize-none"
                 rows="4"
                 placeholder="Optional..."
@@ -2237,7 +2228,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Format any value: array → joined string, boolean → Yes/No, blank → "—"
   const fmt = (v) => {
     if (v === null || v === undefined) return '—';
     if (Array.isArray(v)) return v.length > 0 ? v.join(', ') : '—';
@@ -2304,7 +2294,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
         );
       }
 
-      // PDF row — always renders, shows "Not answered" in gray if blank
       const PdfRow = ({ label, value }) => {
         const display = fmt(value);
         const isBlank = display === '—';
@@ -2321,14 +2310,11 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
       const MyDocument = (
         <Document>
           <Page size="A4" style={pdfStyles.page}>
-
-            {/* HEADER */}
             <View style={pdfStyles.header}>
               <Text style={pdfStyles.headerTitle}>Design Questionnaire</Text>
               <Text style={pdfStyles.headerSubtitle}>Client: {selectedClient.name}</Text>
             </View>
 
-            {/* CLIENT INFO */}
             <View style={pdfStyles.infoBox}>
               <Text style={pdfStyles.infoTitle}>Client Information</Text>
               <Text style={pdfStyles.infoRow}>Name: {selectedClient.name}</Text>
@@ -2341,7 +2327,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               </Text>
             </View>
 
-            {/* 1. HOME USE & LIFESTYLE */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>1. HOME USE &amp; LIFESTYLE</Text>
               <PdfRow label="Purpose of Residence" value={questionnaire.purpose_of_residence} />
@@ -2352,7 +2337,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <PdfRow label="Home Feeling"          value={questionnaire.home_feeling} />
             </View>
 
-            {/* 2. ENTERTAINING & DAILY USE */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>2. ENTERTAINING &amp; DAILY USE</Text>
               <PdfRow label="Work From Home"      value={questionnaire.work_from_home} />
@@ -2361,7 +2345,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <PdfRow label="Outdoor/Lanai Use"   value={questionnaire.outdoor_lanai_use} />
             </View>
 
-            {/* 3. DESIGN AESTHETIC */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>3. DESIGN AESTHETIC &amp; COLOR PREFERENCES</Text>
               <PdfRow label="Unit Options"          value={questionnaire.unit_options} />
@@ -2374,19 +2357,17 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <PdfRow label="Colors to Avoid"       value={questionnaire.colors_to_avoid} />
             </View>
 
-            {/* 4. BEDROOMS & COMFORT */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>4. BEDROOMS &amp; COMFORT</Text>
-              <PdfRow label="Bed Sizes"               value={questionnaire.bed_sizes} />
-              <PdfRow label="Mattress Firmness"       value={questionnaire.mattress_firmness} />
-              <PdfRow label="Bedding Type"            value={questionnaire.bedding_type} />
+              <PdfRow label="Bed Sizes"                value={questionnaire.bed_sizes} />
+              <PdfRow label="Mattress Firmness"        value={questionnaire.mattress_firmness} />
+              <PdfRow label="Bedding Type"             value={questionnaire.bedding_type} />
               <PdfRow label="Pillow Insert Preference" value={questionnaire.pillow_insert_preference} />
               <PdfRow label="Duvet Insert Preference"  value={questionnaire.duvet_insert_preference} />
-              <PdfRow label="Bedding Material/Color"  value={questionnaire.bedding_material_color} />
-              <PdfRow label="Lighting Mood"           value={questionnaire.lighting_mood} />
+              <PdfRow label="Bedding Material/Color"   value={questionnaire.bedding_material_color} />
+              <PdfRow label="Lighting Mood"            value={questionnaire.lighting_mood} />
             </View>
 
-            {/* 5. ART & ACCESSORIES */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>5. ART, ACCESSORIES &amp; FINISHING TOUCHES</Text>
               <PdfRow label="Art Style"           value={questionnaire.art_style} />
@@ -2395,26 +2376,23 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <PdfRow label="Decorative Pillows"  value={questionnaire.decorative_pillows} />
             </View>
 
-            {/* 6. ADDITIONAL NOTES */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>6. ADDITIONAL DESIGN NOTES</Text>
-              <PdfRow label="Special Zones"       value={questionnaire.special_zones} />
-              <PdfRow label="Existing Furniture"  value={questionnaire.existing_furniture} />
-              <PdfRow label="Furniture Details"   value={questionnaire.existing_furniture_details} />
-              <PdfRow label="Additional Notes"    value={questionnaire.additional_notes} />
+              <PdfRow label="Special Zones"      value={questionnaire.special_zones} />
+              <PdfRow label="Existing Furniture" value={questionnaire.existing_furniture} />
+              <PdfRow label="Furniture Details"  value={questionnaire.existing_furniture_details} />
+              <PdfRow label="Additional Notes"   value={questionnaire.additional_notes} />
             </View>
 
-            {/* 7. ADD-ON: CLOSET */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.addonSectionHeader}>7. ADD-ON: CUSTOMIZED CLOSET SOLUTIONS</Text>
-              <PdfRow label="Closet Use"        value={questionnaire.closet_use} />
+              <PdfRow label="Closet Use"         value={questionnaire.closet_use} />
               <PdfRow label="Organization Style" value={questionnaire.organization_style} />
-              <PdfRow label="Additional Needs"  value={questionnaire.closet_additional_needs} />
-              <PdfRow label="Finish"            value={questionnaire.closet_finish} />
-              <PdfRow label="Locations"         value={questionnaire.closet_locations} />
+              <PdfRow label="Additional Needs"   value={questionnaire.closet_additional_needs} />
+              <PdfRow label="Finish"             value={questionnaire.closet_finish} />
+              <PdfRow label="Locations"          value={questionnaire.closet_locations} />
             </View>
 
-            {/* 8. ADD-ON: WINDOW */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.addonSectionHeader}>8. ADD-ON: WINDOW COVERINGS</Text>
               <PdfRow label="Treatment Preference" value={questionnaire.window_treatment} />
@@ -2426,27 +2404,23 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               <PdfRow label="Other Area"           value={questionnaire.window_other_area} />
             </View>
 
-            {/* 9. ADD-ON: AV */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.addonSectionHeader}>9. ADD-ON: AUDIO/VISUAL</Text>
               <PdfRow label="AV Usage Level" value={questionnaire.av_usage} />
               <PdfRow label="Areas to Equip" value={questionnaire.av_areas} />
             </View>
 
-            {/* 10. ADD-ON: GREENERY */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.addonSectionHeader}>10. ADD-ON: GREENERY / PLANTS</Text>
               <PdfRow label="Plant Type" value={questionnaire.plant_type} />
               <PdfRow label="Areas"      value={questionnaire.plant_areas} />
             </View>
 
-            {/* 11. ADD-ON: KITCHEN */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.addonSectionHeader}>11. ADD-ON: KITCHEN &amp; HOUSEHOLD ESSENTIALS</Text>
               <PdfRow label="Selected Items" value={questionnaire.kitchen_essentials} />
             </View>
 
-            {/* 12. LIKED DESIGNS */}
             <View style={pdfStyles.section}>
               <Text style={pdfStyles.sectionHeader}>12. VISUAL INSPIRATION (LIKED DESIGNS)</Text>
               {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 ? (
@@ -2495,12 +2469,10 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
               )}
             </View>
 
-            {/* FOOTER */}
             <View style={pdfStyles.footer} fixed>
               <Text>Generated on {new Date().toLocaleDateString('en-US')}</Text>
               <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
             </View>
-
           </Page>
         </Document>
       );
@@ -2580,7 +2552,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
     );
   }
 
-  // UI Row — always renders, gray italic if blank
   const Row = ({ label, value }) => {
     const display = fmt(value);
     const isBlank = display === '—';
@@ -2606,8 +2577,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
       )}
 
       <div className="space-y-4">
-
-        {/* Status Badge + Download */}
         <div className="flex items-center justify-between gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-500">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
@@ -2628,9 +2597,7 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           </button>
         </div>
 
-        {/* ─── 1. HOME USE & LIFESTYLE ─── */}
-        <CollapsibleSection icon="🏠" title="Home Use & Lifestyle"
-          isExpanded={expandedSections.homeUse} onToggle={() => toggleSection('homeUse')}>
+        <CollapsibleSection icon="🏠" title="Home Use & Lifestyle" isExpanded={expandedSections.homeUse} onToggle={() => toggleSection('homeUse')}>
           <Row label="Purpose of Residence" value={questionnaire.purpose_of_residence} />
           <Row label="Who Will Use"          value={questionnaire.who_will_use} />
           <Row label="Family Members"        value={questionnaire.family_members} />
@@ -2639,18 +2606,14 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           <Row label="Home Feeling"          value={questionnaire.home_feeling} />
         </CollapsibleSection>
 
-        {/* ─── 2. ENTERTAINING & DAILY USE ─── */}
-        <CollapsibleSection icon="🥂" title="Entertaining & Daily Use"
-          isExpanded={expandedSections.entertaining} onToggle={() => toggleSection('entertaining')}>
+        <CollapsibleSection icon="🥂" title="Entertaining & Daily Use" isExpanded={expandedSections.entertaining} onToggle={() => toggleSection('entertaining')}>
           <Row label="Work From Home"      value={questionnaire.work_from_home} />
           <Row label="Entertain Frequency" value={questionnaire.entertain_frequency} />
           <Row label="Gathering Types"     value={questionnaire.gathering_types} />
           <Row label="Outdoor/Lanai Use"   value={questionnaire.outdoor_lanai_use} />
         </CollapsibleSection>
 
-        {/* ─── 3. DESIGN AESTHETIC ─── */}
-        <CollapsibleSection icon="🎨" title="Design Aesthetic & Color Preferences"
-          isExpanded={expandedSections.design} onToggle={() => toggleSection('design')}>
+        <CollapsibleSection icon="🎨" title="Design Aesthetic & Color Preferences" isExpanded={expandedSections.design} onToggle={() => toggleSection('design')}>
           <Row label="Unit Options"           value={questionnaire.unit_options} />
           <Row label="Preferred Collection"   value={questionnaire.preferred_collection} />
           <Row label="Style Direction"        value={questionnaire.style_direction} />
@@ -2661,9 +2624,7 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           <Row label="Colors to Avoid"        value={questionnaire.colors_to_avoid} />
         </CollapsibleSection>
 
-        {/* ─── 4. BEDROOMS & COMFORT ─── */}
-        <CollapsibleSection icon="🛏️" title="Bedrooms & Comfort"
-          isExpanded={expandedSections.bedrooms} onToggle={() => toggleSection('bedrooms')}>
+        <CollapsibleSection icon="🛏️" title="Bedrooms & Comfort" isExpanded={expandedSections.bedrooms} onToggle={() => toggleSection('bedrooms')}>
           <Row label="Bed Sizes"               value={questionnaire.bed_sizes} />
           <Row label="Mattress Firmness"       value={questionnaire.mattress_firmness} />
           <Row label="Bedding Type"            value={questionnaire.bedding_type} />
@@ -2673,27 +2634,21 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           <Row label="Lighting Mood"           value={questionnaire.lighting_mood} />
         </CollapsibleSection>
 
-        {/* ─── 5. ART & ACCESSORIES ─── */}
-        <CollapsibleSection icon="🖼️" title="Art, Accessories & Finishing Touches"
-          isExpanded={expandedSections.art} onToggle={() => toggleSection('art')}>
+        <CollapsibleSection icon="🖼️" title="Art, Accessories & Finishing Touches" isExpanded={expandedSections.art} onToggle={() => toggleSection('art')}>
           <Row label="Art Style"           value={questionnaire.art_style} />
           <Row label="Art Coverage"        value={questionnaire.art_coverage} />
           <Row label="Accessories Styling" value={questionnaire.accessories_styling} />
           <Row label="Decorative Pillows"  value={questionnaire.decorative_pillows} />
         </CollapsibleSection>
 
-        {/* ─── 6. ADDITIONAL NOTES ─── */}
-        <CollapsibleSection icon="📝" title="Additional Design Notes"
-          isExpanded={expandedSections.misc} onToggle={() => toggleSection('misc')}>
+        <CollapsibleSection icon="📝" title="Additional Design Notes" isExpanded={expandedSections.misc} onToggle={() => toggleSection('misc')}>
           <Row label="Special Zones"       value={questionnaire.special_zones} />
           <Row label="Existing Furniture"  value={questionnaire.existing_furniture} />
           <Row label="Furniture Details"   value={questionnaire.existing_furniture_details} />
           <Row label="Additional Notes"    value={questionnaire.additional_notes} />
         </CollapsibleSection>
 
-        {/* ─── 7. ADD-ON: CLOSET ─── */}
-        <CollapsibleSection icon="🚪" title="Add-On: Customized Closet Solutions"
-          isExpanded={expandedSections.closet} onToggle={() => toggleSection('closet')}>
+        <CollapsibleSection icon="🚪" title="Add-On: Customized Closet Solutions" isExpanded={expandedSections.closet} onToggle={() => toggleSection('closet')}>
           <Row label="Closet Use"          value={questionnaire.closet_use} />
           <Row label="Organization Style"  value={questionnaire.organization_style} />
           <Row label="Additional Needs"    value={questionnaire.closet_additional_needs} />
@@ -2701,9 +2656,7 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           <Row label="Locations"           value={questionnaire.closet_locations} />
         </CollapsibleSection>
 
-        {/* ─── 8. ADD-ON: WINDOW ─── */}
-        <CollapsibleSection icon="🪟" title="Add-On: Window Coverings"
-          isExpanded={expandedSections.window} onToggle={() => toggleSection('window')}>
+        <CollapsibleSection icon="🪟" title="Add-On: Window Coverings" isExpanded={expandedSections.window} onToggle={() => toggleSection('window')}>
           <Row label="Treatment Preference" value={questionnaire.window_treatment} />
           <Row label="Operation"            value={questionnaire.window_operation} />
           <Row label="Light Quality"        value={questionnaire.light_quality} />
@@ -2713,29 +2666,21 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
           <Row label="Other Area"           value={questionnaire.window_other_area} />
         </CollapsibleSection>
 
-        {/* ─── 9. ADD-ON: AV ─── */}
-        <CollapsibleSection icon="📺" title="Add-On: Audio/Visual"
-          isExpanded={expandedSections.av} onToggle={() => toggleSection('av')}>
+        <CollapsibleSection icon="📺" title="Add-On: Audio/Visual" isExpanded={expandedSections.av} onToggle={() => toggleSection('av')}>
           <Row label="AV Usage Level" value={questionnaire.av_usage} />
           <Row label="Areas to Equip" value={questionnaire.av_areas} />
         </CollapsibleSection>
 
-        {/* ─── 10. ADD-ON: GREENERY ─── */}
-        <CollapsibleSection icon="🌿" title="Add-On: Greenery / Plants"
-          isExpanded={expandedSections.greenery} onToggle={() => toggleSection('greenery')}>
+        <CollapsibleSection icon="🌿" title="Add-On: Greenery / Plants" isExpanded={expandedSections.greenery} onToggle={() => toggleSection('greenery')}>
           <Row label="Plant Type" value={questionnaire.plant_type} />
           <Row label="Areas"      value={questionnaire.plant_areas} />
         </CollapsibleSection>
 
-        {/* ─── 11. ADD-ON: KITCHEN ─── */}
-        <CollapsibleSection icon="🍳" title="Add-On: Kitchen & Household Essentials"
-          isExpanded={expandedSections.kitchen} onToggle={() => toggleSection('kitchen')}>
+        <CollapsibleSection icon="🍳" title="Add-On: Kitchen & Household Essentials" isExpanded={expandedSections.kitchen} onToggle={() => toggleSection('kitchen')}>
           <Row label="Selected Items" value={questionnaire.kitchen_essentials} />
         </CollapsibleSection>
 
-        {/* ─── 12. LIKED DESIGNS ─── */}
-        <CollapsibleSection icon="⭐" title="Visual Inspiration (Liked Designs)"
-          isExpanded={expandedSections.likedDesigns} onToggle={() => toggleSection('likedDesigns')}>
+        <CollapsibleSection icon="⭐" title="Visual Inspiration (Liked Designs)" isExpanded={expandedSections.likedDesigns} onToggle={() => toggleSection('likedDesigns')}>
           {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 ? (
             <div className="space-y-4">
               <p className="text-sm text-gray-600 mb-3">
@@ -2779,7 +2724,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
             <p className="text-sm text-gray-300 italic py-2">—</p>
           )}
         </CollapsibleSection>
-
       </div>
 
       <ImageLightbox
@@ -2882,25 +2826,14 @@ const Input = React.memo(
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#005670] transition-colors"
             >
               {showPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
-                  viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                    d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c1.676 0 
-                    3.27-.365 4.695-1.022M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 
-                    0 8.773 3.162 10.065 7.5a10.52 10.52 0 01-4.293 5.774M6.228 
-                    6.228L3 3m3.228 3.228l5.772 5.772m0 0l3.772 3.772M12 
-                    12l3.772 3.772" />
+                    d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c1.676 0 3.27-.365 4.695-1.022M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.5a10.52 10.52 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l5.772 5.772m0 0l3.772 3.772M12 12l3.772 3.772" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
-                  viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                    d="M2.036 12C3.284 7.943 7.274 4.5 12 
-                    4.5c4.726 0 8.716 3.443 9.964 7.5C20.716 
-                    16.057 16.726 19.5 12 19.5c-4.726 
-                    0-8.716-3.443-9.964-7.5z" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.036 12C3.284 7.943 7.274 4.5 12 4.5c4.726 0 8.716 3.443 9.964 7.5C20.716 16.057 16.726 19.5 12 19.5c-4.726 0-8.716-3.443-9.964-7.5z" />
                 </svg>
               )}
             </button>
@@ -2944,7 +2877,7 @@ const ActionButton = React.memo(({ icon: Icon, color, onClick, title, size = 'md
     cyan: 'text-cyan-600 hover:bg-cyan-50',
     amber: 'text-amber-600 hover:bg-amber-50',
     purple: 'text-purple-600 hover:bg-purple-50',
-    indigo: 'text-indigo-600 hover:bg-indigo-50', // ✅ ADD THIS
+    indigo: 'text-indigo-600 hover:bg-indigo-50',
     gray: 'text-gray-400 hover:bg-gray-50 cursor-not-allowed',
   };
 
@@ -3009,13 +2942,12 @@ const ViewMode = React.memo(({ client }) => (
       <div className="space-y-2">
         <label className="text-xs font-medium text-gray-500 uppercase">Registered</label>
         <p className="text-lg">
-          {client?.createdAt
-            ? new Date(client?.createdAt).toLocaleDateString()
-            : '-'}
+          {client?.createdAt ? new Date(client?.createdAt).toLocaleDateString() : '-'}
         </p>
       </div>
     </div>
-        {/* ✅ NEW: Team Assignment Display */}
+
+    {/* Team Assignment Display */}
     {(client?.teamAssignment?.designer || client?.teamAssignment?.projectManager) && (
       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
         <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -3044,6 +2976,53 @@ const ViewMode = React.memo(({ client }) => (
             <div>
               <span className="font-medium text-gray-700">Designer Assistant:</span>
               <span className="ml-2 text-gray-900">{client.teamAssignment.designerAssistant}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* ✅ NEW: Address Display */}
+    {(client?.address?.street || client?.address?.city || client?.address?.country) && (
+      <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-gray-500" /> Address
+        </h4>
+        <div className="grid md:grid-cols-2 gap-3 text-sm">
+          {client.address?.street && (
+            <div className="md:col-span-2">
+              <span className="font-medium text-gray-700">Street:</span>
+              <span className="ml-2 text-gray-900">{client.address.street}</span>
+            </div>
+          )}
+          {client.address?.city && (
+            <div>
+              <span className="font-medium text-gray-700">City:</span>
+              <span className="ml-2 text-gray-900">{client.address.city}</span>
+            </div>
+          )}
+          {client.address?.state && (
+            <div>
+              <span className="font-medium text-gray-700">State:</span>
+              <span className="ml-2 text-gray-900">{client.address.state}</span>
+            </div>
+          )}
+          {client.address?.zipcode && (
+            <div>
+              <span className="font-medium text-gray-700">Zip Code:</span>
+              <span className="ml-2 text-gray-900">{client.address.zipcode}</span>
+            </div>
+          )}
+          {client.address?.country && (
+            <div>
+              <span className="font-medium text-gray-700">Country:</span>
+              <span className="ml-2 text-gray-900">{client.address.country}</span>
+            </div>
+          )}
+          {client.address?.fax && (
+            <div>
+              <span className="font-medium text-gray-700">Fax:</span>
+              <span className="ml-2 text-gray-900">{client.address.fax}</span>
             </div>
           )}
         </div>

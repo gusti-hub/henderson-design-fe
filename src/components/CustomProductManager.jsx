@@ -1,5 +1,5 @@
 // components/CustomProductManager.jsx
-// ✅ PATCHED v4:
+// ✅ PATCHED v5:
 //    1. Sales Tax default: 8.75 → 4.5
 //    2. Auto-fill markupPercent dari vendor saat dipilih (via vendor.defaultMarkup)
 //    3. Library item: boleh add item yang sama berkali-kali (berbeda room)
@@ -8,9 +8,9 @@
 //    5. Item Class: tambah option "Custom..." + free-text input jika dipilih
 //    6. Fix isEditable check: undefined dianggap true (default editable)
 //    7. Fix typing issue: localFields state di ProductCard supaya input smooth
-//    8. [NEW] Fix save: localFields di-merge ke product saat save
-//       → productRef tidak reliable untuk localFields karena upd() tidak selalu
-//          sampai ke parent state sebelum save diklik
+//    8. Fix save: localFields di-merge ke product saat save
+//    9. [NEW] Fix Item Class tidak tersimpan: tambah itemClass ke localFields
+//       → sebelumnya itemClass tidak di-merge saat save, hilang setelah refresh
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -1124,6 +1124,7 @@ const ProductCard = ({
     vendorOrderNumber: opts.vendorOrderNumber    || '',
     poNumber:          opts.poNumber             || '',
     tags:              Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || ''),
+    itemClass:         opts.itemClass            || '', // ✅ PATCH 9
   });
 
   // Sync localFields hanya ketika _id berubah (pindah ke product berbeda)
@@ -1146,6 +1147,7 @@ const ProductCard = ({
       vendorOrderNumber: o.vendorOrderNumber        || '',
       poNumber:          o.poNumber                || '',
       tags:              Array.isArray(o.tags) ? o.tags.join(', ') : (o.tags || ''),
+      itemClass:         o.itemClass               || '', // ✅ PATCH 9
     });
     setCustomAttrs(o.customAttributes || {});
   }, [product._id]);
@@ -1303,6 +1305,7 @@ const ProductCard = ({
         vendorOrderNumber: localFields.vendorOrderNumber,
         poNumber:          localFields.poNumber,
         tags:              localFields.tags.split(',').map(t => t.trim()).filter(Boolean),
+        itemClass:         localFields.itemClass, // ✅ PATCH 9
         links: localFields.links0
           ? [localFields.links0, ...(productRef.current.selectedOptions?.links?.slice(1) || [])]
           : (productRef.current.selectedOptions?.links?.slice(1) || []),
@@ -1594,9 +1597,10 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Class</label>
+                    {/* ✅ PATCH 9: pakai localFields.itemClass supaya tersimpan saat save */}
                     <ItemClassField
-                      value={opts.itemClass || ''}
-                      onChange={(v) => upd('itemClass', v)}
+                      value={localFields.itemClass}
+                      onChange={(v) => { setLocal('itemClass', v); upd('itemClass', v); }}
                       disabled={false}
                       inputCls={inputCls}
                     />
