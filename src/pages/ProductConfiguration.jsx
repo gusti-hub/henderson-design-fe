@@ -12,6 +12,7 @@ import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
 import BulkProductImport from '../pages/BulkProductImport';
 import BulkDeleteProducts from './BulkDeleteProduct';
+import BulkUpdateProducts from './BulkUpdateProducts';
 
 // ─── Finish constants ──────────────────────────────────────────────────────
 const WOOD_CODES   = ['MD', 'DK'];
@@ -116,6 +117,7 @@ const ProductConfiguration = () => {
   const [errors, setErrors]               = useState({});
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
   // ─── Fetch ───────────────────────────────────────────────────────────────
   useEffect(() => { fetchProducts(); }, [currentPage]);
@@ -352,6 +354,12 @@ const ProductConfiguration = () => {
             className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: '#005670' }}>
             <Plus className="w-4 h-4" /> Add Product
           </button>
+          <button
+              onClick={() => setShowBulkUpdate(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700"
+            >
+              <Pencil className="w-4 h-4" /> Bulk Update
+            </button>
         </div>
       </div>
 
@@ -722,6 +730,24 @@ const ProductConfiguration = () => {
           </div>
         </div>
       )}
+
+      {showBulkUpdate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b">
+              <h3 className="text-lg font-semibold text-amber-700">Bulk Update Products</h3>
+              <button onClick={() => setShowBulkUpdate(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <BulkUpdateProducts
+              onComplete={() => { setShowBulkUpdate(false); fetchProducts(); }}
+              backendServer={backendServer}
+            />
+          </div>
+        </div>
+      )}
+ 
     </div>
   );
 };
