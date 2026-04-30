@@ -16,12 +16,34 @@ const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturat
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
 const resolveFinish = c => { if (!c) return ''; const u = c.trim().toUpperCase(); return FINISH_LABELS[u] || c; };
 
+const FABRIC_CODES = {
+  '01':'Merino Snow',    '02':'Merino Wool',       '03':'Merino Cloud',
+  '04':'Peppin Silver',  '05':'Peppin Jute',        '06':'Peppin Chess',
+  '07':'Navara-011',     '08':'Navara-012',          '09':'Navara-013',
+  '10':'Palopo #WR160',  '11':'Dayevella Stone',     '12':'Peppin Portobelo',
+  '13':'Merino Silver',  '14':'Merino Light Grey',   '15':'Merino Pebble',
+  '16':'Lagoon #WR141',  '17':'Lagoon #WR160',       '18':'Peppin Coblestone',
+  '19':'Peppin Jute',    '20':'Peppin Chess',
+  '0A':'Gusto Angora',   '0B':'Gusto Shell',         '0C':'Gusto Dune',
+  '0D':'Indulge Swan',   '0E':'Indulge Dune',        '0F':'Indulge Sand',
+  '0G':'Navara-011',     '0H':'Navara-012',          '0I':'Navara-013',
+  '0J':'Evo Creame',     '0K':'Evo Plaza',           '0L':'Evo Sand',
+  '0M':'Drama Wool',     '0N':'Drama Marble',        '0O':'Drama Linen',
+  '0P':'Chill Out Ivory','0Q':'Chill Out Antique',   '0R':'Chill Out Chinchilla',
+  '0S':'Rewind Sesame',  '0T':'Rewind Marble',       '0U':'Rewind Gull',
+};
+const resolveFabric = c => {
+  if (!c) return '';
+  const u = c.trim().toUpperCase();
+  return FABRIC_CODES[u] || c; // show name if code found, else show raw value
+};
+
 // Page geometry at 96dpi
 const PAGE_W_IN  = 8.5;
 const PAGE_H_IN  = 11;
 const PAD_IN     = 0.5;   // top/left/right padding inside page
 const FOOT_IN    = 0.85;  // bottom reserved for footer
-const SAFE_PX    = 24;    // extra safety buffer
+const SAFE_PX    = 60;    // extra safety buffer
 
 const PX         = 96;
 const CONTENT_H  = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX; // ≈ 840px usable
@@ -87,10 +109,10 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
         <div style={{ fontWeight: '600', marginBottom: '2px', fontSize: '10px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
         {o.finish    && <div><strong>Finish:</strong> {resolveFinish(o.finish)}</div>}
-        {o.fabric    && <div><strong>Fabric:</strong> {o.fabric}</div>}
+        {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
         {o.size      && <div><strong>Size:</strong> {o.size}</div>}
         {o.itemClass && <div><strong>Class:</strong> {o.itemClass}</div>}
-        {o.sidemark  && <div><strong>Sidemark:</strong> {o.sidemark}</div>}
+
       </td>
       <td style={{ ...tdBase, width: '140px', padding: '6px 4px', fontSize: '9.5px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
@@ -229,8 +251,9 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [originalTitle]                                   = useState(document.title);
 
   // pages = null → measuring; array → done
-  const [pages, setPages]   = useState(null);
-  const [ready, setReady]   = useState(false);
+  const [pages, setPages]     = useState(null);
+  const [ready, setReady]     = useState(false);
+
 
   // Measure refs
   const measureRef  = useRef(null);
@@ -328,30 +351,12 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     });
   }, [products]);
 
-  // ── Pagination ─────────────────────────────────────────────────────────────
-  const paginate = useCallback(() => {
-    if (didPaginate.current) return;
-    didPaginate.current = true;
 
-    const rg = buildRoomGroups();
-    const headerH = headerRef.current?.getBoundingClientRect().height || 195;
 
-    // Flatten into items with measured heights
-    const items = [];
-    rg.forEach(([room, rps]) => {
-      const rhH = roomHdRefs.current[room]?.getBoundingClientRect().height || 26;
-      items.push({ type: 'room-header', room, height: rhH });
-      rps.forEach((p, i) => {
-        const el = rowRefs.current[`${room}__${i}`];
-        const h  = el ? el.getBoundingClientRect().height : 82;
-        items.push({ type: 'product', room, product: p, isFirst: i === 0, height: h });
-      });
-    });
-
-    // Bin-pack: room header always with first product row (no orphan)
+  // Pack items into pages (pure function, no side effects)
+  const packItems = (items, headerH) => {
     const result = [];
     let cur = [], used = headerH;
-
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.type === 'room-header') {
@@ -369,10 +374,99 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     }
     if (cur.length > 0) result.push(cur);
     if (result.length === 0) result.push([]);
+    return result;
+  };
 
-    setPages(result);
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  const paginate = useCallback(() => {
+    if (didPaginate.current) return;
+    didPaginate.current = true;
+
+    const rg = buildRoomGroups();
+
+    // ── Measure via clone in a real visible off-screen container ──────────
+    // visibility:hidden containers return wrong heights for <tr> elements.
+    // We create a temporary fully-rendered div, measure, then remove it.
+    const CONTENT_W = (PAGE_W_IN - PAD_IN * 2) * PX; // exact content width in px
+    const COL1 = 76, COL3 = 140;
+
+    const sandbox = document.createElement('div');
+    sandbox.style.cssText = [
+      'position:fixed', 'top:0', 'left:-9999px',
+      `width:${CONTENT_W}px`,
+      'background:white', 'z-index:-9999',
+      'font-size:9.5px', 'line-height:1.5',
+      'font-family:inherit',
+      'visibility:visible', 'opacity:0',
+      'pointer-events:none',
+    ].join(';');
+    document.body.appendChild(sandbox);
+
+    const measureEl = (html) => {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html;
+      sandbox.appendChild(wrapper);
+      const h = wrapper.getBoundingClientRect().height;
+      sandbox.removeChild(wrapper);
+      return Math.ceil(h) + 8; // +8px buffer per item
+    };
+
+    // Measure page-1 header
+    const headerH = headerRef.current
+      ? Math.ceil(headerRef.current.getBoundingClientRect().height) + 8
+      : 200;
+
+    const items = [];
+    rg.forEach(([room, rps]) => {
+      // Room header height
+      const rhH = measureEl(
+        `<div style="padding:5px 7px;font-weight:600;font-size:10.5px;background:#f0f0f0">${room}</div>`
+      );
+      items.push({ type: 'room-header', room, height: rhH });
+
+      rps.forEach((p, i) => {
+        const o = p.selectedOptions || {};
+        // Build the same content as ProductRow middle column
+        const lines = [];
+        if (p.name) lines.push(`<div style="font-weight:600;font-size:10px;margin-bottom:2px">${p.name}</div>`);
+        if (o.specifications) lines.push(`<div style="white-space:pre-wrap">${o.specifications}</div>`);
+        if (o.finish) lines.push(`<div><strong>Finish:</strong> ${o.finish}</div>`);
+        if (o.fabric) lines.push(`<div><strong>Fabric:</strong> ${o.fabric}</div>`);
+        if (o.size)   lines.push(`<div><strong>Size:</strong> ${o.size}</div>`);
+        if (o.itemClass) lines.push(`<div><strong>Class:</strong> ${o.itemClass}</div>`);
+
+        // Pricing column (right, 140px wide) — count lines
+        const priceLines = 2 + (parseFloat(o.salesTaxRate) > 0 ? 1 : 0) + 1; // qty+unit+[tax]+total
+        const priceH = priceLines * 15 + 16; // approx
+
+        // Image: always 64+12 = 76px
+        const imgH = 76;
+
+        // Measure middle column at its real width
+        const midW = CONTENT_W - COL1 - COL3;
+        const midWrapper = document.createElement('div');
+        midWrapper.style.cssText = `width:${midW}px;padding:6px 8px;font-size:9.5px;line-height:1.5;box-sizing:border-box`;
+        midWrapper.innerHTML = lines.join('');
+        sandbox.appendChild(midWrapper);
+        const midH = Math.ceil(midWrapper.getBoundingClientRect().height) + 12;
+        sandbox.removeChild(midWrapper);
+
+        // Row height = max of image, middle text, pricing
+        const rowH = Math.max(imgH, midH, priceH) + 8;
+        items.push({ type: 'product', room, product: p, isFirst: i === 0, height: rowH });
+      });
+    });
+
+    document.body.removeChild(sandbox);
+
+    const packed = packItems(items, headerH);
+    setPages(packed);
     setReady(true);
   }, [buildRoomGroups]);
+
+  // No DOM verify pass — overflow handled in packItems
+
+  // No DOM verify pass needed — overflow handled in packItems with real heights
 
   // Trigger: preload images → 300ms settle → paginate
   useEffect(() => {
@@ -432,7 +526,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     </div>
   );
 
-  // Content slot style (inside every page)
   const slotStyle = {
     position: 'absolute',
     top: `${PAD_IN}in`,
