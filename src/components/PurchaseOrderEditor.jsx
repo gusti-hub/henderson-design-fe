@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
@@ -238,14 +238,9 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           accountNumber: data.vendorInfo?.accountNumber || ''
         });
 
-        // Always use shipping data from order (Shipping tab in CustomProductManager)
-        // Use first product that has shipping data set
-        // Always use shipTo from backend (already synced from order Shipping tab)
-        // Backend sync ensures this is always latest from CustomProductManager Shipping tab
         if (data.shipTo && (data.shipTo.name || data.shipTo.address)) {
           setShipTo(data.shipTo);
         } else {
-          // Fallback: find from order products for this vendor
           const vendorIdStr = vendorId?.toString();
           const orderProductWithShipping = (orderData.selectedProducts || []).find(p => {
             const pVendorId = p.vendor?._id?.toString() || p.vendor?.toString();
@@ -482,6 +477,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             overflow: visible !important;
             height: auto !important;
           }
+          .desc-row { border-bottom: none !important; }
         }
         @page { size: letter; margin: 0.5in; }
 
@@ -516,11 +512,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           transition: border-color 0.15s;
         }
         .po-input:focus { border-bottom-color: #005670; }
-        .qty-input {
-          border: none;
-          border-radius: 0;
-          background: transparent;
-        }
         .po-table {
           width: 100%;
           border-collapse: collapse;
@@ -547,36 +538,23 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           max-width: 0;
         }
         .po-table tbody tr + tr td { border-top: 1px solid #f0f0f0; }
-        .po-table .desc-cell textarea {
-          width: 100%;
-          font-size: 11px;
-          border: none;
-          border-radius: 0;
-          background: transparent;
-          padding: 0;
-          resize: vertical;
-          min-height: 60px;
-          line-height: 1.5;
-          font-family: Arial, sans-serif;
-          box-sizing: border-box;
-        }
         .po-table .img-cell {
-          width: 90px;
-          min-width: 90px;
+          width: 120px;
+          min-width: 120px;
           text-align: center;
           vertical-align: middle;
           padding: 8px;
         }
         .po-table .img-cell img {
-          max-width: 80px;
-          max-height: 80px;
+          max-width: 110px;
+          max-height: 110px;
           object-fit: contain;
           display: block;
           margin: 0 auto;
         }
         .img-placeholder {
-          width: 80px;
-          height: 80px;
+          width: 110px;
+          height: 110px;
           background: #f5f5f5;
           display: flex;
           align-items: center;
@@ -604,45 +582,46 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           font-weight: bold;
           font-size: 12px;
         }
-        .qty-row {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-bottom: 4px;
+
+        /* Desc cell rows */
+        .desc-row {
+          display: block;
+          padding: 3px 0;
           font-size: 11px;
-        }
-        .qty-row label { font-weight: normal; color: #333; }
-        .qty-input {
-          border: none;
-          padding: 0;
-          font-size: 11px;
-          width: 40px;
-          background: transparent;
-          outline: none;
+          border-bottom: 1px dotted #eee;
           text-align: left;
         }
-        .sidemark-row {
-          margin-top: 4px;
+        .desc-row:last-child { border-bottom: none; }
+        .desc-row-label {
+          font-weight: 700;
+          color: #444;
           font-size: 10px;
-          display: flex;
-          align-items: flex-start;
-          gap: 4px;
-          flex-wrap: wrap;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          margin-right: 4px;
         }
-        .sidemark-row span { font-weight: 600; color: #444; white-space: nowrap; }
-        /* Vendor address compact — no extra spacing between lines */
-        .vendor-addr-line {
+        .desc-row-label::after {
+          content: ':';
+        }
+        .desc-row-value {
+          text-align: left;
+          color: #222;
           font-size: 11px;
-          line-height: 1.4;
-          padding: 0;
-          margin: 0;
+          word-break: break-word;
+        }
+        .desc-block-label {
+          display: none;
+        }
+        .desc-block-value {
+          display: none;
+        }
+        .sidemark-strip {
           display: block;
-        }
-        .vendor-city-row {
-          display: flex;
-          gap: 0;
-          font-size: 11px;
-          line-height: 1.4;
+          margin-top: 5px;
+          padding-top: 5px;
+          border-top: 1px dashed #ccc;
+          font-size: 10px;
+          text-align: left;
         }
       `}</style>
 
@@ -718,9 +697,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           {/* ---- HEADER INFO GRID ---- */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', borderBottom: '1px solid #ccc', paddingBottom: '10px', marginBottom: '10px' }}>
 
-            {/* LEFT: Vendor + Ship To + Comments — read-only */}
+            {/* LEFT: Vendor + Ship To + Comments */}
             <div style={{ paddingRight: '20px', borderRight: '1px solid #ccc', fontSize: '11px', lineHeight: '1.6' }}>
-              {/* To: */}
               <div style={{ fontWeight: 'bold' }}>To:</div>
               {vendorInfo.name && <div style={{ fontWeight: '500' }}>{vendorInfo.name}</div>}
               {vendorInfo.address?.street && <div>{vendorInfo.address.street}</div>}
@@ -737,7 +715,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 </div>
               )}
 
-              {/* Ship To */}
               <div style={{ fontWeight: 'bold', marginTop: '6px' }}>Ship To:</div>
               {shipTo.name && <div>{shipTo.name}</div>}
               {shipTo.address && <div>{shipTo.address}</div>}
@@ -745,7 +722,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               {shipTo.attention && <div><span className="po-field-label">Attention: </span>{shipTo.attention}</div>}
               {shipTo.phone && <div><span className="po-field-label">Phone: </span>{shipTo.phone}</div>}
 
-              {/* Comments / Notes — still editable */}
               <div style={{ marginTop: '6px' }}>
                 <span className="po-field-label">Comments: </span>
                 <input className="po-input" value={headerFields.comments} onChange={(e) => setHeaderFields({ ...headerFields, comments: e.target.value })} style={{ width: '68%', display: 'inline-block' }} />
@@ -756,7 +732,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               </div>
             </div>
 
-            {/* RIGHT: Order Details — all read-only, from vendor master */}
+            {/* RIGHT: Order Details */}
             <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
               {[
                 { label: 'Order #:',        value: headerFields.poNumber },
@@ -782,15 +758,28 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           <table className="po-table">
             <thead>
               <tr>
-                <th style={{ width: '80px' }}></th>
+                <th style={{ width: '120px' }}></th>
                 <th>Description</th>
                 <th className="th-cost" style={{ width: '110px' }}>Unit Cost</th>
                 <th className="th-cost" style={{ width: '110px' }}>Total Cost</th>
-                <th className="no-print" style={{ width: '36px' }}></th>
               </tr>
             </thead>
             <tbody>
               {products.map((product, index) => {
+                // ── DEBUG: log full product structure to console ──
+                console.log(`[PO Product #${index}]`, {
+                  product_id:      product.product_id,
+                  name:            product.name,
+                  category:        product.category,
+                  spotName:        product.spotName,
+                  quantity:        product.quantity,
+                  unitPrice:       product.unitPrice,
+                  totalPrice:      product.totalPrice,
+                  description:     product.description,
+                  imageUrl:        product.imageUrl,
+                  selectedOptions: product.selectedOptions,
+                });
+
                 const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
                                product.selectedOptions?.image ||
                                product.selectedOptions?.images?.[0] ||
@@ -799,16 +788,19 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   ? parseFloat(product.selectedOptions.netCostOverride)
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
                 const netTotal = netCost * (product.quantity || 1);
-                const sidemark = product.selectedOptions?.sidemark || product.selectedOptions?.notes || '';
+                const sidemark = product.selectedOptions?.sidemark || '';
+                const specs = product.selectedOptions?.specifications || '';
+                const dimension = product.selectedOptions?.dimension || '';
 
                 return (
                   <tr key={index}>
+                    {/* Image */}
                     <td className="img-cell">
                       {imgSrc ? (
                         <PrintSafeImage
                           src={imgSrc}
                           alt={product.name || ''}
-                          style={{ maxWidth: '72px', maxHeight: '72px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                          style={{ maxWidth: '110px', maxHeight: '110px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
                           fallback={<div className="img-placeholder">No Image</div>}
                         />
                       ) : (
@@ -816,79 +808,90 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       )}
                     </td>
 
+                    {/* Description cell — non-editable, label kiri nilai kanan */}
                     <td className="desc-cell">
-                      <div className="qty-row">
-                        <label>Quantity :</label>
-                        <input
-                          className="qty-input"
-                          type="number"
-                          value={product.quantity || 1}
-                          onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
-                          min="1"
-                        />
-                        <span style={{ fontSize: '10px', color: '#888' }}>{product.selectedOptions?.units || 'Each'}</span>
+
+                      {/* 1. Quantity */}
+                      <div className="desc-row">
+                        <span className="desc-row-label">Quantity</span>
+                        <span className="desc-row-value">
+                          {product.quantity || 1} {product.selectedOptions?.units || 'Each'}
+                        </span>
                       </div>
-                      <textarea
-                        value={product.description || ''}
-                        onChange={(e) => updateProduct(index, 'description', e.target.value)}
-                        placeholder={`Specs: ${product.name || 'Product name'}\nPattern:\nColor:\nSize:\nConstruction:\nComposition:`}
-                        rows={Math.max(6, (product.description || '').split('\n').length + 1)}
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                      {sidemark && (
-                        <div className="sidemark-row">
-                          <span style={{ whiteSpace: 'nowrap' }}>Sidemark:</span>
-                          <span style={{ fontSize: '10px', color: '#444', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{sidemark}</span>
+
+                      {/* 2. Specs */}
+                      {specs ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label" style={{ paddingTop: '1px' }}>Specs</span>
+                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{specs}</span>
                         </div>
-                      )}
+                      ) : null}
+
+                      {/* 3. SKU — dari product_id */}
+                      {product.product_id ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">SKU</span>
+                          <span className="desc-row-value">{product.product_id}</span>
+                        </div>
+                      ) : null}
+
+                      {/* 4. Name */}
+                      {product.name ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Name</span>
+                          <span className="desc-row-value">{product.name}</span>
+                        </div>
+                      ) : null}
+
+                      {/* 5. Dimension */}
+                      {dimension ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Dimension</span>
+                          <span className="desc-row-value">{dimension}</span>
+                        </div>
+                      ) : null}
+
+                      {/* 6. Desc */}
+                      {product.description ? (
+                        <div className="desc-row" style={{ borderBottom: 'none' }}>
+                          <span className="desc-row-label" style={{ paddingTop: '1px' }}>Desc</span>
+                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{product.description}</span>
+                        </div>
+                      ) : null}
+
+                      {/* Sidemark */}
+                      {sidemark ? (
+                        <div className="sidemark-strip">
+                          <span className="desc-row-label">Sidemark</span>
+                          <span style={{ color: '#333', wordBreak: 'break-word', textAlign: 'left' }}>{sidemark}</span>
+                        </div>
+                      ) : null}
                     </td>
 
+                    {/* Unit Cost */}
                     <td className="price-cell">
-                      <input
-                        className="po-input unit-cost-raw"
-                        type="number"
-                        value={netCost}
-                        onChange={(e) => updateProduct(index, 'selectedOptions.msrp', e.target.value)}
-                        style={{ textAlign: 'right', width: '95px' }}
-                        step="0.01"
-                      />
-                      <span className="unit-cost-display" style={{ display: 'none', textAlign: 'right', fontSize: '11px' }}>
+                      <span style={{ display: 'block', textAlign: 'right', fontSize: '11px' }}>
                         ${netCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
-                      <div className="no-print" style={{ fontSize: '10px', color: '#888', textAlign: 'right', marginTop: '2px' }}>
-                        ${netCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
                     </td>
 
+                    {/* Total Cost */}
                     <td className="price-cell" style={{ fontWeight: '500', fontSize: '11px' }}>
                       ${netTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-
-                    <td className="no-print remove-btn" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                      <button onClick={() => removeProduct(index)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Remove product">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </td>
                   </tr>
                 );
               })}
 
-              <tr className="no-print add-product-btn">
-                <td colSpan={5} style={{ padding: '8px', textAlign: 'center', border: '1px dashed #ddd' }}>
-                  <button onClick={addEmptyProduct} className="inline-flex items-center gap-1.5 text-xs text-[#005670] hover:text-[#004558] font-medium">
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Product
-                  </button>
-                </td>
-              </tr>
 
+
+              {/* Totals */}
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label" style={{ borderTop: '1px solid #ccc' }}>Sub Total:</td>
                 <td className="price-cell" style={{ borderTop: '1px solid #ccc' }}>
                   ${totals.subTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </td>
-                <td className="no-print"></td>
               </tr>
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
@@ -896,7 +899,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td className="price-cell">
                   <input className="po-input" type="number" value={headerFields.shipping || 0} onChange={(e) => setHeaderFields({ ...headerFields, shipping: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
-                <td className="no-print"></td>
               </tr>
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
@@ -904,7 +906,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td className="price-cell">
                   <input className="po-input" type="number" value={headerFields.others || 0} onChange={(e) => setHeaderFields({ ...headerFields, others: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
-                <td className="no-print"></td>
               </tr>
               <tr className="po-totals-row total-final">
                 <td colSpan={2}></td>
@@ -912,7 +913,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td className="price-cell" style={{ fontWeight: 'bold', fontSize: '11px' }}>
                   ${totals.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </td>
-                <td className="no-print"></td>
               </tr>
             </tbody>
           </table>
