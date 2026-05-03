@@ -1,6 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Loader2 } from 'lucide-react';
+import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Trash2, Loader2, Check, AlertTriangle, Zap } from 'lucide-react';
 import { backendServer } from '../utils/info';
+
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
+const ConfirmModal = ({ modal, onClose }) => {
+  if (!modal) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
+        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-5 rounded-t-xl flex items-center justify-between">
+          <h3 className="text-base font-bold">{modal.title || 'Confirm'}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-gray-700 leading-relaxed">{modal.message || ''}</p>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={() => { modal.onConfirm(); onClose(); }}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors flex items-center gap-2 ${modal.confirmCls || 'bg-[#005670] hover:bg-[#004558]'}`}>
+              <Check className="w-4 h-4" />
+              {modal.confirmLabel || 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+ConfirmModal.defaultProps = {
+  modal: null,
+  onClose: () => {},
+};
 
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
@@ -61,6 +99,7 @@ const PrintSafeImage = ({ src, alt, style, fallback }) => {
 const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false); // ✅ ADD
   const [poData, setPOData] = useState(null);
   const [products, setProducts] = useState([]);
   const [vendorInfo, setVendorInfo] = useState({
@@ -95,6 +134,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [originalTitle] = useState(document.title);
+  const [confirmModal, setConfirmModal] = useState(null); // ✅ ADD
+  const [toast, setToast] = useState(null);               // ✅ ADD
+
+  // ✅ ADD: helpers
+  const showToast    = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
+  const closeConfirm = () => setConfirmModal(null);
+  const showConfirm  = (cfg) => setConfirmModal(cfg);
 
   useEffect(() => {
     loadPOData();
@@ -300,16 +346,50 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       );
       const result = await response.json();
       if (result.success) {
-        alert('✅ Purchase Order saved successfully');
+        showToast('Purchase Order saved successfully');
         loadPOData();
       } else {
-        alert('Failed to save: ' + (result.message || ''));
+        showToast('Failed to save: ' + (result.message || ''), 'error');
       }
     } catch (error) {
       console.error('Error saving PO:', error);
-      alert('Failed to save Purchase Order');
+      showToast('Failed to save Purchase Order', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ✅ ADD: status change handler
+const handleStatusChange = async (newStatus) => {
+  const currentStatus = poData?.status || 'draft';
+  if (currentStatus === 'confirmed') {
+    showToast('PO sudah Confirmed dan tidak dapat diubah lagi.', 'error');
+    return;
+  }
+  doStatusChange(newStatus);
+};
+
+  // ✅ ADD: actual status API call
+  const doStatusChange = async (newStatus) => {
+    setSavingStatus(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/${orderId}/po/${vendorId}/status`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: poData.version, status: newStatus }),
+      });
+      if (res.ok) {
+        setPOData(prev => ({ ...prev, status: newStatus }));
+        showToast(`Status updated to ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`);
+      } else {
+        const d = await res.json();
+        showToast('Failed: ' + (d.message || ''), 'error');
+      }
+    } catch (err) {
+      showToast('Failed: ' + err.message, 'error');
+    } finally {
+      setSavingStatus(false);
     }
   };
 
@@ -407,6 +487,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
   const totals = calculateTotals();
   const printedDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  const currentStatus = poData?.status || 'draft';
+  const isAlreadyConfirmed = currentStatus === 'confirmed';
 
   const COMPANY_ADDRESS = {
     street: '4343 Royal Place',
@@ -477,7 +559,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             overflow: visible !important;
             height: auto !important;
           }
-          .desc-row { border-bottom: none !important; }
         }
         @page { size: letter; margin: 0.5in; }
 
@@ -512,6 +593,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           transition: border-color 0.15s;
         }
         .po-input:focus { border-bottom-color: #005670; }
+        .qty-input {
+          border: none;
+          border-radius: 0;
+          background: transparent;
+        }
         .po-table {
           width: 100%;
           border-collapse: collapse;
@@ -538,23 +624,36 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           max-width: 0;
         }
         .po-table tbody tr + tr td { border-top: 1px solid #f0f0f0; }
+        .po-table .desc-cell textarea {
+          width: 100%;
+          font-size: 11px;
+          border: none;
+          border-radius: 0;
+          background: transparent;
+          padding: 0;
+          resize: vertical;
+          min-height: 60px;
+          line-height: 1.5;
+          font-family: Arial, sans-serif;
+          box-sizing: border-box;
+        }
         .po-table .img-cell {
-          width: 120px;
-          min-width: 120px;
+          width: 90px;
+          min-width: 90px;
           text-align: center;
           vertical-align: middle;
           padding: 8px;
         }
         .po-table .img-cell img {
-          max-width: 110px;
-          max-height: 110px;
+          max-width: 80px;
+          max-height: 80px;
           object-fit: contain;
           display: block;
           margin: 0 auto;
         }
         .img-placeholder {
-          width: 110px;
-          height: 110px;
+          width: 80px;
+          height: 80px;
           background: #f5f5f5;
           display: flex;
           align-items: center;
@@ -582,48 +681,56 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           font-weight: bold;
           font-size: 12px;
         }
-
-        /* Desc cell rows */
-        .desc-row {
-          display: block;
-          padding: 3px 0;
+        .qty-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 4px;
           font-size: 11px;
-          border-bottom: 1px dotted #eee;
-          text-align: left;
         }
-        .desc-row:last-child { border-bottom: none; }
-        .desc-row-label {
-          font-weight: 700;
-          color: #444;
-          font-size: 10px;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-          margin-right: 4px;
-        }
-        .desc-row-label::after {
-          content: ':';
-        }
-        .desc-row-value {
-          text-align: left;
-          color: #222;
+        .qty-row label { font-weight: normal; color: #333; }
+        .qty-input {
+          border: none;
+          padding: 0;
           font-size: 11px;
-          word-break: break-word;
-        }
-        .desc-block-label {
-          display: none;
-        }
-        .desc-block-value {
-          display: none;
-        }
-        .sidemark-strip {
-          display: block;
-          margin-top: 5px;
-          padding-top: 5px;
-          border-top: 1px dashed #ccc;
-          font-size: 10px;
+          width: 40px;
+          background: transparent;
+          outline: none;
           text-align: left;
+        }
+        .sidemark-row {
+          margin-top: 4px;
+          font-size: 10px;
+          display: flex;
+          align-items: flex-start;
+          gap: 4px;
+          flex-wrap: wrap;
+        }
+        .sidemark-row span { font-weight: 600; color: #444; white-space: nowrap; }
+        .vendor-addr-line {
+          font-size: 11px;
+          line-height: 1.4;
+          padding: 0;
+          margin: 0;
+          display: block;
+        }
+        .vendor-city-row {
+          display: flex;
+          gap: 0;
+          font-size: 11px;
+          line-height: 1.4;
         }
       `}</style>
+
+      {/* ✅ ADD: Confirm Modal */}
+      <ConfirmModal modal={confirmModal} onClose={closeConfirm} />
+
+      {/* ✅ ADD: Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[400] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-xl text-white text-sm font-medium no-print ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
+          <Check className="w-4 h-4" />{toast.msg}
+        </div>
+      )}
 
       {/* ====== TOOLBAR ====== */}
       <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
@@ -636,14 +743,38 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           <span className="text-sm font-medium text-gray-700">
             Purchase Order — {vendorInfo.name || 'Vendor'} — Version {poData?.version || 1}
           </span>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-            poData?.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
-            poData?.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-            poData?.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-            'bg-gray-100 text-gray-600'
-          }`}>
-            {poData?.status?.charAt(0).toUpperCase() + poData?.status?.slice(1) || 'Draft'}
-          </span>
+
+          {/* ✅ ADD: Status selector — badge if confirmed, select otherwise */}
+          {isAlreadyConfirmed ? (
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+              ✓ Confirmed
+            </span>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <select
+                value={currentStatus}
+                onChange={e => {
+                  const newVal = e.target.value;
+                  e.target.value = currentStatus; // reset before modal
+                  handleStatusChange(newVal);
+                }}
+                disabled={savingStatus}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none
+                  ${currentStatus === 'draft'     ? 'bg-yellow-100 text-yellow-700' :
+                    currentStatus === 'sent'      ? 'bg-blue-100 text-blue-700'    :
+                    currentStatus === 'cancelled' ? 'bg-red-100 text-red-600'      :
+                    'bg-gray-100 text-gray-600'}
+                  ${savingStatus ? 'opacity-50' : ''}
+                `}
+              >
+                <option value="draft">Draft</option>
+                <option value="sent">Sent to Vendor</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
@@ -758,28 +889,15 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           <table className="po-table">
             <thead>
               <tr>
-                <th style={{ width: '120px' }}></th>
+                <th style={{ width: '80px' }}></th>
                 <th>Description</th>
                 <th className="th-cost" style={{ width: '110px' }}>Unit Cost</th>
                 <th className="th-cost" style={{ width: '110px' }}>Total Cost</th>
+                <th className="no-print" style={{ width: '36px' }}></th>
               </tr>
             </thead>
             <tbody>
               {products.map((product, index) => {
-                // ── DEBUG: log full product structure to console ──
-                console.log(`[PO Product #${index}]`, {
-                  product_id:      product.product_id,
-                  name:            product.name,
-                  category:        product.category,
-                  spotName:        product.spotName,
-                  quantity:        product.quantity,
-                  unitPrice:       product.unitPrice,
-                  totalPrice:      product.totalPrice,
-                  description:     product.description,
-                  imageUrl:        product.imageUrl,
-                  selectedOptions: product.selectedOptions,
-                });
-
                 const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
                                product.selectedOptions?.image ||
                                product.selectedOptions?.images?.[0] ||
@@ -788,19 +906,16 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   ? parseFloat(product.selectedOptions.netCostOverride)
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
                 const netTotal = netCost * (product.quantity || 1);
-                const sidemark = product.selectedOptions?.sidemark || '';
-                const specs = product.selectedOptions?.specifications || '';
-                const dimension = product.selectedOptions?.dimension || '';
+                const sidemark = product.selectedOptions?.sidemark || product.selectedOptions?.notes || '';
 
                 return (
                   <tr key={index}>
-                    {/* Image */}
                     <td className="img-cell">
                       {imgSrc ? (
                         <PrintSafeImage
                           src={imgSrc}
                           alt={product.name || ''}
-                          style={{ maxWidth: '110px', maxHeight: '110px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                          style={{ maxWidth: '72px', maxHeight: '72px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
                           fallback={<div className="img-placeholder">No Image</div>}
                         />
                       ) : (
@@ -808,90 +923,79 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       )}
                     </td>
 
-                    {/* Description cell — non-editable, label kiri nilai kanan */}
                     <td className="desc-cell">
-
-                      {/* 1. Quantity */}
-                      <div className="desc-row">
-                        <span className="desc-row-label">Quantity</span>
-                        <span className="desc-row-value">
-                          {product.quantity || 1} {product.selectedOptions?.units || 'Each'}
-                        </span>
+                      <div className="qty-row">
+                        <label>Quantity :</label>
+                        <input
+                          className="qty-input"
+                          type="number"
+                          value={product.quantity || 1}
+                          onChange={(e) => updateProduct(index, 'quantity', e.target.value)}
+                          min="1"
+                        />
+                        <span style={{ fontSize: '10px', color: '#888' }}>{product.selectedOptions?.units || 'Each'}</span>
                       </div>
-
-                      {/* 2. Specs */}
-                      {specs ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label" style={{ paddingTop: '1px' }}>Specs</span>
-                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{specs}</span>
+                      <textarea
+                        value={product.description || ''}
+                        onChange={(e) => updateProduct(index, 'description', e.target.value)}
+                        placeholder={`Specs: ${product.name || 'Product name'}\nPattern:\nColor:\nSize:\nConstruction:\nComposition:`}
+                        rows={Math.max(6, (product.description || '').split('\n').length + 1)}
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                      {sidemark && (
+                        <div className="sidemark-row">
+                          <span style={{ whiteSpace: 'nowrap' }}>Sidemark:</span>
+                          <span style={{ fontSize: '10px', color: '#444', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{sidemark}</span>
                         </div>
-                      ) : null}
-
-                      {/* 3. SKU — dari product_id */}
-                      {product.product_id ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">SKU</span>
-                          <span className="desc-row-value">{product.product_id}</span>
-                        </div>
-                      ) : null}
-
-                      {/* 4. Name */}
-                      {product.name ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Name</span>
-                          <span className="desc-row-value">{product.name}</span>
-                        </div>
-                      ) : null}
-
-                      {/* 5. Dimension */}
-                      {dimension ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Dimension</span>
-                          <span className="desc-row-value">{dimension}</span>
-                        </div>
-                      ) : null}
-
-                      {/* 6. Desc */}
-                      {product.description ? (
-                        <div className="desc-row" style={{ borderBottom: 'none' }}>
-                          <span className="desc-row-label" style={{ paddingTop: '1px' }}>Desc</span>
-                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{product.description}</span>
-                        </div>
-                      ) : null}
-
-                      {/* Sidemark */}
-                      {sidemark ? (
-                        <div className="sidemark-strip">
-                          <span className="desc-row-label">Sidemark</span>
-                          <span style={{ color: '#333', wordBreak: 'break-word', textAlign: 'left' }}>{sidemark}</span>
-                        </div>
-                      ) : null}
+                      )}
                     </td>
 
-                    {/* Unit Cost */}
                     <td className="price-cell">
-                      <span style={{ display: 'block', textAlign: 'right', fontSize: '11px' }}>
+                      <input
+                        className="po-input unit-cost-raw"
+                        type="number"
+                        value={netCost}
+                        onChange={(e) => updateProduct(index, 'selectedOptions.msrp', e.target.value)}
+                        style={{ textAlign: 'right', width: '95px' }}
+                        step="0.01"
+                      />
+                      <span className="unit-cost-display" style={{ display: 'none', textAlign: 'right', fontSize: '11px' }}>
                         ${netCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
+                      <div className="no-print" style={{ fontSize: '10px', color: '#888', textAlign: 'right', marginTop: '2px' }}>
+                        ${netCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     </td>
 
-                    {/* Total Cost */}
                     <td className="price-cell" style={{ fontWeight: '500', fontSize: '11px' }}>
                       ${netTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+
+                    <td className="no-print remove-btn" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                      <button onClick={() => removeProduct(index)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Remove product">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 );
               })}
 
+              <tr className="no-print add-product-btn">
+                <td colSpan={5} style={{ padding: '8px', textAlign: 'center', border: '1px dashed #ddd' }}>
+                  <button onClick={addEmptyProduct} className="inline-flex items-center gap-1.5 text-xs text-[#005670] hover:text-[#004558] font-medium">
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Product
+                  </button>
+                </td>
+              </tr>
 
-
-              {/* Totals */}
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label" style={{ borderTop: '1px solid #ccc' }}>Sub Total:</td>
                 <td className="price-cell" style={{ borderTop: '1px solid #ccc' }}>
                   ${totals.subTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </td>
+                <td className="no-print"></td>
               </tr>
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
@@ -899,6 +1003,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td className="price-cell">
                   <input className="po-input" type="number" value={headerFields.shipping || 0} onChange={(e) => setHeaderFields({ ...headerFields, shipping: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
+                <td className="no-print"></td>
               </tr>
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
@@ -906,6 +1011,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td className="price-cell">
                   <input className="po-input" type="number" value={headerFields.others || 0} onChange={(e) => setHeaderFields({ ...headerFields, others: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
+                <td className="no-print"></td>
               </tr>
               <tr className="po-totals-row total-final">
                 <td colSpan={2}></td>
@@ -913,6 +1019,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td className="price-cell" style={{ fontWeight: 'bold', fontSize: '11px' }}>
                   ${totals.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </td>
+                <td className="no-print"></td>
               </tr>
             </tbody>
           </table>
@@ -1054,9 +1161,9 @@ const POVersionModal = ({
                       <div className="flex items-center gap-3 mb-2">
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Version {v.version}</span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          v.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
-                          v.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                          v.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                          v.status === 'draft'     ? 'bg-yellow-100 text-yellow-700'    :
+                          v.status === 'sent'      ? 'bg-blue-100 text-blue-700'        :
+                          v.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700'  :
                           'bg-red-100 text-red-700'
                         }`}>{v.status?.charAt(0).toUpperCase() + v.status?.slice(1)}</span>
                         {v.poNumber && <span className="text-xs text-gray-500">PO#: {v.poNumber}</span>}

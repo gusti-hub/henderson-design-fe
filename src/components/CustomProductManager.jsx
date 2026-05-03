@@ -77,7 +77,7 @@ const defaultSelectedOptions = () => ({
   room: '', statusCategory: '', proposalNumber: '', shipTo: '', orderDate: '',
   expectedShipDate: '', expectedArrivalDate: '', dateReceived: '', dateInspected: '',
   estimatedDeliveryDate: '', shippingCarrier: '', orderStatus: '', nextStep: '',
-  nextStepDate: '', warehouseReceivingNumber: '',
+  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '',
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
   noNetPurchaseCost: false, discountTaken: '', shippingCost: 0, otherCost: 0,
   markupPercent: 50, shippingMarkupPercent: 50, otherMarkupPercent: 50,
@@ -374,6 +374,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           taxableOtherCost:       true,
           taxableOtherMarkup:     true,
           discountTaken:         '',
+          installerNotes:        '',
         }
       };
     });
@@ -480,6 +481,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           taxableOtherCost:       true,
           taxableOtherMarkup:     true,
           discountTaken:         '',
+          installerNotes:        '',
         },
       };
       setDraftProduct(newDraft);
@@ -1125,6 +1127,7 @@ const ProductCard = ({
     poNumber:          opts.poNumber             || '',
     tags:              Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || ''),
     itemClass:         opts.itemClass            || '', // ✅ PATCH 9
+    installerNotes:    opts.installerNotes       || '',
   });
 
   // Sync localFields hanya ketika _id berubah (pindah ke product berbeda)
@@ -1148,6 +1151,7 @@ const ProductCard = ({
       poNumber:          o.poNumber                || '',
       tags:              Array.isArray(o.tags) ? o.tags.join(', ') : (o.tags || ''),
       itemClass:         o.itemClass               || '', // ✅ PATCH 9
+      installerNotes:    o.installerNotes          || '',
     });
     setCustomAttrs(o.customAttributes || {});
   }, [product._id]);
@@ -1244,6 +1248,7 @@ const ProductCard = ({
       nextStep:              src.selectedOptions?.nextStep              || '',
       nextStepDate:          src.selectedOptions?.nextStepDate          || '',
       warehouseReceivingNumber: src.selectedOptions?.warehouseReceivingNumber || '',
+      installerNotes:           src.selectedOptions?.installerNotes           || '',
       units:                 src.selectedOptions?.units                 || 'Each',
       msrp:                  parseFloat(src.selectedOptions?.msrp)             || 0,
       discountPercent:       parseFloat(src.selectedOptions?.discountPercent)  || 0,
@@ -1306,6 +1311,7 @@ const ProductCard = ({
         poNumber:          localFields.poNumber,
         tags:              localFields.tags.split(',').map(t => t.trim()).filter(Boolean),
         itemClass:         localFields.itemClass, // ✅ PATCH 9
+        installerNotes:    localFields.installerNotes,
         links: localFields.links0
           ? [localFields.links0, ...(productRef.current.selectedOptions?.links?.slice(1) || [])]
           : (productRef.current.selectedOptions?.links?.slice(1) || []),
@@ -1859,16 +1865,15 @@ const ProductCard = ({
                       placeholder="Tim-2289995"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
-                    {/* ✅ PATCH 7: pakai localFields.notes */}
-                    <textarea
-                      value={localFields.notes}
-                      onChange={(e) => { setLocal('notes', e.target.value); upd('notes', e.target.value); }}
-                      className={`${inputCls} resize-none`}
-                      rows={3}
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Binder Notes</label>
+                      <textarea
+                        value={localFields.installerNotes}
+                        onChange={(e) => { setLocal('installerNotes', e.target.value); upd('installerNotes', e.target.value); }}
+                        className={`${inputCls} resize-none`}
+                        rows={3}
+                      />
+                    </div>
                 </div>
               </div>
             )}
@@ -1882,6 +1887,9 @@ const ProductCard = ({
                   index={index}
                   onUpdate={(idx, field, value) => {
                     if (field === 'selectedOptions.proposalNumber') return;
+                    if (field === 'selectedOptions.notes') {
+                      setLocal('notes', value);
+                    }
                     onUpdate(idx, field, value);
                   }}
                   disabled={false}

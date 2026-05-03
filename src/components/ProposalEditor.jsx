@@ -1,5 +1,11 @@
 // components/ProposalEditor.jsx
 //
+// ✅ PATCHED:
+//    1. itemClass dihapus dari ProductRow — tidak muncul di proposal client
+//    2. Kalkulasi sell/subtotal pakai MSRP (bukan Net Cost) — konsisten dengan PricingFields
+//       sell = MSRP × (1 + markup%)
+//    3. calcTotals() juga pakai MSRP sebagai sell basis
+//
 // STRATEGY:
 // 1. Render ALL products in a hidden off-screen div at exact print width
 // 2. After 300ms (images + fonts settled), read each row's real height
@@ -8,7 +14,7 @@
 // 5. Web view = PDF view (identical fixed pages)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Clock, Printer, ChevronLeft } from 'lucide-react';
+import { X, Clock, Printer, ChevronLeft, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -73,7 +79,7 @@ const PageFooter = () => (
     borderTop: '1px solid #d1d5db',
     paddingTop: '5px',
     textAlign: 'center',
-    fontSize: '10px',        // was 9px
+    fontSize: '10px',
     color: 'rgb(0,86,112)',
     lineHeight: '1.5',
     background: 'white',
@@ -88,14 +94,17 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
   const o = product.selectedOptions || {};
   const imgSrc = getImgSrc(product);
   const qty = product.quantity || 1;
-  const net = o.netCostOverride != null
-    ? parseFloat(o.netCostOverride)
-    : (parseFloat(o.msrp) || 0) * (1 - (parseFloat(o.discountPercent) || 0) / 100);
-  const sell = net * (1 + (parseFloat(o.markupPercent) || 0) / 100);
-  const sub  = sell * qty;
-  const taxRate = parseFloat(o.salesTaxRate) || 0;
-  const tax  = taxRate > 0 ? sub * (taxRate / 100) : 0;
-  const total = sub + tax;
+
+  // ✅ FIX: sell basis = MSRP (bukan Net Cost)
+  // Net Cost hanya untuk purchase/PO, tidak mempengaruhi proposal client
+  const msrp       = parseFloat(o.msrp) || 0;
+  const markupPct  = parseFloat(o.markupPercent) || 0;
+  const sell       = msrp * (1 + markupPct / 100);
+  const sub        = sell * qty;
+  const taxRate    = parseFloat(o.salesTaxRate) || 0;
+  const tax        = taxRate > 0 ? sub * (taxRate / 100) : 0;
+  const total      = sub + tax;
+
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
   const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
 
@@ -108,17 +117,14 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
         }
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
-        {/* was 9.5px */}
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {/* was 10px */}
         {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
         {o.finish    && <div><strong>Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
         {o.size      && <div><strong>Size:</strong> {o.size}</div>}
-        {o.itemClass && <div><strong>Class:</strong> {o.itemClass}</div>}
+        {/* ✅ FIX: itemClass DIHAPUS — tidak tampil di proposal client */}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
-        {/* was 9.5px */}
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Unit:</span><span>${fmt(sell)}</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
@@ -249,9 +255,12 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [products, setProducts]         = useState([]);
   const [clientInfo, setClientInfo]     = useState({});
   const [proposalNumber, setProposalNumber]               = useState(null);
+  const [proposalStatus, setProposalStatus]               = useState('draft');
+  const [savingStatus, setSavingStatus]                   = useState(false);
   const [showVersionModal, setShowVersionModal]           = useState(false);
   const [versionNotes, setVersionNotes]                   = useState('');
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [originalTitle]                                   = useState(document.title);
 
   const [pages, setPages] = useState(null);
@@ -288,9 +297,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         const cityParts = [addr.city, addr.state, addr.zipcode].filter(p => p && p.trim());
         const cityLine  = cityParts.join(', ');
         const unitNumber = r.data.clientInfo?.unitNumber || u.unitNumber || '';
-        console.log('[ProposalEditor] clientInfo:', r.data.clientInfo);
-        console.log('[ProposalEditor] user.address:', addr);
-        console.log('[ProposalEditor] street:', street, '| cityLine:', cityLine, '| unitNumber:', unitNumber);
         setClientInfo({
           ...(r.data.clientInfo || {}),
           email:      r.data.clientInfo?.email || u.email || '',
@@ -299,6 +305,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
           cityLine,
         });
         setProposalNumber(r.data.proposalNumber || null);
+        setProposalStatus(r.data.status || 'draft');
       }
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
     finally { setLoading(false); }
@@ -312,6 +319,49 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     setPages(null);
     setReady(false);
   }, [products]);
+
+  const doStatusUpdate = async (newStatus) => {
+    setSavingStatus(true);
+    try {
+      const t = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/status`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setProposalStatus(newStatus);
+      } else {
+        const d = await res.json();
+        alert('Failed: ' + (d.message || ''));
+      }
+    } catch (err) {
+      alert('Failed: ' + err.message);
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const handleStatusChange = (newStatus) => {
+    if (proposalStatus === 'approved') {
+      setConfirmModal({
+        newStatus: null,
+        title: 'Locked',
+        message: 'Proposal sudah Approved dan tidak dapat diubah lagi.',
+        infoOnly: true,
+      });
+      return;
+    }
+    if (newStatus === 'approved') {
+      setConfirmModal({
+        newStatus,
+        title: 'Approve Proposal?',
+        message: 'Setelah Approved, status tidak dapat diubah lagi dan Finance team dapat mengirim Proposal ini ke QuickBooks sebagai Invoice.',
+      });
+      return;
+    }
+    doStatusUpdate(newStatus);
+  };
 
   const handleSaveAsNewVersion = async () => {
     if (!versionNotes.trim()) { alert('Please add notes for this new version'); return; }
@@ -333,14 +383,19 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     finally { setSaving(false); }
   };
 
+  // ✅ FIX: calcTotals pakai MSRP sebagai sell basis (konsisten dengan ProductRow)
   const calcTotals = () => {
     let sub = 0, taxT = 0;
     products.forEach(p => {
       const o = p.selectedOptions || {}, qty = p.quantity || 1;
-      const net = o.netCostOverride != null ? parseFloat(o.netCostOverride) : (parseFloat(o.msrp) || 0) * (1 - (parseFloat(o.discountPercent) || 0) / 100);
-      const sell = net * (1 + (parseFloat(o.markupPercent) || 0) / 100);
-      const line = sell * qty, tax = parseFloat(o.salesTaxRate) || 0;
-      sub += line; taxT += tax > 0 ? line * (tax / 100) : 0;
+      const msrp      = parseFloat(o.msrp) || 0;
+      const markupPct = parseFloat(o.markupPercent) || 0;
+      // ✅ sell basis = MSRP, bukan Net Cost
+      const sell = msrp * (1 + markupPct / 100);
+      const line = sell * qty;
+      const tax  = parseFloat(o.salesTaxRate) || 0;
+      sub += line;
+      taxT += tax > 0 ? line * (tax / 100) : 0;
     });
     const total = sub + taxT;
     return { subtotal: sub, salesTax: taxT, total, deposit: total * 0.9 };
@@ -371,7 +426,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     });
   }, [products]);
 
-  // Totals block height reserved on last page (4 lines × ~19px + border + padding)
   const TOTALS_H = 100;
 
   const packItems = (items, headerH) => {
@@ -380,7 +434,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const isLast = i === items.length - 1;
-      // On last item, reserve extra space for totals block
       const extraH = isLast ? TOTALS_H : 0;
 
       if (item.type === 'room-header') {
@@ -450,12 +503,12 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         if (o.finish) lines.push(`<div><strong>Finish:</strong> ${o.finish}</div>`);
         if (o.fabric) lines.push(`<div><strong>Fabric:</strong> ${o.fabric}</div>`);
         if (o.size)   lines.push(`<div><strong>Size:</strong> ${o.size}</div>`);
-        if (o.itemClass) lines.push(`<div><strong>Class:</strong> ${o.itemClass}</div>`);
+        // ✅ FIX: itemClass tidak dirender di proposal — dihapus dari height measurement juga
 
         const priceLines = 2 + (parseFloat(o.salesTaxRate) > 0 ? 1 : 0) + 1;
         const priceH = priceLines * 19 + 16;
 
-        const imgH = 92;  // 76px + padding
+        const imgH = 92;
 
         const midW = CONTENT_W - COL1 - COL3;
         const midWrapper = document.createElement('div');
@@ -530,7 +583,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
 
   const ContHeader = () => (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '11px', color: '#6b7280', borderBottom: '1px solid #e5e7eb', paddingBottom: '5px' }}>
-      {/* was 9.5px */}
       <span>{clientInfo.name} — Products (continued)</span>
       <span>Proposal #: {dpn}</span>
     </div>
@@ -603,6 +655,31 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {proposalStatus === 'approved' ? (
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">✓ Approved</span>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <select
+                value={proposalStatus}
+                onChange={e => handleStatusChange(e.target.value)}
+                disabled={savingStatus}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none
+                  ${proposalStatus === 'draft'    ? 'bg-gray-100 text-gray-600'       :
+                    proposalStatus === 'sent'     ? 'bg-blue-100 text-blue-700'       :
+                    proposalStatus === 'rejected' ? 'bg-red-100 text-red-600'         :
+                    'bg-gray-100 text-gray-600'}
+                  ${savingStatus ? 'opacity-50' : ''}
+                `}
+              >
+                <option value="draft">Draft</option>
+                <option value="sent">Sent to Client</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+            </div>
+          )}
+          <div className="h-5 w-px bg-gray-200" />
           <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"><Clock className="w-4 h-4" /> Version History</button>
           <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Print / Save PDF</button>
         </div>
@@ -648,7 +725,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                     <div style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
                       {renderItems(items)}
-                      {/* Totals shown only on last product page, right after last item */}
                       {pi === (pages || []).length - 1 && (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
@@ -668,9 +744,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
                 <div style={slotStyle}>
-
                   <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>
-                    {/* was 12px */}
                     Proposal Terms: Henderson Design Group Warranty Terms and Conditions
                   </div>
                   <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
@@ -783,6 +857,40 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                 <button onClick={doPrint} className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium flex items-center gap-2">
                   <Printer className="w-4 h-4" /> Continue to Print
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 no-print">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
+              <h3 className="text-xl font-bold">{confirmModal.title}</h3>
+              <button onClick={() => setConfirmModal(null)} className="p-2 hover:bg-white/20 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-gray-700">{confirmModal.message}</p>
+              <div className="flex justify-end gap-3 pt-2">
+                {confirmModal.infoOnly ? (
+                  <button onClick={() => setConfirmModal(null)}
+                    className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
+                    OK
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => setConfirmModal(null)}
+                      className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">
+                      Cancel
+                    </button>
+                    <button onClick={() => { setConfirmModal(null); doStatusUpdate(confirmModal.newStatus); }}
+                      className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
+                      Ya, Approve
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

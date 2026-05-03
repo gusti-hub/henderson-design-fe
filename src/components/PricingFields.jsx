@@ -1,11 +1,11 @@
 // components/PricingFields.jsx
-// ✅ PATCHED:
-//    - MSRP dan Net Cost sekarang INDEPENDENT — tidak saling back-calculate
-//      MSRP = selling/list price (untuk referensi & proposal client)
-//      Net Cost = actual purchase price dari vendor (untuk kalkulasi profit)
-//    - Discount % tetap ada sebagai helper opsional:
-//      jika diisi, Net Cost akan dihitung otomatis dari MSRP × (1 - discount%)
-//      tapi Net Cost bisa juga diisi langsung tanpa ubah MSRP
+// ✅ PATCHED v2:
+//    - MSRP dan Net Cost INDEPENDENT — tidak saling back-calculate
+//    - MSRP = selling/list price → BASIS untuk Product Subtotal ke client
+//    - Net Cost = actual purchase price dari vendor → untuk PO tracking saja
+//    - Product Subtotal = MSRP × qty × (1 + markup%) — BUKAN Net Cost
+//    - Discount % tetap ada sebagai helper opsional untuk Net Cost saja
+//    - Net Cost tidak mempengaruhi sell/client side sama sekali
 
 import React, { useEffect, useRef } from 'react';
 import { Info, Tag } from 'lucide-react';
@@ -61,9 +61,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   const quantity      = num(product.quantity) || 1;
   const noNetPurchase = opts.noNetPurchaseCost || false;
 
-  // ✅ Net Cost sekarang INDEPENDENT dari MSRP
-  // netCostOverride = nilai yang diketik langsung di field Net Cost
-  // Jika tidak ada override, fallback ke MSRP × (1 - discount%) sebagai helper
+  // ── Net Cost — INDEPENDENT dari MSRP, hanya untuk purchase/PO tracking ──
   const computedFromDiscount = msrp > 0 ? msrp - (msrp * discountPct / 100) : 0;
   const netCost = noNetPurchase
     ? 0
@@ -73,13 +71,18 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
 
   const shippingCost      = num(opts.shippingCost);
   const otherCost         = num(opts.otherCost);
+
+  // ✅ FIX: Total Purchase Cost pakai Net Cost (untuk PO tracking)
   const totalPurchaseCost = (netCost * quantity) + shippingCost + otherCost;
 
   const markupPct         = num(opts.markupPercent);
   const shippingMarkupPct = num(opts.shippingMarkupPercent);
   const otherMarkupPct    = num(opts.otherMarkupPercent);
 
-  const productSubtotal  = netCost * quantity * (1 + markupPct / 100);
+  // ✅ FIX: Sell side basis = MSRP (bukan Net Cost)
+  // Product Subtotal = MSRP × qty × (1 + markup%)
+  const sellBasis        = msrp;
+  const productSubtotal  = sellBasis * quantity * (1 + markupPct / 100);
   const shippingSubtotal = shippingCost * (1 + shippingMarkupPct / 100);
   const otherSubtotal    = otherCost * (1 + otherMarkupPct / 100);
   const clientSubtotal   = productSubtotal + shippingSubtotal + otherSubtotal;
@@ -92,9 +95,10 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   const taxOtherMarkup    = opts.taxableOtherMarkup !== false;
   const salesTaxRate      = num(opts.salesTaxRate) || 4.5;
 
+  // ✅ FIX: Taxable amount juga basis MSRP
   let taxableAmount = 0;
-  if (taxCost)           taxableAmount += netCost * quantity;
-  if (taxMarkup)         taxableAmount += netCost * quantity * (markupPct / 100);
+  if (taxCost)           taxableAmount += sellBasis * quantity;
+  if (taxMarkup)         taxableAmount += sellBasis * quantity * (markupPct / 100);
   if (taxShippingCost)   taxableAmount += shippingCost;
   if (taxShippingMarkup) taxableAmount += shippingCost * (shippingMarkupPct / 100);
   if (taxOtherCost)      taxableAmount += otherCost;
@@ -122,44 +126,36 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
 
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
 
-  // ── MSRP handler — INDEPENDENT, tidak reset netCostOverride ───────────
-  // ✅ PATCH: MSRP bisa diubah bebas tanpa mempengaruhi Net Cost
-  // Discount % tetap dihitung relatif ke MSRP baru sebagai helper visual
+  // ── MSRP handler — INDEPENDENT, basis sell price ───────────────────────
   const handleMsrpChange = (v) => {
     upd('msrp', v);
     // Tidak reset netCostOverride — Net Cost tetap seperti yang diset
   };
 
-  // ── Discount % handler — hanya update computed helper, tidak override Net Cost
-  // Jika user sudah punya netCostOverride, discount % hanya untuk display
-  // Jika belum ada override, discount % akan compute Net Cost via computedFromDiscount
+  // ── Discount % handler — hanya helper untuk Net Cost ──────────────────
   const handleDiscountChange = (v) => {
     upd('discountPercent', v);
-    // Jika ada netCostOverride, jangan reset — user sudah set Net Cost manual
-    // Jika belum ada override, computedFromDiscount akan update otomatis via render
+    // Jika ada netCostOverride, jangan reset
   };
 
-  // ── Net Cost handler — set netCostOverride, INDEPENDENT dari MSRP ────
-  // ✅ PATCH: mengubah Net Cost tidak back-calculate MSRP
+  // ── Net Cost handler — INDEPENDENT dari MSRP, hanya untuk PO ─────────
   const handleNetCostChange = (v) => {
     const newNetCost = parseFloat(v) || 0;
-    // Simpan sebagai override — ini nilai aktual purchase price dari vendor
     upd('netCostOverride', newNetCost === 0 ? null : newNetCost);
     // ✅ TIDAK mengubah MSRP — keduanya independent
+    // ✅ TIDAK mempengaruhi Product Subtotal — sell basis tetap MSRP
   };
 
   // ── Net Cost input local state ─────────────────────────────────────────
   const [netCostDisplay, setNetCostDisplay] = React.useState('');
   const [netCostFocused, setNetCostFocused] = React.useState(false);
 
-  // ── Detect if msrp was pre-filled from catalog (library product) ────────
   const isFromLibrary = product.sourceType === 'library';
 
   // ── Shared styles ───────────────────────────────────────────────────────
   const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] disabled:bg-gray-100 disabled:cursor-not-allowed';
   const ro  = 'w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold text-gray-800';
 
-  // Checkbox helper
   const Chk = ({ checked, onChange: handleChange, label }) => (
     <label className="flex items-center gap-2 cursor-pointer select-none">
       <input
@@ -176,14 +172,13 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   return (
     <div className="space-y-0 border border-gray-200 rounded-xl overflow-hidden">
 
-
       {/* ── Catalog price banner (library products only) ── */}
       {isFromLibrary && msrp > 0 && (
         <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
           <Tag className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
           <p className="text-xs text-amber-800">
-            <strong>Catalog price: ${fmt(msrp)}</strong> — pre-filled as MSRP.
-            Set Net Cost separately as your actual purchase price from vendor.
+            <strong>Catalog price: ${fmt(msrp)}</strong> — pre-filled as MSRP (sell basis).
+            Set Net Cost separately as your actual purchase price from vendor (for PO only).
           </p>
         </div>
       )}
@@ -271,51 +266,12 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
       <div className="grid grid-cols-[1fr_1fr_140px] border-b border-gray-100 bg-white">
         <div className="px-5 py-4 border-r border-gray-200 space-y-3">
 
-          {/* ── MSRP — independent selling/list price ── */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              MSRP / List Price
-              {isFromLibrary && msrp > 0 && (
-                <span className="ml-1.5 text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">
-                  from catalog
-                </span>
-              )}
-              <span className="ml-1.5 text-[10px] text-blue-500 font-normal">(selling ref)</span>
-            </label>
-            <DecimalInput
-              value={opts.msrp}
-              onChange={handleMsrpChange}
-              disabled={disabled || noNetPurchase}
-              className={`${inp} ${isFromLibrary && msrp > 0 && !disabled ? 'border-amber-300 bg-amber-50/30' : ''}`}
-            />
-          </div>
-
-          {/* ── Discount % — helper opsional untuk compute Net Cost ── */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-              Discount (%) — optional helper
-              <Info className="w-3 h-3 text-blue-400" />
-            </label>
-            <DecimalInput
-              value={opts.discountPercent}
-              onChange={handleDiscountChange}
-              disabled={disabled || noNetPurchase}
-              placeholder="0"
-              className={inp}
-            />
-            {discountPct > 0 && !noNetPurchase && opts.netCostOverride === null && (
-              <p className="text-[10px] text-gray-400 mt-1">
-                Computed Net Cost: ${fmt(computedFromDiscount)} (MSRP × {100 - discountPct}%)
-              </p>
-            )}
-          </div>
-
-          {/* ── Net Cost — independent purchase price from vendor ── */}
+          {/* ── Net Cost — purchase price dari vendor, untuk PO saja ── */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
               Net Cost
               <span className="text-[10px] text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded ml-1">
-                purchase price
+                purchase price (PO only)
               </span>
             </label>
             <input
@@ -367,11 +323,68 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
               </div>
             )}
           </div>
+
+          {/* ── Discount % — helper opsional untuk compute Net Cost ── */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
+              Discount (%) — Net Cost helper
+              <Info className="w-3 h-3 text-blue-400" />
+            </label>
+            <DecimalInput
+              value={opts.discountPercent}
+              onChange={handleDiscountChange}
+              disabled={disabled || noNetPurchase}
+              placeholder="0"
+              className={inp}
+            />
+            {discountPct > 0 && !noNetPurchase && opts.netCostOverride === null && (
+              <p className="text-[10px] text-gray-400 mt-1">
+                Computed Net Cost: ${fmt(computedFromDiscount)} (MSRP × {100 - discountPct}%)
+              </p>
+            )}
+          </div>
+
+          {/* ── Total Purchase Cost summary ── */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Total Purchase Cost</label>
+            <div className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-900">
+              {fmt(totalPurchaseCost)}
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">Net Cost × Qty + Shipping + Other</p>
+          </div>
+
         </div>
 
         <div className="px-5 py-4 border-r border-gray-200 space-y-3">
+
+          {/* ── MSRP — sell basis, menentukan Product Subtotal ── */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Markup %</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              MSRP / List Price
+              {isFromLibrary && msrp > 0 && (
+                <span className="ml-1.5 text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">
+                  from catalog
+                </span>
+              )}
+              <span className="ml-1.5 text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded">
+                sell basis
+              </span>
+            </label>
+            <DecimalInput
+              value={opts.msrp}
+              onChange={handleMsrpChange}
+              disabled={disabled || noNetPurchase}
+              className={`${inp} ${!disabled && !noNetPurchase ? 'border-blue-300 bg-blue-50/30' : ''} ${isFromLibrary && msrp > 0 && !disabled ? 'border-amber-300 bg-amber-50/30' : ''}`}
+            />
+            <p className="text-[10px] text-blue-500 mt-1">
+              Subtotal = MSRP × qty × (1 + markup%)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Markup % <span className="text-[10px] text-blue-400">(applied to MSRP)</span>
+            </label>
             <DecimalInput
               value={opts.markupPercent ?? 50}
               onChange={(v) => upd('markupPercent', v)}
@@ -381,7 +394,10 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Product Subtotal</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Product Subtotal
+              <span className="text-[10px] text-gray-400 ml-1">= MSRP × qty × (1 + markup%)</span>
+            </label>
             <div className={ro}>{fmt(productSubtotal)}</div>
           </div>
         </div>
@@ -476,12 +492,6 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
       {/* ── Row 5: Totals ── */}
       <div className="grid grid-cols-[1fr_1fr_140px] bg-gray-50">
         <div className="px-5 py-4 border-r border-gray-200 space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Total Purchase Cost</label>
-            <div className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-900">
-              {fmt(totalPurchaseCost)}
-            </div>
-          </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Vendor Deposit Requested (%)</label>
             <DecimalInput
