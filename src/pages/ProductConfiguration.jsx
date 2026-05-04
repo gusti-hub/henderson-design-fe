@@ -1,10 +1,5 @@
 // ProductConfiguration.jsx
-// ✅ PATCHED: Added fields to product form so they pre-fill in CustomProductManager library:
-//   - Client Description (specifications)
-//   - Vendor Description
-//   - Item URL (link)
-//   - Color / Finish
-//   - Item Class (with custom free-text via datalist)
+// ✅ PATCHED: price split into buyPrice (cost) and sellPrice (client-facing price)
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, ImageIcon, Upload } from 'lucide-react';
@@ -14,22 +9,11 @@ import BulkProductImport from '../pages/BulkProductImport';
 import BulkDeleteProducts from './BulkDeleteProduct';
 import BulkUpdateProducts from './BulkUpdateProducts';
 
-// ─── Finish constants ──────────────────────────────────────────────────────
+// ─── SKU finish parser (display only) ─────────────────────────────────────
 const WOOD_CODES   = ['MD', 'DK'];
 const FABRIC_CODES = ['19','20','08','09','02','03','11','12','05','06','14','15','17','18','0B','0C','0E','0F','0I','0H','0L','0K','0O','0N','0U','0T'];
 const OTHER_CODES  = ['WV','SD','MD','DK','LT','FX','LR','SH'];
 
-const WOOD_LABELS  = { MD: 'MD — Medium', DK: 'DK — Dark' };
-const FABRIC_LABELS = {
-  '19':'19','20':'20','08':'08','09':'09','02':'02','03':'03',
-  '11':'11','12':'12','05':'05','06':'06','14':'14','15':'15',
-  '17':'17','18':'18','0B':'0B','0C':'0C','0E':'0E','0F':'0F',
-  '0I':'0I','0H':'0H','0L':'0L','0K':'0K','0O':'0O','0N':'0N',
-  '0U':'0U','0T':'0T',
-};
-const OTHER_LABELS = { WV:'WV',SD:'SD',MD:'MD',DK:'DK',LT:'LT',FX:'FX',LR:'LR',SH:'SH' };
-
-// ✅ Item Class options (same list as CustomProductManager)
 const ITEM_CLASS_OPTIONS = [
   'Accessories','Accessories & Art','Accessories-1','Appliances','Case Goods',
   'Custom - soft goods (decorative pillows)','Fabric','Flooring','Lighting',
@@ -54,19 +38,20 @@ const parseSku = (sku) => {
 const emptyForm = () => ({
   product_id:          '',
   name:                '',
-  description:         '',   // client description
-  vendorDescription:   '',   // ✅ NEW
-  itemUrl:             '',   // ✅ NEW
-  colorFinish:         '',   // ✅ NEW
-  itemClass:           '',   // ✅ NEW
+  description:         '',
+  vendorDescription:   '',
+  itemUrl:             '',
+  colorFinish:         '',
+  itemClass:           '',
   category:            '',
   collection:          '',
   package:             '',
   dimension:           '',
-  price:               '',
+  buyPrice:            '',   // ✅ cost / vendor price
+  sellPrice:           '',   // ✅ client-facing price
   woodFinish:          '',
   fabric:              '',
-  others:              [],
+  others:              '',   // free text
   imageUrl:            '',
   imageFile:           null,
   imagePreview:        '',
@@ -157,17 +142,6 @@ const ProductConfiguration = () => {
     }));
   };
 
-  // ─── Others toggle ────────────────────────────────────────────────────
-  const toggleOther = (code) => {
-    setFormData(prev => ({
-      ...prev,
-      others: prev.others.includes(code)
-        ? prev.others.filter(c => c !== code)
-        : [...prev.others, code],
-    }));
-  };
-
-  // ─── Image file ───────────────────────────────────────────────────────
   const handleImageFile = (file) => {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { setErrors(e => ({ ...e, image: 'Max 5 MB' })); return; }
@@ -186,30 +160,31 @@ const ProductConfiguration = () => {
   const handleEdit = (product) => {
     setSelectedProductId(product._id);
     setFormData({
-      product_id:        product.product_id       || '',
-      name:              product.name             || '',
-      description:       product.description      || '',
-      vendorDescription: product.vendorDescription || '',  // ✅ NEW
-      itemUrl:           product.itemUrl          || '',   // ✅ NEW
-      colorFinish:       product.colorFinish      || '',   // ✅ NEW
-      itemClass:         product.itemClass        || '',   // ✅ NEW
-      category:          product.category         || '',
-      collection:        product.collection       || '',
-      package:           product.package          || '',
-      dimension:         product.dimension        || '',
-      price:             product.price            ?? '',
-      woodFinish:        product.woodFinish       || '',
-      fabric:            product.fabric           || '',
-      others:            product.others           || [],
-      imageUrl:          product.image?.url       || '',
+      product_id:        product.product_id        || '',
+      name:              product.name              || '',
+      description:       product.description       || '',
+      vendorDescription: product.vendorDescription || '',
+      itemUrl:           product.itemUrl           || '',
+      colorFinish:       product.colorFinish       || '',
+      itemClass:         product.itemClass         || '',
+      category:          product.category          || '',
+      collection:        product.collection        || '',
+      package:           product.package           || '',
+      dimension:         product.dimension         || '',
+      // ✅ support both new fields and legacy `price`
+      buyPrice:          product.buyPrice  ?? '',
+      sellPrice:         product.sellPrice ?? product.price ?? '',
+      woodFinish:        product.woodFinish        || '',
+      fabric:            product.fabric            || '',
+      others:            Array.isArray(product.others) ? product.others.join(', ') : (product.others || ''),
+      imageUrl:          product.image?.url        || '',
       imageFile:         null,
-      imagePreview:      product.image?.url       || '',
+      imagePreview:      product.image?.url        || '',
     });
     setModalMode('edit');
     setIsModalOpen(true);
   };
 
-  // ─── Close / reset ────────────────────────────────────────────────────
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedProductId(null);
@@ -217,7 +192,6 @@ const ProductConfiguration = () => {
     setErrors({});
   };
 
-  // ─── Delete ───────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this product?')) return;
     try {
@@ -236,7 +210,8 @@ const ProductConfiguration = () => {
     const e = {};
     if (!formData.product_id.trim()) e.product_id = 'SKU is required';
     if (!formData.name.trim())       e.name       = 'Name is required';
-    if (!formData.price || isNaN(parseFloat(formData.price))) e.price = 'Valid price required';
+    if (!formData.sellPrice || isNaN(parseFloat(formData.sellPrice)))
+      e.sellPrice = 'Sell price is required';
     setErrors(e);
     return !Object.keys(e).length;
   };
@@ -252,18 +227,24 @@ const ProductConfiguration = () => {
       fd.append('product_id',        formData.product_id);
       fd.append('name',              formData.name);
       fd.append('description',       formData.description);
-      fd.append('vendorDescription', formData.vendorDescription || ''); // ✅ NEW
-      fd.append('itemUrl',           formData.itemUrl           || ''); // ✅ NEW
-      fd.append('colorFinish',       formData.colorFinish       || ''); // ✅ NEW
-      fd.append('itemClass',         formData.itemClass         || ''); // ✅ NEW
+      fd.append('vendorDescription', formData.vendorDescription || '');
+      fd.append('itemUrl',           formData.itemUrl           || '');
+      fd.append('colorFinish',       formData.colorFinish       || '');
+      fd.append('itemClass',         formData.itemClass         || '');
       fd.append('category',          formData.category    || 'General');
       fd.append('collection',        formData.collection  || 'General');
       fd.append('package',           formData.package     || '');
       fd.append('dimension',         formData.dimension);
-      fd.append('price',             formData.price);
+      fd.append('buyPrice',          formData.buyPrice  || 0);
+      fd.append('sellPrice',         formData.sellPrice);
+      fd.append('price',             formData.sellPrice);   // legacy compat
       fd.append('woodFinish',        formData.woodFinish);
       fd.append('fabric',            formData.fabric);
-      fd.append('others',            JSON.stringify(formData.others));
+      // others: split comma-separated string back to array for the API
+      const othersArr = formData.others
+        ? formData.others.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+        : [];
+      fd.append('others', JSON.stringify(othersArr));
       if (formData.imageFile) {
         fd.append('image', formData.imageFile);
       } else if (formData.imageUrl) {
@@ -285,6 +266,15 @@ const ProductConfiguration = () => {
     } finally {
       setSubmitLoading(false);
     }
+  };
+
+  // ─── Margin helper ────────────────────────────────────────────────────
+  const calcMargin = () => {
+    const buy  = parseFloat(formData.buyPrice);
+    const sell = parseFloat(formData.sellPrice);
+    if (!buy || !sell || sell === 0) return null;
+    const pct = ((sell - buy) / sell * 100).toFixed(1);
+    return { amount: (sell - buy).toFixed(2), pct };
   };
 
   // ─── Pagination ───────────────────────────────────────────────────────
@@ -315,24 +305,28 @@ const ProductConfiguration = () => {
     );
   };
 
-  // ─── Finish badge helper ──────────────────────────────────────────────
-  const FinishBadges = ({ product }) => (
-    <div className="flex flex-wrap gap-1">
-      {product.woodFinish && (
-        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-xs rounded font-mono">
-          🪵 {product.woodFinish}
-        </span>
-      )}
-      {product.fabric && (
-        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs rounded font-mono">
-          🧵 {product.fabric}
-        </span>
-      )}
-      {(product.others || []).map(o => (
-        <span key={o} className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded font-mono">{o}</span>
-      ))}
-    </div>
-  );
+  const FinishBadges = ({ product }) => {
+    const othersArr = Array.isArray(product.others)
+      ? product.others
+      : (product.others || '').split(',').map(s => s.trim()).filter(Boolean);
+    return (
+      <div className="flex flex-wrap gap-1">
+        {product.woodFinish && (
+          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-xs rounded font-mono">
+            🪵 {product.woodFinish}
+          </span>
+        )}
+        {product.fabric && (
+          <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs rounded font-mono">
+            🧵 {product.fabric}
+          </span>
+        )}
+        {othersArr.map(o => (
+          <span key={o} className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded font-mono">{o}</span>
+        ))}
+      </div>
+    );
+  };
 
   // ─── RENDER ───────────────────────────────────────────────────────────
   return (
@@ -354,12 +348,10 @@ const ProductConfiguration = () => {
             className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: '#005670' }}>
             <Plus className="w-4 h-4" /> Add Product
           </button>
-          <button
-              onClick={() => setShowBulkUpdate(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700"
-            >
-              <Pencil className="w-4 h-4" /> Bulk Update
-            </button>
+          <button onClick={() => setShowBulkUpdate(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700">
+            <Pencil className="w-4 h-4" /> Bulk Update
+          </button>
         </div>
       </div>
 
@@ -373,18 +365,18 @@ const ProductConfiguration = () => {
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              {['Image','Category','Package','SKU','Name','Dimensions','Price','Finish','Actions'].map(h => (
+              {['Image','Category','Package','SKU','Name','Dimensions','Buy Price','Sell Price','Finish','Actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan="9" className="py-10 text-center">
+              <tr><td colSpan="10" className="py-10 text-center">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
               </td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan="9" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
+              <tr><td colSpan="10" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
             ) : products.map(p => (
               <tr key={p._id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
@@ -403,7 +395,14 @@ const ProductConfiguration = () => {
                 <td className="px-4 py-3 text-xs font-mono text-gray-700">{p.product_id}</td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{p.dimension || '—'}</td>
-                <td className="px-4 py-3 text-sm font-semibold text-gray-900">${Number(p.price).toFixed(2)}</td>
+                {/* Buy Price */}
+                <td className="px-4 py-3 text-sm text-gray-500">
+                  {p.buyPrice ? `$${Number(p.buyPrice).toFixed(2)}` : <span className="text-gray-300">—</span>}
+                </td>
+                {/* Sell Price */}
+                <td className="px-4 py-3 text-sm font-semibold text-gray-900">
+                  ${Number(p.sellPrice ?? p.price ?? 0).toFixed(2)}
+                </td>
                 <td className="px-4 py-3"><FinishBadges product={p} /></td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
@@ -427,7 +426,6 @@ const ProductConfiguration = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[92vh] flex flex-col">
 
-            {/* Modal header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold" style={{ color: '#005670' }}>
                 {modalMode === 'create' ? '➕ Add Product' : '✏️ Edit Product'}
@@ -439,7 +437,7 @@ const ProductConfiguration = () => {
 
             <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-5 space-y-5 flex-1">
 
-              {/* ── Section: Identity ── */}
+              {/* ── Identity ── */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>SKU / Product ID *</label>
@@ -470,13 +468,47 @@ const ProductConfiguration = () => {
                     className={inputCls} placeholder="e.g. Bench Style A" />
                   {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                 </div>
-                <div>
-                  <label className={labelCls}>Final Price ($) *</label>
-                  <input type="number" step="0.01" value={formData.price}
-                    onChange={e => setFormData(f => ({ ...f, price: e.target.value }))}
-                    className={inputCls} placeholder="852.00" />
-                  {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
+
+                {/* ✅ PRICE SECTION — split into buy & sell */}
+                <div className="col-span-2">
+                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800">💰 Pricing</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Buy Price */}
+                      <div>
+                        <label className={labelCls}>Buy Price / Cost ($)</label>
+                        <input type="number" step="0.01" min="0" value={formData.buyPrice}
+                          onChange={e => setFormData(f => ({ ...f, buyPrice: e.target.value }))}
+                          className={inputCls} placeholder="0.00" />
+                        <p className="text-xs text-gray-400 mt-0.5">Vendor / cost price</p>
+                      </div>
+                      {/* Sell Price */}
+                      <div>
+                        <label className={labelCls}>Sell Price ($) *</label>
+                        <input type="number" step="0.01" min="0" value={formData.sellPrice}
+                          onChange={e => setFormData(f => ({ ...f, sellPrice: e.target.value }))}
+                          className={`${inputCls} ${errors.sellPrice ? 'border-red-400' : ''}`}
+                          placeholder="852.00" />
+                        {errors.sellPrice && <p className="text-red-500 text-xs mt-1">{errors.sellPrice}</p>}
+                      </div>
+                    </div>
+                    {/* Live margin indicator */}
+                    {(() => {
+                      const m = calcMargin();
+                      if (!m) return null;
+                      const isPositive = parseFloat(m.amount) >= 0;
+                      return (
+                        <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg w-fit ${
+                          isPositive ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                        }`}>
+                          <span>{isPositive ? '📈' : '📉'}</span>
+                          <span>Margin: <strong>${m.amount}</strong> ({m.pct}%)</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
+
                 <div>
                   <label className={labelCls}>Dimensions</label>
                   <input type="text" value={formData.dimension}
@@ -508,8 +540,6 @@ const ProductConfiguration = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* ✅ NEW: Item Class */}
                 <div>
                   <label className={labelCls}>Item Class</label>
                   <input
@@ -524,16 +554,12 @@ const ProductConfiguration = () => {
                     {ITEM_CLASS_OPTIONS.map(opt => <option key={opt} value={opt} />)}
                   </datalist>
                 </div>
-
-                {/* ✅ NEW: Color / Finish */}
                 <div>
                   <label className={labelCls}>Color / Finish</label>
                   <input type="text" value={formData.colorFinish}
                     onChange={e => setFormData(f => ({ ...f, colorFinish: e.target.value }))}
                     className={inputCls} placeholder="e.g. Brushed Nickel, Ivory White" />
                 </div>
-
-                {/* ✅ NEW: Item URL */}
                 <div className="col-span-2">
                   <label className={labelCls}>Item URL</label>
                   <input type="url" value={formData.itemUrl}
@@ -542,7 +568,7 @@ const ProductConfiguration = () => {
                 </div>
               </div>
 
-              {/* ✅ NEW: Descriptions section */}
+              {/* ── Descriptions ── */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50">
                 <h4 className="text-sm font-semibold text-gray-800">📝 Descriptions</h4>
                 <div>
@@ -568,73 +594,47 @@ const ProductConfiguration = () => {
                 </div>
               </div>
 
-              {/* ── Section: Finish ── */}
+              {/* ── Finish ── */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-4 bg-gray-50/50">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-gray-800">🎨 Finish Attributes</h4>
                   <p className="text-xs text-gray-400">Auto-parsed from SKU · override if needed</p>
                 </div>
-
-                {/* Wood Finish */}
-                <div>
-                  <label className={labelCls}>🪵 Wood Finish</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setFormData(f => ({ ...f, woodFinish: '' }))}
-                      className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${!formData.woodFinish ? 'bg-[#005670] text-white border-[#005670]' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}`}>
-                      None
-                    </button>
-                    {WOOD_CODES.map(code => (
-                      <button key={code} type="button"
-                        onClick={() => setFormData(f => ({ ...f, woodFinish: f.woodFinish === code ? '' : code }))}
-                        className={`px-3 py-1.5 rounded-lg border text-sm font-mono font-medium transition-colors ${
-                          formData.woodFinish === code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400'
-                        }`}>
-                        {WOOD_LABELS[code]}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelCls}>🪵 Wood Finish</label>
+                    <input
+                      type="text"
+                      value={formData.woodFinish}
+                      onChange={e => setFormData(f => ({ ...f, woodFinish: e.target.value }))}
+                      className={inputCls}
+                      placeholder="e.g. MD, DK"
+                    />
                   </div>
-                </div>
-
-                {/* Fabric */}
-                <div>
-                  <label className={labelCls}>🧵 Fabric Code</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button type="button" onClick={() => setFormData(f => ({ ...f, fabric: '' }))}
-                      className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-medium transition-colors ${!formData.fabric ? 'bg-[#005670] text-white border-[#005670]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
-                      None
-                    </button>
-                    {FABRIC_CODES.map(code => (
-                      <button key={code} type="button"
-                        onClick={() => setFormData(f => ({ ...f, fabric: f.fabric === code ? '' : code }))}
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-medium transition-colors ${
-                          formData.fabric === code ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-200 hover:border-purple-400'
-                        }`}>
-                        {code}
-                      </button>
-                    ))}
+                  <div>
+                    <label className={labelCls}>🧵 Fabric Code</label>
+                    <input
+                      type="text"
+                      value={formData.fabric}
+                      onChange={e => setFormData(f => ({ ...f, fabric: e.target.value }))}
+                      className={inputCls}
+                      placeholder="e.g. 19, 0B"
+                    />
                   </div>
-                </div>
-
-                {/* Others */}
-                <div>
-                  <label className={labelCls}>⚙️ Others (multi-select)</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {OTHER_CODES.map(code => (
-                      <button key={code} type="button" onClick={() => toggleOther(code)}
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-medium transition-colors ${
-                          formData.others.includes(code) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400'
-                        }`}>
-                        {code}
-                      </button>
-                    ))}
+                  <div>
+                    <label className={labelCls}>⚙️ Other Finish</label>
+                    <input
+                      type="text"
+                      value={formData.others}
+                      onChange={e => setFormData(f => ({ ...f, others: e.target.value }))}
+                      className={inputCls}
+                      placeholder="e.g. WV, LR (comma-sep)"
+                    />
                   </div>
-                  {formData.others.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">Selected: {formData.others.join(', ')}</p>
-                  )}
                 </div>
               </div>
 
-              {/* ── Section: Image ── */}
+              {/* ── Image ── */}
               <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
                 <h4 className="text-sm font-semibold text-gray-800">🖼 Image</h4>
                 <div className="flex items-start gap-4">
@@ -672,7 +672,6 @@ const ProductConfiguration = () => {
                 </div>
               </div>
 
-              {/* Submit error */}
               {errors.submit && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-700">{errors.submit}</p>
@@ -680,7 +679,6 @@ const ProductConfiguration = () => {
               )}
             </form>
 
-            {/* Modal footer */}
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button type="button" onClick={handleCloseModal} disabled={submitLoading}
                 className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">
@@ -698,7 +696,7 @@ const ProductConfiguration = () => {
         </div>
       )}
 
-      {/* Bulk Import Modal */}
+      {/* Bulk Import */}
       {showBulkImport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -713,7 +711,7 @@ const ProductConfiguration = () => {
         </div>
       )}
 
-      {/* Bulk Delete Modal */}
+      {/* Bulk Delete */}
       {showBulkDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -731,6 +729,7 @@ const ProductConfiguration = () => {
         </div>
       )}
 
+      {/* Bulk Update */}
       {showBulkUpdate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -747,7 +746,7 @@ const ProductConfiguration = () => {
           </div>
         </div>
       )}
- 
+
     </div>
   );
 };

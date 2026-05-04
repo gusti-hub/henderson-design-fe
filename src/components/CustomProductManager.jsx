@@ -325,8 +325,19 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         product.images?.[0]?.url ||
         null;
 
-      const catalogPrice = product.price || 0;
-
+      // ── Pricing from Product Config catalog ─────────────────────────────
+      // buyPrice  → Net Cost (Purchase Cost / PO tracking, left column)
+      // buyPrice  → MSRP    (sell basis, right column)
+      // sellPrice → target Product Subtotal; markupPercent back-calculated:
+      //   Subtotal = MSRP × qty(1) × (1 + markup/100) = sellPrice
+      //   → markup = (sellPrice / buyPrice − 1) × 100
+      const buyPrice  = parseFloat(product.buyPrice)  || 0;
+      const sellPrice = parseFloat(product.sellPrice ?? product.price) || 0;
+ 
+      // sellPrice goes directly into MSRP, markupPercent = 0
+      // Subtotal = sellPrice × qty × (1 + 0%) = sellPrice exactly
+      // No back-calculation, no rounding risk.
+ 
       return {
         _id:        `temp_lib_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         product_id: product.product_id || `LIB-${Date.now()}`,
@@ -335,8 +346,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         package:    product.package  || '',
         spotName:   'Library Item',
         quantity:   1,
-        unitPrice:  catalogPrice,
-        finalPrice: catalogPrice,
+        unitPrice:  sellPrice,   // PricingFields useEffect keeps this in sync
+        finalPrice: sellPrice,
         vendor:     null,
         sourceType: 'library',
         isEditable: true,
@@ -354,12 +365,17 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           vendorDescription:     product.vendorDescription || '',
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
-          msrp:                  catalogPrice,
-          discountPercent:       0,
-          netCostOverride:       null,
-          noNetPurchaseCost:     false,
+          // ── Sell side (right column in PricingFields) ─────────────────
+          // Sell side: MSRP = sellPrice directly, markup = 0
+          // Subtotal = sellPrice × qty × (1 + 0%) = sellPrice exactly, no rounding
+          msrp:          sellPrice,
+          markupPercent: 0,
+          // Purchase side (left column): Net Cost = buyPrice
+          netCostOverride:   buyPrice > 0 ? buyPrice : null,
+          discountPercent:   0,
+          noNetPurchaseCost: buyPrice === 0,
+          // ── Everything else unchanged ─────────────────────────────────
           units:                 'Each',
-          markupPercent:         50,
           shippingMarkupPercent: 50,
           otherMarkupPercent:    50,
           shippingCost:          0,
@@ -378,7 +394,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         }
       };
     });
-
     const mergedProducts = [...savedProducts, ...newProducts];
     setSavedProducts(mergedProducts);
 

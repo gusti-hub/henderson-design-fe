@@ -1,8 +1,5 @@
 // BulkUpdateProducts.jsx
-// Bulk update products via Excel:
-//   1. Download pre-filled template (current DB data)
-//   2. Edit the rows you want to change
-//   3. Upload back — preview diff, then confirm
+// ✅ PATCHED: price split into buyPrice (buy/cost price) and sellPrice (sell price)
 
 import React, { useState, useRef } from 'react';
 import {
@@ -16,7 +13,8 @@ const token = () => localStorage.getItem('token');
 
 const UPDATABLE_COLUMNS = [
   'product_id','name','description','vendorDescription',
-  'category','collection','package','dimension','price',
+  'category','collection','package','dimension',
+  'buyPrice','sellPrice',          // ✅ split price
   'colorFinish','itemUrl','itemClass','woodFinish','fabric','others',
   'imageUrl',
 ];
@@ -30,7 +28,8 @@ const FIELD_LABELS = {
   collection:        'Collection',
   package:           'Package',
   dimension:         'Dimensions',
-  price:             'Price ($)',
+  buyPrice:          'Buy Price / Cost ($)',
+  sellPrice:         'Sell Price ($)',
   colorFinish:       'Color / Finish',
   itemUrl:           'Item URL',
   itemClass:         'Item Class',
@@ -60,13 +59,12 @@ const DiffBadge = ({ field, oldVal, newVal }) => {
 const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
   const bs = bsProp || backendServer;
 
-  // steps: idle → downloading → uploading → previewing → submitting → done | error
-  const [step, setStep]           = useState('idle');
-  const [file, setFile]           = useState(null);
-  const [preview, setPreview]     = useState([]); // [{_id, sku, changes:{field:{old,new}}}]
-  const [result, setResult]       = useState(null);
-  const [error, setError]         = useState('');
-  const [expanded, setExpanded]   = useState({}); // row._id → bool
+  const [step, setStep]             = useState('idle');
+  const [file, setFile]             = useState(null);
+  const [preview, setPreview]       = useState([]);
+  const [result, setResult]         = useState(null);
+  const [error, setError]           = useState('');
+  const [expanded, setExpanded]     = useState({});
   const [dlProgress, setDlProgress] = useState('');
   const fileRef = useRef();
 
@@ -76,22 +74,21 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
     setDlProgress('Fetching products…');
     setError('');
     try {
-      // Fetch all products (max 5000)
-        const res = await fetch(
+      const res = await fetch(
         `${bs}/api/products/export/all`,
         { headers: { Authorization: `Bearer ${token()}` } }
-        );
-        const data = await res.json();
-        const products = data.products || [];
+      );
+      const data = await res.json();
+      const products = data.products || [];
 
-      setDlProgress(`Building Excel for ${products.length} products…`);
+      setDlProgress(`Building CSV for ${products.length} products…`);
 
-      // Build CSV-ish XLSX via SheetJS (loaded from CDN already in app, or use vanilla CSV fallback)
-      // We'll use CSV fallback to avoid extra deps — the user can open in Excel
       const headers = UPDATABLE_COLUMNS;
       const rows = products.map(p => headers.map(col => {
-        if (col === 'others') return (p.others || []).join(',');
-        if (col === 'imageUrl') return p.image?.url || '';
+        if (col === 'others')    return (p.others || []).join(',');
+        if (col === 'imageUrl')  return p.image?.url || '';
+        if (col === 'sellPrice') return p.sellPrice ?? p.price ?? '';  // ✅ fallback legacy
+        if (col === 'buyPrice')  return p.buyPrice ?? '';               // ✅
         return p[col] ?? '';
       }));
 
@@ -123,14 +120,13 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
     }
   };
 
-  // ─── Parse uploaded CSV/Excel ───────────────────────────────────────────
+  // ─── Parse uploaded CSV ─────────────────────────────────────────────────
   const parseFile = (f) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const text = e.target.result;
-          // BOM strip
           const clean = text.replace(/^\uFEFF/, '');
           const lines = clean.split(/\r?\n/).filter(l => l.trim());
           if (lines.length < 2) throw new Error('File is empty or has only headers');
@@ -151,13 +147,24 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
             return vals;
           };
 
-          const headers = parseLine(lines[0]);
+          // Strip BOM, quotes, and invisible characters from header names
+          const cleanHeader = (h) => h
+            .trim()
+            .replace(/^["']+|["']+$/g, '')   // strip surrounding quotes Excel may add
+            .replace(/[\u00a0\u200b\ufeff]/g, '') // strip non-breaking/zero-width spaces
+            .trim();
+
+          const headers = parseLine(lines[0]).map(cleanHeader);
           const rows = lines.slice(1).map(l => {
             const vals = parseLine(l);
             const obj = {};
-            headers.forEach((h, i) => { obj[h.trim()] = (vals[i] ?? '').trim(); });
+            headers.forEach((h, i) => {
+              // Also strip invisible chars from values
+              const v = (vals[i] ?? '').trim().replace(/[\u00a0\u200b\ufeff]/g, '');
+              obj[h] = v;
+            });
             return obj;
-          }).filter(r => r.product_id);
+          }).filter(r => r.product_id && r.product_id.trim());
 
           resolve(rows);
         } catch (err) { reject(err); }
@@ -176,7 +183,6 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
     try {
       const rows = await parseFile(f);
 
-      // Ask backend to preview diff
       const res = await fetch(`${bs}/api/products/bulk-update/preview`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
@@ -220,8 +226,9 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const changedCount = preview.filter(p => Object.keys(p.changes || {}).length > 0).length;
-  const noChangeCount = preview.length - changedCount;
+  const notFoundCount  = preview.filter(p => p.notFound).length;
+  const changedCount   = preview.filter(p => !p.notFound && Object.keys(p.changes || {}).length > 0).length;
+  const noChangeCount  = preview.filter(p => !p.notFound && Object.keys(p.changes || {}).length === 0).length;
 
   // ─── RENDER ─────────────────────────────────────────────────────────────
   return (
@@ -237,10 +244,12 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
           </div>
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-gray-800 mb-1">Download Template (pre-filled)</h4>
-            <p className="text-xs text-gray-500 mb-3">
-              Downloads all existing products as a CSV. Edit the rows you want to update, then upload below.
-              <br />
-              <strong>product_id</strong> is used as the lookup key — do not change it.
+            <p className="text-xs text-gray-500 mb-1">
+              Downloads all products as a CSV with <strong>buyPrice</strong> and <strong>sellPrice</strong> columns.
+              Edit the rows you want to change, then upload below.
+            </p>
+            <p className="text-xs text-amber-600 mb-3">
+              ⚠️ <strong>product_id</strong> is the lookup key — do not change it.
             </p>
             <button
               onClick={handleDownload}
@@ -326,10 +335,8 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
               <h4 className="text-sm font-semibold text-gray-800">Preview Changes</h4>
               <p className="text-xs text-gray-500 mt-0.5">
                 <span className="text-emerald-700 font-semibold">{changedCount} rows</span> will be updated
-                {noChangeCount > 0 && <span className="text-gray-400"> · {noChangeCount} rows unchanged (skipped)</span>}
-                {preview.filter(p => p.notFound).length > 0 && (
-                  <span className="text-amber-600"> · {preview.filter(p => p.notFound).length} SKUs not found</span>
-                )}
+                {noChangeCount > 0 && <span className="text-gray-400"> · {noChangeCount} identical (skipped)</span>}
+                {notFoundCount > 0 && <span className="text-amber-600"> · {notFoundCount} SKUs not found</span>}
               </p>
             </div>
             <div className="flex gap-2">
@@ -349,16 +356,19 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
             </div>
           </div>
 
-          {/* Preview list */}
           <div className="divide-y divide-gray-100 max-h-[420px] overflow-y-auto">
             {preview.map((row, i) => {
               const hasChanges = Object.keys(row.changes || {}).length > 0;
               const isExpanded = expanded[row.product_id];
+              // Fields that were present in the CSV row but identical to DB (skipped reason)
+              const skippedFields = (!hasChanges && !row.notFound && row.matchedFields)
+                ? row.matchedFields
+                : [];
               return (
                 <div key={row.product_id || i}
                   className={`px-5 py-3 ${
                     row.notFound   ? 'bg-amber-50'
-                    : !hasChanges  ? 'bg-gray-50/60 opacity-60'
+                    : !hasChanges  ? 'bg-gray-50/40'
                     :                'hover:bg-gray-50'
                   }`}>
                   <div className="flex items-center justify-between gap-2">
@@ -368,11 +378,14 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
                       ) : hasChanges ? (
                         <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500" />
                       ) : (
-                        <span className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300" />
+                        <span className="flex-shrink-0 px-1.5 py-0.5 bg-gray-200 text-gray-500 text-[10px] font-semibold rounded">SKIPPED</span>
                       )}
-                      <span className="font-mono text-xs font-semibold text-gray-700 truncate">{row.product_id}</span>
-                      <span className="text-xs text-gray-500 truncate">{row.name}</span>
+                      <span className={`font-mono text-xs font-semibold truncate ${!hasChanges && !row.notFound ? 'text-gray-400' : 'text-gray-700'}`}>
+                        {row.product_id}
+                      </span>
+                      <span className="text-xs text-gray-400 truncate">{row.name}</span>
                     </div>
+                    {/* Changed: show expandable diff */}
                     {hasChanges && !row.notFound && (
                       <button
                         onClick={() => setExpanded(ex => ({ ...ex, [row.product_id]: !ex[row.product_id] }))}
@@ -381,12 +394,43 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
                         {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
                     )}
+                    {/* Skipped: show toggle to see which fields were identical */}
+                    {!hasChanges && !row.notFound && (
+                      <button
+                        onClick={() => setExpanded(ex => ({ ...ex, [row.product_id]: !ex[row.product_id] }))}
+                        className="flex-shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 hover:underline">
+                        All values identical
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                    {/* Not found */}
+                    {row.notFound && (
+                      <span className="text-xs text-amber-600">SKU not in database</span>
+                    )}
                   </div>
 
+                  {/* Expanded: changed fields diff */}
                   {isExpanded && hasChanges && (
                     <div className="mt-2 ml-5 pl-3 border-l-2 border-[#005670]/20 space-y-0.5">
                       {Object.entries(row.changes).map(([field, { old: oldVal, new: newVal }]) => (
                         <DiffBadge key={field} field={field} oldVal={oldVal} newVal={newVal} />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Expanded: skipped — show each field value that matched */}
+                  {isExpanded && !hasChanges && !row.notFound && row.identical && (
+                    <div className="mt-2 ml-5 pl-3 border-l-2 border-gray-200 space-y-0.5">
+                      <p className="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-wide">
+                        CSV values already match the database:
+                      </p>
+                      {Object.entries(row.identical).map(([field, val]) => (
+                        <div key={field} className="text-xs text-gray-500">
+                          <span className="font-medium text-gray-400">{FIELD_LABELS[field] ?? field}:</span>{' '}
+                          <span className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-600">
+                            {String(val ?? '—')}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -458,8 +502,12 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
           </summary>
           <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 pl-4">
             {Object.entries(FIELD_LABELS).map(([k, v]) => (
-              <div key={k}>
-                <span className="font-mono text-gray-700">{k}</span>
+              <div key={k} className={
+                k === 'sellPrice' ? 'text-emerald-700'
+                : k === 'buyPrice' ? 'text-amber-600'
+                : ''
+              }>
+                <span className="font-mono">{k}</span>
                 <span className="text-gray-400"> — {v}</span>
               </div>
             ))}

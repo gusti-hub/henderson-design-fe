@@ -1,10 +1,5 @@
 // src/pages/BulkProductImport.jsx
-// ✅ PATCHED: Added new catalog fields to column map, template, and preview
-//   - Client Description  (existing 'Description' column)
-//   - Vendor Description  (new 'Vendor Description' column)
-//   - Item URL            (existing 'Link Image' → separate 'Item URL' column)
-//   - Color / Finish      (new 'Color/Finish' column)
-//   - Item Class          (new 'Item Class' column)
+// ✅ PATCHED: price split into buyPrice (buy/cost price) and sellPrice (sell price)
 
 import React, { useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
@@ -44,9 +39,13 @@ const COLUMN_MAP = {
   category: 'category',
   item: 'name', item_name: 'name', name: 'name', product_name: 'name',
   sku: 'product_id', product_id: 'product_id', sku_id: 'product_id',
-  // Price
-  price: 'price', base_price: 'price', variant_price: 'price',
-  final_pricing: 'price', final_price: 'price',
+  // ✅ Sell Price — primary / client-facing price
+  sell_price: 'sellPrice', sellprice: 'sellPrice',
+  price: 'sellPrice', base_price: 'sellPrice', variant_price: 'sellPrice',
+  final_pricing: 'sellPrice', final_price: 'sellPrice',
+  // ✅ Buy Price — cost / vendor price
+  buy_price: 'buyPrice', buyprice: 'buyPrice',
+  cost: 'buyPrice', cost_price: 'buyPrice',
   // Dimensions
   dimensions: 'dimension', dimension: 'dimension', size: 'dimension',
   // Finish
@@ -55,28 +54,28 @@ const COLUMN_MAP = {
   fabric_finish: 'fabric', fabricfinish: 'fabric', fabric: 'fabric',
   // Package
   package: 'package',
-  // ✅ Descriptions
+  // Descriptions
   description: 'description', desc: 'description',
   client_description: 'description', clientdescription: 'description',
-  vendor_description: 'vendorDescription', vendordescription: 'vendorDescription', // ✅ NEW
-  // ✅ Item URL
-  item_url: 'itemUrl', itemurl: 'itemUrl', product_url: 'itemUrl',   // ✅ NEW
-  // ✅ Color/Finish (display finish, not SKU-based)
-  color_finish: 'colorFinish', colorfinish: 'colorFinish',            // ✅ NEW
+  vendor_description: 'vendorDescription', vendordescription: 'vendorDescription',
+  // Item URL
+  item_url: 'itemUrl', itemurl: 'itemUrl', product_url: 'itemUrl',
+  // Color/Finish
+  color_finish: 'colorFinish', colorfinish: 'colorFinish',
   color: 'colorFinish', finish: 'colorFinish',
-  // ✅ Item Class
-  item_class: 'itemClass', itemclass: 'itemClass', class: 'itemClass', // ✅ NEW
+  // Item Class
+  item_class: 'itemClass', itemclass: 'itemClass', class: 'itemClass',
   // Image
   link_image: 'imageUrl', linkimage: 'imageUrl',
   link_img: 'imageUrl', image: 'imageUrl', image_url: 'imageUrl',
 };
 
-const PRICE_PREFIXES = ['final_pricing', 'finalprice', 'pricing'];
+const SELL_PRICE_PREFIXES = ['final_pricing', 'finalprice', 'pricing'];
 
 const resolveColumn = (rawKey) => {
   const n = norm(rawKey);
   if (COLUMN_MAP[n]) return COLUMN_MAP[n];
-  if (PRICE_PREFIXES.some(prefix => n.startsWith(prefix))) return 'price';
+  if (SELL_PRICE_PREFIXES.some(prefix => n.startsWith(prefix))) return 'sellPrice';
   return null;
 };
 
@@ -96,8 +95,8 @@ const validateRow = (row, rowNum) => {
   const errors = [];
   if (!row.product_id) errors.push(`Row ${rowNum}: SKU is required`);
   if (!row.name)       errors.push(`Row ${rowNum}: Item name is required`);
-  if (!row.price || isNaN(parseFloat(row.price)))
-    errors.push(`Row ${rowNum}: Valid price required`);
+  if (!row.sellPrice || isNaN(parseFloat(row.sellPrice)))
+    errors.push(`Row ${rowNum}: Sell price is required`);
   if (row.imageUrl && !isValidUrl(row.imageUrl))
     errors.push(`Row ${rowNum}: Invalid image URL`);
   if (row.itemUrl && !isValidUrl(row.itemUrl))
@@ -108,55 +107,51 @@ const validateRow = (row, rowNum) => {
 // ─── Download template ─────────────────────────────────────────────────────
 const downloadTemplate = () => {
   const headers = [
-    'Category', 'ITEM', 'SKU', 'FINAL PRICING 20_', 'DIMENSIONS',
+    'Category', 'ITEM', 'SKU',
+    'Buy Price',        // ✅ cost / vendor price
+    'Sell Price',       // ✅ client-facing price (required)
+    'DIMENSIONS',
     'WOOD FINISH', 'OTHER FINISH', 'Fabric FINISH',
-    'Description',          // client description
-    'Vendor Description',   // ✅ NEW
-    'Color/Finish',         // ✅ NEW
-    'Item Class',           // ✅ NEW
-    'Item URL',             // ✅ NEW
+    'Description',
+    'Vendor Description',
+    'Color/Finish',
+    'Item Class',
+    'Item URL',
     'Link Image',
     'Package',
   ];
   const rows = [
     [
-      'Bench', 'Bench Style A', 'ST-11-N-0A-00-MD-19-00-00-00', 852,
+      'Bench', 'Bench Style A', 'ST-11-N-0A-00-MD-19-00-00-00',
+      600, 852,
       '48"W x 16"D x 17"H', 'MD', '', '19',
       'Solid teak bench, medium finish.',
       'Order ref: style A, medium',
-      'Medium Walnut',
-      'Furniture',
+      'Medium Walnut', 'Furniture',
       'https://vendor.com/bench-a',
       'https://example.com/img.jpg',
       'Lani',
     ],
     [
-      'Bench', 'Bench Style A', 'ST-11-N-0A-00-DK-20-00-00-00', 852,
+      'Bench', 'Bench Style A', 'ST-11-N-0A-00-DK-20-00-00-00',
+      600, 852,
       '48"W x 16"D x 17"H', 'DK', '', '20',
       'Solid teak bench, dark finish.',
-      '',
-      'Dark Ebony',
-      'Furniture',
-      '',
-      '',
-      'Lani',
+      '', 'Dark Ebony', 'Furniture',
+      '', '', 'Lani',
     ],
     [
-      'Counter Stools', 'Counter Stool Style A', 'ST-05-N-0A-00-MD-08-00-00-00', 572,
+      'Counter Stools', 'Counter Stool Style A', 'ST-05-N-0A-00-MD-08-00-00-00',
+      400, 572,
       '18"W x 20"D x 35"H', 'MD', '', '08',
-      '',
-      '',
-      '',
-      'Case Goods',
-      '',
-      '',
-      'Nalu',
+      '', '', '', 'Case Goods',
+      '', '', 'Nalu',
     ],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   ws['!cols'] = [
-    {wch:16},{wch:22},{wch:32},{wch:18},{wch:22},
+    {wch:16},{wch:22},{wch:32},{wch:12},{wch:12},{wch:22},
     {wch:12},{wch:12},{wch:12},{wch:36},{wch:30},
     {wch:16},{wch:20},{wch:36},{wch:40},{wch:10},
   ];
@@ -201,32 +196,38 @@ const BulkProductImport = ({ onComplete }) => {
       const products = parsedRows.map(row => {
         const skuParsed = parseSku(row.product_id);
 
+        // Finish: accept free text from column, fall back to SKU-parsed value
         const woodFinish = row.woodFinish?.toUpperCase() || skuParsed.woodFinish || '';
         const fabric     = row.fabric?.toUpperCase()     || skuParsed.fabric     || '';
 
-        let others = skuParsed.others;
+        // Others: accept any comma-separated text; fall back to SKU-parsed
+        let others = skuParsed.others; // array from SKU parser
         if (row.otherFinish_raw) {
           const codes = row.otherFinish_raw.toUpperCase().split(/[\s,]+/).filter(Boolean);
-          const valid = codes.filter(c => OTHER_CODES.includes(c));
-          if (valid.length) others = valid;
+          if (codes.length) others = codes;
         }
+
+        const sellPrice = parseFloat(row.sellPrice) || 0;
+        const buyPrice  = parseFloat(row.buyPrice)  || 0;
 
         return {
           product_id:        row.product_id,
           name:              row.name,
           description:       row.description       || '',
-          vendorDescription: row.vendorDescription || '',  // ✅ NEW
-          colorFinish:       row.colorFinish       || '',  // ✅ NEW
-          itemClass:         row.itemClass         || '',  // ✅ NEW
-          itemUrl:           row.itemUrl           || '',  // ✅ NEW
+          vendorDescription: row.vendorDescription || '',
+          colorFinish:       row.colorFinish       || '',
+          itemClass:         row.itemClass         || '',
+          itemUrl:           row.itemUrl           || '',
           category:          row.category          || 'General',
           dimension:         row.dimension         || '',
           package:           (['Lani','Nalu','Mainland'].includes(row.package) ? row.package : ''),
-          price:             parseFloat(row.price) || 0,
+          sellPrice,
+          buyPrice,
+          price: sellPrice,   // legacy compat
           woodFinish,
           fabric,
           others,
-          imageUrl:          row.imageUrl          || '',
+          imageUrl: row.imageUrl || '',
         };
       });
 
@@ -270,7 +271,6 @@ const BulkProductImport = ({ onComplete }) => {
     }
   };
 
-  // Columns to show in preview (hide internal keys)
   const HIDDEN_PREVIEW = new Set(['otherFinish_raw']);
   const previewCols = preview?.[0]
     ? Object.keys(preview[0]).filter(k => !HIDDEN_PREVIEW.has(k))
@@ -284,17 +284,22 @@ const BulkProductImport = ({ onComplete }) => {
         <p className="text-sm font-semibold text-blue-900">Expected columns (order doesn't matter, case-insensitive):</p>
         <div className="flex flex-wrap gap-2 text-xs">
           {[
-            'Category','ITEM','SKU','FINAL PRICING 20_','DIMENSIONS',
-            'WOOD FINISH','OTHER FINISH','Fabric FINISH',
+            'Category','ITEM','SKU',
+            'Buy Price','Sell Price',
+            'DIMENSIONS','WOOD FINISH','OTHER FINISH','Fabric FINISH',
             'Description','Vendor Description','Color/Finish','Item Class','Item URL',
             'Link Image','Package',
           ].map(c => (
-            <span key={c} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-mono">{c}</span>
+            <span key={c} className={`px-2 py-0.5 rounded font-mono ${
+              c === 'Sell Price' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+              : c === 'Buy Price' ? 'bg-amber-100 text-amber-800 border border-amber-200'
+              : 'bg-blue-100 text-blue-800'
+            }`}>{c}{c === 'Sell Price' ? ' *' : ''}</span>
           ))}
         </div>
         <p className="text-xs text-blue-700">
-          <strong>Wood Finish</strong> and <strong>Fabric</strong> are auto-parsed from SKU if columns are empty.
-          1 row = 1 product.
+          <strong>Sell Price</strong> is required. <strong>Buy Price</strong> is optional (cost / vendor price).
+          Wood Finish &amp; Fabric are auto-parsed from the SKU if those columns are empty.
         </p>
         <button onClick={downloadTemplate}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
@@ -360,7 +365,11 @@ const BulkProductImport = ({ onComplete }) => {
               <thead className="bg-gray-50">
                 <tr>
                   {previewCols.map(h => (
-                    <th key={h} className="px-3 py-2 text-left font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
+                    <th key={h} className={`px-3 py-2 text-left font-medium uppercase whitespace-nowrap ${
+                      h === 'sellPrice' ? 'text-emerald-600'
+                      : h === 'buyPrice' ? 'text-amber-600'
+                      : 'text-gray-500'
+                    }`}>{h}</th>
                   ))}
                 </tr>
               </thead>
