@@ -789,7 +789,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
                 const netTotal = netCost * (product.quantity || 1);
                 const sidemark = product.selectedOptions?.sidemark || '';
-                const specs = product.selectedOptions?.specifications || '';
+                const specs = product.selectedOptions?.vendorDescription || product.selectedOptions?.specifications || '';
                 const dimension = product.selectedOptions?.dimension || '';
 
                 return (
@@ -819,7 +819,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         </span>
                       </div>
 
-                      {/* 2. Specs */}
+                      {/* 2. Spec Name (vendorDescription atau name) */}
                       {specs ? (
                         <div className="desc-row">
                           <span className="desc-row-label" style={{ paddingTop: '1px' }}>Specs</span>
@@ -827,15 +827,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         </div>
                       ) : null}
 
-                      {/* 3. SKU — dari product_id */}
-                      {product.product_id ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">SKU</span>
-                          <span className="desc-row-value">{product.product_id}</span>
-                        </div>
-                      ) : null}
-
-                      {/* 4. Name */}
+                      {/* 3. Name */}
                       {product.name ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Name</span>
@@ -843,29 +835,56 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         </div>
                       ) : null}
 
-                      {/* 5. Dimension */}
-                      {dimension ? (
+                      {/* 3. SKU */}
+                      {product.product_id ? (
                         <div className="desc-row">
-                          <span className="desc-row-label">Dimension</span>
-                          <span className="desc-row-value">{dimension}</span>
+                          <span className="desc-row-label">SKU</span>
+                          <span className="desc-row-value">{product.product_id}</span>
                         </div>
                       ) : null}
 
-                      {/* 6. Desc */}
-                      {product.description ? (
-                        <div className="desc-row" style={{ borderBottom: 'none' }}>
-                          <span className="desc-row-label" style={{ paddingTop: '1px' }}>Desc</span>
-                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{product.description}</span>
+                      {/* 4. Dimensions */}
+                      {(product.selectedOptions?.dimension || product.selectedOptions?.size) ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Dimensions</span>
+                          <span className="desc-row-value">
+                            {product.selectedOptions?.dimension || product.selectedOptions?.size}
+                          </span>
                         </div>
                       ) : null}
 
-                      {/* Sidemark */}
+                      {/* 5. Material (fabric) */}
+                      {product.selectedOptions?.fabric ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Material</span>
+                          <span className="desc-row-value">{product.selectedOptions.fabric}</span>
+                        </div>
+                      ) : null}
+
+                      {/* 6. Color (finish) */}
+                      {product.selectedOptions?.finish ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Color</span>
+                          <span className="desc-row-value">{product.selectedOptions.finish}</span>
+                        </div>
+                      ) : null}
+
+                      {/* 7. Lead Time */}
+                      {product.selectedOptions?.leadTime ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Lead Time</span>
+                          <span className="desc-row-value">{product.selectedOptions.leadTime}</span>
+                        </div>
+                      ) : null}
+
+                      {/* 9. Sidemark */}
                       {sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>
-                          <span style={{ color: '#333', wordBreak: 'break-word', textAlign: 'left' }}>{sidemark}</span>
+                          <span style={{ color: '#333', wordBreak: 'break-word' }}>{sidemark}</span>
                         </div>
                       ) : null}
+
                     </td>
 
                     {/* Unit Cost */}
