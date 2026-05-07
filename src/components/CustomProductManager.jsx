@@ -1,22 +1,14 @@
 // components/CustomProductManager.jsx
-// ✅ PATCHED v5:
-//    1. Sales Tax default: 8.75 → 4.5
-//    2. Auto-fill markupPercent dari vendor saat dipilih (via vendor.defaultMarkup)
-//    3. Library item: boleh add item yang sama berkali-kali (berbeda room)
-//       → alreadySelected tidak lagi memblok, hanya info badge
-//    4. Library items isEditable: true — semua field bisa diedit
-//    5. Item Class: tambah option "Custom..." + free-text input jika dipilih
-//    6. Fix isEditable check: undefined dianggap true (default editable)
-//    7. Fix typing issue: localFields state di ProductCard supaya input smooth
-//    8. Fix save: localFields di-merge ke product saat save
-//    9. [NEW] Fix Item Class tidak tersimpan: tambah itemClass ke localFields
-//       → sebelumnya itemClass tidak di-merge saat save, hilang setelah refresh
+// ✅ PATCHED v6:
+//    1–9. All previous patches retained
+//   10. [NEW] Lead Time field — added to localFields, buildProductPayload, Order model, backend save
+//   11. [NEW] Drag-to-reorder products within/across room groups (HTML5 drag-and-drop, no extra deps)
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Trash2, Save, FileText, Loader2, AlertCircle,
   Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon, Check,
-  Package, Truck, DollarSign, ClipboardList, Activity, Tag
+  Package, Truck, DollarSign, ClipboardList, Activity, Tag, GripVertical
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
@@ -63,9 +55,53 @@ const ROOM_OPTIONS = [
   'BEDROOM 4 CLOSET','BEDROOM 4 LANAI','SITTING ROOM',
 ];
 
+
+const SERVICE_OPTIONS = [
+  'DESIGN SERVICES',
+  'PROJECT MANAGEMENT SERVICES',
+  'PROCUREMENT SERVICES',
+  'FDI SERVICES (FREIGHT, DELIVERY & INSTALLATION)',
+  'WALLPAPER INSTALLATION SERVICES',
+  'ELECTRICAL INSTALLATION SERVICES',
+  'ART INSTALLATION SERVICES',
+  'WALLPAPER TRADE COORDINATION',
+  'ELECTRICAL TRADE COORDINATION',
+  'CLOSET SOLUTIONS',
+  'KITCHEN & HOUSEHOLD ESSENTIALS PACKAGE',
+  'WINDOW COVERING SERVICES',
+  'AUDIO VISUAL SERVICES',
+  'GREENERY & PLANT STYLING',
+  'CONSTRUCTION DESIGN & PM SERVICES',
+  'CUSTOM MILLWORK SERVICES',
+  'CUSTOM FURNITURE SERVICES',
+  'LIGHTING PROCUREMENT & COORDINATION',
+  'APPLIANCE COORDINATION',
+  'PLUMBING FIXTURE COORDINATION',
+  'DECORATIVE PLUMBING COORDINATION',
+  'STONE & SLAB COORDINATION',
+  'TILE & SURFACE COORDINATION',
+  'HARDWARE & DECORATIVE HARDWARE COORDINATION',
+  'OUTDOOR FURNISHINGS',
+  'LANAI / TERRACE FURNISHINGS',
+  'STYLING & ACCESSORIES',
+  'BEDDING PACKAGE',
+  'TURNKEY MOVE-IN PACKAGE',
+  'OWNER STORAGE & INVENTORY COORDINATION',
+  'CLIENT SUPPLIED ITEMS COORDINATION',
+  'WHITE GLOVE RECEIVING & WAREHOUSING',
+  'PUNCH LIST & COMPLETION COORDINATION',
+  'SITE VISIT COORDINATION',
+  'EXPEDITING SERVICES',
+  'BUILDING COORDINATION SERVICES',
+  'CONTRACTOR COORDINATION SERVICES',
+  'INSTALLATION OVERSIGHT',
+  'FINAL STYLING & STAGING',
+  'REVEAL PREPARATION',
+];
+
 const CFA_OPTIONS = ['Approved','Rejected','Waived','Pending'];
 
-// ✅ PATCH 1: salesTaxRate default 4.5 (was 8.75)
+// ✅ PATCH 1: salesTaxRate default 4.5
 const defaultSelectedOptions = () => ({
   image: '', images: [], links: [], specifications: '', notes: '',
   finish: '', fabric: '', size: '', sidemark: '', group: '', tags: [],
@@ -78,6 +114,7 @@ const defaultSelectedOptions = () => ({
   expectedShipDate: '', expectedArrivalDate: '', dateReceived: '', dateInspected: '',
   estimatedDeliveryDate: '', shippingCarrier: '', orderStatus: '', nextStep: '',
   nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '',
+  leadTime: '',   // ✅ PATCH 10
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
   noNetPurchaseCost: false, discountTaken: '', shippingCost: 0, otherCost: 0,
   markupPercent: 50, shippingMarkupPercent: 50, otherMarkupPercent: 50,
@@ -105,6 +142,7 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.poNumber', 'selectedOptions.vendorOrderNumber',
   'selectedOptions.trackingInfo', 'selectedOptions.deliveryStatus',
   'selectedOptions.notes',
+  'selectedOptions.leadTime',   // ✅ PATCH 10
   'selectedOptions.units', 'selectedOptions.msrp', 'selectedOptions.discountPercent',
   'selectedOptions.netCostOverride', 'selectedOptions.noNetPurchaseCost',
   'selectedOptions.discountTaken', 'selectedOptions.shippingCost',
@@ -262,6 +300,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     confirmLabel: 'Confirm', confirmVariant: 'danger', onConfirm: null,
   });
 
+  // ✅ PATCH 11: drag state
+  const dragIndexRef = useRef(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const showConfirm = ({ title, message, confirmLabel, confirmVariant = 'danger', onConfirm }) => {
     setConfirmModal({ isOpen: true, title, message, confirmLabel, confirmVariant, onConfirm });
   };
@@ -325,19 +368,9 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         product.images?.[0]?.url ||
         null;
 
-      // ── Pricing from Product Config catalog ─────────────────────────────
-      // buyPrice  → Net Cost (Purchase Cost / PO tracking, left column)
-      // buyPrice  → MSRP    (sell basis, right column)
-      // sellPrice → target Product Subtotal; markupPercent back-calculated:
-      //   Subtotal = MSRP × qty(1) × (1 + markup/100) = sellPrice
-      //   → markup = (sellPrice / buyPrice − 1) × 100
       const buyPrice  = parseFloat(product.buyPrice)  || 0;
       const sellPrice = parseFloat(product.sellPrice ?? product.price) || 0;
- 
-      // sellPrice goes directly into MSRP, markupPercent = 0
-      // Subtotal = sellPrice × qty × (1 + 0%) = sellPrice exactly
-      // No back-calculation, no rounding risk.
- 
+
       return {
         _id:        `temp_lib_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         product_id: product.product_id || `LIB-${Date.now()}`,
@@ -346,7 +379,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         package:    product.package  || '',
         spotName:   'Library Item',
         quantity:   1,
-        unitPrice:  sellPrice,   // PricingFields useEffect keeps this in sync
+        unitPrice:  sellPrice,
         finalPrice: sellPrice,
         vendor:     null,
         sourceType: 'library',
@@ -365,16 +398,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           vendorDescription:     product.vendorDescription || '',
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
-          // ── Sell side (right column in PricingFields) ─────────────────
-          // Sell side: MSRP = sellPrice directly, markup = 0
-          // Subtotal = sellPrice × qty × (1 + 0%) = sellPrice exactly, no rounding
+          leadTime:              product.leadTime     || '',  // ✅ PATCH 10
           msrp:          sellPrice,
           markupPercent: 0,
-          // Purchase side (left column): Net Cost = buyPrice
           netCostOverride:   buyPrice > 0 ? buyPrice : null,
           discountPercent:   0,
           noNetPurchaseCost: buyPrice === 0,
-          // ── Everything else unchanged ─────────────────────────────────
           units:                 'Each',
           shippingMarkupPercent: 50,
           otherMarkupPercent:    50,
@@ -429,7 +458,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       }
 
       const savedOrder = await res.json();
-      // ✅ PATCH 6: normalize isEditable saat set dari response backend
       const finalProducts = (savedOrder.selectedProducts || mergedProducts).map(p => ({
         ...p,
         isEditable: p.isEditable !== false,
@@ -449,7 +477,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           headers: { Authorization: `Bearer ${token}` }
         });
         const freshOrder = await freshRes.json();
-        // ✅ PATCH 6: normalize juga di rollback
         setSavedProducts((freshOrder.selectedProducts || []).map(p => ({
           ...p,
           isEditable: p.isEditable !== false,
@@ -489,6 +516,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           depositPercent:        90,
           vendorDepositPercent:  0,
           salesTaxRate:          4.5,
+          leadTime:              '',   // ✅ PATCH 10
           taxableCost:            true,
           taxableMarkup:          true,
           taxableShippingCost:    true,
@@ -517,7 +545,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   };
 
   // ─── Update ───────────────────────────────────────────────────────────────
-  // ✅ PATCH 6: isEditable === false (bukan falsy) supaya undefined = editable
   const updateProduct = (index, field, value) => {
     if (index === 'draft') {
       setDraftProduct(prev => {
@@ -598,7 +625,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           }
 
           const savedOrder = await res.json();
-          // ✅ PATCH 6: normalize di sini juga
           setSavedProducts((savedOrder.selectedProducts || updatedProducts).map(p => ({
             ...p,
             isEditable: p.isEditable !== false,
@@ -688,6 +714,81 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     return groups;
   };
 
+  // ✅ PATCH 11: drag-and-drop reorder handlers
+  const handleDragStart = useCallback((e, originalIndex) => {
+    dragIndexRef.current = originalIndex;
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(originalIndex));
+  }, []);
+
+  const handleDragOver = useCallback((e, originalIndex) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(originalIndex);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = dragIndexRef.current;
+    if (sourceIndex === null || sourceIndex === targetIndex) {
+      handleDragEnd();
+      return;
+    }
+
+    const reordered = [...savedProducts];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    setSavedProducts(reordered);
+    handleDragEnd();
+
+    // Persist reorder to backend
+    try {
+      const token = localStorage.getItem('token');
+      const payload = reordered.map(p => ({
+        ...(p._id && !p._id.toString().startsWith('temp_') && { _id: p._id }),
+        product_id:      p.product_id,
+        name:            p.name,
+        category:        p.category    || '',
+        package:         p.package     || '',
+        spotName:        p.spotName    || 'Custom Item',
+        quantity:        p.quantity    || 1,
+        unitPrice:       parseFloat(p.unitPrice)  || 0,
+        finalPrice:      parseFloat(p.finalPrice) || 0,
+        vendor:          p.vendor      || null,
+        sourceType:      p.sourceType  || 'manual',
+        isEditable:      p.isEditable !== false,
+        libraryProductId: p.libraryProductId || null,
+        selectedOptions: p.selectedOptions || {},
+        placement:       p.placement   || null,
+      }));
+
+      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save order');
+      const savedOrder = await res.json();
+      const normalized = (savedOrder.selectedProducts || reordered).map(p => ({
+        ...p, isEditable: p.isEditable !== false,
+      }));
+      setSavedProducts(normalized);
+      if (onSave) onSave(normalized);
+      addToast('Order updated', 'success');
+    } catch (err) {
+      addToast('Failed to save new order', 'error');
+    }
+  }, [savedProducts, order._id, onSave, handleDragEnd]);
+
   const previewUrl = getFloorPlanPreviewUrl();
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
   const totalCount = savedProducts.length + (draftProduct ? 1 : 0);
@@ -699,6 +800,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
+            <button onClick={onBack} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-[#005670] bg-[#005670]/8 hover:bg-[#005670]/15 border border-[#005670]/20 rounded-lg mb-3 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              Back to Order List
+            </button>
             <h2 className="text-2xl font-bold text-gray-900">🎨 Custom Product Manager</h2>
             <div className="flex items-center gap-3 mt-1">
               <p className="text-sm text-gray-600">
@@ -715,9 +820,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-              ← Back to Order List
-            </button>
             <button
               onClick={() => setShowLibraryModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all"
@@ -836,11 +938,17 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         ) : (
           <>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">
-                Products ({savedProducts.length})
-                {draftProduct && <span className="ml-2 text-sm text-amber-600 font-normal">+1 unsaved</span>}
-              </h3>
-              <span className="text-xs text-gray-500">Grouped by room</span>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  Products ({savedProducts.length})
+                  {draftProduct && <span className="ml-2 text-sm text-amber-600 font-normal">+1 unsaved</span>}
+                </h3>
+              </div>
+              {/* ✅ PATCH 11: drag hint */}
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <GripVertical className="w-3.5 h-3.5" />
+                Drag cards to reorder • Grouped by room
+              </span>
             </div>
 
             {/* ── Draft product ── */}
@@ -866,7 +974,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   onUpdate={updateProduct}
                   onRemove={removeProduct}
                   onSaved={async (newSavedProducts) => {
-                    // ✅ PATCH 6: normalize isEditable
                     setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                     setDraftProduct(null);
                     setExpandedProduct(null);
@@ -880,6 +987,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     } catch (_) {}
                   }}
                   onToast={addToast}
+                  draggable={false}
                 />
               </div>
             )}
@@ -910,11 +1018,17 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     onUpdate={updateProduct}
                     onRemove={removeProduct}
                     onSaved={(newSavedProducts) => {
-                      // ✅ PATCH 6: normalize isEditable
                       setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                       if (onSave) onSave(newSavedProducts);
                     }}
                     onToast={addToast}
+                    // ✅ PATCH 11: drag props
+                    draggable={true}
+                    isDragOver={dragOverIndex === originalIndex}
+                    onDragStart={(e) => handleDragStart(e, originalIndex)}
+                    onDragOver={(e) => handleDragOver(e, originalIndex)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => handleDrop(e, originalIndex)}
                   />
                 ))}
               </div>
@@ -976,6 +1090,227 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         onSelectProducts={handleAddFromLibrary}
         alreadySelected={[]}
       />
+    </div>
+  );
+};
+
+
+// ==================== ROOM / SERVICE FIELD ====================
+// Single field that stores in opts.room.
+// If the value is a ROOM_OPTIONS entry (or custom room text entered while in room mode),
+// it behaves as Room. If it's a SERVICE_OPTIONS entry (or custom service text), it's Service.
+// Toggle between Room mode and Service mode via a pill toggle.
+// Both modes support free-text custom input in the same field.
+
+const isServiceValue = (val) => {
+  if (!val) return false;
+  return SERVICE_OPTIONS.includes(val) ||
+    (!ROOM_OPTIONS.includes(val) && val.length > 0 &&
+      SERVICE_OPTIONS.some(s => s.toLowerCase().includes(val.toLowerCase().slice(0, 4))));
+};
+
+const RoomServiceField = ({ value, onChange, disabled, inputCls }) => {
+  const detectMode = (v) => {
+    if (!v) return 'room';
+    if (ROOM_OPTIONS.includes(v)) return 'room';
+    if (SERVICE_OPTIONS.includes(v)) return 'service';
+    return 'room';
+  };
+
+  const [mode, setMode] = React.useState(() => detectMode(value));
+  const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+  // localQuery: only used for display + filtering. Never triggers parent re-render while typing.
+  // onChange (parent) is only called on blur, select, or clear — NOT on every keystroke.
+  // This prevents the room-grouping re-render that was remounting the component mid-type.
+  const [localQuery, setLocalQuery] = React.useState(value || '');
+
+  // Sync from parent only when switching to a different product (value changes externally)
+  const mountedRef = React.useRef(false);
+  const isTypingRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
+    if (!isTypingRef.current) {
+      setLocalQuery(value || '');
+      setMode(detectMode(value));
+    }
+  }, [value]);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+        // Commit typed value to parent on outside click
+        if (isTypingRef.current) {
+          isTypingRef.current = false;
+          onChange(localQuery);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [localQuery, onChange]);
+
+  const options = mode === 'room' ? ROOM_OPTIONS : SERVICE_OPTIONS;
+  const filtered = localQuery.trim()
+    ? options.filter(o => o.toLowerCase().includes(localQuery.toLowerCase()))
+    : options;
+  const isCustom = localQuery && !options.includes(localQuery);
+
+  const handleInputChange = (e) => {
+    const v = e.target.value;
+    isTypingRef.current = true;
+    setLocalQuery(v); // local only — does NOT call onChange, no parent re-render
+  };
+
+  const handleBlur = () => {
+    // Commit to parent when input loses focus naturally (tab away, etc.)
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      onChange(localQuery);
+    }
+    // Small delay so click on dropdown item registers before blur closes dropdown
+    setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement)) {
+        setOpen(false);
+      }
+    }, 150);
+  };
+
+  const handleSelect = (opt) => {
+    isTypingRef.current = false;
+    setLocalQuery(opt);
+    onChange(opt);
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const handleClear = () => {
+    isTypingRef.current = false;
+    setLocalQuery('');
+    onChange('');
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const switchMode = (newMode) => {
+    isTypingRef.current = false;
+    setMode(newMode);
+    setLocalQuery('');
+    onChange('');
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div ref={containerRef} className="relative space-y-2">
+      {/* Mode toggle */}
+      {!disabled && (
+        <div className="flex gap-1 p-0.5 bg-gray-100 rounded-lg w-fit">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => switchMode('room')}
+            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+              mode === 'room' ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Room
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => switchMode('service')}
+            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+              mode === 'service' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Service
+          </button>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={localQuery}
+          onChange={handleInputChange}
+          onFocus={() => setOpen(true)}
+          onBlur={handleBlur}
+          disabled={disabled}
+          placeholder={mode === 'room' ? 'Select or type room…' : 'Select or type service…'}
+          className={`${inputCls} pr-8`}
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {localQuery && !disabled && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClear}
+              className="p-0.5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => !disabled && setOpen(o => !o)}
+            disabled={disabled}
+            className="p-0.5 text-gray-400 hover:text-gray-600"
+          >
+            <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Dropdown — onMouseDown preventDefault on every item so input never loses focus */}
+      {open && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          {isCustom && (
+            <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+              <span className="text-xs text-blue-700 font-medium">
+                Custom: <span className="font-semibold">"{localQuery}"</span>
+              </span>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { prevValueRef.current = localQuery; onChange(localQuery); setOpen(false); }}
+                className="text-xs text-blue-600 font-semibold hover:text-blue-800 px-2 py-0.5 bg-blue-100 rounded-md"
+              >
+                Use this ↵
+              </button>
+            </div>
+          )}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                No matches — your custom value will be saved
+              </div>
+            ) : (
+              filtered.map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelect(opt)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-[#005670]/5 transition-colors flex items-center justify-between ${
+                    opt === value ? 'bg-[#005670]/8 text-[#005670] font-medium' : 'text-gray-700'
+                  }`}
+                >
+                  <span>{opt}</span>
+                  {opt === value && <Check className="w-3.5 h-3.5 text-[#005670] flex-shrink-0" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1111,7 +1446,14 @@ const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
 
 const ProductCard = ({
   product, index, order, allProducts, expanded,
-  onToggleExpand, onUpdate, onRemove, onSaved, onToast
+  onToggleExpand, onUpdate, onRemove, onSaved, onToast,
+  // ✅ PATCH 11: drag props
+  draggable = false,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
 }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [customAttrs, setCustomAttrs] = useState(product.selectedOptions?.customAttributes || {});
@@ -1122,9 +1464,9 @@ const ProductCard = ({
   const [saving, setSaving] = useState(false);
   const productRef = useRef(product);
 
-  // ✅ PATCH 7: localFields — typing smooth tanpa re-render dari parent
   const opts = product.selectedOptions || {};
 
+  // ✅ PATCH 7+9+10: localFields includes leadTime
   const [localFields, setLocalFields] = useState({
     name:              product.name              || '',
     product_id:        product.product_id        || '',
@@ -1141,12 +1483,11 @@ const ProductCard = ({
     vendorOrderNumber: opts.vendorOrderNumber    || '',
     poNumber:          opts.poNumber             || '',
     tags:              Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || ''),
-    itemClass:         opts.itemClass            || '', // ✅ PATCH 9
+    itemClass:         opts.itemClass            || '',
     installerNotes:    opts.installerNotes       || '',
+    leadTime:          opts.leadTime             || '',  // ✅ PATCH 10
   });
 
-  // Sync localFields hanya ketika _id berubah (pindah ke product berbeda)
-  // TIDAK sync setiap re-render — ini kuncinya supaya typing smooth
   useEffect(() => {
     const o = product.selectedOptions || {};
     setLocalFields({
@@ -1165,8 +1506,9 @@ const ProductCard = ({
       vendorOrderNumber: o.vendorOrderNumber        || '',
       poNumber:          o.poNumber                || '',
       tags:              Array.isArray(o.tags) ? o.tags.join(', ') : (o.tags || ''),
-      itemClass:         o.itemClass               || '', // ✅ PATCH 9
+      itemClass:         o.itemClass               || '',
       installerNotes:    o.installerNotes          || '',
+      leadTime:          o.leadTime                || '',  // ✅ PATCH 10
     });
     setCustomAttrs(o.customAttributes || {});
   }, [product._id]);
@@ -1248,6 +1590,8 @@ const ProductCard = ({
       vendorOrderNumber:     src.selectedOptions?.vendorOrderNumber     || '',
       trackingInfo:          src.selectedOptions?.trackingInfo          || '',
       deliveryStatus:        src.selectedOptions?.deliveryStatus        || '',
+      installerNotes:        src.selectedOptions?.installerNotes        || '',
+      leadTime:              src.selectedOptions?.leadTime              || '',  // ✅ PATCH 10
       room:                  src.selectedOptions?.room                  || '',
       statusCategory:        src.selectedOptions?.statusCategory        || '',
       proposalNumber:        src.selectedOptions?.proposalNumber        || '',
@@ -1263,7 +1607,6 @@ const ProductCard = ({
       nextStep:              src.selectedOptions?.nextStep              || '',
       nextStepDate:          src.selectedOptions?.nextStepDate          || '',
       warehouseReceivingNumber: src.selectedOptions?.warehouseReceivingNumber || '',
-      installerNotes:           src.selectedOptions?.installerNotes           || '',
       units:                 src.selectedOptions?.units                 || 'Each',
       msrp:                  parseFloat(src.selectedOptions?.msrp)             || 0,
       discountPercent:       parseFloat(src.selectedOptions?.discountPercent)  || 0,
@@ -1304,9 +1647,7 @@ const ProductCard = ({
   };
 
   const handleSaveProduct = async () => {
-    // ✅ PATCH 8: merge localFields ke productRef.current sebelum save
-    // productRef tidak reliable untuk field2 yang dikontrol localFields
-    // karena upd() → setSavedProducts() di parent bisa belum selesai saat save diklik
+    // ✅ PATCH 8+10: merge localFields (including leadTime) before save
     const mergedProduct = {
       ...productRef.current,
       name:       localFields.name,
@@ -1325,8 +1666,9 @@ const ProductCard = ({
         vendorOrderNumber: localFields.vendorOrderNumber,
         poNumber:          localFields.poNumber,
         tags:              localFields.tags.split(',').map(t => t.trim()).filter(Boolean),
-        itemClass:         localFields.itemClass, // ✅ PATCH 9
+        itemClass:         localFields.itemClass,
         installerNotes:    localFields.installerNotes,
+        leadTime:          localFields.leadTime,  // ✅ PATCH 10
         links: localFields.links0
           ? [localFields.links0, ...(productRef.current.selectedOptions?.links?.slice(1) || [])]
           : (productRef.current.selectedOptions?.links?.slice(1) || []),
@@ -1352,7 +1694,6 @@ const ProductCard = ({
           buildProductPayload(cleanProduct),
         ];
       } else {
-        // ✅ PATCH 8: pakai mergedProduct, bukan allProducts[index]
         const productToSave = mergedProduct;
         if (!productToSave) throw new Error('Product not found — please refresh the page.');
 
@@ -1392,12 +1733,10 @@ const ProductCard = ({
     }
   };
 
-  // ✅ PATCH 2: auto-fill markupPercent dari vendor
+  // ✅ PATCH 2: auto-fill markupPercent from vendor
   const handleVendorSelect = (vendor) => {
     onUpdate(index, 'vendor', vendor);
-
     if (!vendor) return;
-
     const markup =
       vendor.defaultMarkup     ??
       vendor.markupPercent     ??
@@ -1405,12 +1744,9 @@ const ProductCard = ({
       vendor.default_markup    ??
       vendor.defaultMarkupPercent ??
       null;
-
     if (markup != null && markup !== '') {
       const markupNum = parseFloat(markup);
-      if (!isNaN(markupNum)) {
-        upd('markupPercent', markupNum);
-      }
+      if (!isNaN(markupNum)) upd('markupPercent', markupNum);
     }
   };
 
@@ -1437,11 +1773,34 @@ const ProductCard = ({
   const displayNumber = index === 'draft' ? 'New' : `#${index + 1}`;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200">
+    <div
+      className={`bg-white rounded-xl shadow-sm border-2 transition-all duration-150 ${
+        isDragOver
+          ? 'border-[#005670] shadow-lg scale-[1.01]'
+          : 'border-gray-200'
+      }`}
+      // ✅ PATCH 11: drag event bindings
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
+    >
 
       {/* ── Compact Header ── */}
       <div className="p-4">
         <div className="flex items-center gap-4">
+
+          {/* ✅ PATCH 11: drag handle — only for saved products */}
+          {draggable && (
+            <div
+              className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors"
+              title="Drag to reorder"
+            >
+              <GripVertical className="w-5 h-5" />
+            </div>
+          )}
+
           <div
             className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 cursor-pointer hover:border-[#005670] transition-colors relative"
             onClick={() => allImages.length > 0 && setShowImageGallery(true)}
@@ -1474,6 +1833,12 @@ const ProductCard = ({
               {opts.statusCategory && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
                   {opts.statusCategory}
+                </span>
+              )}
+              {/* ✅ PATCH 10: show lead time badge in header if set */}
+              {opts.leadTime && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
+                  ⏱ {opts.leadTime}
                 </span>
               )}
             </div>
@@ -1573,7 +1938,6 @@ const ProductCard = ({
                 <h3 className="text-base font-bold text-gray-900">General Information</h3>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
-                  {/* ✅ PATCH 7: pakai localFields.name */}
                   <input
                     type="text"
                     value={localFields.name}
@@ -1583,16 +1947,17 @@ const ProductCard = ({
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Room</label>
-                    <select value={opts.room || ''} onChange={(e) => upd('room', e.target.value)} className={`${inputCls} bg-white`}>
-                      <option value="">Select...</option>
-                      {ROOM_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Room / Service</label>
+                    <RoomServiceField
+                      value={opts.room || ''}
+                      onChange={(v) => upd('room', v)}
+                      disabled={false}
+                      inputCls={inputCls}
+                    />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags</label>
-                    {/* ✅ PATCH 7: pakai localFields.tags */}
                     <input
                       type="text"
                       value={localFields.tags}
@@ -1608,7 +1973,6 @@ const ProductCard = ({
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Group</label>
-                    {/* ✅ PATCH 7: pakai localFields.group */}
                     <input
                       type="text"
                       value={localFields.group}
@@ -1618,7 +1982,6 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Class</label>
-                    {/* ✅ PATCH 9: pakai localFields.itemClass supaya tersimpan saat save */}
                     <ItemClassField
                       value={localFields.itemClass}
                       onChange={(v) => { setLocal('itemClass', v); upd('itemClass', v); }}
@@ -1631,16 +1994,32 @@ const ProductCard = ({
                       <span>Sidemark</span>
                       <button type="button" onClick={() => {
                         const defaultSidemark = `Henderson Design Group / ${order?.clientInfo?.name || ''} / ${product.name || ''}`.replace(/\s*\/\s*\/\s*/g, ' / ').trim();
-                        setLocal('sidemark', defaultSidemark); // ✅ sync local juga
+                        setLocal('sidemark', defaultSidemark);
                         upd('sidemark', defaultSidemark);
                       }} className="text-xs text-blue-600 hover:underline font-normal">Set Default</button>
                     </label>
-                    {/* ✅ PATCH 7: pakai localFields.sidemark */}
                     <input
                       type="text"
                       value={localFields.sidemark}
                       onChange={(e) => { setLocal('sidemark', e.target.value); upd('sidemark', e.target.value); }}
                       className={inputCls}
+                    />
+                  </div>
+                </div>
+
+                {/* ✅ PATCH 10: Lead Time field in General Info tab */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Lead Time
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">e.g. 8–10 weeks</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={localFields.leadTime}
+                      onChange={(e) => { setLocal('leadTime', e.target.value); upd('leadTime', e.target.value); }}
+                      className={inputCls}
+                      placeholder="e.g. 8–10 weeks, 3 months…"
                     />
                   </div>
                 </div>
@@ -1662,7 +2041,6 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">SKU / Item #</label>
-                    {/* ✅ PATCH 7: pakai localFields.product_id */}
                     <input
                       type="text"
                       value={localFields.product_id}
@@ -1672,7 +2050,6 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor Order Number</label>
-                    {/* ✅ PATCH 7: pakai localFields.vendorOrderNumber */}
                     <input
                       type="text"
                       value={localFields.vendorOrderNumber}
@@ -1684,7 +2061,6 @@ const ProductCard = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
-                    {/* ✅ PATCH 7: pakai localFields.specifications */}
                     <textarea
                       value={localFields.specifications}
                       onChange={(e) => { setLocal('specifications', e.target.value); upd('specifications', e.target.value); }}
@@ -1695,13 +2071,11 @@ const ProductCard = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
                       <span>Vendor Description</span>
-                      {/* ✅ PATCH 7: copy dari localFields, bukan opts */}
                       <button type="button" onClick={() => {
                         setLocal('vendorDescription', localFields.specifications);
                         upd('vendorDescription', localFields.specifications);
                       }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
                     </label>
-                    {/* ✅ PATCH 7: pakai localFields.vendorDescription */}
                     <textarea
                       value={localFields.vendorDescription}
                       onChange={(e) => { setLocal('vendorDescription', e.target.value); upd('vendorDescription', e.target.value); }}
@@ -1713,7 +2087,6 @@ const ProductCard = ({
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Color / Finish</label>
-                    {/* ✅ PATCH 7: pakai localFields.finish */}
                     <input
                       type="text"
                       value={localFields.finish}
@@ -1723,7 +2096,6 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Dimensions</label>
-                    {/* ✅ PATCH 7: pakai localFields.size */}
                     <input
                       type="text"
                       value={localFields.size}
@@ -1733,7 +2105,6 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item URL</label>
-                    {/* ✅ PATCH 7: pakai localFields.links0 */}
                     <input
                       type="text"
                       value={localFields.links0}
@@ -1756,7 +2127,6 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Fabric</label>
-                    {/* ✅ PATCH 7: pakai localFields.fabric */}
                     <input
                       type="text"
                       value={localFields.fabric}
@@ -1767,7 +2137,6 @@ const ProductCard = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category / Location</label>
-                  {/* ✅ PATCH 7: pakai localFields.category */}
                   <input
                     type="text"
                     value={localFields.category}
@@ -1871,7 +2240,6 @@ const ProductCard = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Purchase Order (PO #)</label>
-                    {/* ✅ PATCH 7: pakai localFields.poNumber */}
                     <input
                       type="text"
                       value={localFields.poNumber}
@@ -1880,15 +2248,15 @@ const ProductCard = ({
                       placeholder="Tim-2289995"
                     />
                   </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Binder Notes</label>
-                      <textarea
-                        value={localFields.installerNotes}
-                        onChange={(e) => { setLocal('installerNotes', e.target.value); upd('installerNotes', e.target.value); }}
-                        className={`${inputCls} resize-none`}
-                        rows={3}
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Binder Notes</label>
+                    <textarea
+                      value={localFields.installerNotes}
+                      onChange={(e) => { setLocal('installerNotes', e.target.value); upd('installerNotes', e.target.value); }}
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                    />
+                  </div>
                 </div>
               </div>
             )}

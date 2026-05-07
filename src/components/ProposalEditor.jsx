@@ -1,23 +1,19 @@
 // components/ProposalEditor.jsx
 //
-// ✅ PATCHED:
-//    1. itemClass dihapus dari ProductRow — tidak muncul di proposal client
-//    2. Kalkulasi sell/subtotal pakai MSRP (bukan Net Cost) — konsisten dengan PricingFields
-//       sell = MSRP × (1 + markup%)
-//    3. calcTotals() juga pakai MSRP sebagai sell basis
-//
-// STRATEGY:
-// 1. Render ALL products in a hidden off-screen div at exact print width
-// 2. After 300ms (images + fonts settled), read each row's real height
-// 3. Bin-pack rows into 8.5×11in pages — room header always with its first row
-// 4. Each final page is exactly 8.5×11in with footer pinned at bottom
-// 5. Web view = PDF view (identical fixed pages)
+// PATCHED:
+//    1. itemClass dihapus dari ProductRow
+//    2. sell basis = MSRP x (1 + markup%)
+//    3. calcTotals pakai MSRP
+//    4. Hide/show items per-proposal via sidebar panel
+//    5. Save hidden state in-place via POST /save-current (upsert, no version bump)
+//    6. Save as New Version — persists only visible items as a new version record
+//    7. stableId always includes array index suffix — same product in multiple rooms never collides
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Clock, Printer, ChevronLeft, Loader2 } from 'lucide-react';
+import { X, Clock, Printer, ChevronLeft, Loader2, EyeOff, Eye, PlusCircle, Save } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
 const resolveFinish = c => { if (!c) return ''; const u = c.trim().toUpperCase(); return FINISH_LABELS[u] || c; };
@@ -52,15 +48,32 @@ const PAGE_H_IN  = 11;
 const PAD_IN     = 0.5;
 const FOOT_IN    = 0.85;
 const SAFE_PX    = 60;
-
 const PX         = 96;
 const CONTENT_H  = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 const getImgSrc = p => {
   const o = p.selectedOptions || {};
   return [o?.uploadedImages?.[0]?.url, o?.image, o?.images?.[0], p.image, p.imageUrl]
     .find(s => s && typeof s === 'string' && s.trim()) || null;
+};
+
+// stableId: always appends __idx so the same product in two rooms gets two different sids.
+const stableId = (p, idx) => {
+  let base = 'x';
+  if (p._id) {
+    if (typeof p._id === 'string') {
+      base = p._id;
+    } else if (typeof p._id.toHexString === 'function') {
+      base = p._id.toHexString();
+    } else if (typeof p._id.toString === 'function') {
+      const s = p._id.toString();
+      base = (s && s !== '[object Object]') ? s : 'x';
+    }
+  } else if (p.product_id) {
+    base = 'pid_' + p.product_id;
+  }
+  return base + '__' + idx;
 };
 
 const preloadImages = urls =>
@@ -70,12 +83,12 @@ const preloadImages = urls =>
     img.src = url;
   })));
 
-// ── Footer ───────────────────────────────────────────────────────────────────
+// Footer
 const PageFooter = () => (
   <div style={{
     position: 'absolute',
     bottom: '0.28in',
-    left: `${PAD_IN}in`, right: `${PAD_IN}in`,
+    left: PAD_IN + 'in', right: PAD_IN + 'in',
     borderTop: '1px solid #d1d5db',
     paddingTop: '5px',
     textAlign: 'center',
@@ -89,25 +102,20 @@ const PageFooter = () => (
   </div>
 );
 
-// ── ProductRow ───────────────────────────────────────────────────────────────
+// ProductRow
 const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
   const o = product.selectedOptions || {};
   const imgSrc = getImgSrc(product);
   const qty = product.quantity || 1;
-
-  // ✅ FIX: sell basis = MSRP (bukan Net Cost)
-  // Net Cost hanya untuk purchase/PO, tidak mempengaruhi proposal client
-  const msrp       = parseFloat(o.msrp) || 0;
-  const markupPct  = parseFloat(o.markupPercent) || 0;
-  const sell       = msrp * (1 + markupPct / 100);
-  const sub        = sell * qty;
-  const taxRate    = parseFloat(o.salesTaxRate) || 0;
-  const tax        = taxRate > 0 ? sub * (taxRate / 100) : 0;
-  const total      = sub + tax;
-
+  const msrp      = parseFloat(o.msrp) || 0;
+  const markupPct = parseFloat(o.markupPercent) || 0;
+  const sell      = msrp * (1 + markupPct / 100);
+  const sub       = sell * qty;
+  const taxRate   = parseFloat(o.salesTaxRate) || 0;
+  const tax       = taxRate > 0 ? sub * (taxRate / 100) : 0;
+  const total     = sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
   const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
-
   return (
     <tr ref={ref}>
       <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -119,10 +127,10 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
-        {o.finish    && <div><strong>Finish:</strong> {resolveFinish(o.finish)}</div>}
-        {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
-        {o.size      && <div><strong>Size:</strong> {o.size}</div>}
-        {/* ✅ FIX: itemClass DIHAPUS — tidak tampil di proposal client */}
+        {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
+        {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
+        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
+        {o.size   && <div><strong>Size:</strong> {o.size}</div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
@@ -138,21 +146,16 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
 });
 ProductRow.displayName = 'ProductRow';
 
-// ── RoomTable ─────────────────────────────────────────────────────────────────
+// RoomTable
 const RoomTable = ({ room, rows }) => (
   <div style={{ marginBottom: '10px' }}>
-    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed',
-      borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
       <colgroup>
         <col style={{ width: '88px' }} /><col /><col style={{ width: '148px' }} />
       </colgroup>
       <thead>
         <tr>
-          <th colSpan={3} style={{
-            background: '#f0f0f0', padding: '6px 8px', textAlign: 'center',
-            fontWeight: '600', fontSize: '13px',
-            borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #ccc',
-          }}>
+          <th colSpan={3} style={{ background: '#f0f0f0', padding: '6px 8px', textAlign: 'center', fontWeight: '600', fontSize: '13px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #ccc' }}>
             {room}
           </th>
         </tr>
@@ -166,7 +169,7 @@ const RoomTable = ({ room, rows }) => (
   </div>
 );
 
-// ── Render items → grouped RoomTables ─────────────────────────────────────────
+// renderItems
 const renderItems = items => {
   const sections = []; let cur = null;
   items.forEach(item => {
@@ -182,7 +185,7 @@ const renderItems = items => {
   return sections.map(({ room, rows }) => <RoomTable key={room} room={room} rows={rows} />);
 };
 
-// ── VersionModal ──────────────────────────────────────────────────────────────
+// VersionModal
 const VersionModal = ({ orderId, isOpen, onClose, onSelectVersion, versionNotes, setVersionNotes, onSaveNewVersion, saving }) => {
   const [versions, setVersions] = useState([]);
   const [lv, setLv] = useState(true);
@@ -247,12 +250,161 @@ const VersionModal = ({ orderId, isOpen, onClose, onSelectVersion, versionNotes,
   );
 };
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ItemTogglePanel
+const ItemTogglePanel = ({ productsWithIds, hiddenIds, toggleHidden, onClose, onSave, saving, saveSuccess }) => {
+  const byRoom = React.useMemo(() => {
+    const map = new Map();
+    productsWithIds.forEach(({ sid, product: p }) => {
+      const room = p.selectedOptions?.room?.trim() || '—';
+      if (!map.has(room)) map.set(room, []);
+      map.get(room).push({ sid, p });
+    });
+    return Array.from(map.entries());
+  }, [productsWithIds]);
+
+  const hiddenCount = hiddenIds.size;
+
+  return (
+    <div className="fixed right-0 top-0 bottom-0 w-80 bg-white shadow-2xl z-[60] flex flex-col border-l border-gray-200 no-print">
+      <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+        <div>
+          <h3 className="font-bold text-base">Show / Hide Items</h3>
+          <p className="text-xs text-white/70 mt-0.5">
+            {hiddenCount === 0 ? 'All items visible' : `${hiddenCount} item${hiddenCount > 1 ? 's' : ''} hidden`}
+          </p>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto py-3">
+        {byRoom.map(([room, items]) => (
+          <div key={room} className="mb-1">
+            <div className="px-4 py-1.5 bg-gray-50 border-y border-gray-100">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{room}</span>
+            </div>
+            {items.map(({ sid, p }) => {
+              const hidden = hiddenIds.has(sid);
+              const imgSrc = getImgSrc(p);
+              return (
+                <div
+                  key={sid}
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 transition-colors ${hidden ? 'bg-gray-50 opacity-60' : 'bg-white hover:bg-gray-50'}`}
+                >
+                  <div className="w-9 h-9 flex-shrink-0 rounded bg-gray-100 overflow-hidden">
+                    {imgSrc
+                      ? <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">?</div>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${hidden ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                      {p.name || 'Untitled'}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">Qty {p.quantity || 1}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleHidden(sid)}
+                    className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${
+                      hidden
+                        ? 'bg-gray-200 text-gray-400 hover:bg-[#005670]/10 hover:text-[#005670]'
+                        : 'bg-[#005670]/10 text-[#005670] hover:bg-red-50 hover:text-red-500'
+                    }`}
+                    title={hidden ? 'Show in proposal' : 'Hide from proposal'}
+                  >
+                    {hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Save footer */}
+      <div className="px-4 py-3 border-t border-gray-200 flex-shrink-0 space-y-2">
+        {hiddenCount > 0 && (
+          <p className="text-xs text-amber-700 font-medium">
+            {hiddenCount} item{hiddenCount > 1 ? 's' : ''} hidden — save to keep after refresh.
+          </p>
+        )}
+        <button
+          onClick={onSave}
+          disabled={saving || hiddenCount === 0}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+            saveSuccess
+              ? 'bg-green-100 text-green-700 border border-green-200'
+              : hiddenCount === 0
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-[#005670] hover:bg-[#004558] text-white'
+          }`}
+        >
+          {saving
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+            : saveSuccess
+              ? <>&#10003; Saved!</>
+              : <><Save className="w-4 h-4" /> Save to Current Version</>
+          }
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// NewVersionModal
+const NewVersionModal = ({ onClose, onSave, saving, hiddenCount }) => {
+  const [notes, setNotes] = useState('');
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
+      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
+        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
+          <h3 className="text-xl font-bold">Save as New Version</h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          {hiddenCount > 0 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              All <strong>{hiddenCount} hidden item{hiddenCount > 1 ? 's' : ''}</strong> will be restored in this new version.
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Version Notes <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Describe what changed in this version..."
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
+              rows={4}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
+            <button
+              onClick={() => onSave(notes)}
+              disabled={saving || !notes.trim()}
+              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 text-sm font-medium flex items-center gap-2"
+            >
+              {saving
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                : <><PlusCircle className="w-4 h-4" /> Save New Version</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main
 const ProposalEditor = ({ orderId, version, onClose }) => {
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
   const [proposalData, setProposalData] = useState(null);
-  const [products, setProducts]         = useState([]);
   const [clientInfo, setClientInfo]     = useState({});
   const [proposalNumber, setProposalNumber]               = useState(null);
   const [proposalStatus, setProposalStatus]               = useState('draft');
@@ -263,6 +415,14 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [confirmModal, setConfirmModal] = useState(null);
   const [originalTitle]                                   = useState(document.title);
 
+  const [productsWithIds, setProductsWithIds] = useState([]);
+
+  const [hiddenIds, setHiddenIds]                   = useState(new Set());
+  const [showItemPanel, setShowItemPanel]           = useState(false);
+  const [showNewVersionModal, setShowNewVersionModal] = useState(false);
+  const [savingHidden, setSavingHidden]             = useState(false);
+  const [saveHiddenSuccess, setSaveHiddenSuccess]   = useState(false);
+
   const [pages, setPages] = useState(null);
   const [ready, setReady] = useState(false);
 
@@ -272,13 +432,42 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const roomHdRefs  = useRef({});
   const didPaginate = useRef(false);
 
+  const visibleProducts = React.useMemo(
+    () => productsWithIds
+      .filter(({ sid }) => !hiddenIds.has(sid))
+      .map(({ product }) => product),
+    [productsWithIds, hiddenIds]
+  );
+
+  const toggleHidden = useCallback((sid) => {
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      if (next.has(sid)) next.delete(sid);
+      else next.add(sid);
+      return next;
+    });
+  }, []);
+
+  const prevVisibleKey = useRef('');
+  useEffect(() => {
+    const key = visibleProducts.length + ':' + visibleProducts.map((_, i) => i).join(',');
+    if (key === prevVisibleKey.current) return;
+    prevVisibleKey.current = key;
+    if (visibleProducts.length === 0) { setPages([[]]); setReady(true); return; }
+    didPaginate.current = false;
+    rowRefs.current = {};
+    roomHdRefs.current = {};
+    setPages(null);
+    setReady(false);
+  }, [visibleProducts]);
+
   useEffect(() => { loadProposalData(); }, [orderId, version]);
 
   useEffect(() => {
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      document.title = `Proposal_${cn}${un ? '_' + un : ''}_v${proposalData.version || 1}_${new Date().toISOString().split('T')[0]}`;
+      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_v' + (proposalData.version || 1) + '_' + new Date().toISOString().split('T')[0];
     }
     return () => { document.title = originalTitle; };
   }, [proposalData, clientInfo, originalTitle]);
@@ -288,37 +477,33 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       const t = localStorage.getItem('token');
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/${version || 'latest'}`, { headers: { Authorization: `Bearer ${t}` } });
       const r = await res.json();
-      if (r.success) {
-        setProposalData(r.data);
-        setProducts(r.data.selectedProducts || []);
-        const u = r.data.user || {};
-        const addr = u.address || {};
-        const street    = addr.street?.trim() || '';
-        const cityParts = [addr.city, addr.state, addr.zipcode].filter(p => p && p.trim());
-        const cityLine  = cityParts.join(', ');
-        const unitNumber = r.data.clientInfo?.unitNumber || u.unitNumber || '';
-        setClientInfo({
-          ...(r.data.clientInfo || {}),
-          email:      r.data.clientInfo?.email || u.email || '',
-          unitNumber,
-          street,
-          cityLine,
-        });
-        setProposalNumber(r.data.proposalNumber || null);
-        setProposalStatus(r.data.status || 'draft');
-      }
+      if (!r.success) throw new Error(r.message || 'Failed to load proposal');
+
+      setProposalData(r.data);
+
+      // Load directly from ProposalVersion.selectedProducts
+      // saveCurrentVersion stores visible products here; newVersion stores all from Order
+      const rawProducts = r.data.selectedProducts || [];
+      const withIds = rawProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
+      setProductsWithIds(withIds);
+      setHiddenIds(new Set()); // no hidden state — what's in ProposalVersion IS the visible set
+
+      const u = r.data.user || {};
+      const addr = u.address || {};
+      const street    = addr.street?.trim() || '';
+      const cityParts = [addr.city, addr.state, addr.zipcode].filter(p => p && p.trim());
+      const cityLine  = cityParts.join(', ');
+      const unitNumber = r.data.clientInfo?.unitNumber || u.unitNumber || '';
+      setClientInfo({
+        ...(r.data.clientInfo || {}),
+        email:    r.data.clientInfo?.email || u.email || '',
+        unitNumber, street, cityLine,
+      });
+      setProposalNumber(r.data.proposalNumber || null);
+      setProposalStatus(r.data.status || 'draft');
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
     finally { setLoading(false); }
   };
-
-  useEffect(() => {
-    if (products.length === 0) { setPages([[]]); setReady(true); return; }
-    didPaginate.current = false;
-    rowRefs.current = {};
-    roomHdRefs.current = {};
-    setPages(null);
-    setReady(false);
-  }, [products]);
 
   const doStatusUpdate = async (newStatus) => {
     setSavingStatus(true);
@@ -329,68 +514,115 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) {
-        setProposalStatus(newStatus);
-      } else {
-        const d = await res.json();
-        alert('Failed: ' + (d.message || ''));
-      }
-    } catch (err) {
-      alert('Failed: ' + err.message);
-    } finally {
-      setSavingStatus(false);
-    }
+      if (res.ok) { setProposalStatus(newStatus); }
+      else { const d = await res.json(); alert('Failed: ' + (d.message || '')); }
+    } catch (err) { alert('Failed: ' + err.message); }
+    finally { setSavingStatus(false); }
   };
 
   const handleStatusChange = (newStatus) => {
     if (proposalStatus === 'approved') {
-      setConfirmModal({
-        newStatus: null,
-        title: 'Locked',
-        message: 'Proposal sudah Approved dan tidak dapat diubah lagi.',
-        infoOnly: true,
-      });
+      setConfirmModal({ newStatus: null, title: 'Locked', message: 'Proposal sudah Approved dan tidak dapat diubah lagi.', infoOnly: true });
       return;
     }
     if (newStatus === 'approved') {
-      setConfirmModal({
-        newStatus,
-        title: 'Approve Proposal?',
-        message: 'Setelah Approved, status tidak dapat diubah lagi dan Finance team dapat mengirim Proposal ini ke QuickBooks sebagai Invoice.',
-      });
+      setConfirmModal({ newStatus, title: 'Approve Proposal?', message: 'Setelah Approved, status tidak dapat diubah lagi dan Finance team dapat mengirim Proposal ini ke QuickBooks sebagai Invoice.' });
       return;
     }
     doStatusUpdate(newStatus);
   };
 
-  const handleSaveAsNewVersion = async () => {
-    if (!versionNotes.trim()) { alert('Please add notes for this new version'); return; }
-    setSaving(true);
+  // Save current state — POST /save-current
+  // Saves visibleProducts directly into ProposalVersion.selectedProducts.
+  // On reload, ProposalVersion.selectedProducts is what gets displayed — hidden items stay hidden.
+  const handleSaveHidden = async () => {
+    setSavingHidden(true);
     try {
       const t = localStorage.getItem('token');
-      const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
-        method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products, clientInfo, notes: versionNotes })
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: visibleProducts,
+          clientInfo,
+        }),
       });
       const r = await res.json();
       if (r.success) {
-        if (r.proposalNumber) setProposalNumber(r.proposalNumber);
-        setProposalData(prev => ({ ...prev, version: r.data.version }));
-        alert(`✅ Version ${r.data.version} created successfully`);
-        setShowVersionModal(false); setVersionNotes(''); loadProposalData();
+        // Rebuild productsWithIds from visible list — hidden items are now gone from this version
+        const withIds = visibleProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
+        setProductsWithIds(withIds);
+        setHiddenIds(new Set());
+        setSaveHiddenSuccess(true);
+        setTimeout(() => setSaveHiddenSuccess(false), 2500);
+      } else {
+        alert('Failed to save: ' + (r.message || 'Unknown error'));
+      }
+    } catch (e) { console.error(e); alert('Failed to save: ' + e.message); }
+    finally { setSavingHidden(false); }
+  };
+
+  // Save new version — fetches full Order.selectedProducts first, then saves all to new version
+  // This ensures new version always has every product regardless of what was hidden/saved before
+  const handleSaveNewVersion = async (notes) => {
+    if (!notes.trim()) return;
+    setSaving(true);
+    try {
+      const t = localStorage.getItem('token');
+      // Always fetch fresh from Order so we get all products + all fields (leadTime etc.)
+      let allProducts = productsWithIds.map(({ product }) => product); // fallback
+      try {
+        const orderRes = await fetch(`${backendServer}/api/orders/${orderId}`, { headers: { Authorization: `Bearer ${t}` } });
+        if (orderRes.ok) {
+          const orderData = await orderRes.json();
+          allProducts = orderData.selectedProducts || allProducts;
+        }
+      } catch (_) {}
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: allProducts, clientInfo, notes }),
+      });
+      const r = await res.json();
+      if (r.success) {
+        setShowNewVersionModal(false);
+        // Navigate to the new version — this reloads the page at the correct version URL
+        window.location.href = '/admin/proposal/' + orderId + '/' + r.data.version;
+      } else {
+        alert('Failed: ' + (r.message || 'Unknown error'));
       }
     } catch (e) { console.error(e); alert('Failed to create new version'); }
     finally { setSaving(false); }
   };
 
-  // ✅ FIX: calcTotals pakai MSRP sebagai sell basis (konsisten dengan ProductRow)
+  // Legacy handler — saves all products as new version (from VersionModal)
+  const handleSaveAsNewVersion = async () => {
+    if (!versionNotes.trim()) { alert('Please add notes for this new version'); return; }
+    setSaving(true);
+    try {
+      const t = localStorage.getItem('token');
+      const allProducts = productsWithIds.map(({ product }) => product);
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
+        method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: allProducts, clientInfo, notes: versionNotes })
+      });
+      const r = await res.json();
+      if (r.success) {
+        setShowVersionModal(false);
+        setVersionNotes('');
+        // Navigate to the new version
+        window.location.href = '/admin/proposal/' + orderId + '/' + r.data.version;
+      }
+    } catch (e) { console.error(e); alert('Failed to create new version'); }
+    finally { setSaving(false); }
+  };
+
   const calcTotals = () => {
     let sub = 0, taxT = 0;
-    products.forEach(p => {
+    visibleProducts.forEach(p => {
       const o = p.selectedOptions || {}, qty = p.quantity || 1;
-      const msrp      = parseFloat(o.msrp) || 0;
+      const msrp = parseFloat(o.msrp) || 0;
       const markupPct = parseFloat(o.markupPercent) || 0;
-      // ✅ sell basis = MSRP, bukan Net Cost
       const sell = msrp * (1 + markupPct / 100);
       const line = sell * qty;
       const tax  = parseFloat(o.salesTaxRate) || 0;
@@ -402,50 +634,133 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   };
 
   const ROOM_ORDER = [
-    'POWDER ROOM', 'DEN', 'LIVING ROOM', 'DINING ROOM',
-    'KITCHEN', 'FAMILY ROOM', 'PRIMARY BEDROOM',
-    'BEDROOM 2', 'BEDROOM 3', 'MAIN LANAI',
+      'COURTYARD',
+      'EXTERIOR ENTRY',
+      'INTERIOR ENTRY',
+      'FOYER',
+      'LIVING ROOM',
+      'DINING ROOM',
+      'KITCHEN',
+      'PANTRY',
+      'PRIMARY BEDROOM',
+    'PRIMARY BEDROOM LANAI',
+      'PRIMARY BATHROOM',
+      'PRIMARY CLOSET',
+      'BEDROOM 2',
+      'BATHROOM 2',
+    'BEDROOM 2 CLOSET',
+      'BEDROOM 2 LANAI',
+      'BEDROOM 3',
+      'BATHROOM 3',
+      'BEDROOM 3 CLOSET',
+      'BEDROOM 3 LANAI',
+      'BEDROOM 4',
+      'BATHROOM 4',
+      'BEDROOM 4 CLOSET',
+      'BEDROOM 4 LANAI',
+      'POWDER ROOM',
+      'OFFICE',
+      'MEDIA ROOM',
+      'DEN',
+      'HALLWAY',
+      'LANAI',
+      'POOL AREA',
+
+      // Additional options not in the new list
+      'BREAKFAST NOOK',
+      'GREAT ROOM',
+      'FAMILY ROOM',
+      'WET BAR',
+      'BBQ AREA',
+      'POOL BATH',
+      'PAVILLION',
+      'GYM',
+      'WINE ROOM',
+      'REC ROOM',
+      'GARAGE',
+      'SITTING ROOM',
+
+      // New options not in the old list
+      'FLEX SPACE',
+      'LAUNDRY ROOM',
+      'MUD ROOM',
+      'TERRACE',
+      'BALCONY',
+      'OUTDOOR DINING',
+      'OUTDOOR LIVING',
+      'GUEST SUITE',
+      'DESIGN SERVICES',
+      'PROJECT MANAGEMENT SERVICES',
+      'PROCUREMENT SERVICES',
+      'FDI SERVICES (FREIGHT, DELIVERY & INSTALLATION)',
+      'WALLPAPER INSTALLATION SERVICES',
+      'ELECTRICAL INSTALLATION SERVICES',
+      'ART INSTALLATION SERVICES',
+      'WALLPAPER TRADE COORDINATION',
+      'ELECTRICAL TRADE COORDINATION',
+      'CLOSET SOLUTIONS',
+      'KITCHEN & HOUSEHOLD ESSENTIALS PACKAGE',
+      'WINDOW COVERING SERVICES',
+      'AUDIO VISUAL SERVICES',
+      'GREENERY & PLANT STYLING',
+      'CONSTRUCTION DESIGN & PM SERVICES',
+      'CUSTOM MILLWORK SERVICES',
+      'CUSTOM FURNITURE SERVICES',
+      'LIGHTING PROCUREMENT & COORDINATION',
+      'APPLIANCE COORDINATION',
+      'PLUMBING FIXTURE COORDINATION',
+      'DECORATIVE PLUMBING COORDINATION',
+      'STONE & SLAB COORDINATION',
+      'TILE & SURFACE COORDINATION',
+      'HARDWARE & DECORATIVE HARDWARE COORDINATION',
+      'OUTDOOR FURNISHINGS',
+      'LANAI / TERRACE FURNISHINGS',
+      'STYLING & ACCESSORIES',
+      'BEDDING PACKAGE',
+      'TURNKEY MOVE-IN PACKAGE',
+      'OWNER STORAGE & INVENTORY COORDINATION',
+      'CLIENT SUPPLIED ITEMS COORDINATION',
+      'WHITE GLOVE RECEIVING & WAREHOUSING',
+      'PUNCH LIST & COMPLETION COORDINATION',
+      'SITE VISIT COORDINATION',
+      'EXPEDITING SERVICES',
+      'BUILDING COORDINATION SERVICES',
+      'CONTRACTOR COORDINATION SERVICES',
+      'INSTALLATION OVERSIGHT',
+      'FINAL STYLING & STAGING',
+      'REVEAL PREPARATION',
   ];
 
   const buildRoomGroups = useCallback(() => {
     const map = new Map();
-    products.forEach(p => {
+    visibleProducts.forEach(p => {
       const room = p.selectedOptions?.room?.trim() || '-';
       if (!map.has(room)) map.set(room, []);
       map.get(room).push(p);
     });
     return Array.from(map.entries()).sort(([a], [b]) => {
-      if (a === '-') return 1;
-      if (b === '-') return -1;
+      if (a === '-') return 1; if (b === '-') return -1;
       const ia = ROOM_ORDER.indexOf(a.toUpperCase());
       const ib = ROOM_ORDER.indexOf(b.toUpperCase());
       if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
+      if (ia !== -1) return -1; if (ib !== -1) return 1;
       return a.localeCompare(b);
     });
-  }, [products]);
+  }, [visibleProducts]);
 
   const TOTALS_H = 100;
 
   const packItems = (items, headerH) => {
-    const result = [];
-    let cur = [], used = headerH;
+    const result = []; let cur = [], used = headerH;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const isLast = i === items.length - 1;
-      const extraH = isLast ? TOTALS_H : 0;
-
+      const extraH = i === items.length - 1 ? TOTALS_H : 0;
       if (item.type === 'room-header') {
         const nextH = items[i + 1]?.height || 0;
-        if (used + item.height + nextH > CONTENT_H && cur.length > 0) {
-          result.push(cur); cur = []; used = 0;
-        }
+        if (used + item.height + nextH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = 0; }
         cur.push(item); used += item.height;
       } else {
-        if (used + item.height + extraH > CONTENT_H && cur.length > 0) {
-          result.push(cur); cur = []; used = 0;
-        }
+        if (used + item.height + extraH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = 0; }
         cur.push(item); used += item.height;
       }
     }
@@ -457,116 +772,80 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const paginate = useCallback(() => {
     if (didPaginate.current) return;
     didPaginate.current = true;
-
     const rg = buildRoomGroups();
     const CONTENT_W = (PAGE_W_IN - PAD_IN * 2) * PX;
     const COL1 = 88, COL3 = 148;
-
     const sandbox = document.createElement('div');
-    sandbox.style.cssText = [
-      'position:fixed', 'top:0', 'left:-9999px',
-      `width:${CONTENT_W}px`,
-      'background:white', 'z-index:-9999',
-      'font-size:12px',
-      'line-height:1.55',
-      'font-family:Arial,sans-serif',
-      'visibility:visible', 'opacity:0',
-      'pointer-events:none',
-    ].join(';');
+    sandbox.style.cssText = 'position:fixed;top:0;left:-9999px;width:' + CONTENT_W + 'px;background:white;z-index:-9999;font-size:12px;line-height:1.55;font-family:Arial,sans-serif;visibility:visible;opacity:0;pointer-events:none';
     document.body.appendChild(sandbox);
-
     const measureEl = (html) => {
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = html;
-      sandbox.appendChild(wrapper);
-      const h = wrapper.getBoundingClientRect().height;
-      sandbox.removeChild(wrapper);
+      const w = document.createElement('div');
+      w.innerHTML = html; sandbox.appendChild(w);
+      const h = w.getBoundingClientRect().height; sandbox.removeChild(w);
       return Math.ceil(h) + 8;
     };
-
-    const headerH = headerRef.current
-      ? Math.ceil(headerRef.current.getBoundingClientRect().height) + 8
-      : 220;
-
+    const headerH = headerRef.current ? Math.ceil(headerRef.current.getBoundingClientRect().height) + 8 : 220;
     const items = [];
     rg.forEach(([room, rps]) => {
-      const rhH = measureEl(
-        `<div style="padding:6px 8px;font-weight:600;font-size:12px;background:#f0f0f0">${room}</div>`
-      );
+      const rhH = measureEl('<div style="padding:6px 8px;font-weight:600;font-size:12px;background:#f0f0f0">' + room + '</div>');
       items.push({ type: 'room-header', room, height: rhH });
-
       rps.forEach((p, i) => {
         const o = p.selectedOptions || {};
         const lines = [];
-        if (p.name) lines.push(`<div style="font-weight:600;font-size:13px;margin-bottom:3px">${p.name}</div>`);
-        if (o.specifications) lines.push(`<div style="white-space:pre-wrap">${o.specifications}</div>`);
-        if (o.finish) lines.push(`<div><strong>Finish:</strong> ${o.finish}</div>`);
-        if (o.fabric) lines.push(`<div><strong>Fabric:</strong> ${o.fabric}</div>`);
-        if (o.size)   lines.push(`<div><strong>Size:</strong> ${o.size}</div>`);
-        // ✅ FIX: itemClass tidak dirender di proposal — dihapus dari height measurement juga
-
+        if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
+        if (o.specifications) lines.push('<div style="white-space:pre-wrap">' + o.specifications + '</div>');
+        if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
+        if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
+        if (o.size)   lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
         const priceLines = 2 + (parseFloat(o.salesTaxRate) > 0 ? 1 : 0) + 1;
         const priceH = priceLines * 19 + 16;
-
-        const imgH = 92;
-
         const midW = CONTENT_W - COL1 - COL3;
-        const midWrapper = document.createElement('div');
-        midWrapper.style.cssText = `width:${midW}px;padding:8px 9px;font-size:12px;line-height:1.55;box-sizing:border-box`;
-        midWrapper.innerHTML = lines.join('');
-        sandbox.appendChild(midWrapper);
-        const midH = Math.ceil(midWrapper.getBoundingClientRect().height) + 14;
-        sandbox.removeChild(midWrapper);
-
-        const rowH = Math.max(imgH, midH, priceH) + 8;
-        items.push({ type: 'product', room, product: p, isFirst: i === 0, height: rowH });
+        const mw = document.createElement('div');
+        mw.style.cssText = 'width:' + midW + 'px;padding:8px 9px;font-size:12px;line-height:1.55;box-sizing:border-box';
+        mw.innerHTML = lines.join(''); sandbox.appendChild(mw);
+        const midH = Math.ceil(mw.getBoundingClientRect().height) + 14; sandbox.removeChild(mw);
+        items.push({ type: 'product', room, product: p, isFirst: i === 0, height: Math.max(92, midH, priceH) + 8 });
       });
     });
-
     document.body.removeChild(sandbox);
-
-    const packed = packItems(items, headerH);
-    setPages(packed);
+    setPages(packItems(items, headerH));
     setReady(true);
   }, [buildRoomGroups]);
 
   useEffect(() => {
-    if (pages !== null || products.length === 0) return;
-    const urls = products.map(getImgSrc).filter(Boolean);
-    preloadImages(urls).then(() => {
-      setTimeout(() => paginate(), 300);
-    });
-  }, [pages, products, paginate]);
+    if (pages !== null || visibleProducts.length === 0) return;
+    preloadImages(visibleProducts.map(getImgSrc).filter(Boolean)).then(() => { setTimeout(() => paginate(), 300); });
+  }, [pages, visibleProducts, paginate]);
 
   const doPrint = () => {
     setShowPrintInstructions(false);
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      document.title = `Proposal_${cn}${un ? '_' + un : ''}_v${proposalData.version || 1}_${new Date().toISOString().split('T')[0]}`;
+      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_v' + (proposalData.version || 1) + '_' + new Date().toISOString().split('T')[0];
     }
     setTimeout(() => window.print(), 100);
   };
 
   if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670]" /></div>;
 
-  const totals = calcTotals();
-  const dpn    = proposalNumber || '—';
-  const today  = new Date().toLocaleDateString();
-  const rg     = buildRoomGroups();
-  const totalPP = pages?.length || 0;
+  const totals   = calcTotals();
+  const dpn      = proposalNumber || '—';
+  const today    = new Date().toLocaleDateString();
+  const rg       = buildRoomGroups();
+  const totalPP  = pages?.length || 0;
+  const hiddenCount = hiddenIds.size;
 
   const P1Header = ({ forMeasure = false }) => (
     <div ref={forMeasure ? headerRef : undefined}>
       <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-        <img src="/images/HDG-Logo.png" alt="Henderson Design Group"
-          style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+        <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
       </div>
       <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
           <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
-          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber ? `, #${clientInfo.unitNumber}` : ''}</p>}
+          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber ? ', #' + clientInfo.unitNumber : ''}</p>}
           {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
           {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
         </div>
@@ -588,14 +867,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     </div>
   );
 
-  const slotStyle = {
-    position: 'absolute',
-    top: `${PAD_IN}in`,
-    left: `${PAD_IN}in`,
-    right: `${PAD_IN}in`,
-    bottom: `${FOOT_IN}in`,
-    overflow: 'hidden',
-  };
+  const slotStyle = { position: 'absolute', top: PAD_IN + 'in', left: PAD_IN + 'in', right: PAD_IN + 'in', bottom: FOOT_IN + 'in', overflow: 'hidden' };
 
   return (
     <>
@@ -607,43 +879,18 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
           .print-area, .print-area * { visibility: visible; }
           .print-area { position: absolute; left: 0; top: 0; width: 100%; background: white; }
           .no-print, .mbox { display: none !important; }
-          .lp {
-            width: 8.5in !important; height: 11in !important;
-            overflow: hidden !important;
-            page-break-after: always !important; break-after: page !important;
-            box-shadow: none !important; margin: 0 !important; position: relative !important;
-          }
+          .lp { width: 8.5in !important; height: 11in !important; overflow: hidden !important; page-break-after: always !important; break-after: page !important; box-shadow: none !important; margin: 0 !important; position: relative !important; }
           .lp.last { page-break-after: avoid !important; break-after: avoid !important; }
         }
         @page { size: 8.5in 11in; margin: 0; }
-
         .pw  { background: #b8b8b8; padding: 20px 0 40px; }
-        .pgl {
-          display: block; width: 8.5in; margin: 0 auto;
-          background: #005670; color: white; font-size: 10px; font-weight: 600;
-          padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box;
-          letter-spacing: 0.03em;
-        }
-        .lp {
-          position: relative; background: white;
-          width: 8.5in; height: 11in;
-          overflow: hidden;
-          box-shadow: 0 2px 16px rgba(0,0,0,0.18);
-          margin: 0 auto; box-sizing: border-box;
-          font-family: Arial, sans-serif;
-        }
+        .pgl { display: block; width: 8.5in; margin: 0 auto; background: #005670; color: white; font-size: 10px; font-weight: 600; padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box; letter-spacing: 0.03em; }
+        .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
         .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
-        .mbox {
-          position: fixed; top: -9999px; left: -9999px;
-          width: ${(PAGE_W_IN - PAD_IN * 2)}in;
-          background: white; visibility: hidden;
-          pointer-events: none; z-index: -999;
-          overflow: visible;
-          font-family: Arial, sans-serif;
-        }
+        .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
       `}</style>
 
-      {/* ── Toolbar ── */}
+      {/* Toolbar */}
       <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900"><ChevronLeft className="w-5 h-5" /> Back to Orders</button>
@@ -652,25 +899,18 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
             <span className="text-sm font-semibold text-[#005670] font-mono">{dpn}</span>
             <span className="text-gray-400 text-sm">·</span>
             <span className="text-sm text-gray-500">Version {proposalData?.version || 1}</span>
+            {hiddenCount > 0 && (
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold">{hiddenCount} hidden</span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
           {proposalStatus === 'approved' ? (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">✓ Approved</span>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">&#10003; Approved</span>
           ) : (
             <div className="flex items-center gap-1.5">
-              <select
-                value={proposalStatus}
-                onChange={e => handleStatusChange(e.target.value)}
-                disabled={savingStatus}
-                className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none
-                  ${proposalStatus === 'draft'    ? 'bg-gray-100 text-gray-600'       :
-                    proposalStatus === 'sent'     ? 'bg-blue-100 text-blue-700'       :
-                    proposalStatus === 'rejected' ? 'bg-red-100 text-red-600'         :
-                    'bg-gray-100 text-gray-600'}
-                  ${savingStatus ? 'opacity-50' : ''}
-                `}
-              >
+              <select value={proposalStatus} onChange={e => handleStatusChange(e.target.value)} disabled={savingStatus}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${proposalStatus === 'draft' ? 'bg-gray-100 text-gray-600' : proposalStatus === 'sent' ? 'bg-blue-100 text-blue-700' : proposalStatus === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'} ${savingStatus ? 'opacity-50' : ''}`}>
                 <option value="draft">Draft</option>
                 <option value="sent">Sent to Client</option>
                 <option value="approved">Approved</option>
@@ -680,12 +920,34 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
             </div>
           )}
           <div className="h-5 w-px bg-gray-200" />
+          <button
+            onClick={() => setShowItemPanel(p => !p)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showItemPanel ? 'bg-[#005670] text-white' : hiddenCount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+          >
+            <EyeOff className="w-4 h-4" />
+            {hiddenCount > 0 ? 'Items (' + hiddenCount + ' hidden)' : 'Show/Hide Items'}
+          </button>
+          <button onClick={() => setShowNewVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
+            <PlusCircle className="w-4 h-4" /> New Version
+          </button>
           <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"><Clock className="w-4 h-4" /> Version History</button>
           <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Print / Save PDF</button>
         </div>
       </div>
 
-      {/* ── Hidden measure box ── */}
+      {showItemPanel && (
+        <ItemTogglePanel
+          productsWithIds={productsWithIds}
+          hiddenIds={hiddenIds}
+          toggleHidden={toggleHidden}
+          onClose={() => setShowItemPanel(false)}
+          onSave={handleSaveHidden}
+          saving={savingHidden}
+          saveSuccess={saveHiddenSuccess}
+        />
+      )}
+
+      {/* Hidden measure box */}
       <div className="mbox" ref={measureRef}>
         <P1Header forMeasure={true} />
         {rg.map(([room, rps]) => (
@@ -696,18 +958,15 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                 <td colSpan={3} style={{ padding: '6px 8px', fontWeight: '600', fontSize: '12px', background: '#f0f0f0' }}>{room}</td>
               </tr>
               {rps.map((p, i) => {
-                const key = `${room}__${i}`;
-                return (
-                  <ProductRow key={key} product={p} isFirst={i === 0}
-                    ref={el => { if (el) rowRefs.current[key] = el; }} />
-                );
+                const key = room + '__' + i;
+                return <ProductRow key={key} product={p} isFirst={i === 0} ref={el => { if (el) rowRefs.current[key] = el; }} />;
               })}
             </tbody>
           </table>
         ))}
       </div>
 
-      {/* ── Pages ── */}
+      {/* Pages */}
       <div className="pw">
         <div className="print-area">
           {!ready ? (
@@ -718,9 +977,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
             <>
               {(pages || []).map((items, pi) => (
                 <React.Fragment key={pi}>
-                  <span className="pgl no-print">
-                    Page {pi + 1}{(pages || []).length > 1 ? ` — Products (${pi + 1}/${(pages || []).length})` : ' — Products'}
-                  </span>
+                  <span className="pgl no-print">Page {pi + 1}{(pages || []).length > 1 ? ' — Products (' + (pi + 1) + '/' + (pages || []).length + ')' : ' — Products'}</span>
                   <div className="lp">
                     <div style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
@@ -740,13 +997,10 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                 </React.Fragment>
               ))}
 
-              {/* Warranty page */}
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
                 <div style={slotStyle}>
-                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>
-                    Proposal Terms: Henderson Design Group Warranty Terms and Conditions
-                  </div>
+                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty Terms and Conditions</div>
                   <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
                     <p style={{ marginTop: 0 }}><strong>Coverage Period:</strong> Furniture is warranted to be free from defects in workmanship, materials, and functionality for a period of 30 days from the date of installation.</p>
                     <p><strong>Scope of Warranty:</strong></p>
@@ -777,19 +1031,17 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
               </div>
               <div className="pgap no-print" />
 
-              {/* Signature page */}
               <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
               <div className="lp last">
                 <div style={slotStyle}>
                   <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-                    <img src="/images/HDG-Logo.png" alt="Henderson Design Group"
-                      style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+                    <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
                   </div>
                   <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
                       <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name}</p>
-                      {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber ? `, #${clientInfo.unitNumber}` : ''}</p>}
+                      {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber ? ', #' + clientInfo.unitNumber : ''}</p>}
                       {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
                       {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
                     </div>
@@ -825,9 +1077,13 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       {showVersionModal && (
         <VersionModal orderId={orderId} isOpen={showVersionModal}
           onClose={() => { setShowVersionModal(false); setVersionNotes(''); }}
-          onSelectVersion={v => { window.location.href = `/admin/proposal/${orderId}/${v}`; }}
+          onSelectVersion={v => { window.location.href = '/admin/proposal/' + orderId + '/' + v; }}
           versionNotes={versionNotes} setVersionNotes={setVersionNotes}
           onSaveNewVersion={handleSaveAsNewVersion} saving={saving} />
+      )}
+
+      {showNewVersionModal && (
+        <NewVersionModal onClose={() => setShowNewVersionModal(false)} onSave={handleSaveNewVersion} saving={saving} hiddenCount={hiddenCount} />
       )}
 
       {showPrintInstructions && (
@@ -854,43 +1110,30 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button onClick={() => setShowPrintInstructions(false)} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
-                <button onClick={doPrint} className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                  <Printer className="w-4 h-4" /> Continue to Print
-                </button>
+                <button onClick={doPrint} className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium flex items-center gap-2"><Printer className="w-4 h-4" /> Continue to Print</button>
               </div>
             </div>
           </div>
         </div>
       )}
+
       {confirmModal && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
             <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
               <h3 className="text-xl font-bold">{confirmModal.title}</h3>
-              <button onClick={() => setConfirmModal(null)} className="p-2 hover:bg-white/20 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setConfirmModal(null)} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
               <p className="text-gray-700">{confirmModal.message}</p>
               <div className="flex justify-end gap-3 pt-2">
-                {confirmModal.infoOnly ? (
-                  <button onClick={() => setConfirmModal(null)}
-                    className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
-                    OK
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={() => setConfirmModal(null)}
-                      className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">
-                      Cancel
-                    </button>
-                    <button onClick={() => { setConfirmModal(null); doStatusUpdate(confirmModal.newStatus); }}
-                      className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
-                      Ya, Approve
-                    </button>
-                  </>
-                )}
+                {confirmModal.infoOnly
+                  ? <button onClick={() => setConfirmModal(null)} className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">OK</button>
+                  : <>
+                      <button onClick={() => setConfirmModal(null)} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
+                      <button onClick={() => { setConfirmModal(null); doStatusUpdate(confirmModal.newStatus); }} className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Ya, Approve</button>
+                    </>
+                }
               </div>
             </div>
           </div>
