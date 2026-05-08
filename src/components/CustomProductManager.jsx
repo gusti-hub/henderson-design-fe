@@ -99,6 +99,49 @@ const SERVICE_OPTIONS = [
   'REVEAL PREPARATION',
 ];
 
+const SERVICE_DESCRIPTIONS = {
+  'DESIGN SERVICES': 'Professional interior design services including concept development, space planning, finish selections, furniture specifications, presentations, and coordination of approved design intent.',
+  'PROJECT MANAGEMENT SERVICES': 'Oversight and coordination of project schedules, vendors, approvals, communication, timelines, and overall project execution.',
+  'PROCUREMENT SERVICES': 'Sourcing, purchasing, tracking, and coordination of approved furnishings, materials, and related project items.',
+  'FDI SERVICES (FREIGHT, DELIVERY & INSTALLATION)': 'Coordination of freight, warehousing, receiving, quality control, delivery, installation, staging, and final placement of approved project items.',
+  'WALLPAPER INSTALLATION SERVICES': 'Labor and coordination associated with installation of approved wallcoverings and related site preparation.',
+  'ELECTRICAL INSTALLATION SERVICES': 'Coordination and labor related to installation of decorative lighting, controls, and approved electrical scope items.',
+  'ART INSTALLATION SERVICES': 'Placement, mounting, alignment, and installation coordination for artwork and decorative wall items.',
+  'WALLPAPER TRADE COORDINATION': 'Coordination and management of wallpaper trades, scheduling, field verification, and installation oversight.',
+  'ELECTRICAL TRADE COORDINATION': 'Coordination and management of electrical contractors and approved electrical installation scope.',
+  'CLOSET SOLUTIONS': 'Design, sourcing, coordination, and installation oversight for custom or modular closet systems and storage solutions.',
+  'KITCHEN & HOUSEHOLD ESSENTIALS PACKAGE': 'Procurement and coordination of kitchenware, tabletop items, linens, accessories, and household essentials for move-in readiness.',
+  'WINDOW COVERING SERVICES': 'Design, sourcing, coordination, and installation oversight for drapery, shades, blinds, and related window treatments.',
+  'AUDIO VISUAL SERVICES': 'Coordination of audio visual systems, televisions, sound systems, smart home integrations, and related AV scope items.',
+  'GREENERY & PLANT STYLING': 'Selection, procurement, placement, and styling coordination for live plants, greenery, and decorative landscape elements.',
+  'CONSTRUCTION DESIGN & PM SERVICES': 'Design coordination and project management services related to construction modifications, contractor coordination, and field implementation.',
+  'CUSTOM MILLWORK SERVICES': 'Design, detailing, coordination, and oversight of custom cabinetry, built-ins, paneling, and architectural millwork items.',
+  'CUSTOM FURNITURE SERVICES': 'Design, development, sourcing, production coordination, and oversight for custom furniture items.',
+  'LIGHTING PROCUREMENT & COORDINATION': 'Sourcing, specification, procurement, and coordination of decorative lighting and related components.',
+  'APPLIANCE COORDINATION': 'Coordination of appliance selections, specifications, ordering, delivery, and installation readiness.',
+  'PLUMBING FIXTURE COORDINATION': 'Coordination of plumbing fixture selections, procurement, specifications, and installation requirements.',
+  'DECORATIVE PLUMBING COORDINATION': 'Coordination of decorative plumbing items including faucets, fittings, tubs, and specialty fixtures.',
+  'STONE & SLAB COORDINATION': 'Selection, procurement, slab review, layout coordination, and oversight of stone and slab materials.',
+  'TILE & SURFACE COORDINATION': 'Selection, procurement, and coordination of tile, surface materials, and related finish applications.',
+  'HARDWARE & DECORATIVE HARDWARE COORDINATION': 'Selection and coordination of door hardware, cabinet hardware, and decorative metal finish items.',
+  'OUTDOOR FURNISHINGS': 'Procurement, coordination, and installation oversight for exterior furniture and outdoor living items.',
+  'LANAI / TERRACE FURNISHINGS': 'Design and furnishing coordination specific to lanais, terraces, balconies, and exterior transitional spaces.',
+  'STYLING & ACCESSORIES': 'Selection, procurement, placement, and styling of decorative accessories and finishing elements.',
+  'BEDDING PACKAGE': 'Procurement and coordination of bedding, linens, pillows, and related soft goods.',
+  'TURNKEY MOVE-IN PACKAGE': 'Comprehensive move-in readiness coordination including furnishings, accessories, essentials, styling, and final setup.',
+  'OWNER STORAGE & INVENTORY COORDINATION': 'Management and coordination of owner inventory, stored items, deliveries, and project-related storage logistics.',
+  'CLIENT SUPPLIED ITEMS COORDINATION': 'Coordination, receiving, inspection, and installation management of items supplied directly by the client.',
+  'WHITE GLOVE RECEIVING & WAREHOUSING': 'Receiving, inspection, inventory management, storage, staging, and handling of approved project items.',
+  'PUNCH LIST & COMPLETION COORDINATION': 'Management and coordination of final project corrections, deficiencies, and completion items.',
+  'SITE VISIT COORDINATION': 'Scheduling, coordination, reporting, and management associated with project-related site visits.',
+  'EXPEDITING SERVICES': 'Follow-up and tracking services to monitor production schedules, shipping timelines, and vendor performance.',
+  'BUILDING COORDINATION SERVICES': 'Coordination with building management regarding access, scheduling, rules, deliveries, insurance, and installation logistics.',
+  'CONTRACTOR COORDINATION SERVICES': 'Communication and coordination with contractors and trades to align project implementation and scheduling.',
+  'INSTALLATION OVERSIGHT': 'On-site supervision and coordination of installation activities to ensure alignment with approved project standards.',
+  'FINAL STYLING & STAGING': 'Final placement, styling, detailing, and visual refinement of furnishings and accessories prior to completion or reveal.',
+  'REVEAL PREPARATION': 'Preparation and coordination of final presentation, client walkthrough, photography readiness, and project reveal activities.',
+};
+
 const CFA_OPTIONS = ['Approved','Rejected','Waived','Pending'];
 
 // ✅ PATCH 1: salesTaxRate default 4.5
@@ -1109,7 +1152,8 @@ const isServiceValue = (val) => {
       SERVICE_OPTIONS.some(s => s.toLowerCase().includes(val.toLowerCase().slice(0, 4))));
 };
 
-const RoomServiceField = ({ value, onChange, disabled, inputCls }) => {
+// Ubah signature komponen:
+const RoomServiceField = ({ value, onChange, disabled, inputCls, onServiceSelect }) => {
   const detectMode = (v) => {
     if (!v) return 'room';
     if (ROOM_OPTIONS.includes(v)) return 'room';
@@ -1184,6 +1228,10 @@ const RoomServiceField = ({ value, onChange, disabled, inputCls }) => {
     onChange(opt);
     setOpen(false);
     inputRef.current?.focus();
+    // ✅ AUTO-FILL: jika mode service dan ada deskripsi, panggil callback
+    if (mode === 'service' && onServiceSelect) {
+      onServiceSelect(opt);
+    }
   };
 
   const handleClear = () => {
@@ -1954,6 +2002,13 @@ const ProductCard = ({
                       onChange={(v) => upd('room', v)}
                       disabled={false}
                       inputCls={inputCls}
+                      onServiceSelect={(serviceName) => {
+                      const desc = SERVICE_DESCRIPTIONS[serviceName];
+                      if (desc) {
+                        setLocal('specifications', desc);
+                        upd('specifications', desc);
+                      }
+                    }}
                     />
                   </div>
                   <div className="col-span-2">
