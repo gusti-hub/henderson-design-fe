@@ -506,19 +506,18 @@ const ExpenseManager = () => {
         fetch(`${backendServer}/api/proposals/${order._id}/versions/all`,     { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       if (freshRes.ok)   { const o = await freshRes.json();   setSelectedOrder(o); }
-      if (pvRes.ok)      {
+      if (pvRes.ok) {
         const p = await pvRes.json();
         const versions = p.data || [];
         setProposalVersions(versions);
-        // Pre-populate localQBIds from server data so guard works on first load
-        // This handles the case where quickbooksId IS saved in DB after our BE fix
+        
+        // ✅ Hanya populate dari pv.quickbooksId per version, TIDAK dari Order.proposalQbId
         const initLocal = {};
         versions.forEach(pv => {
           if (pv.quickbooksId && String(pv.quickbooksId).trim() !== '') {
             initLocal[pv._id?.toString()] = pv.quickbooksId;
           }
         });
-        // Also check Order.proposalQbId as fallback
         setLocalQBIds(prev => ({ ...prev, ...initLocal }));
       }
       if (summaryRes.ok) { const s = await summaryRes.json(); setAllPOVersions(s.poVendors || []); } else setAllPOVersions([]);
@@ -529,21 +528,6 @@ const ExpenseManager = () => {
 
   // After freshRes loads, also check Order.proposalQbId
   // We do this in a useEffect watching selectedOrder
-  useEffect(() => {
-    if (!selectedOrder?.proposalQbId || proposalVersions.length === 0) return;
-    // If order has proposalQbId but we don't know which pvId it belongs to,
-    // apply it to all proposal versions as a fallback guard
-    setLocalQBIds(prev => {
-      const updated = { ...prev };
-      proposalVersions.forEach(pv => {
-        const pvId = pv._id?.toString();
-        if (!updated[pvId]) {
-          updated[pvId] = selectedOrder.proposalQbId;
-        }
-      });
-      return updated;
-    });
-  }, [selectedOrder?.proposalQbId, proposalVersions]);
 
   if (view === 'print' && printExpense) return <PrintView expense={printExpense} onClose={() => setView(editingExpense ? 'editor' : 'project')} />;
   if (view === 'editor' && editingExpense) return (
@@ -556,8 +540,9 @@ const ExpenseManager = () => {
   if ((view === 'list' || view === 'project') && selectedOrder) {
     const setSyncing = (id, val) => setSyncingIds(p => ({ ...p, [id]: val }));
     const setLocalQB = (id, qbId) => setLocalQBIds(p => ({ ...p, [id]: qbId }));
-    const getQBId    = (id, serverQBId) => {
-      if (localQBIds[id] && String(localQBIds[id]).trim() !== '') return localQBIds[id];
+    const getQBId = (id, serverQBId) => {
+      const local = localQBIds[id];
+      if (local && String(local).trim() !== '') return local;
       if (serverQBId && String(serverQBId).trim() !== '') return serverQBId;
       return null;
     };
@@ -605,15 +590,22 @@ const ExpenseManager = () => {
       setSyncing(pvId, true);
       try {
         const token = localStorage.getItem('token');
-        const res  = await fetch(`${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        // ✅ Tambah pvId di URL
+        const res  = await fetch(
+          `${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}/${pvId}`,
+          { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+        );
         const data = await res.json();
         if (res.ok) {
-          showToast(`✅ ${isResync ? 'Resynced' : 'Synced'} to QB: ${data.quickbooksId}`);
+          showToast(`✅ Synced to QB: ${data.quickbooksId}`);
           setLocalQB(pvId, data.quickbooksId);
-          const pvRes = await fetch(`${backendServer}/api/proposals/${selectedOrder._id}/versions/all`, { headers: { Authorization: `Bearer ${token}` } });
+          // Refresh proposal versions
+          const pvRes = await fetch(
+            `${backendServer}/api/proposals/${selectedOrder._id}/versions/all`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
           if (pvRes.ok) { const d = await pvRes.json(); setProposalVersions(d.data || []); }
         } else {
-          // API returned error — if it contains quickbooksId, it means already synced
           if (data.quickbooksId) {
             setLocalQB(pvId, data.quickbooksId);
             showToast(`Already in QB — ID: ${data.quickbooksId}`, 'error');
@@ -843,7 +835,7 @@ const ExpenseManager = () => {
                     const qbId       = getQBId(pvId, pv.quickbooksId);
                     return (
                       <tr key={pvId} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-2"><span className="text-xs font-mono font-semibold text-[#005670]">{selectedOrder.proposalNumber || '—'}</span></td>
+                        <td className="px-4 py-2"><span className="text-xs font-mono font-semibold text-[#005670]">{pv.proposalNumber || selectedOrder.proposalNumber || '—'}</span></td>
                         <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{pv.createdAt ? new Date(pv.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
                         <td className="px-3 py-2 text-xs text-gray-500 max-w-[160px] truncate" title={pv.notes}>{pv.notes || <span className="text-gray-300 italic">—</span>}</td>
                         <td className="px-3 py-2">
@@ -929,7 +921,12 @@ const ExpenseManager = () => {
                       );
                     }
                     const s    = po.status || 'draft';
-                    const sCfg = { draft: { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Draft' }, sent: { cls: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Sent' } }[s] || { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: s.charAt(0).toUpperCase() + s.slice(1) };
+                    const sCfg = {
+                      draft:     { cls: 'bg-gray-100 text-gray-500 border-gray-200',         label: 'Draft'       },
+                      sent:      { cls: 'bg-blue-100 text-blue-700 border-blue-200',         label: 'Sent'        },
+                      confirmed: { cls: 'bg-emerald-100 text-emerald-700 border-emerald-200',label: 'Confirmed'   },
+                      cancelled: { cls: 'bg-red-100 text-red-600 border-red-200',            label: 'Cancelled'   },
+                    }[s] || { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: s.charAt(0).toUpperCase() + s.slice(1) };
                     return (
                       <tr key={`pend-${i}`} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-2"><span className="text-xs font-mono text-gray-400 whitespace-nowrap">{po.poNumber || '—'}</span></td>

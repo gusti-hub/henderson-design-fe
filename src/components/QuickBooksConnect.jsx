@@ -10,15 +10,17 @@ const QuickBooksConnect = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    checkStatus();
-    // Check for OAuth callback params
     const urlParams = new URLSearchParams(window.location.search);
+    
     if (urlParams.get('qb_connected') === 'true') {
       setSuccess('QuickBooks connected successfully!');
-      checkStatus();
-    }
-    if (urlParams.get('qb_error')) {
+      // ✅ Delay 1.5 detik — beri waktu DB selesai upsert token
+      setTimeout(() => checkStatus(), 1500);
+    } else if (urlParams.get('qb_error')) {
       setError(`Connection failed: ${urlParams.get('qb_error')}`);
+      checkStatus();
+    } else {
+      checkStatus();
     }
   }, []);
 

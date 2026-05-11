@@ -95,6 +95,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [originalTitle] = useState(document.title);
+  const [poStatus, setPoStatus] = useState('draft');
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => {
     loadPOData();
@@ -135,6 +137,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       if (result.success) {
         const data = result.data;
         setPOData(data);
+        setPoStatus(data.status || 'draft');
 
         // ── Step 1: Enrich existing PO products from order ──
         const enrichedProducts = (data.products || []).map(poProduct => {
@@ -283,6 +286,36 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       alert('Failed to load Purchase Order data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    if (poStatus === 'confirmed') {
+      alert('Confirmed PO cannot be changed');
+      return;
+    }
+    setSavingStatus(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${backendServer}/api/orders/${orderId}/po/${vendorId}/status`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version: poData.version, status: newStatus })
+        }
+      );
+      const result = await response.json();
+      if (result.success) {
+        setPoStatus(newStatus);
+        setPOData(prev => ({ ...prev, status: newStatus }));
+      } else {
+        alert('Failed to update status: ' + (result.message || ''));
+      }
+    } catch (error) {
+      alert('Failed to update status');
+    } finally {
+      setSavingStatus(false);
     }
   };
 
@@ -626,44 +659,64 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       `}</style>
 
       {/* ====== TOOLBAR ====== */}
-      <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
-            <ChevronLeft className="w-5 h-5" />
-            Back to Orders
-          </button>
-          <div className="h-6 w-px bg-gray-300" />
-          <span className="text-sm font-medium text-gray-700">
-            Purchase Order — {vendorInfo.name || 'Vendor'} — Version {poData?.version || 1}
+    <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+      <div className="flex items-center gap-4">
+        <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
+          <ChevronLeft className="w-5 h-5" />
+          Back to Orders
+        </button>
+        <div className="h-6 w-px bg-gray-300" />
+        <span className="text-sm font-medium text-gray-700">
+          Purchase Order — {vendorInfo.name || 'Vendor'} — Version {poData?.version || 1}
+        </span>
+
+        {/* ✅ Status dropdown */}
+        {poStatus === 'confirmed' ? (
+          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+            ✓ Confirmed
           </span>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-            poData?.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
-            poData?.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-            poData?.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-            'bg-gray-100 text-gray-600'
-          }`}>
-            {poData?.status?.charAt(0).toUpperCase() + poData?.status?.slice(1) || 'Draft'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
-            <Clock className="w-4 h-4" />
-            Versions
-          </button>
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-            <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button onClick={() => { setVersionNotes(''); setShowVersionModal('new'); }} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
-            <FileText className="w-4 h-4" />
-            Save as New Version
-          </button>
-          <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
-            <Printer className="w-4 h-4" />
-            Print / Save PDF
-          </button>
-        </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <select
+              value={poStatus}
+              onChange={e => handleStatusChange(e.target.value)}
+              disabled={savingStatus}
+              className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${
+                poStatus === 'draft'     ? 'bg-yellow-100 text-yellow-700' :
+                poStatus === 'sent'      ? 'bg-blue-100 text-blue-700' :
+                poStatus === 'cancelled' ? 'bg-red-100 text-red-600' :
+                'bg-gray-100 text-gray-600'
+              } ${savingStatus ? 'opacity-50' : ''}`}
+            >
+              <option value="draft">Draft</option>
+              <option value="sent">Sent to Vendor</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+          </div>
+        )}
       </div>
+
+      <div className="flex items-center gap-2">
+        <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
+          <Clock className="w-4 h-4" />
+          Versions
+        </button>
+        <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+          <Save className="w-4 h-4" />
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+        <button onClick={() => { setVersionNotes(''); setShowVersionModal('new'); }} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
+          <FileText className="w-4 h-4" />
+          Save as New Version
+        </button>
+        <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
+          <Printer className="w-4 h-4" />
+          Print / Save PDF
+        </button>
+      </div>
+    </div>
 
       {/* ====== PRINTABLE PO CONTENT ====== */}
       <div className="print-container bg-gray-100 min-h-screen py-8">
