@@ -63,9 +63,9 @@ const NextStepsPage = () => {
           heading: 'Fee Amount',
           content: 'One hundred percent (100%) due upon signing. Fee is non-refundable.',
           priceTable: [
-            { collection: 'Nalu Foundation Collection', bedrooms: { '1': '$2,500', '2': '$3,500', '3': '$4,500' } },
-            { collection: 'Nalu Collection', bedrooms: { '1': '$5,000', '2': '$7,500', '3': '$10,000' } },
-            { collection: 'Lani', bedrooms: { '1': '$10,000', '2': '$15,000', '3': '$20,000' } }
+            { collection: 'Nalu Foundation Collection', bedrooms: { '1': '$2,800', '2': '$3,920', '3': '$5,040' } },
+            { collection: 'Nalu Collection', bedrooms: { '1': '$5,600', '2': '$8,400', '3': '$11,200' } },
+            { collection: 'Lani', bedrooms: { '1': '$11,200', '2': '$16,800', '3': '$22,400' } }
           ]
         },
         {
