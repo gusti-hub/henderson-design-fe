@@ -583,7 +583,9 @@ const ClientPortal = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="flex-1 min-w-[280px]">
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">Welcome back, {clientData.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                  Welcome back, <span translate="no" className="notranslate">{clientData.name}</span>
+                </h1>
                 <p className="text-gray-600 text-base">Track your design journey with Henderson Design Group</p>
               </div>
 
@@ -632,7 +634,11 @@ const ClientPortal = () => {
                         </div>
                         <div>
                           <p className="text-xs text-purple-700 font-semibold mb-0.5">Lead Designer</p>
-                          <p className="text-base font-bold text-gray-900">{clientData.teamAssignment.designer}</p>
+                          <p className="text-base font-bold text-gray-900">
+                            <span translate="no" className="notranslate">
+                              {clientData.teamAssignment.designer}
+                            </span>
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -646,7 +652,11 @@ const ClientPortal = () => {
                         </div>
                         <div>
                           <p className="text-xs text-blue-700 font-semibold mb-0.5">Project Manager</p>
-                          <p className="text-base font-bold text-gray-900">{clientData.teamAssignment.projectManager}</p>
+                          <p className="text-base font-bold text-gray-900">
+                            <span translate="no" className="notranslate">
+                              {clientData.teamAssignment.projectManager}
+                            </span>
+                          </p>
                         </div>
                       </div>
                     </div>

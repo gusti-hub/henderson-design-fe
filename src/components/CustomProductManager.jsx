@@ -1094,7 +1094,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <span className="text-[#005670] font-medium">{savedProducts.filter(p => p.sourceType === 'manual').length} Manual</span>
             </div>
             <div className="text-lg font-bold text-[#005670]">
-              Total: ${savedProducts.reduce((sum, p) => sum + (p.finalPrice || 0), 0).toFixed(2)}
+              Total Selling Price: ${savedProducts.reduce((sum, p) => sum + (p.finalPrice || 0), 0).toFixed(2)}
             </div>
           </div>
         </div>
@@ -1902,6 +1902,9 @@ const ProductCard = ({
             )}
             <p className="text-xs text-gray-500 mt-1">
               {product.product_id} • Qty: {product.quantity} • ${parseFloat(product.finalPrice || 0).toFixed(2)}
+              {product.vendor?.name && (
+                <span className="text-amber-700 font-medium"> • 🏢 {product.vendor.name}</span>
+              )}
               {opts.room && <span className="text-teal-600"> • {opts.room}</span>}
               {opts.shipToName && <span className="text-blue-600"> • ✈ {opts.shipToName}</span>}
             </p>
@@ -2294,22 +2297,31 @@ const ProductCard = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Purchase Order (PO #)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      HDG PO#
+                      {localFields.poNumber === '' && (
+                        <span className="ml-2 text-xs text-gray-400 font-normal">(auto-filled on save if blank)</span>
+                      )}
+                    </label>
                     <input
                       type="text"
                       value={localFields.poNumber}
                       onChange={(e) => { setLocal('poNumber', e.target.value); upd('poNumber', e.target.value); }}
                       className={inputCls}
-                      placeholder="Tim-2289995"
+                      placeholder="e.g. HDG-001"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Binder Notes</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      On-site Installation Notes
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">for installers at the job site</span>
+                    </label>
                     <textarea
                       value={localFields.installerNotes}
                       onChange={(e) => { setLocal('installerNotes', e.target.value); upd('installerNotes', e.target.value); }}
                       className={`${inputCls} resize-none`}
                       rows={3}
+                      placeholder="e.g. Place against east wall, requires 2 people to lift..."
                     />
                   </div>
                 </div>

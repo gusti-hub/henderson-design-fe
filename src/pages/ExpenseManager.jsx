@@ -111,7 +111,7 @@ const LineRow = ({ line, onChange, onRemove, index }) => {
   );
 };
 
-// ─── Print View ─────────────────────────────────────────────────────────────
+// ─── PATCH: Replace the entire PrintView component in ExpenseManager.jsx ───────
 const PrintView = ({ expense, onClose }) => {
   const [showInstr, setShowInstr] = useState(false);
   const [origTitle] = useState(document.title);
@@ -119,81 +119,249 @@ const PrintView = ({ expense, onClose }) => {
   const tax = sub * (parseFloat(expense.taxRate || 0) / 100);
   const tot = sub + tax;
   const f2  = (n) => `$${parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+ 
   useEffect(() => {
     document.title = `Expense_${expense.expenseNumber}_${(expense.clientInfo?.name || 'Client').replace(/\s+/g, '_')}`;
     return () => { document.title = origTitle; };
   }, [expense, origTitle]);
+ 
   return (
     <>
       <style>{`
-        @media print { * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; } body{margin:0!important;padding:0!important;} body *{visibility:hidden;} .epc,.epc *{visibility:visible;} .epc{position:absolute;left:0;top:0;width:100%;} .np{display:none!important;} .edoc{box-shadow:none!important;margin:0!important;padding:0!important;width:auto!important;min-height:unset!important;} .it{border:1px solid #ccc!important;} .it th{background:#f5f5f5!important;} body{background:white!important;} }
-        @page{size:letter;margin:0.65in;}
-        .edoc{background:white;width:8.5in;min-height:11in;padding:0.5in;margin:0 auto 20px;box-shadow:0 0 10px rgba(0,0,0,0.1);font-family:'Times New Roman',Times,serif;font-size:11pt;color:#1a1a1a;box-sizing:border-box;}
-        .it{width:100%;border-collapse:collapse;margin-top:16pt;font-size:10pt;border:1px solid #ccc;} .it th{background:#f5f5f5;border-bottom:1px solid #ccc;padding:6px 8px;text-align:left;font-weight:bold;font-size:9.5pt;} .it th.r{text-align:right;} .it td{border:none;padding:8px;vertical-align:top;font-size:9.5pt;} .it td.r{text-align:right;}
-        .tot{margin-left:auto;border-collapse:collapse;min-width:200pt;font-size:10pt;} .tot td{padding:3px 8px;} .tot td.lb{text-align:right;font-weight:bold;} .tot td.am{text-align:right;min-width:70pt;} .totl td{border-top:1px solid #999;padding-top:6px;font-weight:bold;}
-        .ifoot{text-align:center;font-size:9pt;color:#555;border-top:1px solid #ddd;padding-top:8pt;margin-top:32pt;}
+        @media print {
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { margin: 0 !important; padding: 0 !important; background: white !important; }
+          body * { visibility: hidden; }
+          .epc, .epc * { visibility: visible; }
+          .epc { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+          .np  { display: none !important; }
+          .epc-bg { background: white !important; padding: 0 !important; }
+          .edoc {
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: 11in !important;
+          }
+          .it, .it th, .it td { border: 1px solid #ccc !important; }
+          .it th { background: #f5f5f5 !important; }
+        }
+        @page { size: letter; margin: 0; }
+ 
+        .epc-bg {
+          background: #b8b8b8;
+          min-height: 100vh;
+          padding: 32px 0 60px;
+        }
+ 
+        .edoc {
+          position: relative;
+          background: white;
+          width: 8.5in;
+          height: 11in;
+          overflow: hidden;
+          padding: 0.5in;
+          margin: 0 auto 20px;
+          box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 11pt;
+          color: #1a1a1a;
+          box-sizing: border-box;
+        }
+ 
+        .edoc-body {
+          padding-bottom: 72px;
+        }
+ 
+        .edoc-footer {
+          position: absolute;
+          bottom: 0.28in;
+          left: 0.5in;
+          right: 0.5in;
+          border-top: 1px solid #d1d5db;
+          padding-top: 5px;
+          text-align: center;
+          font-size: 10px;
+          color: rgb(0, 86, 112);
+          line-height: 1.5;
+          background: white;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+ 
+        /* ── Full grid table ── */
+        .it {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 16pt;
+          font-size: 10pt;
+          /* Outer border */
+          border: 1px solid #ccc;
+        }
+        /* Every th and td gets all 4 borders */
+        .it th,
+        .it td {
+          border: 1px solid #ccc;
+          padding: 6px 8px;
+          vertical-align: top;
+        }
+        .it th {
+          background: #f5f5f5;
+          font-weight: bold;
+          font-size: 9.5pt;
+          text-align: left;
+        }
+        .it th.r { text-align: right; }
+        .it td   { font-size: 9.5pt; text-align: left; }
+        .it td.r { text-align: right; }
+ 
+        /* ── Totals table ── */
+        .tot {
+          margin-left: auto;
+          border-collapse: collapse;
+          min-width: 200pt;
+          font-size: 10pt;
+          border: 1px solid #ccc;
+        }
+        .tot td {
+          padding: 4px 10px;
+          border: 1px solid #ccc;
+        }
+        .tot td.lb { text-align: right; font-weight: bold; background: #f5f5f5; }
+        .tot td.am { text-align: right; }
+        .totl td   { font-weight: bold; border-top: 2px solid #999 !important; }
       `}</style>
+ 
+      {/* ── Screen toolbar ── */}
       <div className="np sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium"><ChevronLeft className="w-5 h-5" /> Back</button>
+          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
+            <ChevronLeft className="w-5 h-5" /> Back
+          </button>
           <div className="h-5 w-px bg-gray-300" />
           <span className="text-sm font-semibold text-[#005670]">{expense.expenseNumber}</span>
           <span className="text-sm text-gray-500">— {expense.projectName}</span>
         </div>
-        <button onClick={() => setShowInstr(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Print / Save PDF</button>
+        <button
+          onClick={() => setShowInstr(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"
+        >
+          <Printer className="w-4 h-4" /> Print / Save PDF
+        </button>
       </div>
-      <div className="epc bg-gray-100 min-h-screen py-8">
+ 
+      {/* ── Printable area ── */}
+      <div className="epc epc-bg">
         <div className="edoc">
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'18pt' }}>
-            <div><div style={{ fontSize:'16pt', fontWeight:'normal', marginBottom:'2px' }}>Henderson Design Group</div><div style={{ fontSize:'13pt', fontWeight:'normal', color:'#444' }}>Time &amp; Expenses Invoice</div></div>
-            <img src="/images/HDG-Logo.png" alt="HDG" style={{ height:'44px', width:'auto', filter:'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)' }} />
-          </div>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'14pt', fontSize:'10pt', lineHeight:'1.7' }}>
-            <div>
-              {expense.clientInfo?.name     && <div style={{ fontWeight:'bold' }}>{expense.clientInfo.name}</div>}
-              {expense.clientInfo?.address  && <div>{expense.clientInfo.address}</div>}
-              {expense.clientInfo?.cityStateZip && <div>{expense.clientInfo.cityStateZip}</div>}
-              {expense.clientInfo?.email    && <div>{expense.clientInfo.email}</div>}
+          <div className="edoc-body">
+ 
+            {/* Header */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'18pt' }}>
+              <div>
+                <div style={{ fontSize:'16pt', fontWeight:'normal', marginBottom:'2px' }}>Henderson Design Group</div>
+                <div style={{ fontSize:'13pt', fontWeight:'normal', color:'#444' }}>Time &amp; Expenses Invoice</div>
+              </div>
+              <img
+                src="/images/HDG-Logo.png"
+                alt="HDG"
+                style={{
+                  height:'44px', width:'auto',
+                  filter:'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)'
+                }}
+              />
             </div>
-            <div style={{ textAlign:'right', fontSize:'10pt', lineHeight:'1.7' }}>
-              <div><strong>Expense # :</strong>&nbsp;{expense.expenseNumber}</div>
-              <div><strong>Expense Date:</strong>&nbsp;{expense.expenseDate ? new Date(expense.expenseDate+'T12:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}) : ''}</div>
+ 
+            {/* Client info + expense meta */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'14pt', fontSize:'10pt', lineHeight:'1.7' }}>
+              <div>
+                {expense.clientInfo?.name         && <div style={{ fontWeight:'bold' }}>{expense.clientInfo.name}</div>}
+                {expense.clientInfo?.address      && <div>{expense.clientInfo.address}</div>}
+                {expense.clientInfo?.cityStateZip && <div>{expense.clientInfo.cityStateZip}</div>}
+                {expense.clientInfo?.email        && <div>{expense.clientInfo.email}</div>}
+              </div>
+              <div style={{ textAlign:'right', fontSize:'10pt', lineHeight:'1.7' }}>
+                <div><strong>Expense # :</strong>&nbsp;{expense.expenseNumber}</div>
+                <div>
+                  <strong>Expense Date:</strong>&nbsp;
+                  {expense.expenseDate
+                    ? new Date(expense.expenseDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' })
+                    : ''}
+                </div>
+              </div>
             </div>
-          </div>
-          {(expense.projectName || expense.employeeName) && (
-            <div style={{ fontSize:'10pt', marginBottom:'14pt', display:'flex', justifyContent:'space-between' }}>
-              {expense.projectName  && <div><strong>Project:</strong> {expense.projectName}</div>}
-              {expense.employeeName && <div><strong>Employee:</strong> {expense.employeeName}</div>}
+ 
+            {/* Project / Employee */}
+            {(expense.projectName || expense.employeeName) && (
+              <div style={{ fontSize:'10pt', marginBottom:'14pt', display:'flex', justifyContent:'space-between' }}>
+                {expense.projectName  && <div><strong>Project:</strong> {expense.projectName}</div>}
+                {expense.employeeName && <div><strong>Employee:</strong> {expense.employeeName}</div>}
+              </div>
+            )}
+ 
+            {/* Line items — full grid */}
+            <table className="it">
+              <thead>
+                <tr>
+                  <th style={{ width:'72pt' }}>Date</th>
+                  <th>Description / Service</th>
+                  <th className="r" style={{ width:'44pt' }}>Hours</th>
+                  <th className="r" style={{ width:'56pt' }}>Rate</th>
+                  <th className="r" style={{ width:'64pt' }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(expense.lines || []).map((line, i) => {
+                  const svc = SERVICE_TYPES.find(s => s.id === line.serviceType);
+                  return (
+                    <tr key={i}>
+                      <td style={{ whiteSpace:'nowrap' }}>
+                        {line.date
+                          ? new Date(line.date + 'T12:00:00').toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'numeric' })
+                          : ''}
+                      </td>
+                      <td>
+                        {svc && svc.id !== 'custom' && (
+                          <div style={{ fontWeight:'bold', marginBottom:'3px' }}>{svc.label}:</div>
+                        )}
+                        <div style={{ whiteSpace:'pre-wrap' }}>{line.description}</div>
+                      </td>
+                      <td className="r">{parseFloat(line.hours || 0).toFixed(2)}</td>
+                      <td className="r">{f2(line.rate)}</td>
+                      <td className="r" style={{ fontWeight:'bold' }}>{f2(line.amount)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+ 
+            {/* Notes */}
+            {expense.notes && (
+              <div style={{ marginTop:'12pt', fontSize:'9.5pt', color:'#444', whiteSpace:'pre-wrap' }}>
+                {expense.notes}
+              </div>
+            )}
+ 
+            {/* Totals — also full grid */}
+            <div style={{ marginTop:'18pt', display:'flex', justifyContent:'flex-end' }}>
+              <table className="tot">
+                <tbody>
+                  <tr><td className="lb">Subtotal:</td><td className="am">{f2(sub)}</td></tr>
+                  <tr><td className="lb">Taxes:</td><td className="am">{f2(tax)}</td></tr>
+                  <tr className="totl"><td className="lb">Total:</td><td className="am">{f2(tot)}</td></tr>
+                </tbody>
+              </table>
             </div>
-          )}
-          <table className="it">
-            <thead><tr><th style={{ width:'72pt' }}>Date</th><th>Description / Service</th><th className="r" style={{ width:'44pt' }}>Hours</th><th className="r" style={{ width:'56pt' }}>Rate</th><th className="r" style={{ width:'64pt' }}>Amount</th></tr></thead>
-            <tbody>
-              {(expense.lines || []).map((line, i) => {
-                const svc = SERVICE_TYPES.find(s => s.id === line.serviceType);
-                return (
-                  <tr key={i}>
-                    <td style={{ whiteSpace:'nowrap' }}>{line.date ? new Date(line.date+'T12:00:00').toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'}) : ''}</td>
-                    <td>{svc && svc.id !== 'custom' && <div style={{ fontWeight:'bold', marginBottom:'3px' }}>{svc.label}:</div>}<div style={{ whiteSpace:'pre-wrap' }}>{line.description}</div></td>
-                    <td className="r">{parseFloat(line.hours||0).toFixed(2)}</td>
-                    <td className="r">{f2(line.rate)}</td>
-                    <td className="r" style={{ fontWeight:'bold' }}>{f2(line.amount)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {expense.notes && <div style={{ marginTop:'12pt', fontSize:'9.5pt', color:'#444', whiteSpace:'pre-wrap' }}>{expense.notes}</div>}
-          <div style={{ marginTop:'18pt', display:'flex', justifyContent:'flex-end' }}>
-            <table className="tot"><tbody>
-              <tr><td className="lb">Subtotal:</td><td className="am">{f2(sub)}</td></tr>
-              <tr><td className="lb">Taxes:</td><td className="am">{f2(tax)}</td></tr>
-              <tr className="totl"><td className="lb">Total:</td><td className="am">{f2(tot)}</td></tr>
-            </tbody></table>
+ 
+          </div>{/* end edoc-body */}
+ 
+          {/* Footer */}
+          <div className="edoc-footer">
+            <p style={{ margin: 0 }}>Henderson Design Group 4343 Royal Place, Honolulu, HI, 96816</p>
+            <p style={{ margin: 0 }}>Phone: (808) 315-8782</p>
           </div>
-          <div className="ifoot">Henderson Design Group . 4343 Royal Place, Honolulu, HI, 96816.<br />Phone: (808) 315-8782 . Fax: . Email: ami@henderson.house</div>
+ 
         </div>
       </div>
+ 
+      {/* Print instructions modal */}
       {showInstr && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 np">
           <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
@@ -204,7 +372,12 @@ const PrintView = ({ expense, onClose }) => {
             <div className="p-6 space-y-4">
               <p className="text-gray-700 font-medium">For the best result, please configure:</p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                {[{n:1,t:'Destination',d:'Select "Save as PDF" or your printer'},{n:2,t:'Headers and Footers',d:'Uncheck — removes browser header/footer bars'},{n:3,t:'Margins',d:'Select "None" or "Minimum"'},{n:4,t:'Background Graphics',d:'Check this for full color and logo'}].map(s => (
+                {[
+                  { n:1, t:'Margins → None',           d:'Margins are built into the document — set browser to None' },
+                  { n:2, t:'Scale → 100%',              d:'Must be exactly 100% — do NOT use Fit to Page' },
+                  { n:3, t:'Headers and Footers → Off', d:'Uncheck — removes browser header/footer bars' },
+                  { n:4, t:'Background Graphics → On',  d:'Check this so colors and logo print correctly' },
+                ].map(s => (
                   <div key={s.n} className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">{s.n}</div>
                     <div><p className="font-semibold text-gray-900">{s.t}</p><p className="text-sm text-gray-600">{s.d}</p></div>
@@ -213,7 +386,12 @@ const PrintView = ({ expense, onClose }) => {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button onClick={() => setShowInstr(false)} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
-                <button onClick={() => { setShowInstr(false); setTimeout(() => window.print(), 150); }} className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium flex items-center gap-2"><Printer className="w-4 h-4" /> Continue to Print</button>
+                <button
+                  onClick={() => { setShowInstr(false); setTimeout(() => window.print(), 150); }}
+                  className="px-6 py-2.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" /> Continue to Print
+                </button>
               </div>
             </div>
           </div>
@@ -592,7 +770,7 @@ const ExpenseManager = () => {
   );
 
   // ─── Project detail ──────────────────────────────────────────────────────
-  if ((view === 'list' || view === 'project') && selectedOrder) {
+if ((view === 'list' || view === 'project') && selectedOrder) {
     const setSyncing = (id, val) => setSyncingIds(p => ({ ...p, [id]: val }));
     const setLocalQB = (id, qbId) => setLocalQBIds(p => ({ ...p, [id]: qbId }));
     const getQBId = (id, serverQBId) => {
@@ -601,14 +779,17 @@ const ExpenseManager = () => {
       if (serverQBId && String(serverQBId).trim() !== '') return serverQBId;
       return null;
     };
-
+ 
     // ── Expense QB ─────────────────────────────────────────────────────────
     const doSyncExpenseQB = async (exp, isResync = false) => {
       const id = exp.id || exp._id;
       setSyncing(id, true);
       try {
         const token = localStorage.getItem('token');
-        const res  = await fetch(`${backendServer}/api/quickbooks/sync-expense/${id}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        const url = isResync
+          ? `${backendServer}/api/quickbooks/sync-expense/${id}?force=true`
+          : `${backendServer}/api/quickbooks/sync-expense/${id}`;
+        const res  = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (res.ok) {
           setExpenses(prev => prev.map(e => (e.id || e._id) === id ? { ...e, quickbooksId: data.quickbooksId, quickbooksSyncedAt: new Date().toISOString(), quickbooksStatus: 'synced', quickbooksError: null } : e));
@@ -626,35 +807,31 @@ const ExpenseManager = () => {
       } catch (e) { showToast('Failed: ' + e.message, 'error'); }
       finally { setSyncing(id, false); }
     };
-
+ 
     const syncExpenseQB = (exp, isResync = false) => {
-      const id = exp.id || exp._id;
-      if (!isResync && exp.quickbooksId) { showToast(`Already synced — QB ID: ${exp.quickbooksId}`, 'error'); return; }
       showConfirm({
         title: isResync ? 'Resync to QuickBooks' : 'Send to QuickBooks',
         message: isResync
-          ? `Resync expense ${exp.expenseNumber} to QuickBooks?`
+          ? `Update QB Invoice for expense ${exp.expenseNumber}? A new invoice will be created in QuickBooks.`
           : `Send expense ${exp.expenseNumber} to QuickBooks as Invoice?`,
         confirmLabel: isResync ? 'Resync' : 'Send to QB',
         onConfirm: () => doSyncExpenseQB(exp, isResync),
       });
     };
-
+ 
     // ── Proposal QB ────────────────────────────────────────────────────────
     const doSyncProposalQB = async (pvId, isResync = false) => {
       setSyncing(pvId, true);
       try {
         const token = localStorage.getItem('token');
-        // ✅ Tambah pvId di URL
-        const res  = await fetch(
-          `${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}/${pvId}`,
-          { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
-        );
+        const url = isResync
+          ? `${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}/${pvId}?force=true`
+          : `${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}/${pvId}`;
+        const res  = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (res.ok) {
-          showToast(`✅ Synced to QB: ${data.quickbooksId}`);
+          showToast(`✅ ${isResync ? 'Resynced' : 'Synced'} to QB: ${data.quickbooksId}`);
           setLocalQB(pvId, data.quickbooksId);
-          // Refresh proposal versions
           const pvRes = await fetch(
             `${backendServer}/api/proposals/${selectedOrder._id}/versions/all`,
             { headers: { Authorization: `Bearer ${token}` } }
@@ -671,33 +848,31 @@ const ExpenseManager = () => {
       } catch (e) { showToast('Failed: ' + e.message, 'error'); }
       finally { setSyncing(pvId, false); }
     };
-
+ 
     const syncProposalQB = (pvId, currentQBId, isResync = false) => {
-      // Hard guard — if we know it's synced, block immediately
-      if (!isResync && currentQBId) {
-        showToast(`Already synced to QuickBooks — QB ID: ${currentQBId}`, 'error');
-        return;
-      }
       showConfirm({
         title: isResync ? 'Resync Proposal to QuickBooks' : 'Send Proposal to QuickBooks',
         message: isResync
-          ? `Resync proposal ${selectedOrder.proposalNumber} to QuickBooks as Invoice?`
+          ? `Update QB Invoice for proposal ${selectedOrder.proposalNumber}? A new invoice will be created in QuickBooks.`
           : `Send proposal ${selectedOrder.proposalNumber} to QuickBooks as Invoice?`,
         warning: !isResync ? 'This will create a new Invoice in QuickBooks for the approved proposal amount.' : undefined,
         confirmLabel: isResync ? 'Resync' : 'Send to QB',
         onConfirm: () => doSyncProposalQB(pvId, isResync),
       });
     };
-
+ 
     // ── PO QB ──────────────────────────────────────────────────────────────
     const doSyncPOQB = async (poVersionId, isResync = false) => {
       setSyncing(poVersionId, true);
       try {
         const token = localStorage.getItem('token');
-        const res  = await fetch(`${backendServer}/api/quickbooks/sync-po/${poVersionId}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        const url = isResync
+          ? `${backendServer}/api/quickbooks/sync-po/${poVersionId}?force=true`
+          : `${backendServer}/api/quickbooks/sync-po/${poVersionId}`;
+        const res  = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (res.ok) {
-          showToast(`✅ PO synced to QB: ${data.quickbooksId}`);
+          showToast(`✅ PO ${isResync ? 'resynced' : 'synced'} to QB: ${data.quickbooksId}`);
           setLocalQB(poVersionId, data.quickbooksId);
           const poRes2 = await fetch(`${backendServer}/api/quickbooks/latest-po/${selectedOrder._id}`, { headers: { Authorization: `Bearer ${token}` } });
           if (poRes2.ok) setPoSummary(await poRes2.json());
@@ -713,26 +888,22 @@ const ExpenseManager = () => {
       } catch (e) { showToast('Failed: ' + e.message, 'error'); }
       finally { setSyncing(poVersionId, false); }
     };
-
+ 
     const syncPOQB = (poVersionId, vendorName, currentQBId, isResync = false) => {
-      if (!isResync && currentQBId) {
-        showToast(`Already synced — QB ID: ${currentQBId}`, 'error');
-        return;
-      }
       showConfirm({
         title: isResync ? 'Resync PO to QuickBooks' : 'Send PO to QuickBooks',
         message: isResync
-          ? `Resync ${vendorName} PO to QuickBooks as Bill?`
+          ? `Update QB Bill for ${vendorName} PO? A new bill will be created in QuickBooks.`
           : `Send ${vendorName} PO to QuickBooks as Bill?`,
         confirmLabel: isResync ? 'Resync' : 'Send to QB',
         onConfirm: () => doSyncPOQB(poVersionId, isResync),
       });
     };
-
+ 
     // ── Paged data ─────────────────────────────────────────────────────────
     const totalExpPages = Math.ceil(expenses.length / ROWS_PER_PAGE);
     const pagedExp      = expenses.slice((expensePage - 1) * ROWS_PER_PAGE, expensePage * ROWS_PER_PAGE);
-
+ 
     const PS_CFG = {
       draft:    { cls: 'bg-gray-100 text-gray-500 border-gray-200',          label: 'Draft'          },
       sent:     { cls: 'bg-blue-100 text-blue-700 border-blue-200',          label: 'Sent to Client' },
@@ -741,24 +912,24 @@ const ExpenseManager = () => {
     };
     const totalPvPages = Math.ceil(proposalVersions.length / ROWS_PER_PAGE);
     const pagedPv      = proposalVersions.slice((proposalPage - 1) * ROWS_PER_PAGE, proposalPage * ROWS_PER_PAGE);
-
+ 
     const allPORows    = [
       ...(poSummary?.details || []).map(po => ({ ...po, _type: 'confirmed' })),
       ...allPOVersions.filter(v => !(poSummary?.details || []).some(p => p.vendorName === v.vendorName)).map(v => ({ ...v, _type: 'pending' })),
     ];
     const totalPoPages = Math.ceil(allPORows.length / ROWS_PER_PAGE);
     const pagedPO      = allPORows.slice((poPage - 1) * ROWS_PER_PAGE, poPage * ROWS_PER_PAGE);
-
+ 
     return (
       <div className="space-y-6 max-w-[1400px] mx-auto">
         <ConfirmModal modal={confirmModal} onClose={closeConfirm} />
-
+ 
         {toast && (
           <div className={`fixed bottom-6 right-6 z-[300] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-xl text-white text-sm font-medium ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
             <Check className="w-4 h-4" />{toast.msg}
           </div>
         )}
-
+ 
         {/* Back + header */}
         <div className="flex items-center gap-4">
           <button onClick={() => { setView('orders'); setSelectedOrder(null); setExpenses([]); }} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium"><ChevronLeft className="w-4 h-4" /> All Projects</button>
@@ -768,7 +939,7 @@ const ExpenseManager = () => {
             {selectedOrder.clientInfo?.unitNumber && <p className="text-xs text-gray-400">Unit {selectedOrder.clientInfo.unitNumber}</p>}
           </div>
         </div>
-
+ 
         {/* ── SECTION 1: Expenses ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -807,7 +978,7 @@ const ExpenseManager = () => {
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-24">Status</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QuickBooks</th>
                     <th className="text-right px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-20">Total</th>
-                    <th className="px-4 py-2 w-24"></th>
+                    <th className="px-4 py-2 w-28"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -829,7 +1000,7 @@ const ExpenseManager = () => {
                           <QBCell
                             qbId={qbId}
                             onSend={locked && !hasError && !qbId ? () => syncExpenseQB(exp, false) : undefined}
-                            onResync={qbId ? () => syncExpenseQB(exp, true) : undefined}
+                            onResync={locked && qbId ? () => syncExpenseQB(exp, true) : undefined}
                             failedMsg={hasError && !qbId ? (exp.quickbooksError || 'Sync failed') : null}
                             onRetry={hasError && !qbId ? () => syncExpenseQB(exp, false) : undefined}
                             notReadyMsg={!locked ? 'Confirm first' : undefined}
@@ -853,7 +1024,7 @@ const ExpenseManager = () => {
             </>
           )}
         </div>
-
+ 
         {/* ── SECTION 2: Proposals ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -886,7 +1057,6 @@ const ExpenseManager = () => {
                     const pvId       = pv._id?.toString();
                     const isApproved = pv.status === 'approved';
                     const psCfg      = PS_CFG[pv.status] || PS_CFG.draft;
-                    // getQBId: local cache first, then server value, then Order.proposalQbId fallback
                     const qbId       = getQBId(pvId, pv.quickbooksId);
                     return (
                       <tr key={pvId} className="hover:bg-gray-50/50 transition-colors">
@@ -919,7 +1089,7 @@ const ExpenseManager = () => {
             </>
           )}
         </div>
-
+ 
         {/* ── SECTION 3: Purchase Orders ── */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -933,10 +1103,8 @@ const ExpenseManager = () => {
                 return <div className="flex items-center gap-1.5">{confirmed > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">{confirmed} Confirmed</span>}{pending > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">{pending} Pending</span>}</div>;
               })()}
             </div>
-            <button onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}`, '_blank')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors">
-              <FileText className="w-3.5 h-3.5" /> View / Manage POs
-            </button>
+            {/* ✅ FIX: Header button removed — each vendor row has its own View button below */}
+            <span className="text-xs text-gray-400 italic">Open per-vendor ↓</span>
           </div>
           {allPORows.length === 0 ? (
             <div className="px-5 py-8 text-center"><FileText className="w-10 h-10 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">No purchase orders yet</p><p className="text-xs text-gray-300 mt-1">Open PO Manager to create purchase orders per vendor</p></div>
@@ -948,7 +1116,8 @@ const ExpenseManager = () => {
                     <th className="text-left px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">PO #</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-32">Vendor</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-24">Status</th>
-                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">QuickBooks</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QuickBooks</th>
+                    <th className="px-4 py-2 w-10"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -957,6 +1126,8 @@ const ExpenseManager = () => {
                       const poId   = po.poVersionId?.toString();
                       const qbId   = getQBId(poId, po.quickbooksId);
                       const failed = po.qbError;
+                      // ✅ vendorId dari poSummary details
+                      const vendorId = po.vendorId?.toString() || po._id?.toString();
                       return (
                         <tr key={`conf-${i}`} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-4 py-2"><span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{po.poNumber || '—'}</span></td>
@@ -972,9 +1143,20 @@ const ExpenseManager = () => {
                               syncing={syncingIds[poId]}
                             />
                           </td>
+                          {/* ✅ FIX: View button dengan vendorId yang benar */}
+                          <td className="px-4 py-2">
+                            <button
+                              onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}/${vendorId}`, '_blank')}
+                              title="View/Edit PO"
+                              className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
                         </tr>
                       );
                     }
+                    // Pending rows
                     const s    = po.status || 'draft';
                     const sCfg = {
                       draft:     { cls: 'bg-gray-100 text-gray-500 border-gray-200',         label: 'Draft'       },
@@ -982,12 +1164,24 @@ const ExpenseManager = () => {
                       confirmed: { cls: 'bg-emerald-100 text-emerald-700 border-emerald-200',label: 'Confirmed'   },
                       cancelled: { cls: 'bg-red-100 text-red-600 border-red-200',            label: 'Cancelled'   },
                     }[s] || { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: s.charAt(0).toUpperCase() + s.slice(1) };
+                    // ✅ vendor ID untuk pending rows — dari allPOVersions data
+                    const pendingVendorId = po.vendorId?.toString() || po._id?.toString();
                     return (
                       <tr key={`pend-${i}`} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-2"><span className="text-xs font-mono text-gray-400 whitespace-nowrap">{po.poNumber || '—'}</span></td>
                         <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                         <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sCfg.cls} whitespace-nowrap`}>{sCfg.label}</span></td>
                         <td className="px-3 py-2"><QBCell /></td>
+                        {/* ✅ View button untuk pending rows juga */}
+                        <td className="px-4 py-2">
+                          <button
+                            onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}/${pendingVendorId}`, '_blank')}
+                            title="View/Edit PO"
+                            className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}

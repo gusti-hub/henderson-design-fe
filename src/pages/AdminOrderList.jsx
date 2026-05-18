@@ -158,7 +158,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action dropdown menu ─────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDownload, onCOGExcel, onCOGPdf, onPO }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGPdf, onPO }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -234,7 +234,8 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onDown
           <Sep />
           <Group label="Documents" />
           <Item icon={FileText}     label="Proposal Editor"    onClick={onProposal}                          color="text-blue-600" />
-          <Item icon={BookOpen}     label="Install Binder"     onClick={onInstallBinder}                     color="text-green-600" />
+          <Item icon={BookOpen}     label="Install Binder (view)"  onClick={onInstallBinder}          color="text-green-600" />
+          <Item icon={Download}     label="Install Binder (Excel)" onClick={onInstallBinderExcel}     color="text-emerald-600" />
           <Sep />
           <Item icon={Download}     label="View Client Summary Order (Excel)"    onClick={() => onDownload('summary')}         color="text-gray-700" />
           <Item icon={TrendingUp}   label="Status Report"      onClick={() => onDownload('status-report')}   color="text-teal-600" />
@@ -484,17 +485,18 @@ const AdminOrderList = ({ onOrderClick }) => {
                     {order && <StatusChanger order={order} onStatusChange={handleStatusChange} />}
                   </td>
                   <td className="px-5 py-3.5">
-                    <ActionMenu
-                      order={order}
-                      onEdit={() => handleEdit(order)}
-                      onView={() => onOrderClick && onOrderClick(order._id)}
-                      onProposal={() => window.open(`/admin/proposal/${order._id}`, '_blank')}
-                      onInstallBinder={() => window.open(`/admin/install-binder/${order._id}`, '_blank')}
-                      onDownload={(type) => handleDownload(order._id, type)}
-                      onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
-                      onCOGPdf={() => setCogOrderId(order._id)}
-                      onPO={() => { setSelectedPOOrderId(order._id); setSelectedPOClientInfo(order.clientInfo); setShowPOModal(true); }}
-                    />
+                     <ActionMenu
+                       order={order}
+                       onEdit={() => handleEdit(order)}
+                       onView={() => onOrderClick && onOrderClick(order._id)}
+                       onProposal={() => window.open(`/admin/proposal/${order._id}`, '_blank')}
+                       onInstallBinder={() => window.open(`/admin/install-binder/${order._id}`, '_blank')}
+                       onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel')}
+                       onDownload={(type) => handleDownload(order._id, type)}
+                       onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
+                       onCOGPdf={() => setCogOrderId(order._id)}
+                       onPO={() => { setSelectedPOOrderId(order._id); setSelectedPOClientInfo(order.clientInfo); setShowPOModal(true); }}
+                     />
                   </td>
                 </tr>
               ))}

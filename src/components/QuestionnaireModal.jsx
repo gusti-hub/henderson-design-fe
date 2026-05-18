@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, CheckCircle, Heart, AlertCircle, ClipboardCheck, Info, Clock, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, Heart, AlertCircle, ClipboardCheck, Info, Clock, X, LogOut  } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = false }) => {
@@ -919,32 +919,47 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header with Progress */}
         <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] p-6 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white">
-                Alia Home Design & Lifestyle Intake
-                {isAdminMode && (
-                  <span className="ml-2 text-sm font-normal text-white/80">(Admin Mode)</span>
-                )}
-              </h2>
-              {currentStep === 0 ? (
-                <p className="text-white/80 text-sm mt-1">Welcome - Getting Started</p>
-              ) : (
-                <p className="text-white/80 text-sm mt-1">Step {currentStep} of {totalSteps}</p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              Alia Home Design & Lifestyle Intake
+              {isAdminMode && (
+                <span className="ml-2 text-sm font-normal text-white/80">(Admin Mode)</span>
               )}
-            </div>
-            
-            {/* ✅ TARUH DI SINI - setelah closing </div> dari title section */}
-            {isAdminMode && onClose && (
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-xl transition-colors group"
-                title="Close (ESC)"
-              >
-                <X className="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-300" />
-              </button>
+            </h2>
+            {currentStep === 0 ? (
+              <p className="text-white/80 text-sm mt-1">Welcome - Getting Started</p>
+            ) : (
+              <p className="text-white/80 text-sm mt-1">Step {currentStep} of {totalSteps}</p>
             )}
           </div>
+          
+          {/* Tombol close untuk admin */}
+          {isAdminMode && onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-xl transition-colors group"
+              title="Close (ESC)"
+            >
+              <X className="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+          )}
+
+          {/* Tombol logout untuk client — TAMBAHKAN INI */}
+          {!isAdminMode && (
+            <button
+              onClick={() => {
+                localStorage.clear();
+                window.location.href = '/';
+              }}
+              className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all text-sm font-medium border border-white/20"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          )}
+        </div>
           
           {/* Progress bar */}
           <div className="w-full bg-white/20 rounded-full h-2">
