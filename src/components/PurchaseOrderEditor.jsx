@@ -97,6 +97,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [originalTitle] = useState(document.title);
   const [poStatus, setPoStatus] = useState('draft');
   const [savingStatus, setSavingStatus] = useState(false);
+  const [additionalLines, setAdditionalLines] = useState([]);
 
   useEffect(() => {
     loadPOData();
@@ -278,6 +279,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           shipping: data.shipping || 0,
           others: data.others || 0
         });
+        setAdditionalLines(data.additionalLines || []);
       } else {
         alert('Failed to load PO: ' + (result.message || 'Unknown error'));
       }
@@ -328,7 +330,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         {
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ version: poData.version, products, vendorInfo, shipTo, clientInfo, ...headerFields })
+          body: JSON.stringify({ version: poData.version, products, vendorInfo, shipTo, clientInfo, ...headerFields, additionalLines })
         }
       );
       const result = await response.json();
@@ -405,10 +407,16 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   };
 
   const calculateTotals = () => {
-    const subTotal = products.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
-    const shipping = parseFloat(headerFields.shipping) || 0;
-    const others = parseFloat(headerFields.others) || 0;
-    return { subTotal, shipping, others, total: subTotal + shipping + others };
+    const subTotal     = products.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+    const addTotal     = additionalLines.reduce((sum, al) => sum + (parseFloat(al.amount) || 0), 0);
+    const shipping     = parseFloat(headerFields.shipping) || 0;
+    const others       = parseFloat(headerFields.others)   || 0;
+    return {
+      subTotal: subTotal + addTotal,  // ✅ include additional charges
+      shipping,
+      others,
+      total: subTotal + addTotal + shipping + others,
+    };
   };
 
   const doPrint = async () => {
@@ -954,6 +962,93 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   </tr>
                 );
               })}
+
+              {/* ── Additional Lines ── */}
+              {additionalLines.map((al, idx) => (
+                <tr key={`al-${idx}`}>
+                  <td className="img-cell" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                    <span style={{ fontSize: '10px', color: '#888', fontStyle: 'italic' }}>Additional</span>
+                  </td>
+                  <td className="desc-cell">
+                    {/* Type selector — screen only */}
+                    <div className="no-print" style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <select
+                        value={al.lineType}
+                        onChange={e => {
+                          const updated = [...additionalLines];
+                          updated[idx] = { ...updated[idx], lineType: e.target.value };
+                          setAdditionalLines(updated);
+                        }}
+                        style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #ccc', borderRadius: '4px', flex: 1 }}
+                      >
+                        {['Product','FDI','FDI-Vendor','Other','Design Fees',
+                          'Expediting','Hours','Labor','Reimbursable',
+                          'Project Management Fees','Sales'].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      {/* ✅ Remove button di sini */}
+                      <button
+                        onClick={() => setAdditionalLines(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 2px' }}
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    {/* Print: tampilkan type label saja */}
+                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '2px', textAlign: 'left', }}>{al.lineType}</div>
+                    {/* Description input */}
+                    <input
+                      type="text"
+                      value={al.description}
+                      onChange={e => {
+                        const updated = [...additionalLines];
+                        updated[idx] = { ...updated[idx], description: e.target.value };
+                        setAdditionalLines(updated);
+                      }}
+                      placeholder="e.g. Freight and Handling - PO #..."
+                      style={{ fontSize: '11px', width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '2px 4px', textAlign: 'left', }}
+                      className="po-input"
+                    />
+                  </td>
+                  <td className="price-cell">
+                    <input
+                      type="number"
+                      value={al.amount}
+                      onChange={e => {
+                        const updated = [...additionalLines];
+                        updated[idx] = { ...updated[idx], amount: parseFloat(e.target.value) || 0 };
+                        setAdditionalLines(updated);
+                      }}
+                      step="0.01"
+                      style={{ textAlign: 'right', width: '90px', fontSize: '11px', border: '1px solid #eee', borderRadius: '4px', padding: '2px 4px' }}
+                      className="po-input"
+                    />
+                  </td>
+                  <td className="price-cell" style={{ fontWeight: '500' }}>
+                    ${(parseFloat(al.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              ))}
+
+              {/* Add Additional Line button */}
+              <tr className="no-print add-product-btn">
+                <td colSpan={4} style={{ padding: '8px 10px', textAlign: 'left' }}>
+                  <button
+                    onClick={() => setAdditionalLines(prev => [...prev, { 
+                      description: '', lineType: 'FDI', amount: 0 
+                    }])}
+                    style={{ 
+                      fontSize: '11px', color: '#005670', border: '1px dashed #005670',
+                      borderRadius: '4px', padding: '4px 10px', cursor: 'pointer',
+                      background: 'transparent', display: 'flex', alignItems: 'center', gap: '4px'
+                    }}
+                  >
+                    + Add Line (FDI / Freight / Tax)
+                  </button>
+                </td>
+              </tr>
 
 
 
