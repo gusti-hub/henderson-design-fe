@@ -790,46 +790,9 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     reordered.splice(targetIndex, 0, moved);
 
     setSavedProducts(reordered);
+    setExpandedProduct(null); // ✅ FIX 1: tutup semua panel saat reorder
     handleDragEnd();
-
-    // Persist reorder to backend
-    try {
-      const token = localStorage.getItem('token');
-      const payload = reordered.map(p => ({
-        ...(p._id && !p._id.toString().startsWith('temp_') && { _id: p._id }),
-        product_id:      p.product_id,
-        name:            p.name,
-        category:        p.category    || '',
-        package:         p.package     || '',
-        spotName:        p.spotName    || 'Custom Item',
-        quantity:        p.quantity    || 1,
-        unitPrice:       parseFloat(p.unitPrice)  || 0,
-        finalPrice:      parseFloat(p.finalPrice) || 0,
-        vendor:          p.vendor      || null,
-        sourceType:      p.sourceType  || 'manual',
-        isEditable:      p.isEditable !== false,
-        libraryProductId: p.libraryProductId || null,
-        selectedOptions: p.selectedOptions || {},
-        placement:       p.placement   || null,
-      }));
-
-      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
-      });
-
-      if (!res.ok) throw new Error('Failed to save order');
-      const savedOrder = await res.json();
-      const normalized = (savedOrder.selectedProducts || reordered).map(p => ({
-        ...p, isEditable: p.isEditable !== false,
-      }));
-      setSavedProducts(normalized);
-      if (onSave) onSave(normalized);
-      addToast('Order updated', 'success');
-    } catch (err) {
-      addToast('Failed to save new order', 'error');
-    }
+    // ...
   }, [savedProducts, order._id, onSave, handleDragEnd]);
 
   const previewUrl = getFloorPlanPreviewUrl();
@@ -1051,7 +1014,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
 
                 {items.map(({ product, originalIndex }) => (
                   <ProductCard
-                    key={`product-${product._id || originalIndex}`}
+                    key={`${product._id}-${originalIndex}`}
                     product={product}
                     index={originalIndex}
                     order={liveOrder}
@@ -1320,21 +1283,21 @@ const RoomServiceField = ({ value, onChange, disabled, inputCls, onServiceSelect
       {/* Dropdown — onMouseDown preventDefault on every item so input never loses focus */}
       {open && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-          {isCustom && (
-            <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
-              <span className="text-xs text-blue-700 font-medium">
-                Custom: <span className="font-semibold">"{localQuery}"</span>
-              </span>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { prevValueRef.current = localQuery; onChange(localQuery); setOpen(false); }}
-                className="text-xs text-blue-600 font-semibold hover:text-blue-800 px-2 py-0.5 bg-blue-100 rounded-md"
-              >
-                Use this ↵
-              </button>
-            </div>
-          )}
+        {isCustom && (
+          <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+            <span className="text-xs text-blue-700 font-medium">
+              Custom: <span className="font-semibold">"{localQuery}"</span>
+            </span>
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onChange(localQuery); setOpen(false); }} // ✅ FIX 2: hapus prevValueRef
+              className="text-xs text-blue-600 font-semibold hover:text-blue-800 px-2 py-0.5 bg-blue-100 rounded-md"
+            >
+              Use this ↵
+            </button>
+          </div>
+        )}
           <div className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <div className="px-4 py-3 text-sm text-gray-400 text-center">
@@ -1556,10 +1519,10 @@ const ProductCard = ({
       tags:              Array.isArray(o.tags) ? o.tags.join(', ') : (o.tags || ''),
       itemClass:         o.itemClass               || '',
       installerNotes:    o.installerNotes          || '',
-      leadTime:          o.leadTime                || '',  // ✅ PATCH 10
+      leadTime:          o.leadTime                || '',
     });
     setCustomAttrs(o.customAttributes || {});
-  }, [product._id]);
+  }, [product._id, index]);
 
   const setLocal = (field, value) => {
     setLocalFields(prev => ({ ...prev, [field]: value }));
