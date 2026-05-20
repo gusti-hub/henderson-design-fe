@@ -65,9 +65,9 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   const computedFromDiscount = msrp > 0 ? msrp - (msrp * discountPct / 100) : 0;
   const netCost = noNetPurchase
     ? 0
-    : (opts.netCostOverride !== undefined && opts.netCostOverride !== null
+    : (opts.netCostOverride !== null && opts.netCostOverride !== undefined
         ? num(opts.netCostOverride)
-        : computedFromDiscount);
+        : 0);
 
   const shippingCost      = num(opts.shippingCost);
   const otherCost         = num(opts.otherCost);
@@ -318,7 +318,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
                   disabled={disabled}
                   className="text-[10px] text-gray-400 hover:text-gray-600 underline"
                 >
-                  Reset to discount
+                  Clear (set to 0)
                 </button>
               </div>
             )}

@@ -1057,7 +1057,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <span className="text-[#005670] font-medium">{savedProducts.filter(p => p.sourceType === 'manual').length} Manual</span>
             </div>
             <div className="text-lg font-bold text-[#005670]">
-              Total Selling Price: ${savedProducts.reduce((sum, p) => sum + (p.finalPrice || 0), 0).toFixed(2)}
+              Total Cost and Total Sell Amounts: ${savedProducts.reduce((sum, p) => sum + (p.finalPrice || 0), 0).toFixed(2)}
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Loader2 } from 'lucide-react';
+import { X, Save, FileText, Clock, Printer, ChevronLeft, Plus, Loader2, PlusCircle, Eye, EyeOff } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
@@ -17,9 +17,7 @@ const PrintSafeImage = ({ src, alt, style, fallback }) => {
         if (!res.ok) throw new Error('fetch failed');
         const blob = await res.blob();
         const reader = new FileReader();
-        reader.onloadend = () => {
-          if (!cancelled) setDataUrl(reader.result);
-        };
+        reader.onloadend = () => { if (!cancelled) setDataUrl(reader.result); };
         reader.readAsDataURL(blob);
       } catch {
         const img = new Image();
@@ -32,9 +30,7 @@ const PrintSafeImage = ({ src, alt, style, fallback }) => {
             canvas.height = img.naturalHeight;
             canvas.getContext('2d').drawImage(img, 0, 0);
             setDataUrl(canvas.toDataURL());
-          } catch {
-            setFailed(true);
-          }
+          } catch { setFailed(true); }
         };
         img.onerror = () => { if (!cancelled) setFailed(true); };
         img.src = src;
@@ -57,17 +53,111 @@ const PrintSafeImage = ({ src, alt, style, fallback }) => {
   );
 };
 
+// ─── Excluded Products Panel ──────────────────────────────────────────────────
+// Shows products from previous PO that are NOT in current version.
+// User can add them back individually.
+const ExcludedProductsPanel = ({ excludedProducts, onAdd, onClose }) => {
+  if (!excludedProducts || excludedProducts.length === 0) return null;
+
+  const withPO    = excludedProducts.filter(p => p._prevPoNumber);
+  const withoutPO = excludedProducts.filter(p => !p._prevPoNumber);
+
+  const renderItem = (product, idx) => {
+    const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
+                   product.selectedOptions?.image ||
+                   product.selectedOptions?.images?.[0] ||
+                   product.imageUrl || null;
+    const netCost = (product.selectedOptions?.netCostOverride != null && product.selectedOptions?.netCostOverride !== '')
+      ? parseFloat(product.selectedOptions.netCostOverride)
+      : parseFloat(product.selectedOptions?.msrp || product.unitPrice || 0);
+
+    return (
+      <div key={idx} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors">
+        <div className="w-10 h-10 flex-shrink-0 rounded bg-gray-100 overflow-hidden">
+          {imgSrc
+            ? <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+            : <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">—</div>
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-800 truncate">{product.name || 'Untitled'}</p>
+          <p className="text-xs text-gray-400">
+            Qty {product.quantity || 1} · ${netCost.toFixed(2)}
+          </p>
+          {product._prevPoNumber && (
+            <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-mono font-semibold leading-none">
+              PO# {product._prevPoNumber}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => onAdd(product)}
+          className="flex-shrink-0 p-1.5 bg-[#005670]/10 text-[#005670] rounded-lg hover:bg-[#005670] hover:text-white transition-colors"
+          title="Add to this PO"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="fixed right-0 top-0 bottom-0 w-80 bg-white shadow-2xl z-[60] flex flex-col border-l border-gray-200 no-print">
+      <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+        <div>
+          <h3 className="font-bold text-base">Products Not in This PO</h3>
+          <p className="text-xs text-white/70 mt-0.5">
+            {excludedProducts.length} item{excludedProducts.length !== 1 ? 's' : ''} — add back if needed
+          </p>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* Previously ordered — show PO# badge */}
+        {withPO.length > 0 && (
+          <>
+            <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Previously Ordered</span>
+              <span className="text-[10px] text-amber-500">({withPO.length})</span>
+            </div>
+            {withPO.map((p, i) => renderItem(p, 'po-' + i))}
+          </>
+        )}
+
+        {/* New products — never been in a PO */}
+        {withoutPO.length > 0 && (
+          <>
+            <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">New Products</span>
+              <span className="text-[10px] text-blue-500">({withoutPO.length})</span>
+            </div>
+            {withoutPO.map((p, i) => renderItem(p, 'new-' + i))}
+          </>
+        )}
+      </div>
+
+      <div className="px-4 py-3 border-t border-gray-200 flex-shrink-0">
+        <p className="text-xs text-gray-400 text-center">
+          Items with <span className="text-amber-600 font-semibold">PO#</span> badge were in a previous order.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [poData, setPOData] = useState(null);
   const [products, setProducts] = useState([]);
+  const [excludedProducts, setExcludedProducts] = useState([]);
+  const [showExcludedPanel, setShowExcludedPanel] = useState(false);
   const [vendorInfo, setVendorInfo] = useState({
-    name: '',
-    vendorCode: '',
-    representativeName: '',
-    website: '',
+    name: '', vendorCode: '', representativeName: '', website: '',
     address: { street: '', city: '', state: '', zip: '', country: '' },
     contactInfo: { phone: '', email: '', fax: '' },
     accountNumber: ''
@@ -77,21 +167,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   });
   const [clientInfo, setClientInfo] = useState({});
   const [headerFields, setHeaderFields] = useState({
-    poNumber: '',
-    orderDate: '',
-    accountNumber: '',
-    repName: '',
-    repPhone: '',
-    repEmail: '',
-    terms: '',
-    estimateNumber: '',
-    comments: '',
-    notes: '',
-    shipping: 0,
-    others: 0
+    poNumber: '', orderDate: '', accountNumber: '', repName: '',
+    repPhone: '', repEmail: '', terms: '', estimateNumber: '',
+    comments: '', notes: '', shipping: 0, others: 0
   });
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionNotes, setVersionNotes] = useState('');
+  const [showNewVersionModal, setShowNewVersionModal] = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [originalTitle] = useState(document.title);
@@ -99,9 +181,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [savingStatus, setSavingStatus] = useState(false);
   const [additionalLines, setAdditionalLines] = useState([]);
 
-  useEffect(() => {
-    loadPOData();
-  }, [orderId, vendorId, version]);
+  useEffect(() => { loadPOData(); }, [orderId, vendorId, version]);
 
   useEffect(() => {
     if (poData && vendorInfo.name) {
@@ -140,7 +220,15 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         setPOData(data);
         setPoStatus(data.status || 'draft');
 
-        // ── Step 1: Enrich existing PO products from order ──
+        // ── Excluded products from backend (products in order but not in this PO) ──
+        const excluded = data.availableToAdd || data.excludedProducts || [];
+        setExcludedProducts(excluded);
+        // Auto-open the panel if there are excluded items and this looks like a new version
+        if (excluded.length > 0 && (data.version || 1) > 1) {
+          setShowExcludedPanel(true);
+        }
+
+        // ── Enrich existing PO products from order ──
         const enrichedProducts = (data.products || []).map(poProduct => {
           const orderProduct = orderProductMap[poProduct.product_id] ||
                                orderProductMap[poProduct._id?.toString()];
@@ -172,55 +260,10 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           };
         });
 
-        // ── Step 2: Add new order products for this vendor not yet in PO ──
-        const poProductIds = new Set((data.products || []).map(p => p.product_id));
-        const vendorIdNorm = vendorId?.toString();
-
-        const newProducts = (orderData.selectedProducts || [])
-          .filter(p => {
-            const pVendorId = p.vendor?._id?.toString() || p.vendor?.toString();
-            return pVendorId === vendorIdNorm && !poProductIds.has(p.product_id);
-          })
-          .map(p => {
-            const opts = p.selectedOptions || {};
-            const netCost = (opts.netCostOverride != null && opts.netCostOverride !== '')
-              ? parseFloat(opts.netCostOverride) : parseFloat(opts.msrp || 0);
-            const qty = p.quantity || 1;
-            const specs = [];
-            if (opts.vendorDescription) specs.push(opts.vendorDescription);
-            else if (opts.specifications) specs.push(opts.specifications);
-            if (opts.finish) specs.push(`Finish: ${opts.finish}`);
-            if (opts.fabric) specs.push(`Fabric: ${opts.fabric}`);
-            if (opts.size) specs.push(`Size: ${opts.size}`);
-            return {
-              product_id: p.product_id || '',
-              name: p.name || '',
-              category: p.category || '',
-              spotName: p.spotName || '',
-              quantity: qty,
-              unitPrice: netCost,
-              totalPrice: netCost * qty,
-              description: specs.join('\n') || '',
-              selectedOptions: {
-                finish: opts.finish || '', fabric: opts.fabric || '', size: opts.size || '',
-                specifications: opts.specifications || '', vendorDescription: opts.vendorDescription || '',
-                image: opts.image || '', images: opts.images || [],
-                uploadedImages: (opts.uploadedImages || []).map(img => ({
-                  filename: img.filename || '', contentType: img.contentType || '',
-                  url: img.url || '', key: img.key || '',
-                  size: img.size || 0, uploadedAt: img.uploadedAt || new Date(),
-                })),
-                notes: opts.notes || '', poNumber: opts.poNumber || '',
-                sidemark: opts.sidemark || '', units: opts.units || 'Each',
-                msrp: parseFloat(opts.msrp) || 0, netCostOverride: opts.netCostOverride ?? null,
-                shipToName: opts.shipToName || '', shippingStreet: opts.shippingStreet || '',
-                shippingCity: opts.shippingCity || '', shippingState: opts.shippingState || '',
-                shippingPostalCode: opts.shippingPostalCode || '', shipToPhone: opts.shipToPhone || '',
-              }
-            };
-          });
-
-        setProducts([...enrichedProducts, ...newProducts]);
+        // ── Trust backend completely — only show what's in data.products ──
+        // New products from order that aren't in this PO version are in `availableToAdd`
+        // (shown in the excluded panel). Frontend must NOT self-append from orderData.
+        setProducts(enrichedProducts);
 
         setVendorInfo({
           name: data.vendorInfo?.name || '',
@@ -253,11 +296,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           if (orderProductWithShipping) {
             const opts = orderProductWithShipping.selectedOptions;
             setShipTo({
-              name:      opts.shipToName || '',
-              address:   opts.shippingStreet || '',
-              city:      [opts.shippingCity, opts.shippingState, opts.shippingPostalCode].filter(Boolean).join(', '),
+              name: opts.shipToName || '',
+              address: opts.shippingStreet || '',
+              city: [opts.shippingCity, opts.shippingState, opts.shippingPostalCode].filter(Boolean).join(', '),
               attention: '',
-              phone:     opts.shipToPhone || ''
+              phone: opts.shipToPhone || ''
             });
           }
         }
@@ -291,11 +334,15 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     }
   };
 
+  // ── Add a product from the excluded panel back into this PO ──────────────
+  const handleAddExcludedProduct = (product) => {
+    setProducts(prev => [...prev, product]);
+    setExcludedProducts(prev => prev.filter(p => p.product_id !== product.product_id));
+    if (excludedProducts.length <= 1) setShowExcludedPanel(false);
+  };
+
   const handleStatusChange = async (newStatus) => {
-    if (poStatus === 'confirmed') {
-      alert('Confirmed PO cannot be changed');
-      return;
-    }
+    if (poStatus === 'confirmed') { alert('Confirmed PO cannot be changed'); return; }
     setSavingStatus(true);
     try {
       const token = localStorage.getItem('token');
@@ -330,7 +377,10 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         {
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ version: poData.version, products, vendorInfo, shipTo, clientInfo, ...headerFields, additionalLines })
+          body: JSON.stringify({
+            version: poData.version, products, vendorInfo, shipTo,
+            clientInfo, ...headerFields, additionalLines
+          })
         }
       );
       const result = await response.json();
@@ -348,8 +398,9 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     }
   };
 
-  const handleSaveAsNewVersion = async () => {
-    if (!versionNotes.trim()) { alert('Please add notes for this new version'); return; }
+  const handleSaveAsNewVersion = async (notesText) => {
+    const notes = notesText || versionNotes;
+    if (!notes?.trim()) { alert('Please add notes for this new version'); return; }
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
@@ -358,15 +409,27 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ products, vendorInfo, shipTo, clientInfo, versionNotes, ...headerFields })
+          body: JSON.stringify({
+            versionNotes: notes,
+            products: null,
+            vendorInfo,
+            shipTo,
+            clientInfo,
+            // Spread headerFields but explicitly exclude poNumber —
+            // backend always generates a fresh PO number for each new version
+            ...{ ...headerFields, poNumber: undefined },
+          })
         }
       );
       const result = await response.json();
       if (result.success) {
-        alert(`✅ PO Version ${result.data.version} created successfully`);
+        const newVer = result.data.version;
+        setShowNewVersionModal(false);
         setShowVersionModal(false);
         setVersionNotes('');
-        window.location.href = `/admin/purchase-order/${orderId}/${vendorId}/${result.data.version}`;
+        window.location.href = `/admin/purchase-order/${orderId}/${vendorId}/${newVer}`;
+      } else {
+        alert('Failed to create version: ' + (result.message || ''));
       }
     } catch (error) {
       console.error('Error creating PO version:', error);
@@ -394,7 +457,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
   const removeProduct = (index) => {
     if (window.confirm('Remove this product from the PO?')) {
+      const removed = products[index];
       setProducts(products.filter((_, i) => i !== index));
+      // Move back to excluded panel
+      if (removed.product_id) {
+        setExcludedProducts(prev => [...prev, removed]);
+        setShowExcludedPanel(true);
+      }
     }
   };
 
@@ -407,12 +476,12 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   };
 
   const calculateTotals = () => {
-    const subTotal     = products.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
-    const addTotal     = additionalLines.reduce((sum, al) => sum + (parseFloat(al.amount) || 0), 0);
-    const shipping     = parseFloat(headerFields.shipping) || 0;
-    const others       = parseFloat(headerFields.others)   || 0;
+    const subTotal   = products.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+    const addTotal   = additionalLines.reduce((sum, al) => sum + (parseFloat(al.amount) || 0), 0);
+    const shipping   = parseFloat(headerFields.shipping) || 0;
+    const others     = parseFloat(headerFields.others) || 0;
     return {
-      subTotal: subTotal + addTotal,  // ✅ include additional charges
+      subTotal: subTotal + addTotal,
       shipping,
       others,
       total: subTotal + addTotal + shipping + others,
@@ -478,21 +547,14 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           table { page-break-inside: auto; }
           tr { page-break-inside: avoid; page-break-after: auto; }
           input, select {
-            border: none !important;
-            background: transparent !important;
-            outline: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
+            border: none !important; background: transparent !important;
+            outline: none !important; box-shadow: none !important; padding: 0 !important;
           }
           textarea {
-            border: none !important;
-            background: transparent !important;
-            outline: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            resize: none !important;
-            overflow: visible !important;
-            height: auto !important;
+            border: none !important; background: transparent !important;
+            outline: none !important; box-shadow: none !important;
+            padding: 0 !important; resize: none !important;
+            overflow: visible !important; height: auto !important;
           }
           .po-table { border: 1px solid #999 !important; }
           .po-table th { background: #666 !important; color: white !important; border: none !important; }
@@ -509,225 +571,173 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           .unit-cost-raw { display: none !important; }
           .unit-cost-display { display: block !important; text-align: right; font-size: 11px; }
           .sidemark-row { margin-top: 4px; font-size: 10px; }
-          .po-table .desc-cell textarea, .qty-input {
-            border: none !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            resize: none !important;
-            overflow: visible !important;
-            height: auto !important;
-          }
-          .desc-row { border-bottom: none !important; }
         }
         @page { size: letter; margin: 0.5in; }
 
         .po-page {
-          background: white;
-          width: 8.5in;
-          min-height: 11in;
-          padding: 0.5in;
-          margin: 0 auto 20px;
-          box-shadow: 0 0 10px rgba(0,0,0,0.1);
-          position: relative;
+          background: white; width: 8.5in; min-height: 11in;
+          padding: 0.5in; margin: 0 auto 20px;
+          box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative;
         }
-        .po-field-label {
-          font-weight: bold;
-          font-size: 11px;
-          color: #333;
-          white-space: nowrap;
-        }
+        .po-field-label { font-weight: bold; font-size: 11px; color: #333; white-space: nowrap; }
         .po-input {
-          border: none;
-          border-bottom: 1px solid transparent;
-          border-radius: 0;
-          padding: 0 2px;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.4;
-          height: auto;
-          width: 100%;
-          background: transparent;
-          outline: none;
-          display: block;
-          transition: border-color 0.15s;
+          border: none; border-bottom: 1px solid transparent; border-radius: 0;
+          padding: 0 2px; margin: 0; font-size: 11px; line-height: 1.4;
+          height: auto; width: 100%; background: transparent; outline: none;
+          display: block; transition: border-color 0.15s;
         }
         .po-input:focus { border-bottom-color: #005670; }
         .po-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 11px;
-          border: 1px solid #999;
-          table-layout: fixed;
+          width: 100%; border-collapse: collapse; font-size: 11px;
+          border: 1px solid #999; table-layout: fixed;
         }
         .po-table th {
-          background: #666;
-          color: white;
-          padding: 6px 10px;
-          text-align: left;
-          font-weight: 600;
-          font-size: 10px;
-          border: none;
+          background: #666; color: white; padding: 6px 10px;
+          text-align: left; font-weight: 600; font-size: 10px; border: none;
         }
         .po-table th.th-cost { text-align: right; }
         .po-table td {
-          border: none;
-          padding: 10px 10px;
-          vertical-align: top;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          max-width: 0;
+          border: none; padding: 10px 10px; vertical-align: top;
+          word-wrap: break-word; overflow-wrap: break-word; max-width: 0;
         }
         .po-table tbody tr + tr td { border-top: 1px solid #f0f0f0; }
         .po-table .img-cell {
-          width: 120px;
-          min-width: 120px;
-          text-align: center;
-          vertical-align: middle;
-          padding: 8px;
+          width: 120px; min-width: 120px; text-align: center;
+          vertical-align: middle; padding: 8px;
         }
         .po-table .img-cell img {
-          max-width: 110px;
-          max-height: 110px;
-          object-fit: contain;
-          display: block;
-          margin: 0 auto;
+          max-width: 110px; max-height: 110px;
+          object-fit: contain; display: block; margin: 0 auto;
         }
         .img-placeholder {
-          width: 110px;
-          height: 110px;
-          background: #f5f5f5;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 8px;
-          color: #999;
-          border: 1px solid #eee;
-          margin: 0 auto;
+          width: 110px; height: 110px; background: #f5f5f5;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 8px; color: #999; border: 1px solid #eee; margin: 0 auto;
         }
         .po-table .price-cell {
-          text-align: right;
-          white-space: normal;
-          vertical-align: top;
-          width: 90px;
-          font-size: 11px;
+          text-align: right; white-space: normal; vertical-align: top;
+          width: 90px; font-size: 11px;
         }
         .po-totals-row td {
-          border: none !important;
-          padding: 2px 10px;
-          text-align: right;
-          font-size: 11px;
+          border: none !important; padding: 2px 10px;
+          text-align: right; font-size: 11px;
         }
         .po-totals-row.total-final td {
           border-top: 2px solid #333 !important;
-          font-weight: bold;
-          font-size: 12px;
+          font-weight: bold; font-size: 12px;
         }
-
-        /* Desc cell rows */
         .desc-row {
-          display: block;
-          padding: 3px 0;
-          font-size: 11px;
-          border-bottom: 1px dotted #eee;
-          text-align: left;
+          display: block; padding: 3px 0; font-size: 11px;
+          border-bottom: 1px dotted #eee; text-align: left;
         }
         .desc-row:last-child { border-bottom: none; }
         .desc-row-label {
-          font-weight: 700;
-          color: #444;
-          font-size: 10px;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-          margin-right: 4px;
+          font-weight: 700; color: #444; font-size: 10px;
+          text-transform: uppercase; letter-spacing: 0.3px; margin-right: 4px;
         }
-        .desc-row-label::after {
-          content: ':';
-        }
-        .desc-row-value {
-          text-align: left;
-          color: #222;
-          font-size: 11px;
-          word-break: break-word;
-        }
-        .desc-block-label {
-          display: none;
-        }
-        .desc-block-value {
-          display: none;
-        }
+        .desc-row-label::after { content: ':'; }
+        .desc-row-value { text-align: left; color: #222; font-size: 11px; word-break: break-word; }
         .sidemark-strip {
-          display: block;
-          margin-top: 5px;
-          padding-top: 5px;
-          border-top: 1px dashed #ccc;
-          font-size: 10px;
-          text-align: left;
+          display: block; margin-top: 5px; padding-top: 5px;
+          border-top: 1px dashed #ccc; font-size: 10px; text-align: left;
         }
       `}</style>
 
       {/* ====== TOOLBAR ====== */}
-    <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-      <div className="flex items-center gap-4">
-        <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
-          <ChevronLeft className="w-5 h-5" />
-          Back to Orders
-        </button>
-        <div className="h-6 w-px bg-gray-300" />
-        <span className="text-sm font-medium text-gray-700">
-          Purchase Order — {vendorInfo.name || 'Vendor'} — Version {poData?.version || 1}
-        </span>
-
-        {/* ✅ Status dropdown */}
-        {poStatus === 'confirmed' ? (
-          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-            ✓ Confirmed
+      <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4">
+          <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
+            <ChevronLeft className="w-5 h-5" />
+            Back to Orders
+          </button>
+          <div className="h-6 w-px bg-gray-300" />
+          <span className="text-sm font-medium text-gray-700">
+            PO — {vendorInfo.name || 'Vendor'} — <span className="text-[#005670] font-semibold">v{poData?.version || 1}</span>
           </span>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <select
-              value={poStatus}
-              onChange={e => handleStatusChange(e.target.value)}
-              disabled={savingStatus}
-              className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${
-                poStatus === 'draft'     ? 'bg-yellow-100 text-yellow-700' :
-                poStatus === 'sent'      ? 'bg-blue-100 text-blue-700' :
-                poStatus === 'cancelled' ? 'bg-red-100 text-red-600' :
-                'bg-gray-100 text-gray-600'
-              } ${savingStatus ? 'opacity-50' : ''}`}
+
+          {poStatus === 'confirmed' ? (
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">✓ Confirmed</span>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <select
+                value={poStatus}
+                onChange={e => handleStatusChange(e.target.value)}
+                disabled={savingStatus}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${
+                  poStatus === 'draft'     ? 'bg-yellow-100 text-yellow-700' :
+                  poStatus === 'sent'      ? 'bg-blue-100 text-blue-700' :
+                  poStatus === 'cancelled' ? 'bg-red-100 text-red-600' :
+                  'bg-gray-100 text-gray-600'
+                } ${savingStatus ? 'opacity-50' : ''}`}
+              >
+                <option value="draft">Draft</option>
+                <option value="sent">Sent to Vendor</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Excluded products toggle */}
+          {excludedProducts.length > 0 && (
+            <button
+              onClick={() => setShowExcludedPanel(p => !p)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                showExcludedPanel
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+              }`}
             >
-              <option value="draft">Draft</option>
-              <option value="sent">Sent to Vendor</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
-          </div>
-        )}
+              <EyeOff className="w-4 h-4" />
+              {excludedProducts.length} Not Included
+            </button>
+          )}
+          <button
+            onClick={() => setShowVersionModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"
+          >
+            <Clock className="w-4 h-4" />
+            Versions
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            onClick={() => setShowNewVersionModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
+          >
+            <PlusCircle className="w-4 h-4" />
+            New Version
+          </button>
+          <button
+            onClick={() => setShowPrintInstructions(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"
+          >
+            <Printer className="w-4 h-4" />
+            Print / Save PDF
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
-          <Clock className="w-4 h-4" />
-          Versions
-        </button>
-        <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-          <Save className="w-4 h-4" />
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-        <button onClick={() => { setVersionNotes(''); setShowVersionModal('new'); }} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
-          <FileText className="w-4 h-4" />
-          Save as New Version
-        </button>
-        <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
-          <Printer className="w-4 h-4" />
-          Print / Save PDF
-        </button>
-      </div>
-    </div>
+      {/* ====== EXCLUDED PRODUCTS PANEL ====== */}
+      {showExcludedPanel && excludedProducts.length > 0 && (
+        <ExcludedProductsPanel
+          excludedProducts={excludedProducts}
+          onAdd={handleAddExcludedProduct}
+          onClose={() => setShowExcludedPanel(false)}
+        />
+      )}
 
       {/* ====== PRINTABLE PO CONTENT ====== */}
-      <div className="print-container bg-gray-100 min-h-screen py-8">
+      <div className={`print-container bg-gray-100 min-h-screen py-8 transition-all ${showExcludedPanel ? 'mr-80' : ''}`}>
         <div className="po-page">
 
           {/* ---- TOP: Company Address + Logo ---- */}
@@ -742,8 +752,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 src="/images/HDG-Logo.png"
                 alt="Henderson Design Group"
                 style={{
-                  height: '40px',
-                  width: 'auto',
+                  height: '40px', width: 'auto',
                   filter: 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)'
                 }}
               />
@@ -827,20 +836,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             </thead>
             <tbody>
               {products.map((product, index) => {
-                // ── DEBUG: log full product structure to console ──
-                console.log(`[PO Product #${index}]`, {
-                  product_id:      product.product_id,
-                  name:            product.name,
-                  category:        product.category,
-                  spotName:        product.spotName,
-                  quantity:        product.quantity,
-                  unitPrice:       product.unitPrice,
-                  totalPrice:      product.totalPrice,
-                  description:     product.description,
-                  imageUrl:        product.imageUrl,
-                  selectedOptions: product.selectedOptions,
-                });
-
                 const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
                                product.selectedOptions?.image ||
                                product.selectedOptions?.images?.[0] ||
@@ -851,7 +846,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 const netTotal = netCost * (product.quantity || 1);
                 const sidemark = product.selectedOptions?.sidemark || '';
                 const specs = product.selectedOptions?.vendorDescription || product.selectedOptions?.specifications || '';
-                const dimension = product.selectedOptions?.dimension || '';
 
                 return (
                   <tr key={index}>
@@ -867,85 +861,71 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       ) : (
                         <div className="img-placeholder">No Image</div>
                       )}
+                      {/* Remove button — screen only */}
+                      <button
+                        className="remove-btn no-print mt-1 text-xs text-red-400 hover:text-red-600 w-full text-center"
+                        onClick={() => removeProduct(index)}
+                      >
+                        Remove
+                      </button>
                     </td>
 
-                    {/* Description cell — non-editable, label kiri nilai kanan */}
+                    {/* Description cell */}
                     <td className="desc-cell">
-
-                      {/* 1. Quantity */}
                       <div className="desc-row">
                         <span className="desc-row-label">Quantity</span>
                         <span className="desc-row-value">
                           {product.quantity || 1} {product.selectedOptions?.units || 'Each'}
                         </span>
                       </div>
-
-                      {/* 2. Spec Name (vendorDescription atau name) */}
                       {specs ? (
                         <div className="desc-row">
-                          <span className="desc-row-label" style={{ paddingTop: '1px' }}>Specs</span>
+                          <span className="desc-row-label">Specs</span>
                           <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{specs}</span>
                         </div>
                       ) : null}
-
-                      {/* 3. Name */}
                       {product.name ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Name</span>
                           <span className="desc-row-value">{product.name}</span>
                         </div>
                       ) : null}
-
-                      {/* 3. SKU */}
                       {product.product_id ? (
                         <div className="desc-row">
                           <span className="desc-row-label">SKU</span>
                           <span className="desc-row-value">{product.product_id}</span>
                         </div>
                       ) : null}
-
-                      {/* 4. Dimensions */}
                       {(product.selectedOptions?.dimension || product.selectedOptions?.size) ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Dimensions</span>
-                          <span className="desc-row-value">
-                            {product.selectedOptions?.dimension || product.selectedOptions?.size}
-                          </span>
+                          <span className="desc-row-value">{product.selectedOptions?.dimension || product.selectedOptions?.size}</span>
                         </div>
                       ) : null}
-
-                      {/* 5. Material (fabric) */}
                       {product.selectedOptions?.fabric ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Material</span>
                           <span className="desc-row-value">{product.selectedOptions.fabric}</span>
                         </div>
                       ) : null}
-
-                      {/* 6. Color (finish) */}
                       {product.selectedOptions?.finish ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Color</span>
                           <span className="desc-row-value">{product.selectedOptions.finish}</span>
                         </div>
                       ) : null}
-
-                      {/* 7. Lead Time */}
                       {product.selectedOptions?.leadTime ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Lead Time</span>
                           <span className="desc-row-value">{product.selectedOptions.leadTime}</span>
                         </div>
                       ) : null}
-
-                      {/* 9. Sidemark */}
                       {sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>
                           <span style={{ color: '#333', wordBreak: 'break-word' }}>{sidemark}</span>
                         </div>
                       ) : null}
-
                     </td>
 
                     {/* Unit Cost */}
@@ -970,7 +950,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                     <span style={{ fontSize: '10px', color: '#888', fontStyle: 'italic' }}>Additional</span>
                   </td>
                   <td className="desc-cell">
-                    {/* Type selector — screen only */}
                     <div className="no-print" style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <select
                         value={al.lineType}
@@ -987,18 +966,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           <option key={t} value={t}>{t}</option>
                         ))}
                       </select>
-                      {/* ✅ Remove button di sini */}
                       <button
                         onClick={() => setAdditionalLines(prev => prev.filter((_, i) => i !== idx))}
                         style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 2px' }}
                         title="Remove"
-                      >
-                        ×
-                      </button>
+                      >×</button>
                     </div>
-                    {/* Print: tampilkan type label saja */}
-                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '2px', textAlign: 'left', }}>{al.lineType}</div>
-                    {/* Description input */}
+                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '2px', textAlign: 'left' }}>{al.lineType}</div>
                     <input
                       type="text"
                       value={al.description}
@@ -1008,7 +982,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         setAdditionalLines(updated);
                       }}
                       placeholder="e.g. Freight and Handling - PO #..."
-                      style={{ fontSize: '11px', width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '2px 4px', textAlign: 'left', }}
+                      style={{ fontSize: '11px', width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '2px 4px', textAlign: 'left' }}
                       className="po-input"
                     />
                   </td>
@@ -1036,10 +1010,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               <tr className="no-print add-product-btn">
                 <td colSpan={4} style={{ padding: '8px 10px', textAlign: 'left' }}>
                   <button
-                    onClick={() => setAdditionalLines(prev => [...prev, { 
-                      description: '', lineType: 'FDI', amount: 0 
-                    }])}
-                    style={{ 
+                    onClick={() => setAdditionalLines(prev => [...prev, { description: '', lineType: 'FDI', amount: 0 }])}
+                    style={{
                       fontSize: '11px', color: '#005670', border: '1px dashed #005670',
                       borderRadius: '4px', padding: '4px 10px', cursor: 'pointer',
                       background: 'transparent', display: 'flex', alignItems: 'center', gap: '4px'
@@ -1049,8 +1021,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   </button>
                 </td>
               </tr>
-
-
 
               {/* Totals */}
               <tr className="po-totals-row">
@@ -1064,14 +1034,18 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label">Shipping:</td>
                 <td className="price-cell">
-                  <input className="po-input" type="number" value={headerFields.shipping || 0} onChange={(e) => setHeaderFields({ ...headerFields, shipping: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
+                  <input className="po-input" type="number" value={headerFields.shipping || 0}
+                    onChange={(e) => setHeaderFields({ ...headerFields, shipping: parseFloat(e.target.value) || 0 })}
+                    style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
               </tr>
               <tr className="po-totals-row">
                 <td colSpan={2}></td>
                 <td className="price-cell po-field-label">Others:</td>
                 <td className="price-cell">
-                  <input className="po-input" type="number" value={headerFields.others || 0} onChange={(e) => setHeaderFields({ ...headerFields, others: parseFloat(e.target.value) || 0 })} style={{ textAlign: 'right', width: '90px' }} step="0.01" />
+                  <input className="po-input" type="number" value={headerFields.others || 0}
+                    onChange={(e) => setHeaderFields({ ...headerFields, others: parseFloat(e.target.value) || 0 })}
+                    style={{ textAlign: 'right', width: '90px' }} step="0.01" />
                 </td>
               </tr>
               <tr className="po-totals-row total-final">
@@ -1086,7 +1060,17 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         </div>
       </div>
 
-      {/* ====== VERSION MODAL ====== */}
+      {/* ====== NEW VERSION MODAL ====== */}
+      {showNewVersionModal && (
+        <NewPOVersionModal
+          onClose={() => setShowNewVersionModal(false)}
+          onSave={handleSaveAsNewVersion}
+          saving={saving}
+          currentVersion={poData?.version || 1}
+        />
+      )}
+
+      {/* ====== VERSION HISTORY MODAL ====== */}
       {showVersionModal && (
         <POVersionModal
           orderId={orderId}
@@ -1114,7 +1098,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 {[
                   { num: 1, title: 'Destination', desc: 'Select "Save as PDF" or your printer' },
-                  { num: 2, title: 'Headers and Footers', desc: 'Uncheck "Headers and footers" — this removes the gray bars at top and bottom' },
+                  { num: 2, title: 'Headers and Footers', desc: 'Uncheck "Headers and footers"' },
                   { num: 3, title: 'Margins', desc: 'Select "None" or "Minimum"' },
                   { num: 4, title: 'Background Graphics', desc: 'Check "Background graphics" to print all colors and logo' },
                 ].map((step) => (
@@ -1139,6 +1123,54 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         </div>
       )}
     </>
+  );
+};
+
+// ====== NEW PO VERSION MODAL ======
+const NewPOVersionModal = ({ onClose, onSave, saving, currentVersion }) => {
+  const [notes, setNotes] = useState('');
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
+      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
+        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
+          <h3 className="text-xl font-bold">Save as New PO Version</h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            <strong>Note:</strong> The new version (v{currentVersion + 1}) will only include products
+            that have <em>never been in any PO</em> for this vendor. Previously ordered products
+            appear in the <strong>"Not Included"</strong> panel with their PO number — add them back if needed.
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Version Notes <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Describe what changed in this version..."
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
+              rows={4}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
+            <button
+              onClick={() => onSave(notes)}
+              disabled={saving || !notes.trim()}
+              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 text-sm font-medium flex items-center gap-2"
+            >
+              {saving
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                : <><PlusCircle className="w-4 h-4" /> Save New Version</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -1172,44 +1204,21 @@ const POVersionModal = ({
 
   if (!isOpen) return null;
 
-  if (isOpen === 'new') {
-    return (
-      <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
-        <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
-          <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
-            <h3 className="text-xl font-bold">Save as New PO Version</h3>
-            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Version Notes <span className="text-red-500">*</span></label>
-              <textarea value={versionNotes} onChange={(e) => setVersionNotes(e.target.value)} placeholder="Describe the changes in this version..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]" rows={4} />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={onSaveNewVersion} disabled={saving || !versionNotes.trim()} className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2">
-                {saving ? 'Saving...' : 'Save as New Version'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
         <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
           <div>
             <h3 className="text-xl font-bold">PO Version History</h3>
-            <p className="text-sm text-white/80 mt-1">View and manage all PO versions for this vendor</p>
+            <p className="text-sm text-white/80 mt-1">All versions for this vendor</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
         </div>
         <div className="overflow-auto max-h-[calc(80vh-88px)]">
           {loading ? (
-            <div className="p-12 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto"></div></div>
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto"></div>
+            </div>
           ) : versions.length === 0 ? (
             <div className="p-12 text-center text-gray-500">No versions found</div>
           ) : (
@@ -1221,8 +1230,8 @@ const POVersionModal = ({
                       <div className="flex items-center gap-3 mb-2">
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Version {v.version}</span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          v.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
-                          v.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                          v.status === 'draft'     ? 'bg-yellow-100 text-yellow-700' :
+                          v.status === 'sent'      ? 'bg-blue-100 text-blue-700' :
                           v.status === 'confirmed' ? 'bg-green-100 text-green-700' :
                           'bg-red-100 text-red-700'
                         }`}>{v.status?.charAt(0).toUpperCase() + v.status?.slice(1)}</span>
@@ -1234,7 +1243,12 @@ const POVersionModal = ({
                         <span>Total: ${(v.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
-                    <button onClick={() => onSelectVersion(v.version)} className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap">View/Edit</button>
+                    <button
+                      onClick={() => onSelectVersion(v.version)}
+                      className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap"
+                    >
+                      View/Edit
+                    </button>
                   </div>
                 </div>
               ))}
