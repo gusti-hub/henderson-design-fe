@@ -119,12 +119,19 @@ const PrintView = ({ expense, onClose }) => {
   const tax = sub * (parseFloat(expense.taxRate || 0) / 100);
   const tot = sub + tax;
   const f2  = (n) => `$${parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
- 
+
+  // ✅ Tentukan subtitle header
+  const lines = expense.lines || [];
+  const singleLineType = lines.length === 1
+    ? (SERVICE_TYPES.find(s => s.id === lines[0].serviceType)?.label || lines[0].serviceType || 'Invoice')
+    : null;
+  const headerSubtitle = singleLineType || 'Time & Expenses Invoice';
+
   useEffect(() => {
     document.title = `Expense_${expense.expenseNumber}_${(expense.clientInfo?.name || 'Client').replace(/\s+/g, '_')}`;
     return () => { document.title = origTitle; };
   }, [expense, origTitle]);
- 
+
   return (
     <>
       <style>{`
@@ -146,13 +153,13 @@ const PrintView = ({ expense, onClose }) => {
           .it th { background: #f5f5f5 !important; }
         }
         @page { size: letter; margin: 0; }
- 
+
         .epc-bg {
           background: #b8b8b8;
           min-height: 100vh;
           padding: 32px 0 60px;
         }
- 
+
         .edoc {
           position: relative;
           background: white;
@@ -167,11 +174,9 @@ const PrintView = ({ expense, onClose }) => {
           color: #1a1a1a;
           box-sizing: border-box;
         }
- 
-        .edoc-body {
-          padding-bottom: 72px;
-        }
- 
+
+        .edoc-body { padding-bottom: 72px; }
+
         .edoc-footer {
           position: absolute;
           bottom: 0.28in;
@@ -186,19 +191,15 @@ const PrintView = ({ expense, onClose }) => {
           background: white;
           font-family: Arial, Helvetica, sans-serif;
         }
- 
-        /* ── Full grid table ── */
+
         .it {
           width: 100%;
           border-collapse: collapse;
           margin-top: 16pt;
           font-size: 10pt;
-          /* Outer border */
           border: 1px solid #ccc;
         }
-        /* Every th and td gets all 4 borders */
-        .it th,
-        .it td {
+        .it th, .it td {
           border: 1px solid #ccc;
           padding: 6px 8px;
           vertical-align: top;
@@ -212,8 +213,7 @@ const PrintView = ({ expense, onClose }) => {
         .it th.r { text-align: right; }
         .it td   { font-size: 9.5pt; text-align: left; }
         .it td.r { text-align: right; }
- 
-        /* ── Totals table ── */
+
         .tot {
           margin-left: auto;
           border-collapse: collapse;
@@ -229,7 +229,7 @@ const PrintView = ({ expense, onClose }) => {
         .tot td.am { text-align: right; }
         .totl td   { font-weight: bold; border-top: 2px solid #999 !important; }
       `}</style>
- 
+
       {/* ── Screen toolbar ── */}
       <div className="np sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
@@ -247,17 +247,18 @@ const PrintView = ({ expense, onClose }) => {
           <Printer className="w-4 h-4" /> Print / Save PDF
         </button>
       </div>
- 
+
       {/* ── Printable area ── */}
       <div className="epc epc-bg">
         <div className="edoc">
           <div className="edoc-body">
- 
+
             {/* Header */}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'18pt' }}>
               <div>
                 <div style={{ fontSize:'16pt', fontWeight:'normal', marginBottom:'2px' }}>Henderson Design Group</div>
-                <div style={{ fontSize:'13pt', fontWeight:'normal', color:'#444' }}>Time &amp; Expenses Invoice</div>
+                {/* ✅ Ganti subtitle jika hanya 1 line item */}
+                <div style={{ fontSize:'13pt', fontWeight:'normal', color:'#444' }}>{headerSubtitle}</div>
               </div>
               <img
                 src="/images/HDG-Logo.png"
@@ -268,7 +269,7 @@ const PrintView = ({ expense, onClose }) => {
                 }}
               />
             </div>
- 
+
             {/* Client info + expense meta */}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'14pt', fontSize:'10pt', lineHeight:'1.7' }}>
               <div>
@@ -287,7 +288,7 @@ const PrintView = ({ expense, onClose }) => {
                 </div>
               </div>
             </div>
- 
+
             {/* Project / Employee */}
             {(expense.projectName || expense.employeeName) && (
               <div style={{ fontSize:'10pt', marginBottom:'14pt', display:'flex', justifyContent:'space-between' }}>
@@ -295,13 +296,14 @@ const PrintView = ({ expense, onClose }) => {
                 {expense.employeeName && <div><strong>Employee:</strong> {expense.employeeName}</div>}
               </div>
             )}
- 
-            {/* Line items — full grid */}
+
+            {/* Line items — ✅ tambah kolom Type */}
             <table className="it">
               <thead>
                 <tr>
                   <th style={{ width:'72pt' }}>Date</th>
-                  <th>Description / Service</th>
+                  <th style={{ width:'100pt' }}>Type</th>
+                  <th>Description</th>
                   <th className="r" style={{ width:'44pt' }}>Hours</th>
                   <th className="r" style={{ width:'56pt' }}>Rate</th>
                   <th className="r" style={{ width:'64pt' }}>Amount</th>
@@ -317,10 +319,11 @@ const PrintView = ({ expense, onClose }) => {
                           ? new Date(line.date + 'T12:00:00').toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'numeric' })
                           : ''}
                       </td>
+                      {/* ✅ Kolom Type */}
+                      <td style={{ fontWeight:'500', fontSize:'9.5pt' }}>
+                        {svc ? svc.label : (line.serviceType || '—')}
+                      </td>
                       <td>
-                        {svc && svc.id !== 'custom' && (
-                          <div style={{ fontWeight:'bold', marginBottom:'3px' }}>{svc.label}:</div>
-                        )}
                         <div style={{ whiteSpace:'pre-wrap' }}>{line.description}</div>
                       </td>
                       <td className="r">{parseFloat(line.hours || 0).toFixed(2)}</td>
@@ -331,15 +334,15 @@ const PrintView = ({ expense, onClose }) => {
                 })}
               </tbody>
             </table>
- 
+
             {/* Notes */}
             {expense.notes && (
               <div style={{ marginTop:'12pt', fontSize:'9.5pt', color:'#444', whiteSpace:'pre-wrap' }}>
                 {expense.notes}
               </div>
             )}
- 
-            {/* Totals — also full grid */}
+
+            {/* Totals */}
             <div style={{ marginTop:'18pt', display:'flex', justifyContent:'flex-end' }}>
               <table className="tot">
                 <tbody>
@@ -349,18 +352,18 @@ const PrintView = ({ expense, onClose }) => {
                 </tbody>
               </table>
             </div>
- 
-          </div>{/* end edoc-body */}
- 
+
+          </div>
+
           {/* Footer */}
           <div className="edoc-footer">
             <p style={{ margin: 0 }}>Henderson Design Group 4343 Royal Place, Honolulu, HI, 96816</p>
             <p style={{ margin: 0 }}>Phone: (808) 315-8782</p>
           </div>
- 
+
         </div>
       </div>
- 
+
       {/* Print instructions modal */}
       {showInstr && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 np">
