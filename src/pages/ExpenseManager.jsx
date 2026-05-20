@@ -125,7 +125,9 @@ const PrintView = ({ expense, onClose }) => {
   const singleLineType = lines.length === 1
     ? (SERVICE_TYPES.find(s => s.id === lines[0].serviceType)?.label || lines[0].serviceType || 'Invoice')
     : null;
-  const headerSubtitle = singleLineType || 'Time & Expenses Invoice';
+  const headerSubtitle = singleLineType
+    ? `${singleLineType} Invoice`
+    : 'Time & Expenses Invoice';
 
   useEffect(() => {
     document.title = `Expense_${expense.expenseNumber}_${(expense.clientInfo?.name || 'Client').replace(/\s+/g, '_')}`;
