@@ -125,9 +125,11 @@ const PrintView = ({ expense, onClose }) => {
   const singleLineType = lines.length === 1
     ? (SERVICE_TYPES.find(s => s.id === lines[0].serviceType)?.label || lines[0].serviceType || 'Invoice')
     : null;
-  const headerSubtitle = singleLineType
-    ? `${singleLineType} Invoice`
-    : 'Time & Expenses Invoice';
+  const headerSubtitle = expense.subtitle?.trim()
+    ? expense.subtitle.trim()
+    : singleLineType
+      ? `${singleLineType} Invoice`
+      : 'Time & Expenses Invoice';
 
   useEffect(() => {
     document.title = `Expense_${expense.expenseNumber}_${(expense.clientInfo?.name || 'Client').replace(/\s+/g, '_')}`;
@@ -458,13 +460,21 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
               <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Expense Details</h3>
               <div className="text-right"><p className="text-xs text-gray-400">Expense #</p><p className="text-sm font-mono font-semibold text-[#005670]">{inv.expenseNumber}</p></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-medium text-gray-600 mb-1">Expense Date</label><input type="date" value={inv.expenseDate} onChange={e => upd('expenseDate', e.target.value)} className={inp} /></div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                <select value={inv.status} onChange={e => upd('status', e.target.value)} className={`${inp} bg-white`}><option value="draft">Draft</option><option value="review">Review</option><option value="confirmed">Confirmed</option><option value="paid">Paid</option></select>
-                <p className="text-[10px] text-gray-400 mt-1">Confirmed/Paid expenses can still be edited and resynced to QB</p>
-              </div>
+            {/* ✅ Subtitle input */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Invoice Subtitle
+                <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
+                  tampil di bawah "Henderson Design Group" saat print
+                </span>
+              </label>
+              <input
+                type="text"
+                value={inv.subtitle || ''}
+                onChange={e => upd('subtitle', e.target.value)}
+                placeholder="e.g. Time & Expenses Invoice"
+                className={inp}
+              />
             </div>
             {hasEmp && (
               <div className="mt-4 pt-4 border-t border-gray-100">
