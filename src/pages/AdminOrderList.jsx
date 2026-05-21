@@ -188,9 +188,12 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
 };
 
 // ─── All Products View ────────────────────────────────────────────────────────
+const PRODUCTS_PER_PAGE = 50;
+
 const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllReport, downloading }) => {
   const [vendorFilter, setVendorFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
+  const [page, setPage] = useState(1);
 
   // Flatten all products across all orders
   const allProducts = React.useMemo(() => {
@@ -213,6 +216,9 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
   const clients = React.useMemo(() => [...new Set(allProducts.map(p => p._clientName))].sort(), [allProducts]);
   const vendors = React.useMemo(() => [...new Set(allProducts.map(p => p._vendorName))].sort(), [allProducts]);
 
+  // Reset to page 1 when filters change
+  React.useEffect(() => { setPage(1); }, [searchTerm, clientFilter, vendorFilter]);
+
   const filtered = React.useMemo(() => {
     const q = searchTerm.toLowerCase();
     return allProducts.filter(p => {
@@ -231,6 +237,9 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
       return matchSearch && matchClient && matchVendor;
     });
   }, [allProducts, searchTerm, clientFilter, vendorFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
+  const paginated = filtered.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE);
 
   const fmt = (n) => isNaN(n) ? '—' : `$${parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
   const getNetCost = (p) => {
@@ -314,7 +323,7 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
                 <tr><td colSpan={11} className="text-center py-16 text-gray-400 text-sm">No products found</td></tr>
-              ) : filtered.map((p, i) => {
+              ) : paginated.map((p, i) => {
                 const netCost = getNetCost(p);
                 const sellPrice = getSellPrice(p);
                 const qty = p.quantity || 1;
@@ -350,6 +359,33 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
               })}
             </tbody>
           </table>
+        </div>
+
+      </div>
+
+      {/* Pagination — always outside the table container */}
+      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+        <p className="text-xs text-gray-500">
+          Showing {Math.min((page-1)*PRODUCTS_PER_PAGE+1, filtered.length)}–{Math.min(page*PRODUCTS_PER_PAGE, filtered.length)} of {filtered.length} products
+        </p>
+        <div className="flex gap-1">
+          <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+            className="w-8 h-8 rounded-lg border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-40 flex items-center justify-center">‹</button>
+          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+            let pg;
+            if (totalPages <= 7) pg = i + 1;
+            else if (page <= 4) pg = i + 1;
+            else if (page >= totalPages - 3) pg = totalPages - 6 + i;
+            else pg = page - 3 + i;
+            return (
+              <button key={pg} onClick={() => setPage(pg)}
+                className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${page===pg ? 'bg-[#005670] text-white shadow-sm' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                {pg}
+              </button>
+            );
+          })}
+          <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}
+            className="w-8 h-8 rounded-lg border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-40 flex items-center justify-center">›</button>
         </div>
       </div>
     </div>
@@ -591,6 +627,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Package</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Floor Plan</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Modified By</th>
                     <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -612,6 +649,18 @@ const AdminOrderList = ({ onOrderClick }) => {
                       <td className="px-4 py-3.5 text-sm text-gray-500">{order.selectedPlan?.title || '—'}</td>
                       <td className="px-4 py-3.5">
                         {order && <StatusChanger order={order} onStatusChange={handleStatusChange} />}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {order.updatedBy?.name ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-6 h-6 rounded-full bg-[#005670]/15 flex items-center justify-center text-[9px] text-[#005670] font-bold flex-shrink-0">
+                              {order.updatedBy.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-xs text-gray-600 truncate max-w-[100px]">{order.updatedBy.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
                         <ActionMenu
