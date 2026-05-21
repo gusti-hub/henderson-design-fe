@@ -1056,8 +1056,29 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <span className="text-gray-400 mx-2">•</span>
               <span className="text-[#005670] font-medium">{savedProducts.filter(p => p.sourceType === 'manual').length} Manual</span>
             </div>
-            <div className="text-lg font-bold text-[#005670]">
-              Total Cost and Total Sell Amounts: ${savedProducts.reduce((sum, p) => sum + (p.finalPrice || 0), 0).toFixed(2)}
+              <div className="flex items-center gap-6">
+              <div className="text-right">
+                <p className="text-xs text-gray-500 mb-0.5">Total Purchase Cost</p>
+                <p className="text-base font-bold text-emerald-700">
+                  ${savedProducts.reduce((sum, p) => {
+                    const opts = p.selectedOptions || {};
+                    const qty = parseFloat(p.quantity) || 1;
+                    const msrp = parseFloat(opts.msrp) || 0;
+                    const disc = parseFloat(opts.discountPercent) || 0;
+                    const netUnit = (opts.netCostOverride != null && opts.netCostOverride !== '')
+                      ? parseFloat(opts.netCostOverride)
+                      : (opts.noNetPurchaseCost ? 0 : msrp * (1 - disc / 100));
+                    return sum + netUnit * qty + (parseFloat(opts.shippingCost) || 0) + (parseFloat(opts.otherCost) || 0);
+                  }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="w-px h-8 bg-gray-300" />
+              <div className="text-right">
+                <p className="text-xs text-gray-500 mb-0.5">Total Sell Price</p>
+                <p className="text-base font-bold text-[#005670]">
+                  ${savedProducts.reduce((sum, p) => sum + (parseFloat(p.finalPrice) || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
             </div>
           </div>
         </div>

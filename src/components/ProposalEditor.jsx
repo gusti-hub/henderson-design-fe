@@ -433,6 +433,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [showVersionModal, setShowVersionModal]   = useState(false);
   const [showNewVersionModal, setShowNewVersionModal] = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
+  const [depositPercent, setDepositPercent] = useState(90);
   const [confirmModal, setConfirmModal] = useState(null);
   const [originalTitle] = useState(document.title);
 
@@ -552,6 +553,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       });
       setProposalNumber(r.data.proposalNumber || null);
       setProposalStatus(r.data.status || 'draft');
+      setDepositPercent(r.data.depositPercent ?? 90);
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
     finally { setLoading(false); }
   };
@@ -591,7 +593,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: visibleProducts, clientInfo }),
+        body: JSON.stringify({ products: visibleProducts, clientInfo, depositPercent }),
       });
       const r = await res.json();
       if (r.success) {
@@ -607,6 +609,31 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     finally { setSavingHidden(false); }
   };
 
+  const handleSaveAllProducts = async () => {
+    setSavingHidden(true);
+    try {
+      const t = localStorage.getItem('token');
+      const allProducts = productsWithIds.map(({ product }) => product);
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: allProducts, clientInfo, depositPercent }),
+      });
+      const r = await res.json();
+      if (r.success) {
+        const withIds = allProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
+        setProductsWithIds(withIds);
+        setHiddenIds(new Set());
+        setSaveHiddenSuccess(true);
+        setTimeout(() => setSaveHiddenSuccess(false), 2500);
+      } else {
+        alert('Failed to save: ' + (r.message || 'Unknown error'));
+      }
+    } catch (e) { alert('Failed to save: ' + e.message); }
+    finally { setSavingHidden(false); }
+  };
+        
+
   // Save as new version — backend handles filtering (new products only by default)
   const handleSaveNewVersion = async (notes) => {
     if (!notes.trim()) return;
@@ -617,7 +644,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
         // Don't send products — backend auto-computes (new items not in prev version)
-        body: JSON.stringify({ clientInfo, notes }),
+        body: JSON.stringify({ clientInfo, notes, depositPercent: 90 }),
       });
       const r = await res.json();
       if (r.success) {
@@ -643,7 +670,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       taxT += tax > 0 ? line * (tax / 100) : 0;
     });
     const total = sub + taxT;
-    return { subtotal: sub, salesTax: taxT, total, deposit: total * 0.9 };
+    return { subtotal: sub, salesTax: taxT, total, deposit: total * (depositPercent / 100) };
   };
 
   const ROOM_ORDER = [
@@ -894,10 +921,49 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
             {hiddenCount > 0 ? 'Items (' + hiddenCount + ' hidden)' : 'Show/Hide Items'}
           </button>
 
+          {/* Tombol Save All — menyimpan semua produk + depositPercent */}
+          <button
+            onClick={handleSaveAllProducts}
+            disabled={savingHidden}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+            title="Simpan semua produk (termasuk yang baru ditambahkan) dan persentase deposit"
+          >
+            {savingHidden
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Save className="w-4 h-4" />
+            }
+            Save All
+          </button>
+
           <button onClick={() => setShowNewVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
             <PlusCircle className="w-4 h-4" /> New Version
           </button>
           <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"><Clock className="w-4 h-4" /> Version History</button>
+          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 bg-white">
+            <span className="text-xs text-gray-500 whitespace-nowrap font-medium">Deposit</span>
+            <div className="flex items-center">
+              <button
+                onClick={() => setDepositPercent(p => Math.max(10, p - 10))}
+                className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none"
+              >−</button>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={depositPercent}
+                onChange={(e) => {
+                  const v = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                  setDepositPercent(v);
+                }}
+                className="w-12 text-center text-sm font-bold text-[#005670] border-0 outline-none bg-transparent"
+              />
+              <span className="text-xs text-gray-500 mr-1">%</span>
+              <button
+                onClick={() => setDepositPercent(p => Math.min(100, p + 10))}
+                className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none"
+              >+</button>
+            </div>
+          </div>
           <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Print / Save PDF</button>
         </div>
       </div>
@@ -963,7 +1029,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
                           <p style={{ margin: 0 }}>Sales Tax: ${fmt(totals.salesTax)}</p>
                           <p style={{ margin: 0 }}>Total: ${fmt(totals.total)}</p>
-                          <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit: ${fmt(totals.deposit)}</p>
+                          <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit ({depositPercent}%): ${fmt(totals.deposit)}</p>
                         </div>
                       )}
                     </div>
