@@ -5,8 +5,9 @@
 //   - These are hidden by default (not in productsWithIds)
 //   - User can add them back via the "Not in Proposal" side panel
 //   - New version: only includes products NOT in previous version by default
-//   - "Save to Current Version" persists the visible set
+//   - "Save All" persists all visible products + depositPercent
 //   - ItemTogglePanel still works for hiding visible products
+//   - Each product row has ↻ Price (refresh from order) and ✕ Remove buttons
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Clock, Printer, ChevronLeft, Loader2, EyeOff, Eye, PlusCircle, Save, Plus } from 'lucide-react';
@@ -63,6 +64,7 @@ const preloadImages = urls =>
     img.src = url;
   })));
 
+// ─── Page Footer ──────────────────────────────────────────────────────────────
 const PageFooter = () => (
   <div style={{
     position: 'absolute', bottom: '0.28in',
@@ -76,7 +78,8 @@ const PageFooter = () => (
   </div>
 );
 
-const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
+// ─── Product Row ──────────────────────────────────────────────────────────────
+const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh }, ref) => {
   const o = product.selectedOptions || {};
   const imgSrc = getImgSrc(product);
   const qty = product.quantity || 1;
@@ -89,6 +92,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
   const total = sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
   const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
+
   return (
     <tr ref={ref}>
       <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -96,6 +100,29 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
           ? <img src={imgSrc} alt={product.name} style={{ width: '76px', height: '76px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
           : <div style={{ width: '76px', height: '76px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#9ca3af', margin: '0 auto' }}>No Image</div>
         }
+        {/* Action buttons — hidden on print */}
+        {(onRefresh || onDelete) && (
+          <div className="no-print" style={{ display: 'flex', gap: '3px', justifyContent: 'center', marginTop: '5px' }}>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                title="Refresh harga dari order"
+                style={{ padding: '3px 6px', fontSize: '10px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}
+              >
+                ↻ Price
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                title="Hapus dari proposal"
+                style={{ padding: '3px 6px', fontSize: '10px', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
@@ -119,7 +146,8 @@ const ProductRow = React.forwardRef(({ product, isFirst = false }, ref) => {
 });
 ProductRow.displayName = 'ProductRow';
 
-const RoomTable = ({ room, rows }) => (
+// ─── Room Table ───────────────────────────────────────────────────────────────
+const RoomTable = ({ room, rows, onDelete, onRefresh }) => (
   <div style={{ marginBottom: '10px' }}>
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
       <colgroup>
@@ -133,15 +161,22 @@ const RoomTable = ({ room, rows }) => (
         </tr>
       </thead>
       <tbody>
-        {rows.map(({ product, isFirst }, i) => (
-          <ProductRow key={i} product={product} isFirst={i === 0} />
+        {rows.map(({ product, isFirst, sid }, i) => (
+          <ProductRow
+            key={i}
+            product={product}
+            isFirst={i === 0}
+            onDelete={onDelete ? () => onDelete(sid) : undefined}
+            onRefresh={onRefresh ? () => onRefresh(sid, product) : undefined}
+          />
         ))}
       </tbody>
     </table>
   </div>
 );
 
-const renderItems = items => {
+// ─── Render Items (paginated) ─────────────────────────────────────────────────
+const renderItems = (items, onDelete, onRefresh, productsMap) => {
   const sections = []; let cur = null;
   items.forEach(item => {
     if (item.type === 'room-header') {
@@ -149,12 +184,16 @@ const renderItems = items => {
       cur = { room: item.room, rows: [] };
     } else {
       if (!cur) cur = { room: item.room, rows: [] };
-      cur.rows.push({ product: item.product, isFirst: item.isFirst });
+      const freshProduct = productsMap?.get(item.sid) || item.product;
+      cur.rows.push({ product: freshProduct, isFirst: item.isFirst, sid: item.sid });
     }
   });
   if (cur) sections.push(cur);
-  return sections.map(({ room, rows }) => <RoomTable key={room} room={room} rows={rows} />);
+  return sections.map(({ room, rows }) => (
+    <RoomTable key={room} room={room} rows={rows} onDelete={onDelete} onRefresh={onRefresh} />
+  ));
 };
+
 
 // ─── Excluded Products Panel ──────────────────────────────────────────────────
 const ExcludedProductsPanel = ({ excludedProducts, onAdd, onAddAll, onClose }) => {
@@ -244,7 +283,6 @@ const ExcludedProductsPanel = ({ excludedProducts, onAdd, onAddAll, onClose }) =
   );
 };
 
-
 // ─── Item Toggle Panel (hide visible products) ────────────────────────────────
 const ItemTogglePanel = ({ productsWithIds, hiddenIds, toggleHidden, onClose, onSave, saving, saveSuccess }) => {
   const byRoom = React.useMemo(() => {
@@ -332,7 +370,7 @@ const ItemTogglePanel = ({ productsWithIds, hiddenIds, toggleHidden, onClose, on
 };
 
 // ─── New Version Modal ────────────────────────────────────────────────────────
-const NewVersionModal = ({ onClose, onSave, saving, excludedCount }) => {
+const NewVersionModal = ({ onClose, onSave, saving }) => {
   const [notes, setNotes] = useState('');
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
@@ -421,41 +459,41 @@ const VersionModal = ({ orderId, isOpen, onClose, onSelectVersion }) => {
   );
 };
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 const ProposalEditor = ({ orderId, version, onClose }) => {
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [saving, setSaving]             = useState(false);
   const [proposalData, setProposalData] = useState(null);
-  const [clientInfo, setClientInfo] = useState({});
+  const [clientInfo, setClientInfo]     = useState({});
   const [proposalNumber, setProposalNumber] = useState(null);
   const [proposalStatus, setProposalStatus] = useState('draft');
   const [savingStatus, setSavingStatus]     = useState(false);
-  const [showVersionModal, setShowVersionModal]   = useState(false);
-  const [showNewVersionModal, setShowNewVersionModal] = useState(false);
+  const [showVersionModal, setShowVersionModal]         = useState(false);
+  const [showNewVersionModal, setShowNewVersionModal]   = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [depositPercent, setDepositPercent] = useState(90);
   const [confirmModal, setConfirmModal] = useState(null);
   const [originalTitle] = useState(document.title);
 
   const [productsWithIds, setProductsWithIds] = useState([]);
-  // Products in order but NOT in this proposal version — hidden by default, can be added back
   const [excludedProducts, setExcludedProducts] = useState([]);
 
-  const [hiddenIds, setHiddenIds]         = useState(new Set());
-  const [showItemPanel, setShowItemPanel] = useState(false);
+  const [hiddenIds, setHiddenIds]           = useState(new Set());
+  const [showItemPanel, setShowItemPanel]   = useState(false);
   const [showExcludedPanel, setShowExcludedPanel] = useState(false);
-  const [savingHidden, setSavingHidden]   = useState(false);
+  const [savingHidden, setSavingHidden]     = useState(false);
   const [saveHiddenSuccess, setSaveHiddenSuccess] = useState(false);
 
   const [pages, setPages] = useState(null);
   const [ready, setReady] = useState(false);
 
-  const measureRef = useRef(null);
-  const headerRef  = useRef(null);
-  const rowRefs    = useRef({});
-  const roomHdRefs = useRef({});
+  const measureRef  = useRef(null);
+  const headerRef   = useRef(null);
+  const rowRefs     = useRef({});
+  const roomHdRefs  = useRef({});
   const didPaginate = useRef(false);
 
+  // ── Visible products (not hidden) ──
   const visibleProducts = React.useMemo(
     () => productsWithIds.filter(({ sid }) => !hiddenIds.has(sid)).map(({ product }) => product),
     [productsWithIds, hiddenIds]
@@ -469,7 +507,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     });
   }, []);
 
-  // ── Add excluded product back into proposal ──
+  // ── Add excluded product back ──
   const handleAddExcluded = useCallback((product) => {
     const pid = product.product_id || product._id?.toString();
     setProductsWithIds(prev => {
@@ -494,7 +532,50 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     setShowExcludedPanel(false);
   }, [excludedProducts]);
 
+  // ── Delete product from proposal ──
+  const handleDeleteProduct = useCallback((sid) => {
+    setProductsWithIds(prev => prev.filter(item => item.sid !== sid));
+  }, []);
+
+  // ── Refresh price from order ──
+  const handleRefreshPrice = useCallback(async (sid, product) => {
+    try {
+      const t = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      const r = await res.json();
+
+      const orderData = r.data || r;
+      const orderProducts = orderData.selectedProducts || [];
+
+      const pid = product.product_id || product._id?.toString();
+      const fresh = orderProducts.find(p => {
+        const fpid = p.product_id || p._id?.toString();
+        return fpid === pid;
+      });
+
+      if (!fresh) {
+        alert('Product tidak ditemukan di order — harga tidak bisa direfresh.');
+        return;
+      }
+
+      setProductsWithIds(prev => prev.map(item =>
+        item.sid === sid ? { ...item, product: fresh } : item
+      ));
+    } catch (e) {
+      alert('Gagal refresh harga: ' + e.message);
+    }
+  }, [orderId]);
+
+  // ── Pagination trigger ──
+  const productsMap = React.useMemo(() => {
+  const map = new Map();
+    productsWithIds.forEach(({ sid, product }) => map.set(sid, product));
+    return map;
+  }, [productsWithIds]);
   const prevVisibleKey = useRef('');
+  
   useEffect(() => {
     const key = visibleProducts.length + ':' + visibleProducts.map((_, i) => i).join(',');
     if (key === prevVisibleKey.current) return;
@@ -518,6 +599,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     return () => { document.title = originalTitle; };
   }, [proposalData, clientInfo, originalTitle]);
 
+  // ── Load proposal data ──
   const loadProposalData = async () => {
     try {
       const t = localStorage.getItem('token');
@@ -532,10 +614,8 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       setProductsWithIds(withIds);
       setHiddenIds(new Set());
 
-      // ── Excluded products: in order but NOT in this version ──
       const excluded = r.data.excludedProducts || [];
       setExcludedProducts(excluded);
-      // Auto-open excluded panel if there are items to show (v2+)
       if (excluded.length > 0 && (r.data.version || 0) > 1) {
         setShowExcludedPanel(true);
       }
@@ -585,7 +665,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     doStatusUpdate(newStatus);
   };
 
-  // Save current state (visible products only, no version bump)
+  // ── Save visible products only (from ItemTogglePanel) ──
   const handleSaveHidden = async () => {
     setSavingHidden(true);
     try {
@@ -609,6 +689,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     finally { setSavingHidden(false); }
   };
 
+  // ── Save ALL products (including added-back excluded) + depositPercent ──
   const handleSaveAllProducts = async () => {
     setSavingHidden(true);
     try {
@@ -632,9 +713,8 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     } catch (e) { alert('Failed to save: ' + e.message); }
     finally { setSavingHidden(false); }
   };
-        
 
-  // Save as new version — backend handles filtering (new products only by default)
+  // ── Save as new version (deposit reset to 90) ──
   const handleSaveNewVersion = async (notes) => {
     if (!notes.trim()) return;
     setSaving(true);
@@ -643,7 +723,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        // Don't send products — backend auto-computes (new items not in prev version)
         body: JSON.stringify({ clientInfo, notes, depositPercent: 90 }),
       });
       const r = await res.json();
@@ -657,6 +736,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     finally { setSaving(false); }
   };
 
+  // ── Totals ──
   const calcTotals = () => {
     let sub = 0, taxT = 0;
     visibleProducts.forEach(p => {
@@ -703,13 +783,16 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     'FINAL STYLING & STAGING','REVEAL PREPARATION',
   ];
 
+  // ── Build room groups (includes sid for each product) ──
   const buildRoomGroups = useCallback(() => {
     const map = new Map();
-    visibleProducts.forEach(p => {
-      const room = p.selectedOptions?.room?.trim() || '-';
-      if (!map.has(room)) map.set(room, []);
-      map.get(room).push(p);
-    });
+    productsWithIds
+      .filter(({ sid }) => !hiddenIds.has(sid))
+      .forEach(({ sid, product: p }) => {
+        const room = p.selectedOptions?.room?.trim() || '-';
+        if (!map.has(room)) map.set(room, []);
+        map.get(room).push({ sid, product: p });
+      });
     return Array.from(map.entries()).sort(([a], [b]) => {
       if (a === '-') return 1; if (b === '-') return -1;
       const ia = ROOM_ORDER.indexOf(a.toUpperCase());
@@ -718,7 +801,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       if (ia !== -1) return -1; if (ib !== -1) return 1;
       return a.localeCompare(b);
     });
-  }, [visibleProducts]);
+  }, [productsWithIds, hiddenIds]);
 
   const TOTALS_H = 100;
 
@@ -746,7 +829,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     didPaginate.current = true;
     const rg = buildRoomGroups();
     const CONTENT_W = (PAGE_W_IN - PAD_IN * 2) * PX;
-    const COL1 = 88, COL3 = 148;
     const sandbox = document.createElement('div');
     sandbox.style.cssText = 'position:fixed;top:0;left:-9999px;width:' + CONTENT_W + 'px;background:white;z-index:-9999;font-size:12px;line-height:1.55;font-family:Arial,sans-serif;visibility:visible;opacity:0;pointer-events:none';
     document.body.appendChild(sandbox);
@@ -761,7 +843,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     rg.forEach(([room, rps]) => {
       const rhH = measureEl('<div style="padding:6px 8px;font-weight:600;font-size:12px;background:#f0f0f0">' + room + '</div>');
       items.push({ type: 'room-header', room, height: rhH });
-      rps.forEach((p, i) => {
+      rps.forEach(({ sid, product: p }, i) => {
         const o = p.selectedOptions || {};
         const lines = [];
         if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
@@ -771,12 +853,13 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
         const priceLines = 2 + (parseFloat(o.salesTaxRate) > 0 ? 1 : 0) + 1;
         const priceH = priceLines * 19 + 16;
+        const COL1 = 88, COL3 = 148;
         const midW = CONTENT_W - COL1 - COL3;
         const mw = document.createElement('div');
         mw.style.cssText = 'width:' + midW + 'px;padding:8px 9px;font-size:12px;line-height:1.55;box-sizing:border-box';
         mw.innerHTML = lines.join(''); sandbox.appendChild(mw);
         const midH = Math.ceil(mw.getBoundingClientRect().height) + 14; sandbox.removeChild(mw);
-        items.push({ type: 'product', room, product: p, isFirst: i === 0, height: Math.max(92, midH, priceH) + 8 });
+        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.max(92, midH, priceH) + 8 });
       });
     });
     document.body.removeChild(sandbox);
@@ -801,15 +884,15 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
 
   if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670]" /></div>;
 
-  const totals  = calcTotals();
-  const dpn     = proposalNumber || '—';
-  const today   = new Date().toLocaleDateString();
-  const rg      = buildRoomGroups();
-  const totalPP = pages?.length || 0;
+  const totals        = calcTotals();
+  const dpn           = proposalNumber || '—';
+  const today         = new Date().toLocaleDateString();
+  const rg            = buildRoomGroups();
+  const totalPP       = pages?.length || 0;
   const hiddenCount   = hiddenIds.size;
   const excludedCount = excludedProducts.length;
+  const sidebarOpen   = showItemPanel || showExcludedPanel;
 
-  const sidebarOpen = showItemPanel || showExcludedPanel;
 
   const P1Header = ({ forMeasure = false }) => (
     <div ref={forMeasure ? headerRef : undefined}>
@@ -865,7 +948,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
       `}</style>
 
-      {/* Toolbar */}
+      {/* ── Toolbar ── */}
       <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onClose} className="flex items-center gap-2 text-gray-600 hover:text-gray-900"><ChevronLeft className="w-5 h-5" /> Back to Orders</button>
@@ -882,7 +965,9 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
             )}
           </div>
         </div>
+
         <div className="flex items-center gap-2">
+          {/* Status */}
           {proposalStatus === 'approved' ? (
             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">&#10003; Approved</span>
           ) : (
@@ -899,20 +984,18 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
           )}
           <div className="h-5 w-px bg-gray-200" />
 
-          {/* "Not included" panel toggle */}
+          {/* Not Included panel toggle */}
           {excludedCount > 0 && (
             <button
               onClick={() => { setShowExcludedPanel(p => !p); setShowItemPanel(false); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showExcludedPanel ? 'bg-[#005670] text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showExcludedPanel ? 'bg-[#005670] text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
             >
               <Plus className="w-4 h-4" />
               Not Included ({excludedCount})
             </button>
           )}
 
-          {/* Hide/Show visible items panel */}
+          {/* Show/Hide items panel */}
           <button
             onClick={() => { setShowItemPanel(p => !p); setShowExcludedPanel(false); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showItemPanel ? 'bg-[#005670] text-white' : hiddenCount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
@@ -921,54 +1004,55 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
             {hiddenCount > 0 ? 'Items (' + hiddenCount + ' hidden)' : 'Show/Hide Items'}
           </button>
 
-          {/* Tombol Save All — menyimpan semua produk + depositPercent */}
+          {/* Save All — saves all products + depositPercent */}
           <button
             onClick={handleSaveAllProducts}
             disabled={savingHidden}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
-            title="Simpan semua produk (termasuk yang baru ditambahkan) dan persentase deposit"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${saveHiddenSuccess ? 'bg-green-100 text-green-700' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800'}`}
+            title="Simpan semua produk dan persentase deposit"
           >
             {savingHidden
               ? <Loader2 className="w-4 h-4 animate-spin" />
+              : saveHiddenSuccess
+              ? <span>&#10003;</span>
               : <Save className="w-4 h-4" />
             }
-            Save All
+            {saveHiddenSuccess ? 'Saved!' : 'Save All'}
           </button>
 
+          {/* New Version */}
           <button onClick={() => setShowNewVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
             <PlusCircle className="w-4 h-4" /> New Version
           </button>
-          <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"><Clock className="w-4 h-4" /> Version History</button>
+
+          {/* Version History */}
+          <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
+            <Clock className="w-4 h-4" /> Version History
+          </button>
+
+          {/* Deposit % */}
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 bg-white">
             <span className="text-xs text-gray-500 whitespace-nowrap font-medium">Deposit</span>
             <div className="flex items-center">
-              <button
-                onClick={() => setDepositPercent(p => Math.max(10, p - 10))}
-                className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none"
-              >−</button>
+              <button onClick={() => setDepositPercent(p => Math.max(0, p - 10))} className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none">−</button>
               <input
-                type="number"
-                min="0"
-                max="100"
-                value={depositPercent}
-                onChange={(e) => {
-                  const v = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-                  setDepositPercent(v);
-                }}
+                type="number" min="0" max="100" value={depositPercent}
+                onChange={e => { const v = Math.min(100, Math.max(0, parseInt(e.target.value) || 0)); setDepositPercent(v); }}
                 className="w-12 text-center text-sm font-bold text-[#005670] border-0 outline-none bg-transparent"
               />
               <span className="text-xs text-gray-500 mr-1">%</span>
-              <button
-                onClick={() => setDepositPercent(p => Math.min(100, p + 10))}
-                className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none"
-              >+</button>
+              <button onClick={() => setDepositPercent(p => Math.min(100, p + 10))} className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none">+</button>
             </div>
           </div>
-          <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"><Printer className="w-4 h-4" /> Print / Save PDF</button>
+
+          {/* Print */}
+          <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
+            <Printer className="w-4 h-4" /> Print / Save PDF
+          </button>
         </div>
       </div>
 
-      {/* Side panels — only one shows at a time */}
+      {/* ── Side Panels ── */}
       {showExcludedPanel && excludedCount > 0 && (
         <ExcludedProductsPanel
           excludedProducts={excludedProducts}
@@ -989,7 +1073,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         />
       )}
 
-      {/* Hidden measure box */}
+      {/* ── Hidden measure box ── */}
       <div className="mbox" ref={measureRef}>
         <P1Header forMeasure={true} />
         {rg.map(([room, rps]) => (
@@ -999,7 +1083,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
               <tr ref={el => { if (el) roomHdRefs.current[room] = el; }}>
                 <td colSpan={3} style={{ padding: '6px 8px', fontWeight: '600', fontSize: '12px', background: '#f0f0f0' }}>{room}</td>
               </tr>
-              {rps.map((p, i) => {
+              {rps.map(({ sid, product: p }, i) => {
                 const key = room + '__' + i;
                 return <ProductRow key={key} product={p} isFirst={i === 0} ref={el => { if (el) rowRefs.current[key] = el; }} />;
               })}
@@ -1008,7 +1092,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         ))}
       </div>
 
-      {/* Pages */}
+      {/* ── Pages ── */}
       <div className={`pw transition-all ${sidebarOpen ? 'mr-80' : ''}`}>
         <div className="print-area">
           {!ready ? (
@@ -1023,7 +1107,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                   <div className="lp">
                     <div style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
-                      {renderItems(items)}
+                      {renderItems(items, handleDeleteProduct, handleRefreshPrice, productsMap)}
                       {pi === (pages || []).length - 1 && (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
@@ -1039,6 +1123,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
                 </React.Fragment>
               ))}
 
+              {/* Warranty page */}
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
                 <div style={slotStyle}>
@@ -1073,6 +1158,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
               </div>
               <div className="pgap no-print" />
 
+              {/* Signature page */}
               <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
               <div className="lp last">
                 <div style={slotStyle}>
@@ -1116,6 +1202,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
         </div>
       </div>
 
+      {/* ── Modals ── */}
       {showVersionModal && (
         <VersionModal
           orderId={orderId}
@@ -1130,7 +1217,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
           onClose={() => setShowNewVersionModal(false)}
           onSave={handleSaveNewVersion}
           saving={saving}
-          excludedCount={excludedCount}
         />
       )}
 
