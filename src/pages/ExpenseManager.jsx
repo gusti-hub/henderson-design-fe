@@ -18,6 +18,7 @@ const SERVICE_TYPES = [
   { id: 'holiday',         label: 'Holiday',                         icon: '🏖️', defaultRate: 0,   unit: 'flat', isEmployee: true  },
   { id: 'installation',    label: 'Installation',                    icon: '🔧', defaultRate: 150, unit: 'hr',   isEmployee: false },
   { id: 'travel',          label: 'Travel & Expenses',               icon: '✈️', defaultRate: 0,   unit: 'flat', isEmployee: false },
+  { id: 'products',        label: 'Products',                        icon: '📦', defaultRate: 0,   unit: 'flat', isEmployee: false },
 ];
 const TAX_RATE_DEFAULT = 4.5;
 

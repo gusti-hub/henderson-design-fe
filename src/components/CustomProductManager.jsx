@@ -18,6 +18,7 @@ import ShipToVendorDropdown from './ShipToVendorDropdown';
 import StatusReportFields from './StatusReportFields';
 import PricingFields from './PricingFields';
 import { uploadFileToS3 } from '../utils/uploadToS3';
+import AuditLogDrawer from './AuditLogDrawer';
 
 const PRODUCT_TABS = [
   { id: 'general',       label: 'General Info',  icon: Package },
@@ -347,6 +348,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const dragIndexRef = useRef(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
+  const [auditFocusProduct, setAuditFocusProduct] = useState(null);
 
   const showConfirm = ({ title, message, confirmLabel, confirmVariant = 'danger', onConfirm }) => {
     setConfirmModal({ isOpen: true, title, message, confirmLabel, confirmVariant, onConfirm });
@@ -826,6 +829,20 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* ── History button ── */}
+            <button
+              onClick={() => {
+                setAuditFocusProduct(null);
+                setAuditDrawerOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 shadow-sm hover:shadow transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              History
+            </button>
             <button
               onClick={() => setShowLibraryModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all"
@@ -994,6 +1011,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   }}
                   onToast={addToast}
                   draggable={false}
+                  onOpenHistory={(focus) => {
+                    setAuditFocusProduct(focus);
+                    setAuditDrawerOpen(true);
+                  }}
                 />
               </div>
             )}
@@ -1116,6 +1137,30 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         onClose={() => setShowLibraryModal(false)}
         onSelectProducts={handleAddFromLibrary}
         alreadySelected={[]}
+      />
+ 
+      {/* ── Audit Log Drawer ── */}
+      <AuditLogDrawer
+        isOpen={auditDrawerOpen}
+        onClose={() => setAuditDrawerOpen(false)}
+        orderId={order._id}
+        focusProduct={auditFocusProduct}
+        onRollbackDone={async () => {
+          // Refresh savedProducts from server after rollback
+          try {
+            const token = localStorage.getItem('token');
+            const res   = await fetch(`${backendServer}/api/orders/${order._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const fresh = await res.json();
+              setSavedProducts(
+                (fresh.selectedProducts || []).map(p => ({ ...p, isEditable: p.isEditable !== false }))
+              );
+              if (onSave) onSave(fresh.selectedProducts || []);
+            }
+          } catch (_) {}
+        }}
       />
     </div>
   );
@@ -1486,6 +1531,7 @@ const ProductCard = ({
   onDragOver,
   onDragEnd,
   onDrop,
+  onOpenHistory
 }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [customAttrs, setCustomAttrs] = useState(product.selectedOptions?.customAttributes || {});
@@ -1896,10 +1942,32 @@ const ProductCard = ({
 
           <div className="flex items-center gap-2">
             {allImages.length > 0 && (
-              <button onClick={() => setShowImageGallery(true)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Eye className="w-5 h-5" /></button>
+              <button onClick={() => setShowImageGallery(true)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <Eye className="w-5 h-5" />
+              </button>
             )}
-            <button onClick={onToggleExpand} className="p-2 hover:bg-gray-100 rounded-lg transition-colors"><Edit2 className="w-5 h-5 text-gray-600" /></button>
-            <button onClick={() => onRemove(index)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-5 h-5" /></button>
+            {/* ── Per-product history button (only for saved products) ── */}
+            {index !== 'draft' && product._id && !String(product._id).startsWith('temp_') && onOpenHistory && (
+              <button
+                onClick={() => onOpenHistory({
+                  productId:   String(product._id),
+                  productName: product.name || 'Unnamed Product',
+                })}
+                title="View change history for this product"
+                className="p-2 text-gray-400 hover:text-[#005670] hover:bg-[#005670]/8 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            )}
+            <button onClick={onToggleExpand} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <Edit2 className="w-5 h-5 text-gray-600" />
+            </button>
+            <button onClick={() => onRemove(index)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+              <Trash2 className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
