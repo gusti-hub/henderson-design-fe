@@ -655,9 +655,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             PO — {vendorInfo.name || 'Vendor'} — <span className="text-[#005670] font-semibold">v{poData?.version || 1}</span>
           </span>
 
-          {poStatus === 'confirmed' ? (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">✓ Confirmed</span>
-          ) : (
             <div className="flex items-center gap-1.5">
               <select
                 value={poStatus}
@@ -674,10 +671,10 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <option value="sent">Sent to Vendor</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="paid">Paid</option>
               </select>
               {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
             </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2">

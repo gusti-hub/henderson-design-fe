@@ -43,6 +43,8 @@ const getImgSrc = p => {
 };
 
 const stableId = (p, idx) => {
+  // idx adalah primary key — selalu unik per posisi array
+  // base hanya untuk readability, tidak untuk uniqueness
   let base = 'x';
   if (p._id) {
     if (typeof p._id === 'string') base = p._id;
@@ -54,7 +56,8 @@ const stableId = (p, idx) => {
   } else if (p.product_id) {
     base = 'pid_' + p.product_id;
   }
-  return base + '__' + idx;
+  // ✅ idx sebagai primary uniqueness — tidak ada 2 produk yang punya sid sama
+  return 'slot_' + idx + '__' + base;
 };
 
 const preloadImages = urls =>
@@ -202,6 +205,7 @@ const ExcludedProductsPanel = ({ excludedProducts, onAdd, onAddAll, onClose }) =
 
   const renderItem = (p, key) => {
     const imgSrc = getImgSrc(p);
+    const room = p.selectedOptions?.room?.trim() || '';
     return (
       <div key={key} className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 hover:bg-gray-50 transition-colors">
         <div className="w-9 h-9 flex-shrink-0 rounded bg-gray-100 overflow-hidden">
@@ -212,7 +216,15 @@ const ExcludedProductsPanel = ({ excludedProducts, onAdd, onAddAll, onClose }) =
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-800 truncate">{p.name || 'Untitled'}</p>
-          <p className="text-xs text-gray-400 truncate">Qty {p.quantity || 1}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-xs text-gray-400">Qty {p.quantity || 1}</p>
+            {room && (
+              <>
+                <span className="text-gray-300 text-xs">·</span>
+                <span className="text-xs text-teal-600 font-medium truncate">{room}</span>
+              </>
+            )}
+          </div>
           {p._prevProposalNumber && (
             <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-mono font-semibold leading-none">
               {p._prevProposalNumber}
@@ -509,15 +521,26 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
 
   // ── Add excluded product back ──
   const handleAddExcluded = useCallback((product) => {
-    const pid = product.product_id || product._id?.toString();
+    // Tambahkan ke proposal
     setProductsWithIds(prev => {
       const idx = prev.length;
       return [...prev, { sid: stableId(product, idx), product }];
     });
-    setExcludedProducts(prev => prev.filter(p => {
-      const ppid = p.product_id || p._id?.toString();
-      return ppid !== pid;
-    }));
+    // Hapus hanya satu instance (yang pertama match), bukan semua
+    setExcludedProducts(prev => {
+      const pid = product.product_id || product._id?.toString();
+      let removed = false;
+      return prev.filter(p => {
+        if (!removed) {
+          const ppid = p.product_id || p._id?.toString();
+          if (ppid === pid) {
+            removed = true;
+            return false; // hapus hanya instance pertama
+          }
+        }
+        return true;
+      });
+    });
   }, []);
 
   const handleAddAllExcluded = useCallback(() => {
@@ -533,40 +556,127 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   }, [excludedProducts]);
 
   // ── Delete product from proposal ──
-  const handleDeleteProduct = useCallback((sid) => {
-    setProductsWithIds(prev => prev.filter(item => item.sid !== sid));
-  }, []);
+const handleDeleteProduct = useCallback(async (sid) => {
+  const deletedItem = productsWithIds.find(item => item.sid === sid);
+  if (!deletedItem) return;
+
+  const deletedProduct = deletedItem.product;
+
+  // Hapus dari proposal state
+  setProductsWithIds(prev => prev.filter(item => item.sid !== sid));
+
+  // Cek apakah produk ini masih ada di Order
+  // Jika masih ada di Order → masukkan ke excludedProducts
+  // Jika tidak ada di Order → jangan masukkan (produk memang sudah dihapus dari Order)
+  try {
+    const t = localStorage.getItem('token');
+    const res = await fetch(`${backendServer}/api/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${t}` },
+    });
+    const r = await res.json();
+    const orderData = r.data || r;
+    const orderProducts = orderData.selectedProducts || [];
+
+    // Cek apakah produk ini masih ada di Order berdasarkan _id
+    const productMongoId = deletedProduct._id
+      ? (typeof deletedProduct._id === 'string'
+          ? deletedProduct._id
+          : deletedProduct._id?.toString?.())
+      : null;
+
+    let stillInOrder = false;
+
+    if (productMongoId && productMongoId !== '[object Object]') {
+      stillInOrder = orderProducts.some(op => {
+        const opid = typeof op._id === 'string'
+          ? op._id
+          : op._id?.toString?.();
+        return opid && opid === productMongoId;
+      });
+    }
+
+    // Fallback: cek by product_id
+    if (!stillInOrder && deletedProduct.product_id) {
+      stillInOrder = orderProducts.some(op =>
+        op.product_id === deletedProduct.product_id
+      );
+    }
+
+    if (stillInOrder) {
+      // Masih ada di Order → tampilkan di Not in Proposal
+      setExcludedProducts(prev => [...prev, deletedProduct]);
+    }
+    // Jika tidak ada di Order → tidak perlu masuk excluded
+  } catch (e) {
+    // Jika fetch gagal, tetap masukkan ke excluded sebagai safety
+    setExcludedProducts(prev => [...prev, deletedProduct]);
+  }
+}, [orderId, productsWithIds]);
 
   // ── Refresh price from order ──
-  const handleRefreshPrice = useCallback(async (sid, product) => {
-    try {
-      const t = localStorage.getItem('token');
-      const res = await fetch(`${backendServer}/api/orders/${orderId}`, {
-        headers: { Authorization: `Bearer ${t}` },
+const handleRefreshPrice = useCallback(async (sid, product) => {
+  try {
+    const t = localStorage.getItem('token');
+    const res = await fetch(`${backendServer}/api/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${t}` },
+    });
+    const r = await res.json();
+    const orderData = r.data || r;
+    const orderProducts = orderData.selectedProducts || [];
+
+    // ✅ Cari berdasarkan _id MongoDB — paling akurat, tidak bisa ketukar
+    const productMongoId = product._id
+      ? (typeof product._id === 'string'
+          ? product._id
+          : product._id?.toString?.())
+      : null;
+
+    let fresh = null;
+
+    if (productMongoId && productMongoId !== '[object Object]') {
+      fresh = orderProducts.find(op => {
+        const opid = typeof op._id === 'string'
+          ? op._id
+          : op._id?.toString?.();
+        return opid && opid === productMongoId;
       });
-      const r = await res.json();
-
-      const orderData = r.data || r;
-      const orderProducts = orderData.selectedProducts || [];
-
-      const pid = product.product_id || product._id?.toString();
-      const fresh = orderProducts.find(p => {
-        const fpid = p.product_id || p._id?.toString();
-        return fpid === pid;
-      });
-
-      if (!fresh) {
-        alert('Product tidak ditemukan di order — harga tidak bisa direfresh.');
-        return;
-      }
-
-      setProductsWithIds(prev => prev.map(item =>
-        item.sid === sid ? { ...item, product: fresh } : item
-      ));
-    } catch (e) {
-      alert('Gagal refresh harga: ' + e.message);
     }
-  }, [orderId]);
+
+    // Fallback jika _id tidak match — cari by product_id + urutan instance
+    if (!fresh && product.product_id) {
+      const pid = product.product_id;
+      const currentIdx = productsWithIds.findIndex(item => item.sid === sid);
+      const instancesBefore = productsWithIds
+        .slice(0, currentIdx)
+        .filter(item => item.product.product_id === pid)
+        .length;
+
+      let matchCount = 0;
+      for (const op of orderProducts) {
+        if (op.product_id === pid) {
+          if (matchCount === instancesBefore) {
+            fresh = op;
+            break;
+          }
+          matchCount++;
+        }
+      }
+    }
+
+    if (!fresh) {
+      alert('Product tidak ditemukan di order — tidak bisa direfresh.');
+      return;
+    }
+
+    // ✅ Replace seluruh product dengan data terbaru dari Order
+    setProductsWithIds(prev => prev.map(item =>
+      item.sid === sid ? { ...item, product: fresh } : item
+    ));
+
+  } catch (e) {
+    alert('Gagal refresh: ' + e.message);
+  }
+}, [orderId, productsWithIds]);
 
   // ── Pagination trigger ──
   const productsMap = React.useMemo(() => {
@@ -616,7 +726,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
 
       const excluded = r.data.excludedProducts || [];
       setExcludedProducts(excluded);
-      if (excluded.length > 0 && (r.data.version || 0) > 1) {
+      if (excluded.length > 0) {
         setShowExcludedPanel(true);
       }
 
@@ -673,7 +783,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: visibleProducts, clientInfo, depositPercent }),
+        body: JSON.stringify({ products: visibleProducts, clientInfo, depositPercent, version: proposalData?.version }),
       });
       const r = await res.json();
       if (r.success) {
@@ -698,7 +808,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: allProducts, clientInfo, depositPercent }),
+        body: JSON.stringify({ products: allProducts, clientInfo, depositPercent, version: proposalData?.version }),
       });
       const r = await res.json();
       if (r.success) {

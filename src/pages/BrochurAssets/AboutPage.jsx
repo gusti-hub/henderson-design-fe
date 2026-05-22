@@ -270,7 +270,7 @@ const AboutPage = ({ setActiveTab, language }) => {
         </div>
       </section>
 
-      {/* Meet Our Team - Simplified & Centered Layout */}
+      {/* Meet Our Team - 2+2 Layout */}
       <section className="py-32 px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24">
@@ -290,16 +290,15 @@ const AboutPage = ({ setActiveTab, language }) => {
             const teamMembers = [
               { name: 'Eric Henderson', role: 'CEO / Founder', image: '/images/team/eric.jpg' },
               { name: 'Janelle Balci', role: 'Creative Director / Senior Designer', image: '/images/team/Janelle.jpg' },
-              { name: 'Madeline Clifford', role: 'Project Manager', image: '/images/team/Madeline.jpg' },
-              { name: 'Joanna Staniszewski', role: 'Director of Design', image: '/images/team/Joanna.jpg' },
+              { name: 'Madeline Clifford', role: 'Project Manager', image: '/images/team/Madeline.jpg' },      
               { name: 'Sara Bravo-Susel', role: 'Director of Logistics & Field Services', image: '/images/team/Sarah.jpg' },
             ];
 
             return (
               <div className="flex flex-col items-center gap-20">
-                {/* Row 1 - 3 members */}
-                <div className="grid md:grid-cols-3 gap-12 w-full max-w-6xl">
-                  {teamMembers.slice(0, 3).map((member, index) => (
+                {/* Row 1 - 2 members */}
+                <div className="grid md:grid-cols-2 gap-12 w-full max-w-4xl">
+                  {teamMembers.slice(0, 2).map((member, index) => (
                     <div key={index} className="group">
                       <div className="mb-6 overflow-hidden rounded-2xl border-2 border-[#005670]/20 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
                         <div className="aspect-[3/4] overflow-hidden bg-gray-100">
@@ -310,23 +309,22 @@ const AboutPage = ({ setActiveTab, language }) => {
                           />
                         </div>
                       </div>
-                      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">
+                      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-3 text-center">
                         {member.name}
                       </h3>
-                      <div className="flex items-center justify-center gap-3">
-                        <div className="h-px w-8 bg-[#005670]"></div>
-                        <p className="text-sm text-[#005670] font-bold tracking-widest uppercase">
-                          {member.role}
-                        </p>
-                        <div className="h-px w-8 bg-[#005670]"></div>
+                      <div className="flex justify-center mb-3">
+                        <div className="h-px w-12 bg-[#005670] rounded-full"></div>
                       </div>
+                      <p className="text-sm text-[#005670] font-bold tracking-wider uppercase text-center leading-relaxed px-4">
+                        {member.role}
+                      </p>
                     </div>
                   ))}
                 </div>
 
-                {/* Row 2 - 2 members centered */}
-                <div className="grid md:grid-cols-2 gap-12 justify-center w-full max-w-4xl">
-                  {teamMembers.slice(3, 5).map((member, index) => (
+                {/* Row 2 - 2 members */}
+                <div className="grid md:grid-cols-2 gap-12 w-full max-w-4xl">
+                  {teamMembers.slice(2, 4).map((member, index) => (
                     <div key={index} className="group">
                       <div className="mb-6 overflow-hidden rounded-2xl border-2 border-[#005670]/20 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
                         <div className="aspect-[3/4] overflow-hidden bg-gray-100">
@@ -337,16 +335,15 @@ const AboutPage = ({ setActiveTab, language }) => {
                           />
                         </div>
                       </div>
-                      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center">
+                      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-3 text-center">
                         {member.name}
                       </h3>
-                      <div className="flex items-center justify-center gap-3">
-                        <div className="h-px w-8 bg-[#005670]"></div>
-                        <p className="text-sm text-[#005670] font-bold tracking-widest uppercase">
-                          {member.role}
-                        </p>
-                        <div className="h-px w-8 bg-[#005670]"></div>
+                      <div className="flex justify-center mb-3">
+                        <div className="h-px w-12 bg-[#005670] rounded-full"></div>
                       </div>
+                      <p className="text-sm text-[#005670] font-bold tracking-wider uppercase text-center leading-relaxed px-4">
+                        {member.role}
+                      </p>
                     </div>
                   ))}
                 </div>
