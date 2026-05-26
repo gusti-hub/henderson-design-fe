@@ -326,7 +326,7 @@ const PrintView = ({ expense, onClose }) => {
                       </td>
                       {/* ✅ Kolom Type */}
                       <td style={{ fontWeight:'500', fontSize:'9.5pt' }}>
-                        {svc ? svc.label : (line.serviceType || '—')}
+                        {line.serviceType || '—'}
                       </td>
                       <td>
                         <div style={{ whiteSpace:'pre-wrap' }}>{line.description}</div>
@@ -411,7 +411,13 @@ const PrintView = ({ expense, onClose }) => {
 
 // ─── Expense Editor ──────────────────────────────────────────────────────────
 const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
-  const [inv, setInv]           = useState(initial);
+  const [inv, setInv] = useState(() => ({
+    ...initial,
+    lines: (initial.lines || []).map(l => ({
+      ...l,
+      id: l.id || l._id?.toString() || (Date.now() + Math.random()),
+    })),
+  }));
   const [saving, setSaving]     = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [empSearch, setEmpSearch] = useState(initial.employeeName || '');
@@ -461,74 +467,101 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
               <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Expense Details</h3>
               <div className="text-right"><p className="text-xs text-gray-400">Expense #</p><p className="text-sm font-mono font-semibold text-[#005670]">{inv.expenseNumber}</p></div>
             </div>
-            {/* ✅ Subtitle input */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Invoice Subtitle
-                <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
-                  tampil di bawah "Henderson Design Group" saat print
-                </span>
-              </label>
-              <input
-                type="text"
-                value={inv.subtitle || ''}
-                onChange={e => upd('subtitle', e.target.value)}
-                placeholder="e.g. Time & Expenses Invoice"
-                className={inp}
-              />
-            </div>
-            {hasEmp && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Employee Name <span className="ml-1.5 text-[10px] text-gray-400 font-normal">required for employee services</span></label>
-                <div className="relative" ref={empRef}>
-                  <input
-                    type="text"
-                    value={empSearch}
-                    onChange={e => {
-                      setEmpSearch(e.target.value);
-                      upd('employeeName', e.target.value);
-                      setEmpOpen(true);
-                    }}
-                    onFocus={() => setEmpOpen(true)}
-                    placeholder="Search employee..."
-                    className={`${inp} pr-8`}
-                  />
-                  {(inv.employeeName || empSearch) && (
-                    <button
-                      type="button"
-                      onClick={() => { upd('employeeName', ''); setEmpSearch(''); setEmpOpen(false); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {empOpen && (
-                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {adminUsers.filter(u => !empSearch || u.name.toLowerCase().includes(empSearch.toLowerCase())).length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-gray-400 italic">No results</div>
-                      ) : (
-                        adminUsers
-                          .filter(u => !empSearch || u.name.toLowerCase().includes(empSearch.toLowerCase()))
-                          .map(u => (
-                            <button
-                              key={u._id}
-                              type="button"
-                              onClick={() => { upd('employeeName', u.name); setEmpSearch(u.name); setEmpOpen(false); }}
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#005670]/5 hover:text-[#005670] transition-colors flex items-center gap-2
-                                ${inv.employeeName === u.name ? 'bg-[#005670]/5 text-[#005670] font-medium' : 'text-gray-700'}`}
-                            >
-                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                                {u.name.charAt(0).toUpperCase()}
-                              </div>
-                              {u.name}
-                            </button>
-                          ))
-                      )}
-                    </div>
-                  )}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Expense Details</h3>
+                <div className="text-right"><p className="text-xs text-gray-400">Expense #</p><p className="text-sm font-mono font-semibold text-[#005670]">{inv.expenseNumber}</p></div>
+              </div>
+
+              {/* ✅ Date + Status grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Expense Date</label>
+                  <input type="date" value={inv.expenseDate} onChange={e => upd('expenseDate', e.target.value)} className={inp} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                  <select value={inv.status} onChange={e => upd('status', e.target.value)} className={`${inp} bg-white`}>
+                    <option value="draft">Draft</option>
+                    <option value="review">Review</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                  <p className="text-[10px] text-gray-400 mt-1">Confirmed/Paid expenses can still be edited and resynced to QB</p>
                 </div>
               </div>
-            )}
+
+              {/* ✅ Subtitle input */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Invoice Subtitle
+                  <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
+                    tampil di bawah "Henderson Design Group" saat print
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={inv.subtitle || ''}
+                  onChange={e => upd('subtitle', e.target.value)}
+                  placeholder="e.g. Time & Expenses Invoice"
+                  className={inp}
+                />
+              </div>
+
+              {/* ✅ Employee — hanya muncul kalau ada employee service type */}
+              { (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Employee Name <span className="ml-1.5 text-[10px] text-gray-400 font-normal">required for employee services</span></label>
+                  <div className="relative" ref={empRef}>
+                    <input
+                      type="text"
+                      value={empSearch}
+                      onChange={e => {
+                        setEmpSearch(e.target.value);
+                        upd('employeeName', e.target.value);
+                        setEmpOpen(true);
+                      }}
+                      onFocus={() => setEmpOpen(true)}
+                      placeholder="Search employee..."
+                      className={`${inp} pr-8`}
+                    />
+                    {(inv.employeeName || empSearch) && (
+                      <button
+                        type="button"
+                        onClick={() => { upd('employeeName', ''); setEmpSearch(''); setEmpOpen(false); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {empOpen && (
+                      <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {adminUsers.filter(u => !empSearch || u.name.toLowerCase().includes(empSearch.toLowerCase())).length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-gray-400 italic">No results</div>
+                        ) : (
+                          adminUsers
+                            .filter(u => !empSearch || u.name.toLowerCase().includes(empSearch.toLowerCase()))
+                            .map(u => (
+                              <button
+                                key={u._id}
+                                type="button"
+                                onClick={() => { upd('employeeName', u.name); setEmpSearch(u.name); setEmpOpen(false); }}
+                                className={`w-full text-left px-3 py-2 text-sm hover:bg-[#005670]/5 hover:text-[#005670] transition-colors flex items-center gap-2
+                                  ${inv.employeeName === u.name ? 'bg-[#005670]/5 text-[#005670] font-medium' : 'text-gray-700'}`}
+                              >
+                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#005670] to-[#007a9a] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                                  {u.name.charAt(0).toUpperCase()}
+                                </div>
+                                {u.name}
+                              </button>
+                            ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">Client Info <span className="text-[10px] font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full normal-case tracking-normal">from project</span></h3>
