@@ -28,6 +28,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import QuestionnaireModal from './QuestionnaireModal';
+import ProjectSummaryView from './ProjectSummaryView';
+import { BarChart2 } from 'lucide-react';
+
+const IS_TEST_ENV =
+  window.location.hostname === 'henderson-design-fe.vercel.app' ||
+  window.location.hostname === 'localhost';
 
 // ============================================================================
 // SCROLLBAR STYLES
@@ -182,6 +188,7 @@ const ClientPortal = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState(null);
+  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary'
 
   // ============================================================================
   // PHASE MAPPING LOGIC
@@ -552,6 +559,34 @@ const ClientPortal = () => {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* View tabs */}
+                <div className="flex items-center bg-white/10 rounded-xl p-1 border border-white/20">
+                  <button
+                    onClick={() => setActiveView('journey')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      activeView === 'journey'
+                        ? 'bg-white text-[#005670] shadow-sm'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">My Journey</span>
+                  </button>
+                  {IS_TEST_ENV && (
+                    <button
+                      onClick={() => setActiveView('summary')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeView === 'summary'
+                          ? 'bg-white text-[#005670] shadow-sm'
+                          : 'text-white/80 hover:text-white'
+                      }`}
+                    >
+                      <BarChart2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Project Summary</span>
+                    </button>
+                  )}
+                </div>
+
                 {pendingActions.length > 0 && (
                   <button
                     onClick={() => setShowPendingPanel(!showPendingPanel)}
@@ -563,7 +598,7 @@ const ClientPortal = () => {
                     </span>
                   </button>
                 )}
-                
+
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm border border-white/20 text-sm font-semibold"
@@ -764,8 +799,18 @@ const ClientPortal = () => {
           </div>
         )}
 
-        {/* MAIN CONTENT */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* PROJECT SUMMARY VIEW */}
+        {IS_TEST_ENV && activeView === 'summary' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <ProjectSummaryView
+              email={clientData.email}
+              unitNumber={clientData.unitNumber}
+            />
+          </div>
+        )}
+
+        {/* MAIN CONTENT – JOURNEY */}
+        <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${activeView !== 'journey' ? 'hidden' : ''}`}>
           {!isJourneyInitialized ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
               <div className="w-16 h-16 bg-[#005670]/10 rounded-full flex items-center justify-center mx-auto mb-4">

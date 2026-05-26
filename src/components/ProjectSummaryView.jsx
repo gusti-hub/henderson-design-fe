@@ -1,0 +1,486 @@
+import React, { useState, useEffect } from 'react';
+import { Loader2, Globe } from 'lucide-react';
+import { backendServer } from '../utils/info';
+
+// ─── Translations ─────────────────────────────────────────────────────────────
+const T = {
+  en: {
+    brand:        'ĀLIA RESIDENCE',
+    title:        'Project Investment Summary',
+    tagline:      'TRANSPARENT. CURATED. EXCEPTIONAL.',
+    clientName:   'Client Name',
+    unitNumber:   'Unit Number',
+    collection:   'Collection Type',
+    statementDate:'Statement Date',
+    advisor:      'Project Advisor',
+
+    s1Title:      'ORIGINAL COLLECTION AGREEMENT',
+    s1Original:   'Original Collection Investment',
+    s1Deposit:    '30% Collection Deposit Received',
+    s1Balance:    'Remaining Original Package Balance',
+    s1Note:       'Your original collection pricing is secured. Your 30% deposit holds this pricing and is reserved toward final reconciliation.',
+
+    s2Title:      'CURRENT PROJECT STATUS',
+    s2Approved:   'Approved Total To Date',
+    s2Payments:   'Less Payments Received',
+    s2Outstanding:'Current Outstanding Balance',
+    s2Current:    'Thank you. Your account is current.',
+
+    s3Title:      'ESTIMATED REMAINING PROJECT COSTS',
+    s3Sub:        '(Subject to Final Selections)',
+    s3Accents:    'Proposal 2 – Accents Estimated Allowance',
+    s3Closet:     'Closet Systems Estimated Allowance',
+    s3Window:     'Window Coverings Estimated Allowance',
+    s3Fdi:        'FDI Estimated Allowance\n(Freight, Delivery & Installation)',
+    s3Other:      'Other Estimated Items\n(AV, Additional Services, Specialty Coordination)',
+    s3Total:      'Estimated Remaining Costs',
+
+    s4Title:      'ESTIMATED FINAL PROJECT INVESTMENT',
+    s4Approved:   'Approved Costs To Date',
+    s4Remaining:  'Estimated Remaining Costs',
+    s4Final:      'Estimated Final Project Investment',
+
+    outlookTitle:    'CURRENT INVESTMENT OUTLOOK',
+    outlookSub:      'Summary of Your Project',
+    outlookOrig:     'Original Package Investment',
+    outlookApproved: 'Approved Costs To Date',
+    outlookRemaining:'Estimated Remaining Costs',
+    outlookFinal:    'Estimated Final Project Investment',
+    depositHeld:     'DEPOSIT HELD ON ACCOUNT',
+    depositNote:     'To be applied toward final project reconciliation.',
+    projManaged:     'Your project is thoughtfully managed with full transparency every step of the way.',
+
+    notesTitle: 'IMPORTANT NOTES',
+    note1: 'This summary reflects approved selections and current project estimates as of the statement date above.',
+    note2: 'Estimated categories are planning allowances only and may adjust pending final selections, field conditions, vendor pricing, freight conditions, and project coordination requirements.',
+    note3: 'FDI includes freight, delivery, warehousing, installation coordination, installation labor, staging, and project execution services.',
+    note4: 'Final project pricing will be based on approved proposals and actual selected scope.',
+    note5: 'Your original collection pricing remains protected under the terms of your Ālia Collection Agreement.',
+
+    footerSub:    'DESIGN | FURNISHINGS | LIFESTYLE',
+    thankYou:     'Thank you.',
+    appreciate:   'WE APPRECIATE YOUR TRUST.',
+    continueBtn:  'Continue to Questionnaire',
+    loading:      'Loading your project summary…',
+  },
+  jp: {
+    brand:        'アリア レジデンス',
+    title:        'プロジェクト投資概要',
+    tagline:      '透明性。洗練。卓越性。',
+    clientName:   'お客様名',
+    unitNumber:   'ユニット番号',
+    collection:   'コレクション種別',
+    statementDate:'作成日',
+    advisor:      'プロジェクトアドバイザー',
+
+    s1Title:      'オリジナルコレクション契約',
+    s1Original:   'オリジナルコレクション投資額',
+    s1Deposit:    'コレクションデポジット30%受領済',
+    s1Balance:    'オリジナルパッケージ残高',
+    s1Note:       'お客様のオリジナルコレクション価格は確保されています。30%のデポジットはこの価格を保証し、最終精算時に充当されます。',
+
+    s2Title:      '現在のプロジェクト状況',
+    s2Approved:   '承認済み合計額（現在まで）',
+    s2Payments:   '受領済み支払い額（控除）',
+    s2Outstanding:'現在の未払い残高',
+    s2Current:    'ありがとうございます。お支払いは完了しています。',
+
+    s3Title:      '今後予定される推定費用',
+    s3Sub:        '（最終選定内容により変動する場合があります）',
+    s3Accents:    'Proposal 2 – アクセント関連予算見込み',
+    s3Closet:     'クローゼットシステム予算見込み',
+    s3Window:     'ウィンドウカバー予算見込み',
+    s3Fdi:        'FDI予算見込み\n（輸送・搬入・設置費用）',
+    s3Other:      'その他予想費用\n（AV・追加サービス・スペシャルティコーディネーション等）',
+    s3Total:      '推定残りの費用合計',
+
+    s4Title:      '最終プロジェクト投資予測',
+    s4Approved:   '承認済みコスト（現在まで）',
+    s4Remaining:  '推定残りの費用',
+    s4Final:      '推定最終プロジェクト投資額',
+
+    outlookTitle:    '現在の投資状況の見通し',
+    outlookSub:      'プロジェクトの概要',
+    outlookOrig:     'オリジナルコレクション投資額',
+    outlookApproved: '承認済みコスト（現在まで）',
+    outlookRemaining:'推定残りの費用',
+    outlookFinal:    '推定最終プロジェクト投資額',
+    depositHeld:     'お預かりデポジット',
+    depositNote:     '最終精算時に充当されます。',
+    projManaged:     'プロジェクトはすべての段階で透明性を持ち、丁寧に管理されています。',
+
+    notesTitle: '重要事項',
+    note1: '本概要は、上記作成時点で承認済みの選定内容および現在の推定金額を反映しております。',
+    note2: '推定項目は計画段階の参考金額であり、最終選定内容、現場状況、仕入価格、輸送状況、プロジェクト調整内容により変動する場合があります。',
+    note3: 'FDIには、輸送、搬入、保管、設置調整、設置作業、ステージング、およびプロジェクト実行サービスが含まれます。',
+    note4: '最終金額は、正式承認された提案内容および実際の選定内容に基づき確定されます。',
+    note5: 'お客様のオリジナルコレクション価格は、Ālia Collection Agreementの条件に基づき保護されています。',
+
+    footerSub:    'デザイン | 家具 | ライフスタイル',
+    thankYou:     'ありがとうございました。',
+    appreciate:   '信頼いただき、誠にありがとうございます。',
+    continueBtn:  '質問票へ進む',
+    loading:      'プロジェクト概要を読み込んでいます…',
+  },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmt = (n) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+
+const fmtDate = (d, lang) => {
+  if (!d) return '—';
+  const locale = lang === 'jp' ? 'ja-JP' : 'en-US';
+  return new Date(d).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+const LineRow = ({ label, value, bold, amber, indent, negative }) => (
+  <div className={`flex justify-between items-start py-1.5 ${bold ? 'font-semibold' : ''} ${indent ? 'pl-2' : ''}`}>
+    <p className={`flex-1 pr-4 text-sm leading-snug ${bold ? 'text-gray-900' : 'text-gray-700'}`}>{label}</p>
+    <span className={`text-sm whitespace-nowrap ${amber ? 'text-[#c4934f] font-bold' : bold ? 'text-gray-900' : 'text-gray-700'}`}>
+      {negative ? `(${fmt(value)})` : fmt(value)}
+    </span>
+  </div>
+);
+
+const SectionCard = ({ children, className = '' }) => (
+  <div className={`bg-white border border-gray-200 rounded-lg p-5 ${className}`}>
+    {children}
+  </div>
+);
+
+const SectionTitle = ({ text }) => (
+  <div className="mb-3">
+    <p className="text-[10px] tracking-widest font-bold text-gray-500 uppercase leading-none">{text}</p>
+  </div>
+);
+
+const Divider = () => <div className="border-t border-gray-200 my-2" />;
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
+  const [lang, setLang]       = useState('en');
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [data, setData]       = useState(null);
+  const t = T[lang];
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          `${backendServer}/api/clients-portal/project-summary?email=${encodeURIComponent(email)}&unitNumber=${encodeURIComponent(unitNumber)}`
+        );
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Failed to load');
+        setData(json.summary);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSummary();
+  }, [email, unitNumber]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <Loader2 className="w-10 h-10 text-[#005670] animate-spin mb-4" />
+        <p className="text-gray-500">{t.loading}</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+        <p className="text-amber-800 font-medium">Could not load project summary.</p>
+        <p className="text-amber-600 text-sm mt-1">{error}</p>
+        {onContinue && (
+          <button onClick={onContinue} className="mt-4 px-6 py-2 bg-[#005670] text-white rounded-lg text-sm hover:opacity-90">
+            Skip & Continue
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const { client, section1: s1, section2: s2, section3: s3, section4: s4, outlook, statementDate } = data;
+
+  return (
+    <div className="max-w-5xl mx-auto font-sans">
+
+      {/* ── Language toggle ── */}
+      <div className="flex justify-end mb-4">
+        <div className="flex items-center bg-white border border-gray-200 rounded-full p-1 shadow-sm gap-1">
+          <Globe className="w-4 h-4 text-gray-400 ml-2" />
+          <button
+            onClick={() => setLang('en')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${lang === 'en' ? 'bg-[#005670] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            English
+          </button>
+          <button
+            onClick={() => setLang('jp')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${lang === 'jp' ? 'bg-[#005670] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            日本語
+          </button>
+        </div>
+      </div>
+
+      {/* ══ Document card ══════════════════════════════════════════════════════ */}
+      <div className="bg-[#faf8f5] border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-6">
+              <img src="/images/HDG-Logo.png" alt="Henderson Design Group" className="h-14 object-contain" />
+              <div className="border-l border-gray-200 pl-6">
+                <p className="text-[10px] tracking-[0.3em] text-gray-500 font-medium uppercase">{t.brand}</p>
+                <h1 className="text-2xl md:text-3xl font-light text-gray-900 tracking-wide leading-tight mt-1">
+                  {t.title}
+                </h1>
+                <p className="text-[10px] tracking-widest text-gray-400 mt-1 uppercase">{t.tagline}</p>
+              </div>
+            </div>
+
+            <div className="hidden md:block w-32 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+              <img
+                src="/images/collections/1.jpg"
+                alt="Collection preview"
+                className="w-full h-full object-cover opacity-80"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Client info bar ─────────────────────────────────────────────── */}
+        <div className="bg-white border-b border-gray-200 px-8 py-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-3">
+            {[
+              { label: t.clientName,    value: client.name },
+              { label: t.unitNumber,    value: `Unit ${client.unitNumber}` },
+              { label: t.collection,    value: client.collection || '—' },
+              { label: t.statementDate, value: fmtDate(statementDate, lang) },
+              { label: t.advisor,       value: client.projectAdvisor },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-[10px] text-gray-400 tracking-wide uppercase font-medium leading-none">{label}</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5 leading-snug">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Body ────────────────────────────────────────────────────────── */}
+        <div className="px-6 py-6 space-y-5">
+
+          {/* Row 1: Sections 1 + 2 + 3 */}
+          <div className="grid md:grid-cols-3 gap-4">
+
+            {/* Section 1 – Original Collection Agreement */}
+            <SectionCard>
+              <div className="flex items-start gap-2 mb-3">
+                <span className="text-[10px] font-bold text-[#005670] bg-[#005670]/10 px-2 py-0.5 rounded-full">1</span>
+                <SectionTitle text={t.s1Title} />
+              </div>
+
+              <LineRow label={t.s1Original} value={s1.originalCollectionInvestment} />
+              <Divider />
+              <LineRow label={t.s1Deposit}  value={s1.depositReceived} negative />
+              <Divider />
+              <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
+
+              <div className="mt-4 bg-[#faf8f5] border border-gray-200 rounded-lg p-3 flex gap-2">
+                <span className="text-lg">🔒</span>
+                <p className="text-xs text-gray-500 italic leading-snug">{t.s1Note}</p>
+              </div>
+            </SectionCard>
+
+            {/* Section 2 – Current Project Status */}
+            <SectionCard>
+              <div className="flex items-start gap-2 mb-3">
+                <span className="text-[10px] font-bold text-[#005670] bg-[#005670]/10 px-2 py-0.5 rounded-full">2</span>
+                <div>
+                  <SectionTitle text={t.s2Title} />
+                  {s2.proposalLabel && (
+                    <p className="text-[10px] text-gray-400 italic -mt-2 mb-2">({s2.proposalLabel})</p>
+                  )}
+                </div>
+              </div>
+
+              <LineRow label={t.s2Approved}    value={s2.approvedTotalToDate} />
+              <Divider />
+              <LineRow label={t.s2Payments}    value={s2.paymentsReceived} negative />
+              <Divider />
+              <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold amber={s2.outstandingBalance > 0} />
+
+              {s2.outstandingBalance === 0 && (
+                <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 flex gap-2 items-center">
+                  <span className="text-green-600">✓</span>
+                  <p className="text-xs text-green-700 italic">{t.s2Current}</p>
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Section 3 – Estimated Remaining Costs */}
+            <SectionCard>
+              <div className="flex items-start gap-2 mb-1">
+                <span className="text-[10px] font-bold text-[#005670] bg-[#005670]/10 px-2 py-0.5 rounded-full">3</span>
+                <div>
+                  <SectionTitle text={t.s3Title} />
+                  <p className="text-[10px] text-gray-400 italic -mt-2 mb-2">{t.s3Sub}</p>
+                </div>
+              </div>
+
+              {[
+                { label: t.s3Accents, value: s3.accentsAllowance },
+                { label: t.s3Closet,  value: s3.closetSystemsAllowance },
+                { label: t.s3Window,  value: s3.windowCoveringsAllowance },
+                { label: t.s3Fdi,     value: s3.fdiAllowance },
+                { label: t.s3Other,   value: s3.otherEstimatedItems },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div className="flex justify-between items-start py-1.5">
+                    <div className="flex-1 pr-2">
+                      {label.split('\n').map((line, i) => (
+                        <p key={i} className="text-xs text-gray-700 leading-snug">{line}</p>
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-700 whitespace-nowrap">{fmt(value)}</span>
+                  </div>
+                  <Divider />
+                </div>
+              ))}
+
+              <div className="flex justify-between items-center pt-1">
+                <p className="text-sm font-bold text-gray-900">{t.s3Total}</p>
+                <span className="text-sm font-bold text-[#c4934f]">{fmt(s3.totalEstimatedRemaining)}</span>
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* Section 4 – Estimated Final */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <SectionCard>
+                <div className="flex items-start gap-2 mb-3">
+                  <span className="text-[10px] font-bold text-[#005670] bg-[#005670]/10 px-2 py-0.5 rounded-full">4</span>
+                  <SectionTitle text={t.s4Title} />
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <LineRow label={t.s4Approved}  value={s4.approvedCostsToDate} />
+                    <Divider />
+                    <LineRow label={t.s4Remaining} value={s4.estimatedRemainingCosts} />
+                    <Divider />
+                    <div className="flex justify-between items-end pt-1">
+                      <p className="text-sm font-bold text-gray-900">{t.s4Final}</p>
+                      <span className="text-lg font-bold text-[#c4934f]">{fmt(s4.estimatedFinalProjectInvestment)}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-center items-start border-l border-gray-200 pl-6">
+                    <p className="text-xs text-gray-500">{t.outlookOrig}</p>
+                    <p className="text-xl font-bold text-[#c4934f] mt-1">{fmt(outlook.originalPackageInvestment)}</p>
+                    <div className="mt-3 flex gap-2 items-start">
+                      <span className="text-lg">📊</span>
+                      <p className="text-xs text-gray-500 italic leading-snug">{t.projManaged}</p>
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+            <div className="hidden md:block" />
+          </div>
+
+          {/* ── Current Investment Outlook ── */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="grid md:grid-cols-4 gap-6 items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-[#005670]/10 flex items-center justify-center flex-shrink-0 text-xl">
+                  🪑
+                </div>
+                <div>
+                  <p className="text-xs font-bold tracking-widest text-gray-500 uppercase">{t.outlookTitle}</p>
+                  <p className="text-xs text-gray-500 italic mt-0.5">{t.outlookSub}</p>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-2">
+                {[
+                  { label: t.outlookOrig,      value: outlook.originalPackageInvestment },
+                  { label: t.outlookApproved,  value: outlook.approvedCostsToDate },
+                  { label: t.outlookRemaining, value: outlook.estimatedRemainingCosts },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center border-b border-gray-100 pb-1">
+                    <p className="text-xs text-gray-600">{label}</p>
+                    <span className="text-xs font-medium text-gray-800">{fmt(value)}</span>
+                  </div>
+                ))}
+                <div className="col-span-2 flex justify-between items-center pt-1">
+                  <p className="text-sm font-bold text-gray-900">{t.outlookFinal}</p>
+                  <span className="text-base font-bold text-[#c4934f]">{fmt(outlook.estimatedFinalProjectInvestment)}</span>
+                </div>
+              </div>
+
+              <div className="bg-[#faf8f5] border border-gray-200 rounded-xl p-4 text-center">
+                <p className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">{t.depositHeld}</p>
+                <p className="text-2xl font-bold text-[#005670] mt-1">({fmt(outlook.depositHeldOnAccount)})</p>
+                <p className="text-[10px] text-gray-400 mt-1 italic">{t.depositNote}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Important Notes ── */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <p className="text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-3">{t.notesTitle}</p>
+            <div className="space-y-2">
+              {[t.note1, t.note2, t.note3, t.note4, t.note5].map((note, i) => (
+                <div key={i} className="flex gap-3">
+                  <span className="text-gray-300 text-sm mt-0.5 flex-shrink-0">•</span>
+                  <p className="text-xs text-gray-600 leading-relaxed">{note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Footer bar ── */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-2">
+            <div>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">HENDERSON DESIGN GROUP</p>
+              <p className="text-[10px] text-gray-400">{t.footerSub}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-gray-400">HENDERSON.HOUSE</p>
+              <p className="text-[10px] text-gray-400">808 591 1117</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg italic text-gray-400 font-serif">{t.thankYou}</p>
+              <p className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">{t.appreciate}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Continue button ── */}
+      {onContinue && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={onContinue}
+            className="px-10 py-4 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-medium tracking-wide shadow-lg text-sm"
+          >
+            {t.continueBtn} →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProjectSummaryView;

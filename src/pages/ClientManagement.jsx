@@ -11,6 +11,7 @@ import { pdf } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import AdminJourneyManager from '../components/AdminJourneyManager';
 import QuestionnaireModal from '../components/QuestionnaireModal';
+import { BarChart2 } from 'lucide-react';
 
 
 const DESIGN_IMAGES = {
@@ -374,6 +375,138 @@ const OrdersModal = React.memo(({ selectedClient, onClose }) => {
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ==================== PROJECT SUMMARY ADMIN MODAL ====================
+const ProjectSummaryAdminModal = React.memo(({ selectedClient, onClose }) => {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState({
+    statementDate: selectedClient.projectSummary?.statementDate
+      ? new Date(selectedClient.projectSummary.statementDate).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0],
+    proposalLabel: selectedClient.projectSummary?.proposalLabel || '',
+    accentsAllowance:         selectedClient.projectSummary?.estimatedRemainingCosts?.accentsAllowance         || 0,
+    closetSystemsAllowance:   selectedClient.projectSummary?.estimatedRemainingCosts?.closetSystemsAllowance   || 0,
+    windowCoveringsAllowance: selectedClient.projectSummary?.estimatedRemainingCosts?.windowCoveringsAllowance || 0,
+    fdiAllowance:             selectedClient.projectSummary?.estimatedRemainingCosts?.fdiAllowance             || 0,
+    otherEstimatedItems:      selectedClient.projectSummary?.estimatedRemainingCosts?.otherEstimatedItems      || 0,
+    notes: selectedClient.projectSummary?.notes || ''
+  });
+
+  const totalEstimated =
+    Number(form.accentsAllowance) +
+    Number(form.closetSystemsAllowance) +
+    Number(form.windowCoveringsAllowance) +
+    Number(form.fdiAllowance) +
+    Number(form.otherEstimatedItems);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/clients/${selectedClient._id}/project-summary`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      alert('Save failed: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = (label, key, type = 'number') => (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <input
+        type={type}
+        value={form[key]}
+        onChange={e => setForm(prev => ({ ...prev, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+      />
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Project Summary</h2>
+            <p className="text-sm text-gray-500">{selectedClient.name} · Unit {selectedClient.unitNumber}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-all">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            {field('Statement Date', 'statementDate', 'date')}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Proposal Label (Section 2)</label>
+              <input
+                type="text"
+                value={form.proposalLabel}
+                onChange={e => setForm(prev => ({ ...prev, proposalLabel: e.target.value }))}
+                placeholder="Proposal 1 – Furnishings + Design Fee..."
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">
+              Section 3 – Estimated Remaining Costs
+            </p>
+            <div className="space-y-3">
+              {field('Accents Allowance ($)',         'accentsAllowance')}
+              {field('Closet Systems Allowance ($)',   'closetSystemsAllowance')}
+              {field('Window Coverings Allowance ($)', 'windowCoveringsAllowance')}
+              {field('FDI Allowance ($)',              'fdiAllowance')}
+              {field('Other Estimated Items ($)',      'otherEstimatedItems')}
+            </div>
+            <div className="mt-3 flex justify-between items-center bg-[#faf8f5] border border-gray-200 rounded-lg px-4 py-2">
+              <span className="text-sm font-semibold text-gray-700">Total Estimated Remaining</span>
+              <span className="text-sm font-bold text-[#c4934f]">
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalEstimated)}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Internal Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none resize-none"
+              placeholder="Any internal notes about this project summary..."
+            />
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-all">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-2 bg-[#005670] text-white text-sm rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <BarChart2 className="w-4 h-4" />}
+            {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Summary'}
+          </button>
         </div>
       </div>
     </div>
@@ -794,6 +927,11 @@ const ClientManagement = () => {
     setActiveModal('orders');
   }, []);
 
+  const openProjectSummaryModal = useCallback((client) => {
+    setSelectedClient(client);
+    setActiveModal('projectSummary');
+  }, []);
+
   const getBadge = useCallback((status, type = 'status') => {
     const badges = {
       status: {
@@ -1108,7 +1246,8 @@ const ClientManagement = () => {
           onOpenJourneyModal={openJourneyModal}
           onOpenQuestionnaireModal={openQuestionnaireModal}
           onOpenOrdersModal={openOrdersModal}
-          onOpenFillQuestionnaireModal={openFillQuestionnaireModal} 
+          onOpenFillQuestionnaireModal={openFillQuestionnaireModal}
+          onOpenProjectSummaryModal={openProjectSummaryModal}
         />
       )}
 
@@ -1189,6 +1328,10 @@ const ClientManagement = () => {
         <OrdersModal selectedClient={selectedClient} onClose={closeModal} />
       )}
 
+      {activeModal === 'projectSummary' && selectedClient && (
+        <ProjectSummaryAdminModal selectedClient={selectedClient} onClose={closeModal} />
+      )}
+
       {showFillQuestionnaireModal && clientForQuestionnaire && (
         <QuestionnaireModal 
           onComplete={handleQuestionnaireComplete}
@@ -1215,7 +1358,8 @@ const ClientTable = React.memo(
     onOpenJourneyModal,
     onOpenQuestionnaireModal,
     onOpenOrdersModal,
-    onOpenFillQuestionnaireModal
+    onOpenFillQuestionnaireModal,
+    onOpenProjectSummaryModal
   }) => {
     
     const getJourneyStatus = (clientId) => {
@@ -1458,6 +1602,14 @@ const ClientTable = React.memo(
                                 size="sm"
                               />
                             )}
+
+                            <ActionButton
+                              icon={BarChart2}
+                              color="teal"
+                              onClick={() => onOpenProjectSummaryModal(client)}
+                              title="Project Summary"
+                              size="sm"
+                            />
 
                             <ActionButton
                               icon={Trash2}
@@ -2875,6 +3027,7 @@ const ActionButton = React.memo(({ icon: Icon, color, onClick, title, size = 'md
     red: 'text-red-600 hover:bg-red-50',
     blue: 'text-blue-600 hover:bg-blue-50',
     cyan: 'text-cyan-600 hover:bg-cyan-50',
+    teal: 'text-teal-600 hover:bg-teal-50',
     amber: 'text-amber-600 hover:bg-amber-50',
     purple: 'text-purple-600 hover:bg-purple-50',
     indigo: 'text-indigo-600 hover:bg-indigo-50',
