@@ -14,11 +14,11 @@ const T = {
     statementDate:'Statement Date',
     advisor:      'Project Advisor',
 
-    s1Title:      'ORIGINAL COLLECTION AGREEMENT',
-    s1Original:   'Original Collection Investment',
-    s1Deposit:    '30% Collection Deposit Received',
+    s1Title:      'ORIGINAL COLLECTION CHOICE',
+    s1Original:   'Original Collection Estimate',
+    s1Deposit:    'Deposit Received',
     s1Balance:    'Remaining Original Package Balance',
-    s1Note:       'Your original collection pricing is secured. Your 30% deposit holds this pricing and is reserved toward final reconciliation.',
+    s1Note:       'Your original collection pricing is secured. Your deposit holds this pricing and is reserved toward final reconciliation.',
 
     s2Title:      'CURRENT PROJECT STATUS',
     s2Approved:   'Approved Total To Date',
@@ -35,14 +35,14 @@ const T = {
     s3Other:      'Other Estimated Items\n(AV, Additional Services, Specialty Coordination)',
     s3Total:      'Estimated Remaining Costs',
 
-    s4Title:      'ESTIMATED FINAL PROJECT INVESTMENT',
+    s4Title:      'ESTIMATED FINAL PROJECT',
     s4Approved:   'Approved Costs To Date',
     s4Remaining:  'Estimated Remaining Costs',
-    s4Final:      'Estimated Final Project Investment',
+    s4Final:      'Estimated Final Project',
 
     outlookTitle:    'CURRENT INVESTMENT OUTLOOK',
     outlookSub:      'Summary of Your Project',
-    outlookOrig:     'Original Package Investment',
+    outlookOrig:     'Original Choice Of Investment',
     outlookApproved: 'Approved Costs To Date',
     outlookRemaining:'Estimated Remaining Costs',
     outlookFinal:    'Estimated Final Project Investment',
@@ -75,9 +75,9 @@ const T = {
 
     s1Title:      'オリジナルコレクション契約',
     s1Original:   'オリジナルコレクション投資額',
-    s1Deposit:    'コレクションデポジット30%受領済',
+    s1Deposit:    'コレクションデポジット受領済',
     s1Balance:    'オリジナルパッケージ残高',
-    s1Note:       'お客様のオリジナルコレクション価格は確保されています。30%のデポジットはこの価格を保証し、最終精算時に充当されます。',
+    s1Note:       'お客様のオリジナルコレクション価格は確保されています。のデポジットはこの価格を保証し、最終精算時に充当されます。',
 
     s2Title:      '現在のプロジェクト状況',
     s2Approved:   '承認済み合計額（現在まで）',
@@ -135,10 +135,10 @@ const fmtDate = (d, lang) => {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-const LineRow = ({ label, value, bold, amber, indent, negative }) => (
+const LineRow = ({ label, value, bold, teal, indent, negative }) => (
   <div className={`flex justify-between items-start py-1.5 ${bold ? 'font-semibold' : ''} ${indent ? 'pl-2' : ''}`}>
     <p className={`flex-1 pr-4 text-sm leading-snug ${bold ? 'text-gray-900' : 'text-gray-700'}`}>{label}</p>
-    <span className={`text-sm whitespace-nowrap ${amber ? 'text-[#c4934f] font-bold' : bold ? 'text-gray-900' : 'text-gray-700'}`}>
+    <span className={`text-sm whitespace-nowrap ${teal ? 'text-[#005670] font-bold' : bold ? 'text-gray-900' : 'text-gray-700'}`}>
       {negative ? `(${fmt(value)})` : fmt(value)}
     </span>
   </div>
@@ -233,27 +233,29 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
       </div>
 
       {/* ══ Document card ══════════════════════════════════════════════════════ */}
-      <div className="bg-[#faf8f5] border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6">
+        {/* ── Header — matches portal bg-[#005670] ────────────────────────── */}
+        <div className="bg-[#005670] px-8 py-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6">
-              <img src="/images/HDG-Logo.png" alt="Henderson Design Group" className="h-14 object-contain" />
-              <div className="border-l border-gray-200 pl-6">
-                <p className="text-[10px] tracking-[0.3em] text-gray-500 font-medium uppercase">{t.brand}</p>
-                <h1 className="text-2xl md:text-3xl font-light text-gray-900 tracking-wide leading-tight mt-1">
+              <div className="flex flex-col items-center leading-none">
+                <span className="text-4xl font-light text-white tracking-widest" style={{ fontFamily: 'Georgia, serif', letterSpacing: '0.15em' }}>Ālia</span>
+              </div>
+              <div className="border-l border-white/20 pl-6">
+                <p className="text-[10px] tracking-[0.3em] text-white/60 font-semibold uppercase leading-none">{t.brand}</p>
+                <h1 className="text-2xl md:text-3xl font-light text-white tracking-wide leading-tight mt-1">
                   {t.title}
                 </h1>
-                <p className="text-[10px] tracking-widest text-gray-400 mt-1 uppercase">{t.tagline}</p>
+                <p className="text-[10px] tracking-widest text-white/50 mt-1 uppercase">{t.tagline}</p>
               </div>
             </div>
 
-            <div className="hidden md:block w-32 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            <div className="hidden md:block w-32 h-24 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-white/20">
               <img
                 src="/images/collections/1.jpg"
                 alt="Collection preview"
-                className="w-full h-full object-cover opacity-80"
+                className="w-full h-full object-cover opacity-70"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             </div>
@@ -261,7 +263,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
         </div>
 
         {/* ── Client info bar ─────────────────────────────────────────────── */}
-        <div className="bg-white border-b border-gray-200 px-8 py-4">
+        <div className="bg-[#004558] border-b border-white/10 px-8 py-4">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-3">
             {[
               { label: t.clientName,    value: client.name },
@@ -271,15 +273,15 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               { label: t.advisor,       value: client.projectAdvisor },
             ].map(({ label, value }) => (
               <div key={label}>
-                <p className="text-[10px] text-gray-400 tracking-wide uppercase font-medium leading-none">{label}</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5 leading-snug">{value}</p>
+                <p className="text-[10px] text-white/50 tracking-wide uppercase font-semibold leading-none">{label}</p>
+                <p className="text-sm font-semibold text-white mt-0.5 leading-snug">{value}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── Body ────────────────────────────────────────────────────────── */}
-        <div className="px-6 py-6 space-y-5">
+        <div className="bg-gray-50 px-6 py-6 space-y-5">
 
           {/* Row 1: Sections 1 + 2 + 3 */}
           <div className="grid md:grid-cols-3 gap-4">
@@ -297,7 +299,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               <Divider />
               <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
 
-              <div className="mt-4 bg-[#faf8f5] border border-gray-200 rounded-lg p-3 flex gap-2">
+              <div className="mt-4 bg-[#005670]/5 border border-[#005670]/10 rounded-lg p-3 flex gap-2">
                 <span className="text-lg">🔒</span>
                 <p className="text-xs text-gray-500 italic leading-snug">{t.s1Note}</p>
               </div>
@@ -309,9 +311,9 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
                 <span className="text-[10px] font-bold text-[#005670] bg-[#005670]/10 px-2 py-0.5 rounded-full">2</span>
                 <div>
                   <SectionTitle text={t.s2Title} />
-                  {s2.proposalLabel && (
+                  {/* {s2.proposalLabel && (
                     <p className="text-[10px] text-gray-400 italic -mt-2 mb-2">({s2.proposalLabel})</p>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -319,14 +321,14 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               <Divider />
               <LineRow label={t.s2Payments}    value={s2.paymentsReceived} negative />
               <Divider />
-              <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold amber={s2.outstandingBalance > 0} />
+              <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold teal={s2.outstandingBalance > 0} />
 
-              {s2.outstandingBalance === 0 && (
+              {/* {s2.outstandingBalance === 0 && (
                 <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 flex gap-2 items-center">
                   <span className="text-green-600">✓</span>
                   <p className="text-xs text-green-700 italic">{t.s2Current}</p>
                 </div>
-              )}
+              )} */}
             </SectionCard>
 
             {/* Section 3 – Estimated Remaining Costs */}
@@ -361,12 +363,12 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
 
               <div className="flex justify-between items-center pt-1">
                 <p className="text-sm font-bold text-gray-900">{t.s3Total}</p>
-                <span className="text-sm font-bold text-[#c4934f]">{fmt(s3.totalEstimatedRemaining)}</span>
+                <span className="text-sm font-bold text-[#005670]">{fmt(s3.totalEstimatedRemaining)}</span>
               </div>
             </SectionCard>
           </div>
 
-          {/* Section 4 – Estimated Final */}
+          {/* Section 4 – Estimated Final Investment */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <SectionCard>
@@ -382,16 +384,16 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
                     <Divider />
                     <div className="flex justify-between items-end pt-1">
                       <p className="text-sm font-bold text-gray-900">{t.s4Final}</p>
-                      <span className="text-lg font-bold text-[#c4934f]">{fmt(s4.estimatedFinalProjectInvestment)}</span>
+                      <span className="text-lg font-bold text-[#005670]">{fmt(s4.estimatedFinalProjectInvestment)}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col justify-center items-start border-l border-gray-200 pl-6">
+                  <div className="flex flex-col justify-center items-start border-l border-[#005670]/10 pl-6">
                     <p className="text-xs text-gray-500">{t.outlookOrig}</p>
-                    <p className="text-xl font-bold text-[#c4934f] mt-1">{fmt(outlook.originalPackageInvestment)}</p>
-                    <div className="mt-3 flex gap-2 items-start">
+                    <p className="text-xl font-bold text-[#005670] mt-1">{fmt(outlook.originalPackageInvestment)}</p>
+                    {/* <div className="mt-3 flex gap-2 items-start">
                       <span className="text-lg">📊</span>
                       <p className="text-xs text-gray-500 italic leading-snug">{t.projManaged}</p>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </SectionCard>
@@ -400,14 +402,16 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
           </div>
 
           {/* ── Current Investment Outlook ── */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <div className="bg-white border border-[#005670]/15 rounded-xl p-6 shadow-sm">
             <div className="grid md:grid-cols-4 gap-6 items-center">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#005670]/10 flex items-center justify-center flex-shrink-0 text-xl">
-                  🪑
+                <div className="w-12 h-12 rounded-full bg-[#005670]/10 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-[#005670]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-bold tracking-widest text-gray-500 uppercase">{t.outlookTitle}</p>
+                  <p className="text-xs font-bold tracking-widest text-[#005670] uppercase">{t.outlookTitle}</p>
                   <p className="text-xs text-gray-500 italic mt-0.5">{t.outlookSub}</p>
                 </div>
               </div>
@@ -425,12 +429,12 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
                 ))}
                 <div className="col-span-2 flex justify-between items-center pt-1">
                   <p className="text-sm font-bold text-gray-900">{t.outlookFinal}</p>
-                  <span className="text-base font-bold text-[#c4934f]">{fmt(outlook.estimatedFinalProjectInvestment)}</span>
+                  <span className="text-base font-bold text-[#005670]">{fmt(outlook.estimatedFinalProjectInvestment)}</span>
                 </div>
               </div>
 
-              <div className="bg-[#faf8f5] border border-gray-200 rounded-xl p-4 text-center">
-                <p className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">{t.depositHeld}</p>
+              <div className="bg-[#005670]/5 border border-[#005670]/15 rounded-xl p-4 text-center">
+                <p className="text-[10px] font-bold tracking-widest text-[#005670]/70 uppercase">{t.depositHeld}</p>
                 <p className="text-2xl font-bold text-[#005670] mt-1">({fmt(outlook.depositHeldOnAccount)})</p>
                 <p className="text-[10px] text-gray-400 mt-1 italic">{t.depositNote}</p>
               </div>
@@ -439,11 +443,11 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
 
           {/* ── Important Notes ── */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <p className="text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-3">{t.notesTitle}</p>
+            <p className="text-[10px] font-bold tracking-widest text-[#005670] uppercase mb-3">{t.notesTitle}</p>
             <div className="space-y-2">
               {[t.note1, t.note2, t.note3, t.note4, t.note5].map((note, i) => (
                 <div key={i} className="flex gap-3">
-                  <span className="text-gray-300 text-sm mt-0.5 flex-shrink-0">•</span>
+                  <span className="text-[#005670]/40 text-sm mt-0.5 flex-shrink-0">•</span>
                   <p className="text-xs text-gray-600 leading-relaxed">{note}</p>
                 </div>
               ))}
@@ -451,9 +455,9 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
           </div>
 
           {/* ── Footer bar ── */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-2">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-2 border-t border-[#005670]/10">
             <div>
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">HENDERSON DESIGN GROUP</p>
+              <p className="text-xs font-bold text-[#005670] uppercase tracking-widest">HENDERSON DESIGN GROUP</p>
               <p className="text-[10px] text-gray-400">{t.footerSub}</p>
             </div>
             <div className="text-center">
@@ -461,8 +465,8 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               <p className="text-[10px] text-gray-400">808 591 1117</p>
             </div>
             <div className="text-right">
-              <p className="text-lg italic text-gray-400 font-serif">{t.thankYou}</p>
-              <p className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">{t.appreciate}</p>
+              <p className="text-lg italic text-[#005670]/40 font-serif">{t.thankYou}</p>
+              <p className="text-[10px] font-bold tracking-widest text-[#005670]/60 uppercase">{t.appreciate}</p>
             </div>
           </div>
         </div>
@@ -473,7 +477,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
         <div className="flex justify-center mt-8">
           <button
             onClick={onContinue}
-            className="px-10 py-4 bg-[#005670] text-white rounded-xl hover:opacity-90 transition-all font-medium tracking-wide shadow-lg text-sm"
+            className="px-10 py-4 bg-[#005670] text-white rounded-xl hover:bg-[#004558] transition-all font-medium tracking-wide shadow-lg text-sm"
           >
             {t.continueBtn} →
           </button>

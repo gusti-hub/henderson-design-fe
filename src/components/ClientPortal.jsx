@@ -188,7 +188,7 @@ const ClientPortal = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState(null);
-  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary'
+  const [activeView, setActiveView] = useState('summary'); // 'journey' | 'summary'
 
   // ============================================================================
   // PHASE MAPPING LOGIC
@@ -561,17 +561,6 @@ const ClientPortal = () => {
               <div className="flex items-center gap-3">
                 {/* View tabs */}
                 <div className="flex items-center bg-white/10 rounded-xl p-1 border border-white/20">
-                  <button
-                    onClick={() => setActiveView('journey')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      activeView === 'journey'
-                        ? 'bg-white text-[#005670] shadow-sm'
-                        : 'text-white/80 hover:text-white'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">My Journey</span>
-                  </button>
                   {IS_TEST_ENV && (
                     <button
                       onClick={() => setActiveView('summary')}
@@ -585,6 +574,17 @@ const ClientPortal = () => {
                       <span className="hidden sm:inline">Project Summary</span>
                     </button>
                   )}
+                  <button
+                    onClick={() => setActiveView('journey')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      activeView === 'journey'
+                        ? 'bg-white text-[#005670] shadow-sm'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">My Journey</span>
+                  </button>
                 </div>
 
                 {pendingActions.length > 0 && (
