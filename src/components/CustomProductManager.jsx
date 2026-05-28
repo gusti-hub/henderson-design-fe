@@ -145,6 +145,34 @@ const SERVICE_DESCRIPTIONS = {
 
 const CFA_OPTIONS = ['Approved','Rejected','Waived','Pending'];
 
+const ITEM_TYPE_OPTIONS = [
+  'Fabric','Wallpaper','Rugs','Furniture','Lighting','Accessories','Art',
+  'Window Coverings','Bedding','Pillows','Reupholstery','Installation / Logistics',
+  'Electronics','Other',
+];
+
+const AVAILABILITY_STATUS_OPTIONS = [
+  'Active','Discontinued','Limited Stock','COM','Custom','Pending Approval','Archived',
+];
+
+// category key → array of { k: camelCase key, l: label, bool?, num?, sel?: [] }
+const CATEGORY_SPECIFIC_FIELDS = {
+  'Fabric':                  [{ k:'width', l:'Width' }, { k:'repeat', l:'Repeat' }, { k:'railroaded', l:'Railroaded', bool:true }, { k:'doubleRubs', l:'Double Rubs', num:true }],
+  'Wallpaper':               [{ k:'width', l:'Width' }, { k:'repeat', l:'Repeat' }, { k:'matchType', l:'Match Type' }, { k:'washability', l:'Washability' }],
+  'Rugs':                    [{ k:'rugSize', l:'Size' }, { k:'constructionMethod', l:'Construction Method' }, { k:'indoorOutdoor', l:'Indoor / Outdoor', sel:['Indoor','Outdoor','Both'] }],
+  'Furniture':               [{ k:'comColRequirement', l:'COM/COL Requirement' }, { k:'upholsteryOptions', l:'Upholstery Options' }, { k:'indoorOutdoor', l:'Indoor / Outdoor', sel:['Indoor','Outdoor','Both'] }],
+  'Lighting':                [{ k:'bulbType', l:'Bulb Type' }, { k:'voltage', l:'Voltage' }, { k:'dimmable', l:'Dimmable', bool:true }, { k:'ulRating', l:'UL Rating' }],
+  'Accessories':             [{ k:'material', l:'Material' }, { k:'indoorOutdoor', l:'Indoor / Outdoor', sel:['Indoor','Outdoor','Both'] }],
+  'Art':                     [{ k:'medium', l:'Medium' }, { k:'orientation', l:'Orientation', sel:['Portrait','Landscape','Square'] }, { k:'framedDimensions', l:'Framed Dimensions' }, { k:'frameFinish', l:'Frame Finish' }],
+  'Window Coverings':        [{ k:'treatmentType', l:'Treatment Type' }, { k:'opacityLevel', l:'Opacity Level' }, { k:'material', l:'Material' }, { k:'hardwareType', l:'Hardware Type' }],
+  'Bedding':                 [{ k:'beddingSize', l:'Size' }, { k:'material', l:'Material' }, { k:'threadCount', l:'Thread Count', num:true }, { k:'fillMaterial', l:'Fill Material' }],
+  'Pillows':                 [{ k:'pillowSize', l:'Size' }, { k:'fillMaterial', l:'Fill Material' }, { k:'insertIncluded', l:'Insert Included', bool:true }, { k:'indoorOutdoor', l:'Indoor / Outdoor', sel:['Indoor','Outdoor','Both'] }],
+  'Reupholstery':            [{ k:'furnitureType', l:'Furniture Type' }, { k:'comRequired', l:'COM Required', bool:true }, { k:'comYardage', l:'COM Yardage', num:true }, { k:'trimType', l:'Trim Type' }],
+  'Installation / Logistics':[{ k:'elevatorRequired', l:'Elevator Required', bool:true }, { k:'stairsPresent', l:'Stairs Present', bool:true }, { k:'assemblyRequired', l:'Assembly Required', bool:true }, { k:'whiteGloveRequired', l:'White Glove Required', bool:true }],
+  'Electronics':             [{ k:'modelNumber', l:'Model Number' }, { k:'voltage', l:'Voltage' }, { k:'connectivityType', l:'Connectivity Type' }, { k:'smartCompatible', l:'Smart Compatible', bool:true }],
+  'Other':                   [{ k:'productType', l:'Product Type' }, { k:'material', l:'Material' }, { k:'otherFinish', l:'Finish' }],
+};
+
 // ✅ PATCH 1: salesTaxRate default 4.5
 const defaultSelectedOptions = () => ({
   image: '', images: [], links: [], specifications: '', notes: '',
@@ -1519,6 +1547,57 @@ const ItemClassField = ({ value, onChange, disabled, inputCls }) => {
   );
 };
 
+// ==================== AUTOCOMPLETE FIELD ====================
+
+const AutocompleteField = ({ value, onChange, options, placeholder = '', inputCls }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value || '');
+  const containerRef = useRef(null);
+
+  useEffect(() => { setQuery(value || ''); }, [value]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = query.trim()
+    ? options.filter(o => o.toLowerCase().includes(query.toLowerCase()))
+    : options;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        type="text"
+        value={query}
+        placeholder={placeholder}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+        className={inputCls}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setQuery(opt); onChange(opt); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#005670]/5 transition-colors ${query === opt ? 'bg-[#005670]/10 font-medium text-[#005670]' : 'text-gray-700'}`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== PRODUCT CARD COMPONENT ====================
 
 const ProductCard = ({
@@ -1600,6 +1679,13 @@ const ProductCard = ({
   }, [product]);
 
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
+
+  // Update a single key inside customAttributes
+  const updCA = (key, value) => {
+    const updated = { ...customAttrs, [key]: value };
+    setCustomAttrs(updated);
+    upd('customAttributes', updated);
+  };
 
   const inputCls =
     'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ' +
@@ -2039,6 +2125,8 @@ const ProductCard = ({
             {activeTab === 'general' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
                 <h3 className="text-base font-bold text-gray-900">General Information</h3>
+
+                {/* Item Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
                   <input
@@ -2049,6 +2137,59 @@ const ProductCard = ({
                     placeholder="e.g. Living Room - Sofa Pillow"
                   />
                 </div>
+
+                {/* Item Type + Availability Status */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Type</label>
+                    <AutocompleteField
+                      value={localFields.itemClass}
+                      onChange={(v) => { setLocal('itemClass', v); upd('itemClass', v); }}
+                      options={ITEM_TYPE_OPTIONS}
+                      placeholder="Search or type item type…"
+                      inputCls={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Availability Status</label>
+                    <AutocompleteField
+                      value={customAttrs.availabilityStatus || ''}
+                      onChange={(v) => updCA('availabilityStatus', v)}
+                      options={AVAILABILITY_STATUS_OPTIONS}
+                      placeholder="Search or type status…"
+                      inputCls={inputCls}
+                    />
+                  </div>
+                </div>
+
+                {/* Collection + Lead Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Collection</label>
+                    <input
+                      type="text"
+                      value={customAttrs.collection || ''}
+                      onChange={(e) => updCA('collection', e.target.value)}
+                      className={inputCls}
+                      placeholder="e.g. Lani Collection"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Lead Time
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">e.g. 8–10 weeks</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={localFields.leadTime}
+                      onChange={(e) => { setLocal('leadTime', e.target.value); upd('leadTime', e.target.value); }}
+                      className={inputCls}
+                      placeholder="e.g. 8–10 weeks, 3 months…"
+                    />
+                  </div>
+                </div>
+
+                {/* Room / Service + Tags */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Room / Service</label>
@@ -2058,15 +2199,21 @@ const ProductCard = ({
                       disabled={false}
                       inputCls={inputCls}
                       onServiceSelect={(serviceName) => {
-                      const desc = SERVICE_DESCRIPTIONS[serviceName];
-                      if (desc) {
-                        setLocal('specifications', desc);
-                        upd('specifications', desc);
-                      }
-                    }}
+                        const desc = SERVICE_DESCRIPTIONS[serviceName];
+                        if (desc) { setLocal('specifications', desc); upd('specifications', desc); }
+                      }}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Group</label>
+                    <input
+                      type="text"
+                      value={localFields.group}
+                      onChange={(e) => { setLocal('group', e.target.value); upd('group', e.target.value); }}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags</label>
                     <input
                       type="text"
@@ -2080,26 +2227,10 @@ const ProductCard = ({
                     />
                   </div>
                 </div>
+
+                {/* Sidemark */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Group</label>
-                    <input
-                      type="text"
-                      value={localFields.group}
-                      onChange={(e) => { setLocal('group', e.target.value); upd('group', e.target.value); }}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Class</label>
-                    <ItemClassField
-                      value={localFields.itemClass}
-                      onChange={(v) => { setLocal('itemClass', v); upd('itemClass', v); }}
-                      disabled={false}
-                      inputCls={inputCls}
-                    />
-                  </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
                       <span>Sidemark</span>
                       <button type="button" onClick={() => {
@@ -2117,22 +2248,49 @@ const ProductCard = ({
                   </div>
                 </div>
 
-                {/* ✅ PATCH 10: Lead Time field in General Info tab */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Lead Time
-                      <span className="ml-1.5 text-xs text-gray-400 font-normal">e.g. 8–10 weeks</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={localFields.leadTime}
-                      onChange={(e) => { setLocal('leadTime', e.target.value); upd('leadTime', e.target.value); }}
-                      className={inputCls}
-                      placeholder="e.g. 8–10 weeks, 3 months…"
-                    />
+                {/* ── Category-Specific Fields ── */}
+                {localFields.itemClass && CATEGORY_SPECIFIC_FIELDS[localFields.itemClass] && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-[#005670]" />
+                      {localFields.itemClass} Specifications
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {CATEGORY_SPECIFIC_FIELDS[localFields.itemClass].map(({ k, l, bool, num, sel }) => (
+                        <div key={k}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">{l}</label>
+                          {bool ? (
+                            <div className="flex items-center gap-3 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => updCA(k, !customAttrs[k])}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${customAttrs[k] ? 'bg-[#005670]' : 'bg-gray-200'}`}
+                              >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${customAttrs[k] ? 'translate-x-6' : 'translate-x-1'}`} />
+                              </button>
+                              <span className="text-sm text-gray-600">{customAttrs[k] ? 'Yes' : 'No'}</span>
+                            </div>
+                          ) : sel ? (
+                            <AutocompleteField
+                              value={customAttrs[k] || ''}
+                              onChange={(v) => updCA(k, v)}
+                              options={sel}
+                              placeholder="Select or type…"
+                              inputCls={inputCls}
+                            />
+                          ) : (
+                            <input
+                              type={num ? 'number' : 'text'}
+                              value={customAttrs[k] ?? ''}
+                              onChange={(e) => updCA(k, num ? Number(e.target.value) : e.target.value)}
+                              className={inputCls}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -2205,12 +2363,13 @@ const ProductCard = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Dimensions</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Dimensions <span className="text-xs text-gray-400 font-normal">W × D × H</span></label>
                     <input
                       type="text"
                       value={localFields.size}
                       onChange={(e) => { setLocal('size', e.target.value); upd('size', e.target.value); }}
                       className={inputCls}
+                      placeholder="e.g. 48&quot; × 24&quot; × 36&quot;"
                     />
                   </div>
                   <div>
@@ -2227,6 +2386,34 @@ const ProductCard = ({
                     />
                   </div>
                 </div>
+
+                {/* Materials + Notes */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Materials</label>
+                    <input
+                      type="text"
+                      value={customAttrs.materials || ''}
+                      onChange={(e) => updCA('materials', e.target.value)}
+                      className={inputCls}
+                      placeholder="e.g. Solid oak, velvet upholstery"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Notes
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">cleaning, freight, care, specs…</span>
+                    </label>
+                    <textarea
+                      value={localFields.notes}
+                      onChange={(e) => { setLocal('notes', e.target.value); upd('notes', e.target.value); }}
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                      placeholder="Cleaning instructions, freight notes, fire ratings, vendor comments…"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">CFA / Sample Approval</label>
@@ -2263,7 +2450,7 @@ const ProductCard = ({
                         <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                           <div className="flex-1 grid grid-cols-2 gap-3">
                             <div><p className="text-xs font-medium text-gray-500">Attribute</p><p className="text-sm font-semibold text-gray-900">{key}</p></div>
-                            <div><p className="text-xs font-medium text-gray-500">Value</p><p className="text-sm text-gray-900">{value}</p></div>
+                            <div><p className="text-xs font-medium text-gray-500">Value</p><p className="text-sm text-gray-900">{String(value)}</p></div>
                           </div>
                           <button onClick={() => removeCustomAttribute(key)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><X className="w-4 h-4" /></button>
                         </div>
