@@ -1048,7 +1048,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       return Math.ceil(h) + 8;
     };
     const headerH = headerRef.current ? Math.ceil(headerRef.current.getBoundingClientRect().height) + 8 : 220;
-    const contHeaderH = measureEl('<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px"><span>Name — Products (continued)</span><span>Proposal #: XX</span></div>');
     const items = [];
     rg.forEach(([room, rps]) => {
       const rhH = measureEl('<div style="padding:6px 8px;font-weight:600;font-size:12px;background:#f0f0f0">' + room + '</div>');
@@ -1061,19 +1060,29 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
         if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
         if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
-        const priceLines = 2 + (parseFloat(o.salesTaxRate) > 0 ? 1 : 0) + 1;
-        const priceH = priceLines * 19 + 16;
+        const taxRate = parseFloat(o.salesTaxRate) || 0;
         const COL1 = 88, COL3 = 148;
         const midW = CONTENT_W - COL1 - COL3;
+        // Measure middle column
         const mw = document.createElement('div');
         mw.style.cssText = 'width:' + midW + 'px;padding:8px 9px;font-size:12px;line-height:1.55;box-sizing:border-box';
         mw.innerHTML = lines.join(''); sandbox.appendChild(mw);
         const midH = Math.ceil(mw.getBoundingClientRect().height) + 14; sandbox.removeChild(mw);
+        // Measure price column directly instead of using a formula
+        const pw = document.createElement('div');
+        pw.style.cssText = 'width:145px;padding:7px 5px;font-size:12px;line-height:1.55;text-align:right;box-sizing:border-box';
+        pw.innerHTML = '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>1 Each</span></div>'
+          + '<div style="display:flex;justify-content:space-between"><span>Unit:</span><span>$0.00</span></div>'
+          + '<div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>$0.00</span></div>'
+          + (taxRate > 0 ? '<div style="display:flex;justify-content:space-between"><span>Tax:</span><span>$0.00</span></div>' : '')
+          + '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #d1d5db;padding-top:2px;margin-top:2px"><span>Total:</span><span>$0.00</span></div>';
+        sandbox.appendChild(pw);
+        const priceH = Math.ceil(pw.getBoundingClientRect().height); sandbox.removeChild(pw);
         items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.max(92, midH, priceH) + 8 });
       });
     });
     document.body.removeChild(sandbox);
-    setPages(packItems(items, headerH, contHeaderH));
+    setPages(packItems(items, headerH));
     setReady(true);
   }, [buildRoomGroups]);
 
