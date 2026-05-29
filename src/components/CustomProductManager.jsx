@@ -1833,6 +1833,7 @@ const ProductCard = ({
         itemClass:         localFields.itemClass,
         installerNotes:    localFields.installerNotes,
         leadTime:          localFields.leadTime,  // ✅ PATCH 10
+        customAttributes:  customAttrs,           // always use current state — ensures cleaned attrs on type change
         links: localFields.links0
           ? [localFields.links0, ...(productRef.current.selectedOptions?.links?.slice(1) || [])]
           : (productRef.current.selectedOptions?.links?.slice(1) || []),
@@ -2144,7 +2145,16 @@ const ProductCard = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Type</label>
                     <AutocompleteField
                       value={localFields.itemClass}
-                      onChange={(v) => { setLocal('itemClass', v); upd('itemClass', v); }}
+                      onChange={(v) => {
+                        // Clear category-specific keys from the OLD item type before switching
+                        const oldKeys = (CATEGORY_SPECIFIC_FIELDS[localFields.itemClass] || []).map(f => f.k);
+                        const cleaned = { ...customAttrs };
+                        oldKeys.forEach(k => delete cleaned[k]);
+                        setCustomAttrs(cleaned);
+                        upd('customAttributes', cleaned);
+                        setLocal('itemClass', v);
+                        upd('itemClass', v);
+                      }}
                       options={ITEM_TYPE_OPTIONS}
                       placeholder="Search or type item type…"
                       inputCls={inputCls}
