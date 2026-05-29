@@ -1134,7 +1134,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     </div>
   );
 
-  const slotStyle = { position: 'absolute', top: PAD_IN + 'in', left: PAD_IN + 'in', right: PAD_IN + 'in', bottom: FOOT_IN + 'in', overflow: 'hidden' };
+  const slotStyle = { position: 'absolute', top: PAD_IN + 'in', left: PAD_IN + 'in', right: PAD_IN + 'in', bottom: FOOT_IN + 'in' };
 
   return (
     <>
@@ -1148,11 +1148,13 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           .no-print, .mbox { display: none !important; }
           .lp { width: 8.5in !important; height: 11in !important; overflow: hidden !important; page-break-after: always !important; break-after: page !important; box-shadow: none !important; margin: 0 !important; position: relative !important; }
           .lp.last { page-break-after: avoid !important; break-after: avoid !important; }
+          .lp-slot { overflow: hidden !important; }
         }
         @page { size: 8.5in 11in; margin: 0; }
         .pw { background: #b8b8b8; padding: 20px 0 40px; }
         .pgl { display: block; width: 8.5in; margin: 0 auto; background: #005670; color: white; font-size: 10px; font-weight: 600; padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box; letter-spacing: 0.03em; }
-        .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
+        .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: visible; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
+        .lp-slot { overflow: visible; }
         .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
         .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
       `}</style>
@@ -1315,7 +1317,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                 <React.Fragment key={pi}>
                   <span className="pgl no-print">Page {pi + 1}{(pages || []).length > 1 ? ' — Products (' + (pi + 1) + '/' + (pages || []).length + ')' : ' — Products'}</span>
                   <div className="lp">
-                    <div style={slotStyle}>
+                    <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
                       {renderItems(items, handleDeleteProduct, handleRefreshPrice, productsMap, ProductRowV2)}
                       {pi === (pages || []).length - 1 && (
@@ -1336,7 +1338,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Warranty page */}
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
-                <div style={slotStyle}>
+                <div className="lp-slot" style={slotStyle}>
                   <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty Terms and Conditions</div>
                   <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
                     <p style={{ marginTop: 0 }}><strong>Coverage Period:</strong> Furniture is warranted to be free from defects in workmanship, materials, and functionality for a period of 30 days from the date of installation.</p>
@@ -1371,7 +1373,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Signature page */}
               <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
               <div className="lp last">
-                <div style={slotStyle}>
+                <div className="lp-slot" style={slotStyle}>
                   <div style={{ textAlign: 'center', marginBottom: '14px' }}>
                     <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
                   </div>

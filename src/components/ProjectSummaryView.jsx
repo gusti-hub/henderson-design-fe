@@ -17,33 +17,34 @@ const T = {
     s1Title:      'ORIGINAL COLLECTION CHOICE',
     s1Original:   'Original Collection Estimate',
     s1Deposit:    'Deposit Received',
-    s1Balance:    'Remaining Original Balance',
+    s1Balance:    'Remaining Original Estimate Balance',
     s1Note:       'Your original collection pricing is secured. Your deposit holds this pricing and is reserved toward final reconciliation.',
 
     s2Title:      'CURRENT PROJECT STATUS',
-    s2Approved:   'Approved Total To Date',
+    s2Approved:   'Proposal Total To Date',
     s2Payments:   'Less Payments Received',
     s2Outstanding:'Current Outstanding Balance',
     s2Current:    'Thank you. Your account is current.',
 
     s3Title:      'ESTIMATED REMAINING PROJECT COSTS',
     s3Sub:        '(Subject to Final Selections)',
-    s3Accents:    'Proposal 2 – Accents Estimated Allowance',
-    s3Closet:     'Closet Systems Estimated Allowance',
-    s3Window:     'Window Coverings Estimated Allowance',
-    s3Fdi:        'FDI Estimated Allowance\n(Freight, Delivery & Installation)',
-    s3Other:      'Other Estimated Items\n(AV, Additional Services, Specialty Coordination)',
-    s3Total:      'Estimated Remaining Costs',
+    s3Accents:      'Proposal 2 – Accents Estimated Costs',
+    s3Closet:       'Closet Systems Estimated Costs',
+    s3Window:       'Window Coverings Estimated Costs',
+    s3Fdi:          'FDI Estimated Costs\n(Freight, Delivery & Installation)',
+    s3Av:           'AV Cost',
+    s3Additional:   'Additional Services, Specialty Coordination',
+    s3Total:        'Estimated Remaining Costs',
 
     s4Title:      'ESTIMATED FINAL PROJECT',
-    s4Approved:   'Approved Costs To Date',
+    s4Approved:   'Proposal Costs To Date',
     s4Remaining:  'Estimated Remaining Costs',
     s4Final:      'Estimated Final Project',
 
     outlookTitle:    'CURRENT INVESTMENT OUTLOOK',
     outlookSub:      'Summary of Your Project',
     outlookOrig:     'Original Choice Of Investment',
-    outlookApproved: 'Approved Costs To Date',
+    outlookApproved: 'Proposal Costs To Date',
     outlookRemaining:'Estimated Remaining Costs',
     outlookFinal:    'Estimated Final Project Investment',
     depositHeld:     'DEPOSIT HELD ON ACCOUNT',
@@ -90,9 +91,10 @@ const T = {
     s3Accents:    'Proposal 2 – アクセント関連予算見込み',
     s3Closet:     'クローゼットシステム予算見込み',
     s3Window:     'ウィンドウカバー予算見込み',
-    s3Fdi:        'FDI予算見込み\n（輸送・搬入・設置費用）',
-    s3Other:      'その他予想費用\n（AV・追加サービス・スペシャルティコーディネーション等）',
-    s3Total:      '推定残りの費用合計',
+    s3Fdi:          'FDI予算見込み\n（輸送・搬入・設置費用）',
+    s3Av:           'AV費用',
+    s3Additional:   '追加サービス・スペシャルティコーディネーション',
+    s3Total:        '推定残りの費用合計',
 
     s4Title:      '最終プロジェクト投資予測',
     s4Approved:   '承認済みコスト（現在まで）',
@@ -182,7 +184,8 @@ const DEMO_DATA = {
     closetSystemsAllowance: 20000,
     windowCoveringsAllowance: 20000,
     fdiAllowance: 45000,
-    otherEstimatedItems: 15000,
+    avCost: 8000,
+    additionalServices: 7000,
     totalEstimatedRemaining: 140000,
   },
   section4: {
@@ -317,7 +320,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               { label: t.unitNumber,    value: `Unit ${client.unitNumber}` },
               { label: t.collection,    value: client.collection || '—' },
               { label: t.statementDate, value: fmtDate(statementDate, lang) },
-              { label: t.advisor,       value: client.projectAdvisor },
+              // { label: t.advisor,       value: client.projectAdvisor },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-[10px] text-white/50 tracking-wide uppercase font-semibold leading-none">{label}</p>
@@ -389,11 +392,12 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               </div>
 
               {[
-                { label: t.s3Accents, value: s3.accentsAllowance },
-                { label: t.s3Closet,  value: s3.closetSystemsAllowance },
-                { label: t.s3Window,  value: s3.windowCoveringsAllowance },
-                { label: t.s3Fdi,     value: s3.fdiAllowance },
-                { label: t.s3Other,   value: s3.otherEstimatedItems },
+                { label: t.s3Accents,    value: s3.accentsAllowance },
+                { label: t.s3Closet,     value: s3.closetSystemsAllowance },
+                { label: t.s3Window,     value: s3.windowCoveringsAllowance },
+                { label: t.s3Fdi,        value: s3.fdiAllowance },
+                { label: t.s3Av,         value: s3.avCost },
+                { label: t.s3Additional, value: s3.additionalServices },
               ].map(({ label, value }) => (
                 <div key={label}>
                   <div className="flex justify-between items-start py-1.5">
@@ -492,7 +496,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <p className="text-[10px] font-bold tracking-widest text-[#005670] uppercase mb-3">{t.notesTitle}</p>
             <div className="space-y-2">
-              {[t.note1, t.note2, t.note3, t.note4, t.note5].map((note, i) => (
+              {[t.note1, t.note2, t.note3, t.note4].map((note, i) => (
                 <div key={i} className="flex gap-3">
                   <span className="text-[#005670]/40 text-sm mt-0.5 flex-shrink-0">•</span>
                   <p className="text-xs text-gray-600 leading-relaxed">{note}</p>

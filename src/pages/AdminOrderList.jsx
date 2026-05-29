@@ -18,6 +18,7 @@ import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor';
 import CustomProductManager from '../components/CustomProductManager';
 import POVendorSelector from '../components/POVendorSelector';
 import COGReportViewer from '../components/COGReportViewer';
+import ProjectSummaryEditorModal from '../components/ProjectSummaryEditorModal';
 
 const LoadingOverlay = () => (
   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
@@ -125,7 +126,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onPO }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onPO, onProjectSummary }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -180,6 +181,8 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={BarChart2}    label="COG Report (Excel)"            onClick={onCOGExcel}              color="text-purple-600" />
           <Sep />
           <Item icon={ShoppingCart} label="Purchase Orders"               onClick={onPO}                   color="text-amber-600" />
+          <Sep />
+          <Item icon={TrendingUp}   label="Project Summary"               onClick={onProjectSummary}        color="text-teal-600" />
         </div>,
         document.body
       )}
@@ -410,6 +413,7 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [selectedPOOrderId, setSelectedPOOrderId]   = useState(null);
   const [selectedPOClientInfo, setSelectedPOClientInfo] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
+  const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
 
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(null), 4000); };
 
@@ -674,6 +678,10 @@ const AdminOrderList = ({ onOrderClick }) => {
                           onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
                           onCOGPdf={() => setCogOrderId(order._id)}
                           onPO={() => { setSelectedPOOrderId(order._id); setSelectedPOClientInfo(order.clientInfo); setShowPOModal(true); }}
+                          onProjectSummary={() => {
+                            const cid = typeof order.user === 'object' ? order.user?._id : order.user;
+                            setProjectSummaryClientId(cid || null);
+                          }}
                         />
                       </td>
                     </tr>
@@ -703,6 +711,13 @@ const AdminOrderList = ({ onOrderClick }) => {
       <POVendorSelector isOpen={showPOModal}
         onClose={() => { setShowPOModal(false); setSelectedPOOrderId(null); setSelectedPOClientInfo(null); }}
         orderId={selectedPOOrderId} orderClientInfo={selectedPOClientInfo} />
+
+      {projectSummaryClientId && (
+        <ProjectSummaryEditorModal
+          clientId={projectSummaryClientId}
+          onClose={() => setProjectSummaryClientId(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1119,6 +1119,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           </div>
         </div>
       )}
+
     </>
   );
 };

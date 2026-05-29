@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Trash2, Printer, X, Save, Loader2, ChevronLeft,
-  FileText, Check, Edit2, Eye, RefreshCw, Search, Zap, AlertTriangle,
+  FileText, Check, Edit2, Eye, RefreshCw, Search, Zap, AlertTriangle, Receipt,
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import BillInvoiceEditor from '../components/BillInvoiceEditor';
 
 const SERVICE_TYPES = [
   { id: 'decommission',    label: 'Decommission',                    icon: '🗑️', defaultRate: 0,   unit: 'flat', isEmployee: false },
@@ -707,6 +708,9 @@ const ExpenseManager = () => {
   const [proposalVersions, setProposalVersions] = useState([]);
   // confirmModal: { title, message, warning?, confirmLabel, confirmCls?, onConfirm }
   const [confirmModal, setConfirmModal]         = useState(null);
+  const [billInvoiceTarget, setBillInvoiceTarget] = useState(null); // { orderId, vendorId, poVersionId, poNumber }
+  // billInvoiceMap: { [poVersionId]: { _id, quickbooksId, quickbooksStatus, status } }
+  const [billInvoiceMap, setBillInvoiceMap]       = useState({});
   // localQBIds: { [id]: qbIdString } — set immediately after sync, persists this session
   // Key insight: server may not have quickbooksId field in ProposalVersion schema yet,
   // so we track it locally. This is the primary source of truth for "already synced" check.
@@ -777,23 +781,23 @@ const ExpenseManager = () => {
     setSelectedOrder(order);
     setProposalVersions([]);
     setLocalQBIds({});
+    setBillInvoiceMap({});
     setExpensePage(1); setProposalPage(1); setPoPage(1);
     await loadExpenses(order._id);
     try {
       const token = localStorage.getItem('token');
-      const [freshRes, summaryRes, poRes, pvRes] = await Promise.all([
+      const [freshRes, summaryRes, poRes, pvRes, biRes] = await Promise.all([
         fetch(`${backendServer}/api/orders/${order._id}`,                     { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${backendServer}/api/quickbooks/project-summary/${order._id}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${backendServer}/api/quickbooks/latest-po/${order._id}`,       { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${backendServer}/api/proposals/${order._id}/versions/all`,     { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${backendServer}/api/orders/${order._id}/bill-invoices`,       { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       if (freshRes.ok)   { const o = await freshRes.json();   setSelectedOrder(o); }
       if (pvRes.ok) {
         const p = await pvRes.json();
         const versions = p.data || [];
         setProposalVersions(versions);
-        
-        // ✅ Hanya populate dari pv.quickbooksId per version, TIDAK dari Order.proposalQbId
         const initLocal = {};
         versions.forEach(pv => {
           if (pv.quickbooksId && String(pv.quickbooksId).trim() !== '') {
@@ -802,8 +806,14 @@ const ExpenseManager = () => {
         });
         setLocalQBIds(prev => ({ ...prev, ...initLocal }));
       }
-      if (summaryRes.ok) { const s = await summaryRes.json(); setAllPOVersions(s.poVendors || []); } else setAllPOVersions([]);
+      if (summaryRes.ok) { const s = await summaryRes.json(); setAllPOVersions(s.allVersionsFlat || s.poVendors || []); } else setAllPOVersions([]);
       if (poRes.ok)      { setPoSummary(await poRes.json()); } else setPoSummary(null);
+      if (biRes.ok) {
+        const biData = await biRes.json();
+        const map = {};
+        (biData.data || []).forEach(bi => { map[bi.poVersionId?.toString()] = bi; });
+        setBillInvoiceMap(map);
+      }
     } catch { setPoSummary(null); }
     setView('project');
   };
@@ -910,42 +920,49 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
       });
     };
  
-    // ── PO QB ──────────────────────────────────────────────────────────────
-    const doSyncPOQB = async (poVersionId, isResync = false) => {
+    // ── Bill Invoice → QB (for confirmed PO rows) ──────────────────────────
+    const doSyncBillInvoiceQB = async (poVersionId, vendorId, isResync = false) => {
       setSyncing(poVersionId, true);
       try {
         const token = localStorage.getItem('token');
-        const url = isResync
-          ? `${backendServer}/api/quickbooks/sync-po/${poVersionId}?force=true`
-          : `${backendServer}/api/quickbooks/sync-po/${poVersionId}`;
+
+        // Step 1: get or create bill invoice
+        const biRes = await fetch(
+          `${backendServer}/api/orders/${selectedOrder._id}/po/${vendorId}/bill-invoice?poVersionId=${poVersionId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const biData = await biRes.json();
+        if (!biData.success) throw new Error(biData.message || 'Failed to get Bill Invoice');
+        const billInvoiceId = biData.data._id;
+
+        // Step 2: sync bill invoice to QB
+        const url = `${backendServer}/api/quickbooks/sync-bill-invoice/${billInvoiceId}${isResync ? '?force=true' : ''}`;
         const res  = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
+
         if (res.ok) {
-          showToast(`✅ PO ${isResync ? 'resynced' : 'synced'} to QB: ${data.quickbooksId}`);
+          showToast(`✅ Bill Invoice ${isResync ? 'resynced' : 'synced'} to QB: ${data.quickbooksId}`);
           setLocalQB(poVersionId, data.quickbooksId);
-          const poRes2 = await fetch(`${backendServer}/api/quickbooks/latest-po/${selectedOrder._id}`, { headers: { Authorization: `Bearer ${token}` } });
-          if (poRes2.ok) setPoSummary(await poRes2.json());
+          setBillInvoiceMap(prev => ({
+            ...prev,
+            [poVersionId]: { ...prev[poVersionId], _id: billInvoiceId, quickbooksId: data.quickbooksId, quickbooksStatus: 'synced' },
+          }));
         } else {
-          if (data.quickbooksId) {
-            setLocalQB(poVersionId, data.quickbooksId);
-            showToast(`Already in QB — ID: ${data.quickbooksId}`, 'error');
-          } else {
-            showToast(`Failed: ${data.message || 'Unknown error'}`, 'error');
-            setPoSummary(prev => prev ? { ...prev, details: prev.details.map(d => d.poVersionId?.toString() === poVersionId ? { ...d, qbError: data.message } : d) } : prev);
-          }
+          showToast(`Failed: ${data.message || 'Unknown error'}`, 'error');
         }
       } catch (e) { showToast('Failed: ' + e.message, 'error'); }
       finally { setSyncing(poVersionId, false); }
     };
- 
-    const syncPOQB = (poVersionId, vendorName, currentQBId, isResync = false) => {
+
+    const syncBillInvoiceQB = (poVersionId, vendorId, vendorName, isResync = false) => {
       showConfirm({
-        title: isResync ? 'Resync PO to QuickBooks' : 'Send PO to QuickBooks',
+        title: isResync ? 'Resync Bill Invoice to QuickBooks' : 'Send Bill Invoice to QuickBooks',
         message: isResync
-          ? `Update QB Bill for ${vendorName} PO? A new bill will be created in QuickBooks.`
-          : `Send ${vendorName} PO to QuickBooks as Bill?`,
+          ? `Update QB Bill for ${vendorName}? This will update the existing QuickBooks Bill with the current Bill Invoice data.`
+          : `Send Bill Invoice for ${vendorName} to QuickBooks as a Bill?`,
+        warning: !isResync ? 'A Bill Invoice will be auto-created from the PO if it doesn\'t exist yet.' : undefined,
         confirmLabel: isResync ? 'Resync' : 'Send to QB',
-        onConfirm: () => doSyncPOQB(poVersionId, isResync),
+        onConfirm: () => doSyncBillInvoiceQB(poVersionId, vendorId, isResync),
       });
     };
  
@@ -962,17 +979,31 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
     const totalPvPages = Math.ceil(proposalVersions.length / ROWS_PER_PAGE);
     const pagedPv      = proposalVersions.slice((proposalPage - 1) * ROWS_PER_PAGE, proposalPage * ROWS_PER_PAGE);
  
-    const allPORows    = [
-      ...(poSummary?.details || []).map(po => ({ ...po, _type: 'confirmed' })),
-      ...allPOVersions.filter(v => !(poSummary?.details || []).some(p => p.vendorName === v.vendorName)).map(v => ({ ...v, _type: 'pending' })),
-    ];
+    const confirmedIds = new Set((poSummary?.details || []).map(d => d.poVersionId?.toString()));
+    const allPORows    = allPOVersions.map(v => ({
+      ...v,
+      _type:       v.status === 'confirmed' ? 'confirmed' : 'pending',
+      quickbooksId: confirmedIds.has(v.poVersionId?.toString())
+        ? (poSummary.details.find(d => d.poVersionId?.toString() === v.poVersionId?.toString())?.quickbooksId ?? v.quickbooksId)
+        : v.quickbooksId,
+    }));
     const totalPoPages = Math.ceil(allPORows.length / ROWS_PER_PAGE);
     const pagedPO      = allPORows.slice((poPage - 1) * ROWS_PER_PAGE, poPage * ROWS_PER_PAGE);
  
     return (
       <div className="space-y-6 max-w-[1400px] mx-auto">
         <ConfirmModal modal={confirmModal} onClose={closeConfirm} />
- 
+
+        {billInvoiceTarget && (
+          <BillInvoiceEditor
+            orderId={billInvoiceTarget.orderId}
+            vendorId={billInvoiceTarget.vendorId}
+            poVersionId={billInvoiceTarget.poVersionId}
+            poNumber={billInvoiceTarget.poNumber}
+            onClose={() => setBillInvoiceTarget(null)}
+          />
+        )}
+
         {toast && (
           <div className={`fixed bottom-6 right-6 z-[300] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-xl text-white text-sm font-medium ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
             <Check className="w-4 h-4" />{toast.msg}
@@ -1145,9 +1176,9 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
             <div className="flex items-center gap-3">
               <h3 className="text-base font-semibold text-gray-800">🏷️ Purchase Orders</h3>
               {(() => {
-                const confirmed = poSummary?.details?.length || 0;
-                const pending   = allPOVersions.filter(v => !(poSummary?.details || []).some(p => p.vendorName === v.vendorName)).length;
-                const total     = confirmed + pending;
+                const confirmed = allPOVersions.filter(v => v.status === 'confirmed').length;
+                const pending   = allPOVersions.filter(v => v.status !== 'confirmed').length;
+                const total     = allPOVersions.length;
                 if (total === 0) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">No POs yet</span>;
                 return <div className="flex items-center gap-1.5">{confirmed > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">{confirmed} Confirmed</span>}{pending > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">{pending} Pending</span>}</div>;
               })()}
@@ -1162,45 +1193,58 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
               <table className="w-full">
                 <thead className="bg-gray-50/80 border-b border-gray-100">
                   <tr>
-                    <th className="text-left px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">PO #</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">PO # / Ver</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-32">Vendor</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-24">Status</th>
-                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QuickBooks</th>
-                    <th className="px-4 py-2 w-10"></th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QB via Bill Invoice</th>
+                    <th className="px-4 py-2 w-20"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {pagedPO.map((po, i) => {
                     if (po._type === 'confirmed') {
-                      const poId   = po.poVersionId?.toString();
-                      const qbId   = getQBId(poId, po.quickbooksId);
-                      const failed = po.qbError;
-                      // ✅ vendorId dari poSummary details
-                      const vendorId = po.vendorId?.toString() || po._id?.toString();
+                      const poId      = po.poVersionId?.toString();
+                      const vendorId  = po.vendorId?.toString() || po._id?.toString();
+                      const bi        = billInvoiceMap[poId];
+                      // QB status comes from Bill Invoice; fall back to PO for legacy synced POs
+                      const biQbId    = bi?.quickbooksId || null;
+                      const qbId      = biQbId || getQBId(poId, po.quickbooksId);
+                      const biFailed  = bi?.quickbooksStatus === 'failed' ? (bi.quickbooksError || 'Sync failed') : null;
                       return (
                         <tr key={`conf-${i}`} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-4 py-2"><span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{po.poNumber || '—'}</span></td>
+                          <td className="px-4 py-2">
+                            <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{po.poNumber || '—'}</span>
+                            {po.version != null && <span className="ml-1.5 text-[10px] text-gray-400">v{po.version}</span>}
+                          </td>
                           <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                           <td className="px-3 py-2"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" /> Confirmed</span></td>
                           <td className="px-3 py-2">
                             <QBCell
                               qbId={qbId}
-                              onSend={!qbId && !failed ? () => syncPOQB(poId, po.vendorName, qbId, false) : undefined}
-                              onResync={qbId ? () => syncPOQB(poId, po.vendorName, qbId, true) : undefined}
-                              failedMsg={failed && !qbId ? failed : null}
-                              onRetry={failed && !qbId ? () => syncPOQB(poId, po.vendorName, null, false) : undefined}
+                              onSend={!qbId && !biFailed ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, false) : undefined}
+                              onResync={qbId ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, true) : undefined}
+                              failedMsg={biFailed && !qbId ? biFailed : null}
+                              onRetry={biFailed && !qbId ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, false) : undefined}
                               syncing={syncingIds[poId]}
                             />
                           </td>
-                          {/* ✅ FIX: View button dengan vendorId yang benar */}
                           <td className="px-4 py-2">
-                            <button
-                              onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}/${vendorId}`, '_blank')}
-                              title="View/Edit PO"
-                              className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}/${vendorId}`, '_blank')}
+                                title="View/Edit PO"
+                                className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setBillInvoiceTarget({ orderId: selectedOrder._id, vendorId, poVersionId: poId, poNumber: po.poNumber })}
+                                title="Bill Invoice"
+                                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                              >
+                                <Receipt className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1217,7 +1261,10 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                     const pendingVendorId = po.vendorId?.toString() || po._id?.toString();
                     return (
                       <tr key={`pend-${i}`} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-2"><span className="text-xs font-mono text-gray-400 whitespace-nowrap">{po.poNumber || '—'}</span></td>
+                        <td className="px-4 py-2">
+                          <span className="text-xs font-mono text-gray-400 whitespace-nowrap">{po.poNumber || '—'}</span>
+                          {po.version != null && <span className="ml-1.5 text-[10px] text-gray-400">v{po.version}</span>}
+                        </td>
                         <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                         <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sCfg.cls} whitespace-nowrap`}>{sCfg.label}</span></td>
                         <td className="px-3 py-2"><QBCell /></td>

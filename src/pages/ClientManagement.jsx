@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
+import {
   Plus, Pencil, Trash2, X, Loader2, Check, XIcon, Eye, FileText,
   Search, Filter, Sparkles, AlertCircle, Mail, Phone,
   User, Building2, CheckCircle, Clock, ClipboardList, MapPin, TrendingUp,
   Calendar, Activity, ChevronLeft, ChevronRight, ClipboardCheck,
-  ShoppingBag, Download, Users, Edit3
+  ShoppingBag, Download, Users, Edit3, BarChart2, MoreHorizontal
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { pdf } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import AdminJourneyManager from '../components/AdminJourneyManager';
 import QuestionnaireModal from '../components/QuestionnaireModal';
-import { BarChart2 } from 'lucide-react';
+import ProjectSummaryEditorModal from '../components/ProjectSummaryEditorModal';
 
 
 const DESIGN_IMAGES = {
@@ -1329,7 +1330,7 @@ const ClientManagement = () => {
       )}
 
       {activeModal === 'projectSummary' && selectedClient && (
-        <ProjectSummaryAdminModal selectedClient={selectedClient} onClose={closeModal} />
+        <ProjectSummaryEditorModal clientId={selectedClient._id} onClose={closeModal} onSaved={() => fetchClients()} />
       )}
 
       {showFillQuestionnaireModal && clientForQuestionnaire && (
@@ -1339,6 +1340,87 @@ const ClientManagement = () => {
           userData={clientForQuestionnaire}
           isAdminMode={true}
         />
+      )}
+    </div>
+  );
+};
+
+// ==================== CLIENT ACTION MENU ====================
+
+const usePortalDropdown = (triggerRef, open) => {
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const menuRef = useRef(null);
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    const menuHeight = menuRef.current?.offsetHeight || 280;
+    const spaceBelow = window.innerHeight - r.bottom;
+    const openUpward = spaceBelow < menuHeight + 10;
+    setPos({
+      top: openUpward ? r.top + window.scrollY - menuHeight - 6 : r.bottom + window.scrollY + 6,
+      right: window.innerWidth - r.right,
+    });
+  }, [open]);
+  return { pos, menuRef };
+};
+
+const ClientActionMenu = ({
+  client, hasQuest,
+  onEdit, onJourney, onQuestionnaire, onFillQuestionnaire, onProjectSummary, onDelete,
+}) => {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const { pos, menuRef } = usePortalDropdown(triggerRef, open);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target) &&
+          menuRef.current && !menuRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const Item = ({ icon: Icon, label, onClick, color = 'text-gray-700' }) => (
+    <button onClick={() => { onClick(); setOpen(false); }}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${color} hover:bg-gray-50 transition-colors text-left`}>
+      <Icon className="w-4 h-4 flex-shrink-0 opacity-70" /><span>{label}</span>
+    </button>
+  );
+  const Sep = () => <div className="my-1 border-t border-gray-100" />;
+
+  return (
+    <div ref={triggerRef} className="relative flex items-center gap-1.5 justify-end">
+      <button
+        onClick={onEdit}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#005670] text-white hover:bg-[#004558] shadow-sm transition-all"
+      >
+        <Pencil className="w-3.5 h-3.5" /> Edit
+      </button>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`p-1.5 rounded-lg border transition-all
+          ${open ? 'bg-gray-100 border-gray-300 text-gray-900' : 'border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-600 hover:border-gray-300'}`}
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {open && ReactDOM.createPortal(
+        <div ref={menuRef} style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999 }}
+          className="w-52 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden py-1">
+          <Item icon={FileText}      label="Manage Journey"       onClick={onJourney} color="text-purple-600" />
+          <Item icon={hasQuest ? ClipboardCheck : ClipboardList}
+                label={hasQuest ? 'View Questionnaire ✓' : 'View Questionnaire'}
+                onClick={onQuestionnaire}
+                color={hasQuest ? 'text-green-600' : 'text-amber-600'} />
+          {!hasQuest && (
+            <Item icon={Edit3} label="Fill Questionnaire" onClick={onFillQuestionnaire} color="text-purple-600" />
+          )}
+          <Sep />
+          <Item icon={BarChart2}    label="Project Summary"      onClick={onProjectSummary}  color="text-teal-600" />
+          <Sep />
+          <Item icon={Trash2}       label="Delete Client"        onClick={onDelete}           color="text-red-600" />
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -1544,81 +1626,21 @@ const ClientTable = React.memo(
                       <div className="flex items-center justify-end gap-1">
                         {client.registrationType === 'self-registered' ? (
                           <>
-                            <ActionButton
-                              icon={Check}
-                              color="green"
-                              onClick={() => onOpenApprovalModal(client, 'approve')}
-                              title="Approve"
-                              size="sm"
-                            />
-                            <ActionButton
-                              icon={XIcon}
-                              color="red"
-                              onClick={() => onOpenApprovalModal(client, 'reject')}
-                              title="Reject"
-                              size="sm"
-                            />
-                            <ActionButton
-                              icon={Eye}
-                              color="blue"
-                              onClick={() => onOpenFormModal('view', client)}
-                              title="View"
-                              size="sm"
-                            />
+                            <ActionButton icon={Check}  color="green" onClick={() => onOpenApprovalModal(client, 'approve')} title="Approve" size="sm" />
+                            <ActionButton icon={XIcon}  color="red"   onClick={() => onOpenApprovalModal(client, 'reject')}  title="Reject"  size="sm" />
+                            <ActionButton icon={Eye}    color="blue"  onClick={() => onOpenFormModal('view', client)}         title="View"    size="sm" />
                           </>
                         ) : (
-                          <>
-                            <ActionButton
-                              icon={Pencil}
-                              color="blue"
-                              onClick={() => onOpenFormModal('edit', client)}
-                              title="Edit"
-                              size="sm"
-                            />
-
-                            <ActionButton
-                              icon={FileText}
-                              color="purple"
-                              onClick={() => onOpenJourneyModal(client)}
-                              title="Manage Journey"
-                              size="sm"
-                            />
-
-                            <ActionButton
-                              icon={hasQuest ? ClipboardCheck : ClipboardList}
-                              color={hasQuest ? 'green' : 'amber'}
-                              onClick={() => onOpenQuestionnaireModal(client)}
-                              title={hasQuest ? "View Questionnaire ✓" : "View Questionnaire"}
-                              size="sm"
-                              pulse={!hasQuest}
-                            />
-
-                            {!hasQuest && (
-                              <ActionButton
-                                icon={Edit3}
-                                color="purple"
-                                onClick={() => onOpenFillQuestionnaireModal(client)}
-                                title="Fill Questionnaire for Client"
-                                size="sm"
-                              />
-                            )}
-
-                            <ActionButton
-                              icon={BarChart2}
-                              color="teal"
-                              onClick={() => onOpenProjectSummaryModal(client)}
-                              title="Project Summary"
-                              size="sm"
-                            />
-
-                            <ActionButton
-                              icon={Trash2}
-                              color="red"
-                              onClick={() => onDeleteClient(client._id)}
-                              title="Delete"
-                              size="sm"
-                            />
-                          </>
+                          <ClientActionMenu
+                            client={client}
+                            hasQuest={hasQuest}
+                            onEdit={() => onOpenFormModal('edit', client)}
+                            onJourney={() => onOpenJourneyModal(client)}
+                            onQuestionnaire={() => onOpenQuestionnaireModal(client)}
+                            onFillQuestionnaire={() => onOpenFillQuestionnaireModal(client)}
+                            onProjectSummary={() => onOpenProjectSummaryModal(client)}
+                            onDelete={() => onDeleteClient(client._id)}
+                          />
                         )}
                       </div>
                     </td>
