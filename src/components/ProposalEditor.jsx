@@ -1014,17 +1014,17 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
   const TOTALS_H = 100;
 
-  const packItems = (items, headerH) => {
+  const packItems = (items, headerH, contHeaderH = 0) => {
     const result = []; let cur = [], used = headerH;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const extraH = i === items.length - 1 ? TOTALS_H : 0;
       if (item.type === 'room-header') {
         const nextH = items[i + 1]?.height || 0;
-        if (used + item.height + nextH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = 0; }
+        if (used + item.height + nextH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = contHeaderH; }
         cur.push(item); used += item.height;
       } else {
-        if (used + item.height + extraH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = 0; }
+        if (used + item.height + extraH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = contHeaderH; }
         cur.push(item); used += item.height;
       }
     }
@@ -1048,6 +1048,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       return Math.ceil(h) + 8;
     };
     const headerH = headerRef.current ? Math.ceil(headerRef.current.getBoundingClientRect().height) + 8 : 220;
+    const contHeaderH = measureEl('<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px"><span>Name — Products (continued)</span><span>Proposal #: XX</span></div>');
     const items = [];
     rg.forEach(([room, rps]) => {
       const rhH = measureEl('<div style="padding:6px 8px;font-weight:600;font-size:12px;background:#f0f0f0">' + room + '</div>');
@@ -1072,7 +1073,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       });
     });
     document.body.removeChild(sandbox);
-    setPages(packItems(items, headerH));
+    setPages(packItems(items, headerH, contHeaderH));
     setReady(true);
   }, [buildRoomGroups]);
 
