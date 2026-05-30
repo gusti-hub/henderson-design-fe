@@ -31,10 +31,6 @@ import QuestionnaireModal from './QuestionnaireModal';
 import ProjectSummaryView from './ProjectSummaryView';
 import { BarChart2 } from 'lucide-react';
 
-const IS_TEST_ENV =
-  window.location.hostname === 'henderson-design-fe.vercel.app' ||
-  window.location.hostname === 'localhost';
-
 // ============================================================================
 // SCROLLBAR STYLES
 // ============================================================================
@@ -188,7 +184,16 @@ const ClientPortal = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState(null);
-  const [activeView, setActiveView] = useState('summary'); // 'journey' | 'summary'
+  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary'
+
+  // Show the Project Summary by default only when it's published for this client
+  useEffect(() => {
+    if (clientData?.projectSummary?.published === true) {
+      setActiveView('summary');
+    } else {
+      setActiveView('journey');
+    }
+  }, [clientData?.projectSummary?.published]);
 
   // ============================================================================
   // PHASE MAPPING LOGIC
@@ -561,7 +566,7 @@ const ClientPortal = () => {
               <div className="flex items-center gap-3">
                 {/* View tabs */}
                 <div className="flex items-center bg-white/10 rounded-xl p-1 border border-white/20">
-                  {IS_TEST_ENV && (
+                  {clientData?.projectSummary?.published === true && (
                     <button
                       onClick={() => setActiveView('summary')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -641,7 +646,7 @@ const ClientPortal = () => {
                   <p className="text-xl font-bold text-gray-900">{clientData.floorPlan}</p>
                 </div>
 
-                {clientData.clientCode && (
+                {/* {clientData.clientCode && (
                   <div className="bg-gray-50 rounded-xl p-4 min-w-[110px] border border-gray-200">
                     <div className="flex items-center gap-2 mb-1">
                       <Hash className="w-4 h-4 text-[#005670]" />
@@ -649,7 +654,7 @@ const ClientPortal = () => {
                     </div>
                     <p className="text-xl font-bold text-gray-900">{clientData.clientCode}</p>
                   </div>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -800,7 +805,7 @@ const ClientPortal = () => {
         )}
 
         {/* PROJECT SUMMARY VIEW */}
-        {IS_TEST_ENV && activeView === 'summary' && (
+        {clientData?.projectSummary?.published === true && activeView === 'summary' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <ProjectSummaryView
               email={clientData.email}

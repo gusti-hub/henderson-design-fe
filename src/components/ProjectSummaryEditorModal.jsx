@@ -221,9 +221,11 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const [saving, setSaving]         = useState(false);
   const [saved, setSaved]           = useState(false);
   const [lang, setLang]             = useState('en');
+  const [confirmPublish, setConfirmPublish] = useState(false);
   const [clientData, setClientData] = useState(null);
   const [computed, setComputed]     = useState(null);
   const [form, setForm] = useState({
+    published:                false,
     statementDate:            new Date().toISOString().split('T')[0],
     proposalLabel:            '',
     originalCollectionInvestment: 0,
@@ -257,6 +259,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
         const oc  = ps.originalCollection || {};
         const cst = ps.currentStatus || {};
         setForm({
+          published:                ps.published === true,
           statementDate:            new Date().toISOString().split('T')[0],
           proposalLabel:            ps.proposalLabel || '',
           originalCollectionInvestment: oc.originalCollectionInvestment || 0,
@@ -353,14 +356,15 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     },
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrides = {}) => {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
+      const payload = { ...form, ...overrides };
       const res = await fetch(`${backendServer}/api/clients/${clientId}/project-summary`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Failed to save');
       setSaved(true);
@@ -371,6 +375,22 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Publish toggle — turning ON asks for confirmation, OFF is immediate
+  const handleTogglePublish = () => {
+    if (form.published) {
+      setField('published', false);
+      handleSave({ published: false });
+    } else {
+      setConfirmPublish(true);
+    }
+  };
+
+  const confirmPublishOn = () => {
+    setField('published', true);
+    setConfirmPublish(false);
+    handleSave({ published: true });
   };
 
   const handlePrint = () => {
@@ -452,6 +472,23 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Publish toggle — controls client portal visibility */}
+            <div className="flex items-center gap-2 mr-1 px-3 py-1.5 bg-white/10 rounded-lg">
+              <span className="text-xs font-medium text-white/90">
+                {form.published ? 'Project Summary: Visible to Client' : 'Turn On Project Summary for Client'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.published}
+                onClick={handleTogglePublish}
+                disabled={saving || loading}
+                title={form.published ? 'Click to hide from client' : 'Click to publish to client'}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${form.published ? 'bg-[#22c55e]' : 'bg-white/30'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.published ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
             <button
               onClick={handlePrint}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-all"
@@ -459,7 +496,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
               <Printer className="w-4 h-4" /> Print / Download
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={saving || loading}
               className="flex items-center gap-2 px-4 py-2 bg-white text-[#005670] rounded-lg text-sm font-semibold hover:bg-white/90 transition-all disabled:opacity-50"
             >
@@ -534,7 +571,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
               </div>
 
               <button
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={saving}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#005670] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50"
               >
@@ -574,6 +611,41 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
           </div>
         )}
       </div>
+
+      {/* ── Confirm publish dialog ── */}
+      {confirmPublish && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#005670]/10 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-5 h-5 text-[#005670]" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Turn on Project Summary for this client?</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  This will make the Project Summary page <strong>visible</strong> to
+                  {clientData ? ` ${clientData.name}` : ' this client'} in their portal.
+                  You can turn it off again at any time.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setConfirmPublish(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 border border-gray-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPublishOn}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#005670] hover:bg-[#004558] transition-all"
+              >
+                <Check className="w-4 h-4" /> Yes, turn on
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
