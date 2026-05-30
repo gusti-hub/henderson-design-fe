@@ -250,7 +250,28 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
   const displayData = hasFinancialData ? data : DEMO_DATA;
   const isDemoMode  = displayData === DEMO_DATA;
 
-  const { client, section1: s1, section2: s2, section3: s3, section4: s4, outlook, statementDate } = displayData;
+  const { client, section1: rawS1, section2: rawS2, section3: s3, statementDate } = displayData;
+
+  // Section 1 & 2 fall back to dummy values when no computed financials exist yet
+  const s1 = (rawS1?.originalCollectionInvestment || 0) > 0 ? rawS1 : DEMO_DATA.section1;
+  const s2 = (rawS2?.approvedTotalToDate || 0) > 0 ? rawS2 : DEMO_DATA.section2;
+
+  // Section 4 & Outlook are derived from Sections 1–3 so totals stay consistent
+  const s3Total      = s3?.totalEstimatedRemaining || 0;
+  const approvedToDate = s2.approvedTotalToDate || 0;
+  const finalInvestment = approvedToDate + s3Total;
+  const s4 = {
+    approvedCostsToDate:             approvedToDate,
+    estimatedRemainingCosts:         s3Total,
+    estimatedFinalProjectInvestment: finalInvestment,
+  };
+  const outlook = {
+    originalPackageInvestment:       s1.originalCollectionInvestment || 0,
+    approvedCostsToDate:             approvedToDate,
+    estimatedRemainingCosts:         s3Total,
+    estimatedFinalProjectInvestment: finalInvestment,
+    depositHeldOnAccount:            s1.depositReceived || 0,
+  };
 
   return (
     <div className="max-w-5xl mx-auto font-sans">
@@ -314,7 +335,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
 
         {/* ── Client info bar ─────────────────────────────────────────────── */}
         <div className="bg-[#004558] border-b border-white/10 px-8 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-3 justify-items-center text-center max-w-3xl mx-auto">
             {[
               { label: t.clientName,    value: client.name },
               { label: t.unitNumber,    value: `Unit ${client.unitNumber}` },

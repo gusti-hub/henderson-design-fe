@@ -34,6 +34,18 @@ const SectionTitle = ({ num, text }) => (
 
 const Div = () => <div className="border-t border-gray-200 my-1.5" />;
 
+// ─── Dummy fallback for Sections 1 & 2 (used when no computed data yet) ─────────
+const DUMMY_S1 = {
+  originalCollectionInvestment: 180000,
+  depositReceived:              54000,
+  remainingOriginalBalance:     126000,
+};
+const DUMMY_S2 = {
+  approvedTotalToDate: 100000,
+  paymentsReceived:    100000,
+  outstandingBalance:  0,
+};
+
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 const SummaryPreview = ({ preview }) => {
   const { client, statementDate, section1: s1, section2: s2, section3: s3, section4: s4, outlook } = preview;
@@ -294,8 +306,11 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     Number(form.avCost) +
     Number(form.additionalServices);
 
-  const cs1 = computed?.section1 || {};
-  const cs2 = computed?.section2 || {};
+  // Use computed data when available, otherwise fall back to dummy values
+  const hasComputedS1 = (computed?.section1?.originalCollectionInvestment || 0) > 0;
+  const hasComputedS2 = (computed?.section2?.approvedTotalToDate || 0) > 0;
+  const cs1 = hasComputedS1 ? computed.section1 : DUMMY_S1;
+  const cs2 = hasComputedS2 ? computed.section2 : DUMMY_S2;
 
   const preview = {
     statementDate: form.statementDate,
