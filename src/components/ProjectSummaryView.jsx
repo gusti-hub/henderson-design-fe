@@ -250,7 +250,10 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
   const displayData = hasFinancialData ? data : DEMO_DATA;
   const isDemoMode  = displayData === DEMO_DATA;
 
-  const { client, section1: rawS1, section2: rawS2, section3: s3, statementDate } = displayData;
+  const { client, section1: rawS1, section2: rawS2, section3: s3 } = displayData;
+
+  // Statement Date always reflects today
+  const statementDate = new Date().toISOString();
 
   // Section 1 & 2 fall back to dummy values when no computed financials exist yet
   const s1 = (rawS1?.originalCollectionInvestment || 0) > 0 ? rawS1 : DEMO_DATA.section1;

@@ -264,7 +264,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
         const ps  = c.projectSummary || {};
         const est = ps.estimatedRemainingCosts || {};
         setForm({
-          statementDate:            ps.statementDate ? new Date(ps.statementDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          statementDate:            new Date().toISOString().split('T')[0],
           proposalLabel:            ps.proposalLabel || '',
           accentsAllowance:         est.accentsAllowance         || 0,
           closetSystemsAllowance:   est.closetSystemsAllowance   || 0,
