@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Check, Printer, Save, TrendingUp } from 'lucide-react';
+import { X, Loader2, Check, Printer, Save, TrendingUp, Globe } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { T } from './ProjectSummaryView';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
 
-const fmtDate = (d) => {
+const fmtDate = (d, lang = 'en') => {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const locale = lang === 'jp' ? 'ja-JP' : 'en-US';
+  return new Date(d).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
 // ─── Preview sub-components ───────────────────────────────────────────────────
@@ -34,29 +36,18 @@ const SectionTitle = ({ num, text }) => (
 
 const Div = () => <div className="border-t border-gray-200 my-1.5" />;
 
-// ─── Dummy fallback for Sections 1 & 2 (used when no computed data yet) ─────────
-const DUMMY_S1 = {
-  originalCollectionInvestment: 180000,
-  depositReceived:              54000,
-  remainingOriginalBalance:     126000,
-};
-const DUMMY_S2 = {
-  approvedTotalToDate: 100000,
-  paymentsReceived:    100000,
-  outstandingBalance:  0,
-};
-
 // ─── Live Preview ─────────────────────────────────────────────────────────────
-const SummaryPreview = ({ preview }) => {
+const SummaryPreview = ({ preview, lang = 'en' }) => {
   const { client, statementDate, section1: s1, section2: s2, section3: s3, section4: s4, outlook } = preview;
+  const t = T[lang];
 
   const s3Rows = [
-    { label: 'Proposal 2 – Accents Estimated Costs',        value: s3.accentsAllowance },
-    { label: 'Closet Systems Estimated Costs',              value: s3.closetSystemsAllowance },
-    { label: 'Window Coverings Estimated Costs',            value: s3.windowCoveringsAllowance },
-    { label: 'FDI Estimated Costs\n(Freight, Delivery & Installation)', value: s3.fdiAllowance },
-    { label: 'AV Cost',                                     value: s3.avCost },
-    { label: 'Additional Services, Specialty Coordination', value: s3.additionalServices },
+    { label: t.s3Accents,    value: s3.accentsAllowance },
+    { label: t.s3Closet,     value: s3.closetSystemsAllowance },
+    { label: t.s3Window,     value: s3.windowCoveringsAllowance },
+    { label: t.s3Fdi,        value: s3.fdiAllowance },
+    { label: t.s3Av,         value: s3.avCost },
+    { label: t.s3Additional, value: s3.additionalServices },
   ];
 
   return (
@@ -66,9 +57,9 @@ const SummaryPreview = ({ preview }) => {
         <div className="flex items-center gap-4">
           <span className="text-2xl font-light text-white tracking-widest" style={{ fontFamily: 'Georgia, serif' }}>Ālia</span>
           <div className="border-l border-white/20 pl-4">
-            <p className="text-[9px] tracking-[0.3em] text-white/60 font-semibold uppercase">ĀLIA RESIDENCE</p>
-            <h1 className="text-lg font-light text-white tracking-wide">Project Investment Summary</h1>
-            <p className="text-[9px] tracking-widest text-white/50 uppercase">TRANSPARENT. CURATED. EXCEPTIONAL.</p>
+            <p className="text-[9px] tracking-[0.3em] text-white/60 font-semibold uppercase">{t.brand}</p>
+            <h1 className="text-lg font-light text-white tracking-wide">{t.title}</h1>
+            <p className="text-[9px] tracking-widest text-white/50 uppercase">{t.tagline}</p>
           </div>
         </div>
       </div>
@@ -77,10 +68,10 @@ const SummaryPreview = ({ preview }) => {
       <div className="bg-[#004558] rounded-lg px-5 py-3">
         <div className="grid grid-cols-4 gap-x-4 gap-y-2">
           {[
-            { label: 'Client Name',    value: client.name },
-            { label: 'Unit Number',    value: `Unit ${client.unitNumber}` },
-            { label: 'Collection',     value: client.collection || '—' },
-            { label: 'Statement Date', value: fmtDate(statementDate) },
+            { label: t.clientName,    value: client.name },
+            { label: t.unitNumber,    value: `Unit ${client.unitNumber}` },
+            { label: t.collection,    value: client.collection || '—' },
+            { label: t.statementDate, value: fmtDate(statementDate, lang) },
           ].map(({ label, value }) => (
             <div key={label}>
               <p className="text-[9px] text-white/50 tracking-wide uppercase font-semibold">{label}</p>
@@ -94,28 +85,28 @@ const SummaryPreview = ({ preview }) => {
       <div className="grid grid-cols-3 gap-3">
         {/* Section 1 */}
         <SectionCard>
-          <SectionTitle num="1" text="ORIGINAL COLLECTION CHOICE" />
-          <LineRow label="Original Collection Estimate"        value={s1.originalCollectionInvestment} />
+          <SectionTitle num="1" text={t.s1Title} />
+          <LineRow label={t.s1Original} value={s1.originalCollectionInvestment} />
           <Div />
-          <LineRow label="Deposit Received"                    value={s1.depositReceived} negative />
+          <LineRow label={t.s1Deposit}  value={s1.depositReceived} negative />
           <Div />
-          <LineRow label="Remaining Original Estimate Balance" value={s1.remainingOriginalBalance} bold />
+          <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
         </SectionCard>
 
         {/* Section 2 */}
         <SectionCard>
-          <SectionTitle num="2" text="CURRENT PROJECT STATUS" />
-          <LineRow label="Proposal Total To Date"    value={s2.approvedTotalToDate} />
+          <SectionTitle num="2" text={t.s2Title} />
+          <LineRow label={t.s2Approved} value={s2.approvedTotalToDate} />
           <Div />
-          <LineRow label="Less Payments Received"   value={s2.paymentsReceived} negative />
+          <LineRow label={t.s2Payments} value={s2.paymentsReceived} negative />
           <Div />
-          <LineRow label="Current Outstanding Balance" value={s2.outstandingBalance} bold teal={s2.outstandingBalance > 0} />
+          <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold teal={s2.outstandingBalance > 0} />
         </SectionCard>
 
         {/* Section 3 */}
         <SectionCard>
-          <SectionTitle num="3" text="ESTIMATED REMAINING PROJECT COSTS" />
-          <p className="text-[9px] text-gray-400 italic -mt-2 mb-2">(Subject to Final Selections)</p>
+          <SectionTitle num="3" text={t.s3Title} />
+          <p className="text-[9px] text-gray-400 italic -mt-2 mb-2">{t.s3Sub}</p>
           {s3Rows.map(({ label, value }) => (
             <div key={label}>
               <div className="flex justify-between items-start py-1">
@@ -130,7 +121,7 @@ const SummaryPreview = ({ preview }) => {
             </div>
           ))}
           <div className="flex justify-between items-center pt-0.5">
-            <p className="text-sm font-bold text-gray-900">Estimated Remaining Costs</p>
+            <p className="text-sm font-bold text-gray-900">{t.s3Total}</p>
             <span className="text-sm font-bold text-[#005670]">{fmt(s3.totalEstimatedRemaining)}</span>
           </div>
         </SectionCard>
@@ -138,20 +129,20 @@ const SummaryPreview = ({ preview }) => {
 
       {/* Section 4 */}
       <SectionCard>
-        <SectionTitle num="4" text="ESTIMATED FINAL PROJECT" />
+        <SectionTitle num="4" text={t.s4Title} />
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <LineRow label="Proposal Costs To Date"   value={s4.approvedCostsToDate} />
+            <LineRow label={t.s4Approved}  value={s4.approvedCostsToDate} />
             <Div />
-            <LineRow label="Estimated Remaining Costs" value={s4.estimatedRemainingCosts} />
+            <LineRow label={t.s4Remaining} value={s4.estimatedRemainingCosts} />
             <Div />
             <div className="flex justify-between items-end pt-1">
-              <p className="text-sm font-bold text-gray-900">Estimated Final Project</p>
+              <p className="text-sm font-bold text-gray-900">{t.s4Final}</p>
               <span className="text-lg font-bold text-[#005670]">{fmt(s4.estimatedFinalProjectInvestment)}</span>
             </div>
           </div>
           <div className="border-l border-[#005670]/10 pl-6 flex flex-col justify-center">
-            <p className="text-xs text-gray-500">Original Choice Of Investment</p>
+            <p className="text-xs text-gray-500">{t.outlookOrig}</p>
             <p className="text-xl font-bold text-[#005670] mt-1">{fmt(outlook.originalPackageInvestment)}</p>
           </div>
         </div>
@@ -165,15 +156,15 @@ const SummaryPreview = ({ preview }) => {
               <TrendingUp className="w-5 h-5 text-[#005670]" />
             </div>
             <div>
-              <p className="text-[9px] font-bold tracking-widest text-[#005670] uppercase">CURRENT INVESTMENT OUTLOOK</p>
-              <p className="text-[9px] text-gray-500 italic">Summary of Your Project</p>
+              <p className="text-[9px] font-bold tracking-widest text-[#005670] uppercase">{t.outlookTitle}</p>
+              <p className="text-[9px] text-gray-500 italic">{t.outlookSub}</p>
             </div>
           </div>
           <div className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
             {[
-              { label: 'Original Choice Of Investment', value: outlook.originalPackageInvestment },
-              { label: 'Proposal Costs To Date',        value: outlook.approvedCostsToDate },
-              { label: 'Estimated Remaining Costs',     value: outlook.estimatedRemainingCosts },
+              { label: t.outlookOrig,      value: outlook.originalPackageInvestment },
+              { label: t.outlookApproved,  value: outlook.approvedCostsToDate },
+              { label: t.outlookRemaining, value: outlook.estimatedRemainingCosts },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between items-center border-b border-gray-100 pb-1">
                 <p className="text-xs text-gray-600">{label}</p>
@@ -181,28 +172,23 @@ const SummaryPreview = ({ preview }) => {
               </div>
             ))}
             <div className="col-span-2 flex justify-between items-center pt-1">
-              <p className="text-sm font-bold text-gray-900">Estimated Final Project Investment</p>
+              <p className="text-sm font-bold text-gray-900">{t.outlookFinal}</p>
               <span className="text-base font-bold text-[#005670]">{fmt(outlook.estimatedFinalProjectInvestment)}</span>
             </div>
           </div>
           <div className="bg-[#005670]/5 border border-[#005670]/15 rounded-xl p-3 text-center">
-            <p className="text-[9px] font-bold tracking-widest text-[#005670]/70 uppercase">DEPOSIT HELD ON ACCOUNT</p>
+            <p className="text-[9px] font-bold tracking-widest text-[#005670]/70 uppercase">{t.depositHeld}</p>
             <p className="text-xl font-bold text-[#005670] mt-0.5">({fmt(outlook.depositHeldOnAccount)})</p>
-            <p className="text-[9px] text-gray-400 mt-0.5 italic">To be applied toward final reconciliation.</p>
+            <p className="text-[9px] text-gray-400 mt-0.5 italic">{t.depositNote}</p>
           </div>
         </div>
       </div>
 
       {/* Important Notes */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <p className="text-[10px] font-bold tracking-widest text-[#005670] uppercase mb-3">IMPORTANT NOTES</p>
+        <p className="text-[10px] font-bold tracking-widest text-[#005670] uppercase mb-3">{t.notesTitle}</p>
         <div className="space-y-2">
-          {[
-            'This summary reflects approved selections and current project estimates as of the statement date above.',
-            'Estimated categories are planning allowances only and may adjust pending final selections, field conditions, vendor pricing, freight conditions, and project coordination requirements.',
-            'FDI includes freight, delivery, warehousing, installation coordination, installation labor, staging, and project execution services.',
-            'Final project pricing will be based on approved proposals and actual selected scope.',
-          ].map((note, i) => (
+          {[t.note1, t.note2, t.note3, t.note4].map((note, i) => (
             <div key={i} className="flex gap-3">
               <span className="text-[#005670]/40 text-sm mt-0.5 flex-shrink-0">•</span>
               <p className="text-xs text-gray-600 leading-relaxed">{note}</p>
@@ -215,14 +201,14 @@ const SummaryPreview = ({ preview }) => {
       <div className="flex justify-between items-center pt-2 border-t border-[#005670]/10">
         <div>
           <p className="text-xs font-bold text-[#005670] uppercase tracking-widest">HENDERSON DESIGN GROUP</p>
-          <p className="text-[9px] text-gray-400">DESIGN | FURNISHINGS | LIFESTYLE</p>
+          <p className="text-[9px] text-gray-400">{t.footerSub}</p>
         </div>
         <div className="text-center">
           <p className="text-[9px] text-gray-400">HENDERSON.HOUSE • 808 591 1117</p>
         </div>
         <div className="text-right">
-          <p className="text-base italic text-[#005670]/40 font-serif">Thank you.</p>
-          <p className="text-[9px] font-bold tracking-widest text-[#005670]/60 uppercase">WE APPRECIATE YOUR TRUST.</p>
+          <p className="text-base italic text-[#005670]/40 font-serif">{t.thankYou}</p>
+          <p className="text-[9px] font-bold tracking-widest text-[#005670]/60 uppercase">{t.appreciate}</p>
         </div>
       </div>
     </div>
@@ -234,11 +220,16 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
   const [saved, setSaved]           = useState(false);
+  const [lang, setLang]             = useState('en');
   const [clientData, setClientData] = useState(null);
   const [computed, setComputed]     = useState(null);
   const [form, setForm] = useState({
     statementDate:            new Date().toISOString().split('T')[0],
     proposalLabel:            '',
+    originalCollectionInvestment: 0,
+    depositReceived:              0,
+    approvedTotalToDate:          0,
+    paymentsReceived:             0,
     accentsAllowance:         0,
     closetSystemsAllowance:   0,
     windowCoveringsAllowance: 0,
@@ -263,9 +254,15 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
 
         const ps  = c.projectSummary || {};
         const est = ps.estimatedRemainingCosts || {};
+        const oc  = ps.originalCollection || {};
+        const cst = ps.currentStatus || {};
         setForm({
           statementDate:            new Date().toISOString().split('T')[0],
           proposalLabel:            ps.proposalLabel || '',
+          originalCollectionInvestment: oc.originalCollectionInvestment || 0,
+          depositReceived:              oc.depositReceived              || 0,
+          approvedTotalToDate:          cst.approvedTotalToDate         || 0,
+          paymentsReceived:             cst.paymentsReceived            || 0,
           accentsAllowance:         est.accentsAllowance         || 0,
           closetSystemsAllowance:   est.closetSystemsAllowance   || 0,
           windowCoveringsAllowance: est.windowCoveringsAllowance || 0,
@@ -306,11 +303,13 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     Number(form.avCost) +
     Number(form.additionalServices);
 
-  // Use computed data when available, otherwise fall back to dummy values
-  const hasComputedS1 = (computed?.section1?.originalCollectionInvestment || 0) > 0;
-  const hasComputedS2 = (computed?.section2?.approvedTotalToDate || 0) > 0;
-  const cs1 = hasComputedS1 ? computed.section1 : DUMMY_S1;
-  const cs2 = hasComputedS2 ? computed.section2 : DUMMY_S2;
+  // Section 1 & 2 are manual inputs; balances are derived from them
+  const s1Original  = Number(form.originalCollectionInvestment);
+  const s1Deposit   = Number(form.depositReceived);
+  const s1Remaining = Math.max(0, s1Original - s1Deposit);
+  const s2Approved  = Number(form.approvedTotalToDate);
+  const s2Payments  = Number(form.paymentsReceived);
+  const s2Outstanding = Math.max(0, s2Approved - s2Payments);
 
   const preview = {
     statementDate: form.statementDate,
@@ -321,15 +320,15 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
       projectAdvisor: computed?.client?.projectAdvisor          || 'Henderson Design Group',
     },
     section1: {
-      originalCollectionInvestment: cs1.originalCollectionInvestment || 0,
-      depositReceived:              cs1.depositReceived              || 0,
-      remainingOriginalBalance:     cs1.remainingOriginalBalance     || 0,
+      originalCollectionInvestment: s1Original,
+      depositReceived:              s1Deposit,
+      remainingOriginalBalance:     s1Remaining,
     },
     section2: {
       proposalLabel:       form.proposalLabel,
-      approvedTotalToDate: cs2.approvedTotalToDate || 0,
-      paymentsReceived:    cs2.paymentsReceived    || 0,
-      outstandingBalance:  cs2.outstandingBalance  || 0,
+      approvedTotalToDate: s2Approved,
+      paymentsReceived:    s2Payments,
+      outstandingBalance:  s2Outstanding,
     },
     section3: {
       accentsAllowance:         Number(form.accentsAllowance),
@@ -341,16 +340,16 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
       totalEstimatedRemaining:  s3Total,
     },
     section4: {
-      approvedCostsToDate:             cs2.approvedTotalToDate || 0,
+      approvedCostsToDate:             s2Approved,
       estimatedRemainingCosts:         s3Total,
-      estimatedFinalProjectInvestment: (cs2.approvedTotalToDate || 0) + s3Total,
+      estimatedFinalProjectInvestment: s2Approved + s3Total,
     },
     outlook: {
-      originalPackageInvestment:       cs1.originalCollectionInvestment || 0,
-      approvedCostsToDate:             cs2.approvedTotalToDate          || 0,
+      originalPackageInvestment:       s1Original,
+      approvedCostsToDate:             s2Approved,
       estimatedRemainingCosts:         s3Total,
-      estimatedFinalProjectInvestment: (cs2.approvedTotalToDate || 0) + s3Total,
-      depositHeldOnAccount:            cs1.depositReceived              || 0,
+      estimatedFinalProjectInvestment: s2Approved + s3Total,
+      depositHeldOnAccount:            s1Deposit,
     },
   };
 
@@ -377,18 +376,44 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const handlePrint = () => {
     const content = document.getElementById('ps-print-content');
     if (!content) return;
-    const win = window.open('', '_blank', 'width=1000,height=800');
+    const win = window.open('', '_blank', 'width=900,height=1200');
     win.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <title>Project Summary – ${clientData?.name || ''}</title>
   <meta charset="UTF-8" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>body { font-family: sans-serif; padding: 24px; } @media print { body { padding: 0; } }</style>
+  <style>
+    @page { size: A4 portrait; margin: 7mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    /* width fills the printable A4 area; auto-scaled to one page on load */
+    #print-root { width: 196mm; margin: 0 auto; transform-origin: top center; }
+    /* tighten vertical rhythm so everything fits one page */
+    #print-root > * + * { margin-top: 0.5rem !important; }
+  </style>
 </head>
 <body>
-  ${content.innerHTML}
-  <script>window.onload = () => window.print();</script>
+  <div id="print-root" class="text-xs font-sans space-y-3">${content.innerHTML}</div>
+  <script>
+    (function () {
+      var done = false;
+      function fitAndPrint() {
+        if (done) return; done = true;
+        var root = document.getElementById('print-root');
+        // A4 usable height (297mm - 14mm margins) at 96dpi ≈ 1070px; keep a safety buffer
+        var pageH = 1070 * 0.94;
+        var scale = Math.min(1, pageH / root.scrollHeight);
+        root.style.zoom = scale;             // Chromium: affects print pagination
+        // re-measure once more after the zoom settles, then print
+        requestAnimationFrame(function () {
+          setTimeout(function () { window.focus(); window.print(); }, 200);
+        });
+      }
+      // give the Tailwind CDN time to generate the utility styles
+      window.addEventListener('load', function () { setTimeout(fitAndPrint, 900); });
+    })();
+  </script>
 </body>
 </html>`);
     win.document.close();
@@ -403,8 +428,8 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
           type="number"
           min="0"
           step="1000"
-          value={form[key]}
-          onChange={e => setField(key, Number(e.target.value))}
+          value={form[key] === 0 ? '' : form[key]}
+          onChange={e => setField(key, e.target.value === '' ? 0 : Number(e.target.value))}
           className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
         />
       </div>
@@ -458,47 +483,26 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
             <div className="w-80 flex-shrink-0 border-r border-gray-200 overflow-y-auto bg-gray-50 p-5 space-y-5">
 
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">General</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Section 1 – Original Collection</p>
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Statement Date</label>
-                    <input
-                      type="date"
-                      value={form.statementDate}
-                      onChange={e => setField('statementDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Proposal Label (Section 2)</label>
-                    <input
-                      type="text"
-                      value={form.proposalLabel}
-                      onChange={e => setField('proposalLabel', e.target.value)}
-                      placeholder="Proposal 1 – Furnishings + Design Fee…"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
-                    />
-                  </div>
+                  {numField('Original Collection Estimate ($)', 'originalCollectionInvestment')}
+                  {numField('Deposit Received ($)',             'depositReceived')}
+                </div>
+                <div className="mt-3 flex justify-between items-center bg-gray-100 rounded-lg px-3 py-2">
+                  <span className="text-xs font-semibold text-gray-700">Remaining Balance</span>
+                  <span className="text-sm font-bold text-gray-800">{fmt(s1Remaining)}</span>
                 </div>
               </div>
 
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Section 1 – Original Collection</p>
-                <p className="text-[10px] text-gray-400 italic mb-3">Computed from payment info</p>
-                <div className="space-y-2 bg-gray-100 rounded-lg p-3 text-xs">
-                  <div className="flex justify-between"><span className="text-gray-600">Original Estimate</span><span className="font-medium">{fmt(cs1.originalCollectionInvestment)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-600">Deposit Received</span><span className="font-medium">{fmt(cs1.depositReceived)}</span></div>
-                  <div className="flex justify-between font-semibold border-t border-gray-200 pt-2 mt-1"><span className="text-gray-700">Remaining Balance</span><span>{fmt(cs1.remainingOriginalBalance)}</span></div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Section 2 – Current Status</p>
+                <div className="space-y-3">
+                  {numField('Proposal Total To Date ($)', 'approvedTotalToDate')}
+                  {numField('Less Payments Received ($)', 'paymentsReceived')}
                 </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Section 2 – Current Status</p>
-                <p className="text-[10px] text-gray-400 italic mb-3">Computed from proposals & invoices</p>
-                <div className="space-y-2 bg-gray-100 rounded-lg p-3 text-xs">
-                  <div className="flex justify-between"><span className="text-gray-600">Proposal Total</span><span className="font-medium">{fmt(cs2.approvedTotalToDate)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-600">Payments Received</span><span className="font-medium">{fmt(cs2.paymentsReceived)}</span></div>
-                  <div className="flex justify-between font-semibold border-t border-gray-200 pt-2 mt-1"><span className="text-gray-700">Outstanding Balance</span><span>{fmt(cs2.outstandingBalance)}</span></div>
+                <div className="mt-3 flex justify-between items-center bg-gray-100 rounded-lg px-3 py-2">
+                  <span className="text-xs font-semibold text-gray-700">Outstanding Balance</span>
+                  <span className="text-sm font-bold text-gray-800">{fmt(s2Outstanding)}</span>
                 </div>
               </div>
 
@@ -541,12 +545,29 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
 
             {/* ── Right: Live Preview ── */}
             <div className="flex-1 overflow-y-auto bg-gray-100 p-6">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Live Preview</span>
-                <span className="text-[10px] text-gray-400">— mirrors what the client sees</span>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Live Preview</span>
+                  <span className="text-[10px] text-gray-400">— mirrors what the client sees</span>
+                </div>
+                <div className="flex items-center bg-white border border-gray-200 rounded-full p-1 shadow-sm gap-1">
+                  <Globe className="w-3.5 h-3.5 text-gray-400 ml-1.5" />
+                  <button
+                    onClick={() => setLang('en')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${lang === 'en' ? 'bg-[#005670] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    English
+                  </button>
+                  <button
+                    onClick={() => setLang('jp')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${lang === 'jp' ? 'bg-[#005670] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    日本語
+                  </button>
+                </div>
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-                <SummaryPreview preview={preview} />
+                <SummaryPreview preview={preview} lang={lang} />
               </div>
             </div>
 

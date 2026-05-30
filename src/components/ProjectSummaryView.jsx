@@ -3,7 +3,7 @@ import { Loader2, Globe } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 // ─── Translations ─────────────────────────────────────────────────────────────
-const T = {
+export const T = {
   en: {
     brand:        'ĀLIA RESIDENCE',
     title:        'Project Investment Summary',
@@ -242,12 +242,8 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
     );
   }
 
-  const hasFinancialData = data && data.client && (
-    (data.section1?.originalCollectionInvestment || 0) > 0 ||
-    (data.section2?.approvedTotalToDate || 0) > 0 ||
-    (data.section3?.totalEstimatedRemaining || 0) > 0
-  );
-  const displayData = hasFinancialData ? data : DEMO_DATA;
+  // Use the client's real saved data; DEMO_DATA only as a null-safety net
+  const displayData = data && data.client ? data : DEMO_DATA;
   const isDemoMode  = displayData === DEMO_DATA;
 
   const { client, section1: rawS1, section2: rawS2, section3: s3 } = displayData;
@@ -255,9 +251,9 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
   // Statement Date always reflects today
   const statementDate = new Date().toISOString();
 
-  // Section 1 & 2 fall back to dummy values when no computed financials exist yet
-  const s1 = (rawS1?.originalCollectionInvestment || 0) > 0 ? rawS1 : DEMO_DATA.section1;
-  const s2 = (rawS2?.approvedTotalToDate || 0) > 0 ? rawS2 : DEMO_DATA.section2;
+  // Section 1 & 2 use saved values directly (entered via the editor)
+  const s1 = rawS1 || {};
+  const s2 = rawS2 || {};
 
   // Section 4 & Outlook are derived from Sections 1–3 so totals stay consistent
   const s3Total      = s3?.totalEstimatedRemaining || 0;
