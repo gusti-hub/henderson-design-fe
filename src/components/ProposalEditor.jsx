@@ -730,35 +730,50 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           : product._id?.toString?.())
       : null;
 
-    let fresh = null;
+    const pid  = product.product_id;
+    const room = (product.selectedOptions?.room || '').trim();
 
+    // Kumpulkan SEMUA kandidat dengan _id sama (bisa >1 jika ada _id duplikat di order)
+    let idCandidates = [];
     if (productMongoId && productMongoId !== '[object Object]') {
-      fresh = orderProducts.find(op => {
-        const opid = typeof op._id === 'string'
-          ? op._id
-          : op._id?.toString?.();
+      idCandidates = orderProducts.filter(op => {
+        const opid = typeof op._id === 'string' ? op._id : op._id?.toString?.();
         return opid && opid === productMongoId;
       });
     }
 
-    // Fallback jika _id tidak match — cari by product_id + urutan instance
-    if (!fresh && product.product_id) {
-      const pid = product.product_id;
-      const currentIdx = productsWithIds.findIndex(item => item.sid === sid);
-      const instancesBefore = productsWithIds
-        .slice(0, currentIdx)
-        .filter(item => item.product.product_id === pid)
-        .length;
+    let fresh = null;
 
-      let matchCount = 0;
-      for (const op of orderProducts) {
-        if (op.product_id === pid) {
-          if (matchCount === instancesBefore) {
-            fresh = op;
-            break;
-          }
-          matchCount++;
-        }
+    if (idCandidates.length === 1) {
+      // _id unik → match eksak, tidak mungkin ketukar
+      fresh = idCandidates[0];
+    } else if (pid) {
+      // _id tidak match (order sudah diedit) ATAU ambigu (>1 _id sama).
+      // Cocokkan per (product_id + room) lalu pilih instance ke-N — di-scope per room
+      // supaya perbedaan urutan antar-room tidak menggeser hasil match.
+      const currentIdx = productsWithIds.findIndex(item => item.sid === sid);
+
+      const instancesBeforeInRoom = productsWithIds
+        .slice(0, currentIdx)
+        .filter(item =>
+          item.product.product_id === pid &&
+          (item.product.selectedOptions?.room || '').trim() === room
+        ).length;
+
+      const roomPool = orderProducts.filter(op =>
+        op.product_id === pid &&
+        (op.selectedOptions?.room || '').trim() === room
+      );
+      fresh = roomPool[instancesBeforeInRoom] || roomPool[0] || null;
+
+      // Last resort: kalau room tidak cocok sama sekali, cocokkan by product_id saja
+      if (!fresh) {
+        const instancesBefore = productsWithIds
+          .slice(0, currentIdx)
+          .filter(item => item.product.product_id === pid)
+          .length;
+        const pidPool = orderProducts.filter(op => op.product_id === pid);
+        fresh = pidPool[instancesBefore] || pidPool[0] || null;
       }
     }
 
