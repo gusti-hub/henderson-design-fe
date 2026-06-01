@@ -360,6 +360,22 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [liveOrder, setLiveOrder] = useState(order);
 
+  // ── Stable per-row id ───────────────────────────────────────────────────────
+  // Drag-reorder bug fix: produk bisa punya _id duplikat, sehingga key/identitas
+  // React berbasis _id (atau _id+index) bisa ketukar saat reorder → field (gambar,
+  // desc, dll) ikut ketukar. _uid ini unik & stabil per baris, dipakai sebagai key
+  // dan dasar sinkronisasi state. Tidak disimpan ke DB (Mongoose strict mengabaikan).
+  const uidCounter = useRef(0);
+  useEffect(() => {
+    if (savedProducts.length && savedProducts.some(p => !p._uid)) {
+      setSavedProducts(prev =>
+        prev.map(p =>
+          p._uid ? p : { ...p, _uid: `uid_${Date.now().toString(36)}_${(uidCounter.current++).toString(36)}` }
+        )
+      );
+    }
+  }, [savedProducts]);
+
   const [floorPlanFile, setFloorPlanFile] = useState(null);
   const [floorPlanNotes, setFloorPlanNotes] = useState('');
   const [existingFloorPlan, setExistingFloorPlan] = useState(null);
@@ -816,15 +832,36 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       return;
     }
 
+    const previous  = savedProducts;
     const reordered = [...savedProducts];
     const [moved] = reordered.splice(sourceIndex, 1);
     reordered.splice(targetIndex, 0, moved);
 
-    setSavedProducts(reordered);
-    setExpandedProduct(null); // ✅ FIX 1: tutup semua panel saat reorder
+    setSavedProducts(reordered);      // optimistic — instant UI feedback
+    setExpandedProduct(null);         // ✅ FIX 1: tutup semua panel saat reorder
     handleDragEnd();
-    // ...
-  }, [savedProducts, order._id, onSave, handleDragEnd]);
+
+    // ── Persist new order to backend ──────────────────────────────────────────
+    // Kirim produk apa adanya (tanpa _uid client-only). Backend mempertahankan
+    // _id tiap produk & menormalisasi field, jadi tidak ada yang hilang/ketukar.
+    // status/step sengaja TIDAK dikirim agar status order tidak ikut berubah.
+    try {
+      const token = localStorage.getItem('token');
+      const payload = reordered.map(({ _uid, ...p }) => p);
+      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ selectedProducts: payload }),
+      });
+      if (!res.ok) throw new Error('Failed to save new order');
+      const savedOrder = await res.json();
+      if (onSave) onSave(savedOrder.selectedProducts || payload);
+      addToast('Order saved', 'success');
+    } catch (err) {
+      setSavedProducts(previous);     // revert kalau gagal — tidak ada perubahan tergantung
+      addToast('Gagal menyimpan urutan: ' + err.message, 'error');
+    }
+  }, [savedProducts, order._id, onSave, handleDragEnd, addToast]);
 
   const previewUrl = getFloorPlanPreviewUrl();
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
@@ -1063,7 +1100,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
 
                 {items.map(({ product, originalIndex }) => (
                   <ProductCard
-                    key={`${product._id}-${originalIndex}`}
+                    key={product._uid || `${product._id}-${originalIndex}`}
                     product={product}
                     index={originalIndex}
                     order={liveOrder}
@@ -1668,7 +1705,10 @@ const ProductCard = ({
       leadTime:          o.leadTime                || '',
     });
     setCustomAttrs(o.customAttributes || {});
-  }, [product._id, index]);
+    // Depend on the product object identity (not _id/index): reorder keeps the same
+    // object reference so local edits are preserved, while a real content change
+    // (e.g. after save) swaps in a new object and re-syncs correctly.
+  }, [product]);
 
   const setLocal = (field, value) => {
     setLocalFields(prev => ({ ...prev, [field]: value }));
