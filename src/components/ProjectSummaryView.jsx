@@ -531,10 +531,10 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               <p className="text-xs font-bold text-[#005670] uppercase tracking-widest">HENDERSON DESIGN GROUP</p>
               <p className="text-[10px] text-gray-400">{t.footerSub}</p>
             </div>
-            <div className="text-center">
+            {/* <div className="text-center">
               <p className="text-[10px] text-gray-400">HENDERSON.HOUSE</p>
               <p className="text-[10px] text-gray-400">808 591 1117</p>
-            </div>
+            </div> */}
             <div className="text-right">
               <p className="text-lg italic text-[#005670]/40 font-serif">{t.thankYou}</p>
               <p className="text-[10px] font-bold tracking-widest text-[#005670]/60 uppercase">{t.appreciate}</p>
