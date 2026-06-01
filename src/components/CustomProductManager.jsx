@@ -1667,7 +1667,8 @@ const ProductCard = ({
     category:          product.category          || '',
     specifications:    opts.specifications       || '',
     vendorDescription: opts.vendorDescription    || '',
-    notes:             opts.notes                || '',
+    notes:             opts.notes                || '',       // ← Status tab notes (keep existing data)
+    itemNotes:         opts.itemNotes            || '',       // ← Item Details notes (separate field)
     finish:            opts.finish               || '',
     fabric:            opts.fabric               || '',
     size:              opts.size                 || '',
@@ -1690,7 +1691,8 @@ const ProductCard = ({
       category:          product.category          || '',
       specifications:    o.specifications          || '',
       vendorDescription: o.vendorDescription       || '',
-      notes:             o.notes                   || '',
+      notes:             o.notes                   || '',       // ← Status tab notes
+      itemNotes:         o.itemNotes               || '',       // ← Item Details notes (separate)
       finish:            o.finish                  || '',
       fabric:            o.fabric                  || '',
       size:              o.size                    || '',
@@ -1780,6 +1782,7 @@ const ProductCard = ({
       links:                 src.selectedOptions?.links                 || [],
       specifications:        src.selectedOptions?.specifications        || '',
       notes:                 src.selectedOptions?.notes                 || '',
+      itemNotes:             src.selectedOptions?.itemNotes             || '',
       uploadedImages:        src.selectedOptions?.uploadedImages        || [],
       customAttributes:      src.selectedOptions?.customAttributes      || {},
       shipToVendorId:        src.selectedOptions?.shipToVendorId        || null,
@@ -1861,7 +1864,8 @@ const ProductCard = ({
         ...productRef.current.selectedOptions,
         specifications:    localFields.specifications,
         vendorDescription: localFields.vendorDescription,
-        notes:             localFields.notes,
+        notes:             localFields.notes,        // Status tab
+        itemNotes:         localFields.itemNotes,    // Item Details tab (separate)
         finish:            localFields.finish,
         fabric:            localFields.fabric,
         size:              localFields.size,
@@ -1902,14 +1906,12 @@ const ProductCard = ({
         const productToSave = mergedProduct;
         if (!productToSave) throw new Error('Product not found — please refresh the page.');
 
-        const freshRes = await fetch(`${backendServer}/api/orders/${order._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!freshRes.ok) throw new Error('Failed to fetch current order state');
-        const freshOrder = await freshRes.json();
-        const freshProducts = freshOrder.selectedProducts || [];
-
-        updatedProducts = freshProducts.map((p, i) =>
+        // Bangun array save dari sumber kebenaran FE (allProducts = savedProducts), BUKAN
+        // re-fetch order lalu map by index. `index` adalah posisi produk ini di savedProducts,
+        // sehingga SELALU cocok — tidak bergantung pada urutan backend. Pendekatan lama
+        // (fetch fresh + map by index) menimpa slot tetangga saat urutan FE ≠ backend,
+        // sehingga membuat duplikat. Mengirim array FE apa adanya menjaga jumlah & posisi.
+        updatedProducts = allProducts.map((p, i) =>
           i === index
             ? buildProductPayload(productToSave)
             : buildProductPayload(p)
@@ -2455,8 +2457,8 @@ const ProductCard = ({
                       <span className="ml-1.5 text-xs text-gray-400 font-normal">cleaning, freight, care, specs…</span>
                     </label>
                     <textarea
-                      value={localFields.notes}
-                      onChange={(e) => { setLocal('notes', e.target.value); upd('notes', e.target.value); }}
+                      value={localFields.itemNotes}
+                      onChange={(e) => { setLocal('itemNotes', e.target.value); upd('itemNotes', e.target.value); }}
                       className={`${inputCls} resize-none`}
                       rows={3}
                       placeholder="Cleaning instructions, freight notes, fire ratings, vendor comments…"
