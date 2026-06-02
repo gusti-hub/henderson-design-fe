@@ -185,9 +185,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
   const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
 
-  const itemType = o.itemClass || '';
   const materials = ca.materials || '';
-  const collection = ca.collection || '';
   // Structured category fields (skip system/meta keys)
   const catEntries = Object.entries(ca).filter(([k, v]) =>
     CA_LABELS[k] && !SKIP_CA_KEYS.has(k) && v !== '' && v !== null && v !== undefined && v !== false
@@ -208,13 +206,6 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
-        {/* Item type + collection badges */}
-        {(itemType || collection) && (
-          <div style={{ marginBottom: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {itemType && <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '1px 8px', borderRadius: '9999px', fontSize: '10px', fontWeight: '600' }}>{itemType}</span>}
-            {collection && <span style={{ background: '#f0fdf4', color: '#15803d', padding: '1px 8px', borderRadius: '9999px', fontSize: '10px', fontWeight: '600' }}>{collection}</span>}
-          </div>
-        )}
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
@@ -223,7 +214,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         {o.size && <div><strong>Dimensions:</strong> {o.size}</div>}
         {materials && <div><strong>Materials:</strong> {materials}</div>}
         {/* Category-specific structured fields */}
-        {catEntries.length > 0 && (
+        {/* {catEntries.length > 0 && (
           <div style={{ marginTop: '4px', borderTop: '1px dashed #e5e7eb', paddingTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
             {catEntries.map(([k, v]) => (
               <span key={k} style={{ fontSize: '11px', color: '#4b5563' }}>
@@ -231,7 +222,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
               </span>
             ))}
           </div>
-        )}
+        )} */}
         {o.notes && <div style={{ marginTop: '4px', borderTop: '1px dashed #e5e7eb', paddingTop: '4px', fontSize: '11px', color: '#6b7280', whiteSpace: 'pre-wrap' }}><em>{o.notes}</em></div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
