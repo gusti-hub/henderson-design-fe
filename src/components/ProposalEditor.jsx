@@ -573,7 +573,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [showVersionModal, setShowVersionModal]         = useState(false);
   const [showNewVersionModal, setShowNewVersionModal]   = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
-  const [depositPercent, setDepositPercent] = useState(90);
+  const [depositPercent, setDepositPercent] = useState(100);
   const [confirmModal, setConfirmModal] = useState(null);
   const [originalTitle] = useState(document.title);
 
@@ -848,7 +848,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       });
       setProposalNumber(r.data.proposalNumber || null);
       setProposalStatus(r.data.status || 'draft');
-      setDepositPercent(r.data.depositPercent ?? 90);
+      setDepositPercent(r.data.depositPercent ?? 100);
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
     finally { setLoading(false); }
   };
@@ -929,7 +929,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     finally { setSavingHidden(false); }
   };
 
-  // ── Save as new version (deposit reset to 90) ──
+  // ── Save as new version (deposit reset to 100) ──
   const handleSaveNewVersion = async (notes) => {
     if (!notes.trim()) return;
     setSaving(true);
@@ -938,7 +938,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientInfo, notes, depositPercent: 90 }),
+        body: JSON.stringify({ clientInfo, notes, depositPercent: 100 }),
       });
       const r = await res.json();
       if (r.success) {
