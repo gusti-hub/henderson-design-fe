@@ -26,12 +26,12 @@ const DecimalInput = ({ value, onChange, disabled, placeholder = '0.00', classNa
     if (raw === '.') { onChange(raw); return; }
     let cleaned = raw;
     if (/^0\d/.test(cleaned) && !cleaned.startsWith('0.')) cleaned = cleaned.replace(/^0+/, '');
-    if (/^\d*\.?\d{0,2}$/.test(cleaned)) onChange(cleaned);
+    if (/^\d*\.?\d{0,3}$/.test(cleaned)) onChange(cleaned);
   };
 
   const handleBlur = () => {
     if (value === '' || value === '.' || value === undefined || value === null) onChange(0);
-    else { const n = parseFloat(value); if (!isNaN(n)) onChange(Math.round(n * 100) / 100); }
+    else { const n = parseFloat(value); if (!isNaN(n)) onChange(Math.round(n * 1000) / 1000); }
   };
 
   return (
@@ -93,7 +93,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
   const taxShippingMarkup = opts.taxableShippingMarkup !== false;
   const taxOtherCost      = opts.taxableOtherCost !== false;
   const taxOtherMarkup    = opts.taxableOtherMarkup !== false;
-  const salesTaxRate      = num(opts.salesTaxRate) || 4.5;
+  const salesTaxRate      = num(opts.salesTaxRate) || 4.712;
 
   // ✅ FIX: Taxable amount juga basis MSRP
   let taxableAmount = 0;
@@ -230,10 +230,10 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
           <div className="flex-1">
             <label className="block text-xs font-medium text-gray-500 mb-1">Sales Tax Rate %</label>
             <DecimalInput
-              value={opts.salesTaxRate ?? 4.5}
+              value={opts.salesTaxRate ?? 4.712}
               onChange={(v) => upd('salesTaxRate', v)}
               disabled={disabled}
-              placeholder="4.5"
+              placeholder="4.712"
               className={inp}
             />
           </div>

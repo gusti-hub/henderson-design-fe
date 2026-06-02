@@ -173,7 +173,7 @@ const CATEGORY_SPECIFIC_FIELDS = {
   'Other':                   [{ k:'productType', l:'Product Type' }, { k:'material', l:'Material' }, { k:'otherFinish', l:'Finish' }],
 };
 
-// ✅ PATCH 1: salesTaxRate default 4.5
+// ✅ PATCH 1: salesTaxRate default 4.712
 const defaultSelectedOptions = () => ({
   image: '', images: [], links: [], specifications: '', notes: '',
   finish: '', fabric: '', size: '', sidemark: '', group: '', tags: [],
@@ -191,7 +191,7 @@ const defaultSelectedOptions = () => ({
   noNetPurchaseCost: false, discountTaken: '', shippingCost: 0, otherCost: 0,
   markupPercent: 50, shippingMarkupPercent: 50, otherMarkupPercent: 50,
   depositPercent: 90, vendorDepositPercent: 0,
-  salesTaxRate: 4.5,
+  salesTaxRate: 4.712,
   taxableCost: true, taxableMarkup: true, taxableShippingCost: true,
   taxableShippingMarkup: true, taxableOtherCost: true, taxableOtherMarkup: true,
 });
@@ -501,7 +501,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           otherCost:             0,
           depositPercent:        90,
           vendorDepositPercent:  0,
-          salesTaxRate:          4.5,
+          salesTaxRate:          4.712,
           taxableCost:            true,
           taxableMarkup:          true,
           taxableShippingCost:    true,
@@ -605,7 +605,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           otherCost:             0,
           depositPercent:        90,
           vendorDepositPercent:  0,
-          salesTaxRate:          4.5,
+          salesTaxRate:          4.712,
           leadTime:              '',   // ✅ PATCH 10
           taxableCost:            true,
           taxableMarkup:          true,
