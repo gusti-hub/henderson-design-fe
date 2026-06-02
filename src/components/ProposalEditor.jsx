@@ -1020,17 +1020,29 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
   const TOTALS_H = 100;
 
-  const packItems = (items, headerH, contHeaderH = 0) => {
+  const packItems = (items, headerH, contHeaderH = 30) => {
     const result = []; let cur = [], used = headerH;
+
+    const flush = () => { result.push(cur); cur = []; used = contHeaderH; };
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      // Extra space needed on the last item (totals section)
       const extraH = i === items.length - 1 ? TOTALS_H : 0;
+
       if (item.type === 'room-header') {
-        const nextH = items[i + 1]?.height || 0;
-        if (used + item.height + nextH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = contHeaderH; }
+        // Look ahead: header must fit together with at least its first product.
+        // Also include TOTALS_H if that first product is the very last item.
+        let lookAhead = item.height;
+        for (let j = i + 1; j < items.length; j++) {
+          if (items[j].type === 'room-header') break; // stop at next room
+          lookAhead += items[j].height + (j === items.length - 1 ? TOTALS_H : 0);
+          break; // only need first product
+        }
+        if (cur.length > 0 && used + lookAhead > CONTENT_H) { flush(); }
         cur.push(item); used += item.height;
       } else {
-        if (used + item.height + extraH > CONTENT_H && cur.length > 0) { result.push(cur); cur = []; used = contHeaderH; }
+        if (cur.length > 0 && used + item.height + extraH > CONTENT_H) { flush(); }
         cur.push(item); used += item.height;
       }
     }
@@ -1087,8 +1099,13 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.max(92, midH, priceH) + 8 });
       });
     });
+    // Measure ContHeader (the "Products (continued)" mini-header on page 2+)
+    const contHeaderH = measureEl(
+      '<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px">' +
+      '<span>Client — Products (continued)</span><span>Proposal #: ---</span></div>'
+    );
     document.body.removeChild(sandbox);
-    setPages(packItems(items, headerH));
+    setPages(packItems(items, headerH, contHeaderH));
     setReady(true);
   }, [buildRoomGroups]);
 
