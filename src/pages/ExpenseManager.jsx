@@ -21,7 +21,7 @@ const SERVICE_TYPES = [
   { id: 'travel',          label: 'Travel & Expenses',               icon: '✈️', defaultRate: 0,   unit: 'flat', isEmployee: false },
   { id: 'products',        label: 'Products',                        icon: '📦', defaultRate: 0,   unit: 'flat', isEmployee: false },
 ];
-const TAX_RATE_DEFAULT = 4.5;
+const TAX_RATE_DEFAULT = 4.712;
 
 const fmt   = (n) => `$${parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const today = () => new Date().toISOString().split('T')[0];
@@ -579,7 +579,7 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
             <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">Totals</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-medium">{fmt(sub)}</span></div>
-              <div className="flex justify-between items-center text-gray-600"><span>Tax Rate (%)</span><input type="number" min="0" step="0.1" value={inv.taxRate} onChange={e => upd('taxRate', e.target.value)} className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right" /></div>
+              <div className="flex justify-between items-center text-gray-600"><span>Tax Rate (%)</span><input type="number" min="0" step="0.001" value={inv.taxRate} onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d{0,3}$/.test(v)) upd('taxRate', v); }} onBlur={e => { const n = parseFloat(e.target.value); upd('taxRate', isNaN(n) ? 0 : Math.round(n * 1000) / 1000); }} className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right" /></div>
               <div className="flex justify-between text-gray-600"><span>Taxes</span><span>{fmt(tax)}</span></div>
               <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-200 text-[#005670]"><span>Total</span><span>{fmt(tot)}</span></div>
             </div>
