@@ -1145,7 +1145,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
           <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
-          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber ? ', #' + clientInfo.unitNumber : ''}</p>}
+          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
           {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
           {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
         </div>
@@ -1414,7 +1414,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
                       <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name}</p>
-                      {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber ? ', #' + clientInfo.unitNumber : ''}</p>}
+                      {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
                       {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
                       {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
                     </div>
