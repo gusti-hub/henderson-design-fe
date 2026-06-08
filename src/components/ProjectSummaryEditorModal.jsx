@@ -70,7 +70,7 @@ const SummaryPreview = ({ preview, lang = 'en' }) => {
           {[
             { label: t.clientName,    value: client.name },
             { label: t.unitNumber,    value: `Unit ${client.unitNumber}` },
-            { label: t.collection,    value: client.collection || '—' },
+            { label: t.collection,    value: (client.collection || '—').replace(/\s*\(Client\)/i, '') },
             { label: t.statementDate, value: fmtDate(statementDate, lang) },
           ].map(({ label, value }) => (
             <div key={label}>

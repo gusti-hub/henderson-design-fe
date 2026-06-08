@@ -338,7 +338,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
             {[
               { label: t.clientName,    value: client.name },
               { label: t.unitNumber,    value: `Unit ${client.unitNumber}` },
-              { label: t.collection,    value: client.collection || '—' },
+              { label: t.collection,    value: (client.collection || '—').replace(/\s*\(Client\)/i, '') },
               { label: t.statementDate, value: fmtDate(statementDate, lang) },
               // { label: t.advisor,       value: client.projectAdvisor },
             ].map(({ label, value }) => (
