@@ -262,7 +262,7 @@ const CollectionsPage = () => {
       ],
       details:
         "The Design Library provides access to visual references and curated palettes that guide refined decision-making.",
-      lookbookImages: generateImagePaths("foundation-library", 45),
+      lookbookImages: generateImagePaths("foundation-library", 126),
       pricing: null,
     },
   ];
