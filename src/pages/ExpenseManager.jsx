@@ -777,44 +777,88 @@ const ExpenseManager = () => {
     });
   };
 
+  const getOrderLabel = (o) => {
+    const l = o.orderLabel?.trim();
+    const m = l?.match(/^phase\s*(\d+)$/i);
+    return m ? `Order ${m[1]}` : (l || (o.orderNumber ? `Order ${o.orderNumber}` : null));
+  };
+
   const selectOrder = async (order) => {
     setSelectedOrder(order);
     setProposalVersions([]);
+    setAllPOVersions([]);
+    setExpenses([]);
     setLocalQBIds({});
     setBillInvoiceMap({});
+    setPoSummary(null);
     setExpensePage(1); setProposalPage(1); setPoPage(1);
-    await loadExpenses(order._id);
+
+    const token = localStorage.getItem('token');
+    const clientId = typeof order.user === 'object' ? (order.user?._id || order.user?.id) : order.user;
+
     try {
-      const token = localStorage.getItem('token');
-      const [freshRes, summaryRes, poRes, pvRes, biRes] = await Promise.all([
-        fetch(`${backendServer}/api/orders/${order._id}`,                     { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${backendServer}/api/quickbooks/project-summary/${order._id}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${backendServer}/api/quickbooks/latest-po/${order._id}`,       { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${backendServer}/api/proposals/${order._id}/versions/all`,     { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${backendServer}/api/orders/${order._id}/bill-invoices`,       { headers: { Authorization: `Bearer ${token}` } }),
+      // Fetch primary order details + all orders for this client in parallel
+      const [freshRes, clientOrdersRes] = await Promise.all([
+        fetch(`${backendServer}/api/orders/${order._id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${backendServer}/api/orders/client/${clientId}`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      if (freshRes.ok)   { const o = await freshRes.json();   setSelectedOrder(o); }
-      if (pvRes.ok) {
-        const p = await pvRes.json();
-        const versions = p.data || [];
-        setProposalVersions(versions);
-        const initLocal = {};
-        versions.forEach(pv => {
-          if (pv.quickbooksId && String(pv.quickbooksId).trim() !== '') {
-            initLocal[pv._id?.toString()] = pv.quickbooksId;
-          }
-        });
-        setLocalQBIds(prev => ({ ...prev, ...initLocal }));
-      }
-      if (summaryRes.ok) { const s = await summaryRes.json(); setAllPOVersions(s.allVersionsFlat || s.poVendors || []); } else setAllPOVersions([]);
-      if (poRes.ok)      { setPoSummary(await poRes.json()); } else setPoSummary(null);
-      if (biRes.ok) {
-        const biData = await biRes.json();
-        const map = {};
-        (biData.data || []).forEach(bi => { map[bi.poVersionId?.toString()] = bi; });
-        setBillInvoiceMap(map);
-      }
-    } catch { setPoSummary(null); }
+      if (freshRes.ok) { const o = await freshRes.json(); setSelectedOrder(o); }
+
+      const clientOrdersData = clientOrdersRes.ok ? await clientOrdersRes.json() : {};
+      const allOrders = clientOrdersData.orders?.length > 0 ? clientOrdersData.orders : [order];
+
+      // Load all data for all orders in parallel
+      const allProposals = [], allPOs = [], allExpensesArr = [], allPoDetails = [], allBIMap = {};
+
+      await Promise.all(allOrders.map(async (o) => {
+        const label = getOrderLabel(o);
+        const oid   = o._id?.toString();
+
+        const [pvRes, summaryRes, poRes, expRes, biRes] = await Promise.all([
+          fetch(`${backendServer}/api/proposals/${oid}/versions/all`,     { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${backendServer}/api/quickbooks/project-summary/${oid}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${backendServer}/api/quickbooks/latest-po/${oid}`,       { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${backendServer}/api/expenses?orderId=${oid}`,           { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${backendServer}/api/orders/${oid}/bill-invoices`,       { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
+        if (pvRes.ok) {
+          const p = await pvRes.json();
+          (p.data || []).forEach(pv => allProposals.push({ ...pv, _orderLabel: label, _orderId: oid }));
+        }
+        if (summaryRes.ok) {
+          const s = await summaryRes.json();
+          (s.allVersionsFlat || s.poVendors || []).forEach(po => allPOs.push({ ...po, _orderLabel: label, _orderId: oid }));
+        }
+        if (poRes.ok) {
+          const ps = await poRes.json();
+          (ps.details || []).forEach(d => allPoDetails.push(d));
+        }
+        if (expRes.ok) {
+          const e = await expRes.json();
+          (e.expenses || []).forEach(exp => allExpensesArr.push({ ...exp, _orderLabel: label, _orderId: oid }));
+        }
+        if (biRes.ok) {
+          const biData = await biRes.json();
+          (biData.data || []).forEach(bi => { allBIMap[bi.poVersionId?.toString()] = bi; });
+        }
+      }));
+
+      setProposalVersions(allProposals);
+      setAllPOVersions(allPOs);
+      setExpenses(allExpensesArr.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+      setPoSummary({ details: allPoDetails });
+      setBillInvoiceMap(allBIMap);
+
+      const initLocal = {};
+      allProposals.forEach(pv => {
+        if (pv.quickbooksId && String(pv.quickbooksId).trim() !== '') initLocal[pv._id?.toString()] = pv.quickbooksId;
+      });
+      setLocalQBIds(prev => ({ ...prev, ...initLocal }));
+    } catch (e) {
+      console.error('selectOrder error:', e);
+      setPoSummary(null);
+    }
     setView('project');
   };
 
@@ -853,7 +897,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
         if (res.ok) {
           setExpenses(prev => prev.map(e => (e.id || e._id) === id ? { ...e, quickbooksId: data.quickbooksId, quickbooksSyncedAt: new Date().toISOString(), quickbooksStatus: 'synced', quickbooksError: null } : e));
           showToast(`✅ ${isResync ? 'Resynced' : 'Synced'} to QB: ${data.quickbooksId}`);
-          setTimeout(() => loadExpenses(selectedOrder._id), 1000);
+          setTimeout(() => {}, 0); // refreshed via optimistic update above
         } else {
           if (data.quickbooksId) {
             setExpenses(prev => prev.map(e => (e.id || e._id) === id ? { ...e, quickbooksId: data.quickbooksId } : e));
@@ -879,23 +923,31 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
     };
  
     // ── Proposal QB ────────────────────────────────────────────────────────
-    const doSyncProposalQB = async (pvId, isResync = false) => {
+    const doSyncProposalQB = async (pvId, orderId, isResync = false) => {
       setSyncing(pvId, true);
       try {
         const token = localStorage.getItem('token');
         const url = isResync
-          ? `${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}/${pvId}?force=true`
-          : `${backendServer}/api/quickbooks/sync-proposal/${selectedOrder._id}/${pvId}`;
+          ? `${backendServer}/api/quickbooks/sync-proposal/${orderId}/${pvId}?force=true`
+          : `${backendServer}/api/quickbooks/sync-proposal/${orderId}/${pvId}`;
         const res  = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (res.ok) {
           showToast(`✅ ${isResync ? 'Resynced' : 'Synced'} to QB: ${data.quickbooksId}`);
           setLocalQB(pvId, data.quickbooksId);
+          // Refresh only this order's proposals and preserve _orderLabel/_orderId
           const pvRes = await fetch(
-            `${backendServer}/api/proposals/${selectedOrder._id}/versions/all`,
+            `${backendServer}/api/proposals/${orderId}/versions/all`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          if (pvRes.ok) { const d = await pvRes.json(); setProposalVersions(d.data || []); }
+          if (pvRes.ok) {
+            const d = await pvRes.json();
+            const label = getOrderLabel(allOrders?.find(o => o._id?.toString() === orderId) || {});
+            setProposalVersions(prev => [
+              ...prev.filter(p => p._orderId !== orderId),
+              ...(d.data || []).map(pv => ({ ...pv, _orderLabel: label, _orderId: orderId })),
+            ]);
+          }
         } else {
           if (data.quickbooksId) {
             setLocalQB(pvId, data.quickbooksId);
@@ -907,28 +959,28 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
       } catch (e) { showToast('Failed: ' + e.message, 'error'); }
       finally { setSyncing(pvId, false); }
     };
- 
-    const syncProposalQB = (pvId, currentQBId, isResync = false) => {
+
+    const syncProposalQB = (pvId, proposalNumber, orderId, currentQBId, isResync = false) => {
       showConfirm({
         title: isResync ? 'Resync Proposal to QuickBooks' : 'Send Proposal to QuickBooks',
         message: isResync
-          ? `Update QB Invoice for proposal ${selectedOrder.proposalNumber}? A new invoice will be created in QuickBooks.`
-          : `Send proposal ${selectedOrder.proposalNumber} to QuickBooks as Invoice?`,
+          ? `Update QB Invoice for proposal ${proposalNumber || '—'}? A new invoice will be created in QuickBooks.`
+          : `Send proposal ${proposalNumber || '—'} to QuickBooks as Invoice?`,
         warning: !isResync ? 'This will create a new Invoice in QuickBooks for the approved proposal amount.' : undefined,
         confirmLabel: isResync ? 'Resync' : 'Send to QB',
-        onConfirm: () => doSyncProposalQB(pvId, isResync),
+        onConfirm: () => doSyncProposalQB(pvId, orderId, isResync),
       });
     };
- 
+
     // ── Bill Invoice → QB (for confirmed PO rows) ──────────────────────────
-    const doSyncBillInvoiceQB = async (poVersionId, vendorId, isResync = false) => {
+    const doSyncBillInvoiceQB = async (poVersionId, vendorId, orderId, isResync = false) => {
       setSyncing(poVersionId, true);
       try {
         const token = localStorage.getItem('token');
 
         // Step 1: get or create bill invoice
         const biRes = await fetch(
-          `${backendServer}/api/orders/${selectedOrder._id}/po/${vendorId}/bill-invoice?poVersionId=${poVersionId}`,
+          `${backendServer}/api/orders/${orderId}/po/${vendorId}/bill-invoice?poVersionId=${poVersionId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const biData = await biRes.json();
@@ -954,7 +1006,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
       finally { setSyncing(poVersionId, false); }
     };
 
-    const syncBillInvoiceQB = (poVersionId, vendorId, vendorName, isResync = false) => {
+    const syncBillInvoiceQB = (poVersionId, vendorId, vendorName, orderId, isResync = false) => {
       showConfirm({
         title: isResync ? 'Resync Bill Invoice to QuickBooks' : 'Send Bill Invoice to QuickBooks',
         message: isResync
@@ -962,7 +1014,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
           : `Send Bill Invoice for ${vendorName} to QuickBooks as a Bill?`,
         warning: !isResync ? 'A Bill Invoice will be auto-created from the PO if it doesn\'t exist yet.' : undefined,
         confirmLabel: isResync ? 'Resync' : 'Send to QB',
-        onConfirm: () => doSyncBillInvoiceQB(poVersionId, vendorId, isResync),
+        onConfirm: () => doSyncBillInvoiceQB(poVersionId, vendorId, orderId, isResync),
       });
     };
  
@@ -1112,7 +1164,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
               <h3 className="text-base font-semibold text-gray-800">📄 Proposals</h3>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">{proposalVersions.length} proposal{proposalVersions.length !== 1 ? 's' : ''}</span>
             </div>
-            <button onClick={() => window.open(`/admin/proposal/${selectedOrder._id}`, '_blank')}
+            <button onClick={() => window.open(`/admin/proposal/${proposalVersions[0]?._orderId || selectedOrder._id}`, '_blank')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#005670] border border-[#005670]/30 rounded-lg hover:bg-[#005670]/5 transition-colors">
               <FileText className="w-3.5 h-3.5" />{proposalVersions.length === 0 ? 'Create Proposal' : 'Open Proposal Editor'}
             </button>
@@ -1125,6 +1177,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                 <thead className="bg-gray-50/80 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">Proposal #</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-28">Order</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-24">Date</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Notes</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-28">Status</th>
@@ -1141,6 +1194,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                     return (
                       <tr key={pvId} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-2"><span className="text-xs font-mono font-semibold text-[#005670]">{pv.proposalNumber || selectedOrder.proposalNumber || '—'}</span></td>
+                        <td className="px-3 py-2">{pv._orderLabel ? <span className="text-[10px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">{pv._orderLabel}</span> : <span className="text-gray-300">—</span>}</td>
                         <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{pv.createdAt ? new Date(pv.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
                         <td className="px-3 py-2 text-xs text-gray-500 max-w-[160px] truncate" title={pv.notes}>{pv.notes || <span className="text-gray-300 italic">—</span>}</td>
                         <td className="px-3 py-2">
@@ -1151,14 +1205,14 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                         <td className="px-3 py-2">
                           <QBCell
                             qbId={qbId}
-                            onSend={isApproved && !qbId ? () => syncProposalQB(pvId, qbId, false) : undefined}
-                            onResync={isApproved && qbId ? () => syncProposalQB(pvId, qbId, true) : undefined}
+                            onSend={isApproved && !qbId ? () => syncProposalQB(pvId, pv.proposalNumber, pv._orderId, qbId, false) : undefined}
+                            onResync={isApproved && qbId ? () => syncProposalQB(pvId, pv.proposalNumber, pv._orderId, qbId, true) : undefined}
                             notReadyMsg={!isApproved ? 'Approve first' : undefined}
                             syncing={syncingIds[pvId]}
                           />
                         </td>
                         <td className="px-4 py-2">
-                          <button onClick={() => window.open(`/admin/proposal/${selectedOrder._id}`, '_blank')} title="View" className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"><Eye className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => window.open(`/admin/proposal/${pv._orderId || selectedOrder._id}`, '_blank')} title="View" className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"><Eye className="w-3.5 h-3.5" /></button>
                         </td>
                       </tr>
                     );
@@ -1194,6 +1248,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                 <thead className="bg-gray-50/80 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">PO # / Ver</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-20">Order</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-32">Vendor</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-24">Status</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QB via Bill Invoice</th>
@@ -1216,29 +1271,30 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                             <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{po.poNumber || '—'}</span>
                             {po.version != null && <span className="ml-1.5 text-[10px] text-gray-400">v{po.version}</span>}
                           </td>
+                          <td className="px-3 py-2">{po._orderLabel ? <span className="text-[10px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">{po._orderLabel}</span> : <span className="text-gray-300">—</span>}</td>
                           <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                           <td className="px-3 py-2"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" /> Confirmed</span></td>
                           <td className="px-3 py-2">
                             <QBCell
                               qbId={qbId}
-                              onSend={!qbId && !biFailed ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, false) : undefined}
-                              onResync={qbId ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, true) : undefined}
+                              onSend={!qbId && !biFailed ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, po._orderId, false) : undefined}
+                              onResync={qbId ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, po._orderId, true) : undefined}
                               failedMsg={biFailed && !qbId ? biFailed : null}
-                              onRetry={biFailed && !qbId ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, false) : undefined}
+                              onRetry={biFailed && !qbId ? () => syncBillInvoiceQB(poId, vendorId, po.vendorName, po._orderId, false) : undefined}
                               syncing={syncingIds[poId]}
                             />
                           </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-1">
                               <button
-                                onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}/${vendorId}`, '_blank')}
+                                onClick={() => window.open(`/admin/purchase-order/${po._orderId || selectedOrder._id}/${vendorId}`, '_blank')}
                                 title="View/Edit PO"
                                 className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => setBillInvoiceTarget({ orderId: selectedOrder._id, vendorId, poVersionId: poId, poNumber: po.poNumber })}
+                                onClick={() => setBillInvoiceTarget({ orderId: po._orderId || selectedOrder._id, vendorId, poVersionId: poId, poNumber: po.poNumber })}
                                 title="Bill Invoice"
                                 className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
                               >
@@ -1265,13 +1321,13 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                           <span className="text-xs font-mono text-gray-400 whitespace-nowrap">{po.poNumber || '—'}</span>
                           {po.version != null && <span className="ml-1.5 text-[10px] text-gray-400">v{po.version}</span>}
                         </td>
+                        <td className="px-3 py-2">{po._orderLabel ? <span className="text-[10px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">{po._orderLabel}</span> : <span className="text-gray-300">—</span>}</td>
                         <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                         <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sCfg.cls} whitespace-nowrap`}>{sCfg.label}</span></td>
                         <td className="px-3 py-2"><QBCell /></td>
-                        {/* ✅ View button untuk pending rows juga */}
                         <td className="px-4 py-2">
                           <button
-                            onClick={() => window.open(`/admin/purchase-order/${selectedOrder._id}/${pendingVendorId}`, '_blank')}
+                            onClick={() => window.open(`/admin/purchase-order/${po._orderId || selectedOrder._id}/${pendingVendorId}`, '_blank')}
                             title="View/Edit PO"
                             className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
                           >
@@ -1336,7 +1392,10 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">{(order.clientInfo?.name || 'C').charAt(0).toUpperCase()}</div>
-                        <div><p className="font-medium text-gray-800 text-sm leading-tight">{order.clientInfo?.name || 'Unknown Client'}</p>{order.clientInfo?.unitNumber && <p className="text-xs text-gray-400 mt-0.5">Unit {order.clientInfo.unitNumber}</p>}</div>
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm leading-tight">{order.clientInfo?.name || 'Unknown Client'}</p>
+                          {order.clientInfo?.unitNumber && <p className="text-xs text-gray-400 mt-0.5">Unit {order.clientInfo.unitNumber}</p>}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3.5"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pkg.cls}`}>{pkg.label}</span></td>
