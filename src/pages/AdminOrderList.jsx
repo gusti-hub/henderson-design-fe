@@ -395,6 +395,179 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
   );
 };
 
+// ─── Client Orders View ───────────────────────────────────────────────────────
+const ClientOrdersView = ({ clientUserId, clientInfo, onBack, onEditOrder }) => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [successMsg, setSuccessMsg] = useState(null);
+
+  const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 3000); };
+
+  const fetchClientOrders = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/client/${clientUserId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setOrders(data.orders || []);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchClientOrders(); }, [clientUserId]);
+
+  const handleAddOrder = async () => {
+    setCreating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/client/${clientUserId}/new-order`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderLabel: newLabel.trim() || null }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowAddModal(false);
+        setNewLabel('');
+        showSuccess('New order created');
+        await fetchClientOrders();
+      } else {
+        alert(data.message || 'Failed to create order');
+      }
+    } catch (e) { alert('Error: ' + e.message); }
+    setCreating(false);
+  };
+
+  const getOrderLabel = (order) => {
+    if (order.orderLabel) return order.orderLabel;
+    return `Order #${order.orderNumber || '?'}`;
+  };
+
+  return (
+    <div className="space-y-4">
+      {successMsg && <SuccessToast message={successMsg} onClose={() => setSuccessMsg(null)} />}
+
+      {/* Header */}
+      <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack}
+            className="inline-flex items-center text-[#005670] hover:text-[#005670]/80 text-sm font-medium gap-1.5">
+            <ArrowLeft className="w-4 h-4" /> Back to Orders
+          </button>
+          <span className="text-gray-300">|</span>
+          <div>
+            <p className="font-semibold text-gray-800">{clientInfo?.name || 'Client'}</p>
+            {clientInfo?.unitNumber && <p className="text-xs text-gray-400">Unit {clientInfo.unitNumber}</p>}
+          </div>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-medium hover:bg-[#004558] transition-colors shadow-sm">
+          + Add Order
+        </button>
+      </div>
+
+      {/* Order list */}
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-[#005670]" /></div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <Package className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">No orders yet</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/80">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Label</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Package</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Products</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {orders.map((order) => (
+                <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-4">
+                    <div className="w-8 h-8 bg-[#005670]/10 rounded-lg flex items-center justify-center text-[#005670] font-bold text-sm">
+                      {order.orderNumber || '?'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className="font-medium text-gray-800 text-sm">{getOrderLabel(order)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{order.selectedPlan?.title || '—'}</p>
+                  </td>
+                  <td className="px-4 py-4"><PackageBadge packageType={order.packageType} /></td>
+                  <td className="px-4 py-4">
+                    <span className="text-sm text-gray-600">{(order.selectedProducts || []).length} items</span>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_CONFIG[order.status]?.cls || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[order.status]?.dot || 'bg-gray-400'}`} />
+                      {STATUS_CONFIG[order.status]?.label || order.status}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      onClick={() => onEditOrder(order)}
+                      disabled={order.status !== 'ongoing'}
+                      title={order.status !== 'ongoing' ? 'Only ongoing orders can be edited' : 'Edit order'}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+                        ${order.status === 'ongoing' ? 'bg-[#005670] text-white hover:bg-[#004558] shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+                      <Edit2 className="w-3.5 h-3.5" /> Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Add Order Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">Add New Order</h3>
+            <p className="text-sm text-gray-500 mb-5">Create a new product order for <strong>{clientInfo?.name}</strong></p>
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Label <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input
+                type="text"
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !creating) handleAddOrder(); }}
+                placeholder={`e.g. Phase 2, Additional Items`}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => { setShowAddModal(false); setNewLabel(''); }}
+                className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleAddOrder} disabled={creating}
+                className="flex items-center gap-2 px-5 py-2 bg-[#005670] text-white rounded-lg text-sm font-medium hover:bg-[#004558] transition-colors disabled:opacity-50">
+                {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Create Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 const AdminOrderList = ({ onOrderClick }) => {
   const [orders, setOrders]         = useState([]);
@@ -414,6 +587,9 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [selectedPOClientInfo, setSelectedPOClientInfo] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
+  // Client-level view: { userId, clientInfo }
+  const [selectedClient, setSelectedClient] = useState(null);
+
 
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(null), 4000); };
 
@@ -524,6 +700,15 @@ const AdminOrderList = ({ onOrderClick }) => {
         image: order.selectedPlan?.image || `/floorplans/${order.selectedPlan?.id}.png` } });
   };
 
+  const handleBackFromEditor = () => {
+    setEditingOrder(null);
+    if (selectedClient) {
+      // came from ClientOrdersView — stay there
+    } else {
+      fetchOrders();
+    }
+  };
+
   if (editingOrder) {
     const isLibrary = editingOrder.packageType === 'library';
     const isCustom  = editingOrder.packageType === 'custom';
@@ -531,22 +716,33 @@ const AdminOrderList = ({ onOrderClick }) => {
       <div className="space-y-4">
         {!isLibrary && !isCustom && (
           <div className="p-4 bg-white border-b border-gray-200">
-            <button onClick={() => { setEditingOrder(null); fetchOrders(); }}
+            <button onClick={handleBackFromEditor}
               className="inline-flex items-center text-[#005670] hover:text-[#005670]/80 text-sm font-medium">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Orders
+              <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </button>
           </div>
         )}
         {isCustom ? (
-          <CustomProductManager order={editingOrder} onSave={() => {}} onBack={() => { setEditingOrder(null); fetchOrders(); }} />
+          <CustomProductManager order={editingOrder} onSave={() => {}} onBack={handleBackFromEditor} />
         ) : isLibrary ? (
-          <LibraryFloorPlanEditor order={editingOrder} onSave={() => fetchOrders()} onBack={() => { setEditingOrder(null); fetchOrders(); }} />
+          <LibraryFloorPlanEditor order={editingOrder} onSave={() => {}} onBack={handleBackFromEditor} />
         ) : (
           <AreaCustomization selectedPlan={editingOrder.selectedPlan} floorPlanImage={editingOrder.selectedPlan?.image}
             existingOrder={editingOrder} clientInfo={editingOrder.clientInfo} currentStep={editingOrder.step || 2}
-            checkExistingOrder={fetchOrders} onComplete={() => fetchOrders()} />
+            checkExistingOrder={() => {}} onComplete={handleBackFromEditor} />
         )}
       </div>
+    );
+  }
+
+  if (selectedClient) {
+    return (
+      <ClientOrdersView
+        clientUserId={selectedClient.userId}
+        clientInfo={selectedClient.clientInfo}
+        onBack={() => { setSelectedClient(null); fetchOrders(); }}
+        onEditOrder={(order) => handleEdit(order)}
+      />
     );
   }
 
@@ -639,15 +835,22 @@ const AdminOrderList = ({ onOrderClick }) => {
                   {(orders || []).map((order) => (
                     <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                        <button
+                          className="flex items-center gap-3 group text-left w-full"
+                          onClick={() => {
+                            const userId = typeof order.user === 'object' ? order.user?._id : order.user;
+                            if (userId) setSelectedClient({ userId, clientInfo: order.clientInfo });
+                          }}
+                          title="View all orders for this client"
+                        >
+                          <div className="w-8 h-8 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 group-hover:opacity-80 transition-opacity">
                             {(order.clientInfo?.name || 'C').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-800 text-sm leading-tight">{order.clientInfo?.name || 'Unknown Client'}</p>
+                            <p className="font-medium text-gray-800 text-sm leading-tight group-hover:text-[#005670] transition-colors">{order.clientInfo?.name || 'Unknown Client'}</p>
                             {order.clientInfo?.unitNumber && <p className="text-xs text-gray-400 mt-0.5">Unit {order.clientInfo.unitNumber}</p>}
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-4 py-3.5"><PackageBadge packageType={order.packageType} /></td>
                       <td className="px-4 py-3.5 text-sm text-gray-500">{order.selectedPlan?.title || '—'}</td>
