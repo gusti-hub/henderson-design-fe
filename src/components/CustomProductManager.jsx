@@ -407,7 +407,7 @@ const useToast = () => {
 
 // ==================== MAIN COMPONENT ====================
 
-const CustomProductManager = ({ order, onSave, onBack }) => {
+const CustomProductManager = ({ order, onSave, onBack, onSwitchOrder }) => {
   const [savedProducts, setSavedProducts] = useState([]);
   const [draftProduct, setDraftProduct] = useState(null);
   const [expandedProduct, setExpandedProduct] = useState(null);
@@ -450,6 +450,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
   const [auditFocusProduct, setAuditFocusProduct] = useState(null);
+  const [clientOrders, setClientOrders] = useState([]);
+  const [addingOrder, setAddingOrder] = useState(false);
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [newOrderLabel, setNewOrderLabel] = useState('');
 
   const showConfirm = ({ title, message, confirmLabel, confirmVariant = 'danger', onConfirm }) => {
     setConfirmModal({ isOpen: true, title, message, confirmLabel, confirmVariant, onConfirm });
@@ -491,6 +495,23 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     };
     if (order?._id) fetchLiveOrder();
   }, [order?._id]);
+
+  useEffect(() => {
+    const fetchClientOrders = async () => {
+      const raw = order.user;
+      const userId = raw && typeof raw === 'object' ? (raw._id || raw.id) : raw;
+      if (!userId) return;
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${backendServer}/api/orders/client/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setClientOrders(data.orders || []);
+      } catch (_) {}
+    };
+    fetchClientOrders();
+  }, [order._id]);
 
   useEffect(() => {
     if (order?.selectedProducts) {
@@ -966,6 +987,32 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     }
   }, [savedProducts, order._id, onSave, handleDragEnd, addToast]);
 
+  const handleAddNewOrder = async () => {
+    const raw = order.user;
+    const userId = raw && typeof raw === 'object' ? (raw._id || raw.id) : raw;
+    if (!userId) return;
+    setAddingOrder(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/client/${userId}/new-order`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderLabel: newOrderLabel.trim() || null }),
+      });
+      const data = await res.json();
+      if (data.success && onSwitchOrder) {
+        setShowNewOrderModal(false);
+        setNewOrderLabel('');
+        onSwitchOrder(data.data);
+      } else {
+        addToast(data.message || 'Failed to create order', 'error');
+      }
+    } catch (e) {
+      addToast('Error: ' + e.message, 'error');
+    }
+    setAddingOrder(false);
+  };
+
   const previewUrl = getFloorPlanPreviewUrl();
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
   const totalCount = savedProducts.length + (draftProduct ? 1 : 0);
@@ -1025,6 +1072,35 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             </button>
           </div>
         </div>
+
+        {/* ── Order Switcher ── */}
+        {clientOrders.length > 0 && (
+          <div className="flex items-center gap-2 pt-4 border-t border-gray-100 flex-wrap">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1">Orders:</span>
+            {clientOrders.map(o => (
+              <button
+                key={o._id}
+                onClick={() => o._id !== order._id && onSwitchOrder && onSwitchOrder(o)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                  o._id === order._id
+                    ? 'bg-[#005670] text-white border-[#005670] shadow-sm cursor-default'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#005670] hover:text-[#005670]'
+                }`}
+              >
+                {o.orderLabel || `Order #${o.orderNumber || '?'}`}
+                <span className={`ml-1.5 text-[10px] ${o._id === order._id ? 'text-white/70' : 'text-gray-400'}`}>
+                  ({(o.selectedProducts || []).length} items)
+                </span>
+              </button>
+            ))}
+            <button
+              onClick={() => setShowNewOrderModal(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed border-gray-300 text-gray-500 hover:border-[#005670] hover:text-[#005670] transition-all"
+            >
+              + New Order
+            </button>
+          </div>
+        )}
 
         {totalCount === 0 && (
           <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl">
@@ -1313,6 +1389,39 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         alreadySelected={[]}
       />
  
+      {/* ── New Order Modal ── */}
+      {showNewOrderModal && (
+        <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">New Order</h3>
+            <p className="text-sm text-gray-500 mb-5">Create a new order for <strong>{order.clientInfo?.name}</strong></p>
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Label <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input
+                type="text"
+                value={newOrderLabel}
+                onChange={e => setNewOrderLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !addingOrder) handleAddNewOrder(); }}
+                placeholder="e.g. Phase 2, Additional Items"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => { setShowNewOrderModal(false); setNewOrderLabel(''); }}
+                className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleAddNewOrder} disabled={addingOrder}
+                className="flex items-center gap-2 px-5 py-2 bg-[#005670] text-white rounded-lg text-sm font-medium hover:bg-[#004558] transition-colors disabled:opacity-50">
+                {addingOrder && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />}
+                Create Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Audit Log Drawer ── */}
       <AuditLogDrawer
         isOpen={auditDrawerOpen}
