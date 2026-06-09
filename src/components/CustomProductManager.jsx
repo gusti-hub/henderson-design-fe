@@ -299,6 +299,57 @@ const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confir
   );
 };
 
+const BlockedModal = ({ isOpen, productName, blockedBy, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-gray-900">Cannot Remove Product</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">"{productName}"</span> cannot be removed because it is included in confirmed documents:
+              </p>
+              {blockedBy?.pos?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Confirmed POs</p>
+                  {blockedBy.pos.map((po, i) => (
+                    <div key={i} className="text-sm text-gray-700 bg-red-50 rounded px-3 py-1 mb-1">
+                      PO #{po.poNumber} — {po.vendor}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {blockedBy?.proposals?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Confirmed Proposals</p>
+                  {blockedBy.proposals.map((p, i) => (
+                    <div key={i} className="text-sm text-gray-700 bg-red-50 rounded px-3 py-1 mb-1">
+                      Proposal #{p.proposalNumber} v{p.version} ({p.status})
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">To remove this product, first cancel or revise the confirmed documents above.</p>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors">
+            Understood
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Toast = ({ toasts, onDismiss }) => {
   if (!toasts.length) return null;
   return (
@@ -388,6 +439,9 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false, title: '', message: '',
     confirmLabel: 'Confirm', confirmVariant: 'danger', onConfirm: null,
+  });
+  const [blockedModal, setBlockedModal] = useState({
+    isOpen: false, productName: '', blockedBy: null,
   });
 
   // ✅ PATCH 11: drag state
@@ -711,6 +765,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             }),
           });
 
+          if (res.status === 409) {
+            const err = await res.json();
+            setSavedProducts(savedProducts); // revert optimistic update
+            setBlockedModal({ isOpen: true, productName, blockedBy: err.blockedBy });
+            return;
+          }
           if (!res.ok) {
             const err = await res.json();
             throw new Error(err.message || 'Failed to delete product');
@@ -902,7 +962,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       addToast('Order saved', 'success');
     } catch (err) {
       setSavedProducts(previous);     // revert kalau gagal — tidak ada perubahan tergantung
-      addToast('Gagal menyimpan urutan: ' + err.message, 'error');
+      addToast('Failed to save order: ' + err.message, 'error');
     }
   }, [savedProducts, order._id, onSave, handleDragEnd, addToast]);
 
@@ -1238,6 +1298,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         confirmVariant={confirmModal.confirmVariant}
         onConfirm={confirmModal.onConfirm}
         onCancel={closeConfirm}
+      />
+      <BlockedModal
+        isOpen={blockedModal.isOpen}
+        productName={blockedModal.productName}
+        blockedBy={blockedModal.blockedBy}
+        onClose={() => setBlockedModal({ isOpen: false, productName: '', blockedBy: null })}
       />
 
       <ProductSelectionModal
