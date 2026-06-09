@@ -126,7 +126,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onPO, onProjectSummary }) => {
+const ActionMenu = ({ order, onEdit, onView, onViewOrders, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onPO, onProjectSummary }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -169,6 +169,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
         <div ref={menuRef} style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999 }}
           className="w-56 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden py-1">
           <Group label="View" />
+          <Item icon={FolderOpen}   label="All Orders (this client)"      onClick={onViewOrders}            color="text-[#005670]" />
           <Item icon={Eye}          label="View Client Summary"           onClick={onView} />
           <Sep />
           <Group label="Documents" />
@@ -838,8 +839,14 @@ const AdminOrderList = ({ onOrderClick }) => {
                         <button
                           className="flex items-center gap-3 group text-left w-full"
                           onClick={() => {
-                            const userId = typeof order.user === 'object' ? order.user?._id : order.user;
-                            if (userId) setSelectedClient({ userId, clientInfo: order.clientInfo });
+                            const raw = order.user;
+                            const userId = raw && typeof raw === 'object' ? (raw._id || raw.id) : raw;
+                            console.log('[ClientOrders] click — userId:', userId, 'user field:', raw);
+                            if (userId) {
+                              setSelectedClient({ userId: String(userId), clientInfo: order.clientInfo });
+                            } else {
+                              alert('Cannot open: this order has no linked user.');
+                            }
                           }}
                           title="View all orders for this client"
                         >
@@ -874,6 +881,11 @@ const AdminOrderList = ({ onOrderClick }) => {
                           order={order}
                           onEdit={() => handleEdit(order)}
                           onView={() => onOrderClick && onOrderClick(order._id)}
+                          onViewOrders={() => {
+                            const raw = order.user;
+                            const userId = raw && typeof raw === 'object' ? String(raw._id || raw.id) : String(raw || '');
+                            if (userId) setSelectedClient({ userId, clientInfo: order.clientInfo });
+                          }}
                           onProposal={() => window.open(`/admin/proposal/${order._id}`, '_blank')}
                           onInstallBinder={() => window.open(`/admin/install-binder/${order._id}`, '_blank')}
                           onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel', order.clientInfo?.name, 'Install Binder')}
