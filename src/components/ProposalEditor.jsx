@@ -118,7 +118,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
             {onDelete && (
               <button
                 onClick={onDelete}
-                title="Hapus dari proposal"
+                title="Remove from proposal"
                 style={{ padding: '3px 6px', fontSize: '10px', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}
               >
                 ✕
@@ -779,7 +779,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     ));
 
   } catch (e) {
-    alert('Gagal refresh: ' + e.message);
+    alert('Failed to refresh: ' + e.message);
   }
 }, [orderId, productsWithIds]);
 
@@ -1253,7 +1253,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
             onClick={handleSaveAllProducts}
             disabled={savingHidden}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${saveHiddenSuccess ? 'bg-green-100 text-green-700' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800'}`}
-            title="Simpan semua produk dan persentase deposit"
+            title="Save all products and deposit percentage"
           >
             {savingHidden
               ? <Loader2 className="w-4 h-4 animate-spin" />
