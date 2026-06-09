@@ -10,13 +10,12 @@ import {
   Loader2, Download, FileText, Edit2, ArrowLeft, X, Check,
   Search, ChevronDown, BarChart2, BookOpen,
   ShoppingCart, TrendingUp, Eye, LayoutList, FolderOpen,
-  Package, DollarSign, Filter, CheckSquare, Square, Printer,
+  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus,
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
 import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor';
 import CustomProductManager from '../components/CustomProductManager';
-import POVendorSelector from '../components/POVendorSelector';
 import COGReportViewer from '../components/COGReportViewer';
 import ProjectSummaryEditorModal from '../components/ProjectSummaryEditorModal';
 
@@ -144,7 +143,8 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
   const Item = ({ icon: Icon, label, onClick, color = 'text-gray-700' }) => (
     <button onClick={() => { onClick(); setOpen(false); }}
       className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${color} hover:bg-gray-50 transition-colors text-left`}>
-      <Icon className="w-4 h-4 flex-shrink-0 opacity-70" /><span>{label}</span>
+      <Icon className="w-4 h-4 flex-shrink-0 opacity-70" />
+      <span className="flex-1">{label}</span>
     </button>
   );
   const Sep = () => <div className="my-1 border-t border-gray-100" />;
@@ -172,7 +172,6 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={Eye}          label="View Client Summary"           onClick={onView} />
           <Sep />
           <Group label="Documents" />
-          <Item icon={FileText}     label="Proposal Editor"               onClick={onProposal}              color="text-blue-600" />
           <Item icon={BookOpen}     label="Install Binder (HTML)"         onClick={onInstallBinder}         color="text-green-600" />
           <Item icon={Download}     label="Install Binder (Excel)"        onClick={onInstallBinderExcel}    color="text-emerald-600" />
           <Sep />
@@ -180,8 +179,6 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={TrendingUp}   label="Status Report"                 onClick={() => onDownload('status-report', 'Status Report')} color="text-teal-600" />
           <Item icon={BarChart2}    label="COG Report (Excel)"            onClick={onCOGExcel}              color="text-purple-600" />
           <Item icon={BarChart2}    label="COG + Bill Comparison"         onClick={onCOGWithBill}           color="text-indigo-600" />
-          <Sep />
-          <Item icon={ShoppingCart} label="Purchase Orders"               onClick={onPO}                   color="text-amber-600" />
           <Sep />
           <Item icon={TrendingUp}   label="Project Summary"               onClick={onProjectSummary}        color="text-teal-600" />
         </div>,
@@ -409,13 +406,11 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [view, setView]                 = useState('projects'); // 'projects' | 'products'
   const itemsPerPage = 10;
   const [editingOrder, setEditingOrder]     = useState(null);
+  const [clientOrdersView, setClientOrdersView] = useState(null); // { clientId, clientInfo, orders, loading }
+  const [addingNewOrder, setAddingNewOrder] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [showPOModal, setShowPOModal]       = useState(false);
-  const [selectedPOOrderId, setSelectedPOOrderId]   = useState(null);
-  const [selectedPOClientInfo, setSelectedPOClientInfo] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
-<<<<<<< HEAD
   const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
   const [vendorModal, setVendorModal] = useState(false);
   const [vendorList, setVendorList] = useState([]);
@@ -423,8 +418,6 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [selectedVendorId, setSelectedVendorId] = useState('');
   // Client-level view: { userId, clientInfo }
   const [selectedClient, setSelectedClient] = useState(null);
-=======
->>>>>>> b193a63 (feat: move order switcher into CustomProductManager)
 
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(null), 4000); };
 
@@ -626,17 +619,68 @@ const AdminOrderList = ({ onOrderClick }) => {
     finally { setDownloading(false); }
   };
 
-  const handleEdit = (order) => {
+  const handleEdit = async (order) => {
     if (order.status !== 'ongoing') return;
-    if (!order.selectedPlan) { alert('Cannot edit: No floor plan selected'); return; }
-    setEditingOrder({ ...order, packageType: order.packageType || 'investor',
-      selectedPlan: { ...order.selectedPlan, id: order.selectedPlan?.id || 'investor-a',
-        image: order.selectedPlan?.image || `/floorplans/${order.selectedPlan?.id}.png` } });
+    const clientId = typeof order.user === 'object' ? (order.user?._id || order.user?.id) : order.user;
+    setClientOrdersView({ clientId, clientInfo: order.clientInfo, orders: [], loading: true });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/client/${clientId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setClientOrdersView(prev => prev ? { ...prev, orders: data.orders || [], loading: false } : null);
+    } catch {
+      setClientOrdersView(null);
+      alert('Failed to load orders for this client.');
+    }
+  };
+
+  const handleManageProducts = (order) => {
+    setEditingOrder({
+      ...order,
+      packageType: order.packageType || 'investor',
+      selectedPlan: {
+        ...order.selectedPlan,
+        id: order.selectedPlan?.id || 'investor-a',
+        image: order.selectedPlan?.image || `/floorplans/${order.selectedPlan?.id}.png`,
+      },
+    });
+  };
+
+  const handleNewOrderFromTable = async () => {
+    if (!clientOrdersView?.clientId || addingNewOrder) return;
+    setAddingNewOrder(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/client/${clientOrdersView.clientId}/new-order`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error();
+      const refetch = await fetch(`${backendServer}/api/orders/client/${clientOrdersView.clientId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      const data = await refetch.json();
+      setClientOrdersView(prev => prev ? { ...prev, orders: data.orders || [] } : null);
+    } catch {
+      alert('Failed to create new order.');
+    } finally {
+      setAddingNewOrder(false);
+    }
   };
 
   const handleBack = () => {
     setEditingOrder(null);
-    fetchOrders();
+    if (clientOrdersView) {
+      const token = localStorage.getItem('token');
+      fetch(`${backendServer}/api/orders/client/${clientOrdersView.clientId}`,
+        { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => setClientOrdersView(prev => prev ? { ...prev, orders: data.orders || [], loading: false } : null))
+        .catch(() => {});
+    } else {
+      fetchOrders();
+    }
   };
 
   if (editingOrder) {
@@ -648,7 +692,8 @@ const AdminOrderList = ({ onOrderClick }) => {
           <div className="p-4 bg-white border-b border-gray-200">
             <button onClick={handleBack}
               className="inline-flex items-center text-[#005670] hover:text-[#005670]/80 text-sm font-medium">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Orders
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {clientOrdersView ? 'Back to Client Orders' : 'Back to Orders'}
             </button>
           </div>
         )}
@@ -658,7 +703,6 @@ const AdminOrderList = ({ onOrderClick }) => {
             order={editingOrder}
             onSave={() => {}}
             onBack={handleBack}
-            onSwitchOrder={(newOrder) => setEditingOrder(newOrder)}
           />
         ) : isLibrary ? (
           <LibraryFloorPlanEditor order={editingOrder} onSave={() => fetchOrders()} onBack={handleBack} />
@@ -667,6 +711,113 @@ const AdminOrderList = ({ onOrderClick }) => {
             existingOrder={editingOrder} clientInfo={editingOrder.clientInfo} currentStep={editingOrder.step || 2}
             checkExistingOrder={fetchOrders} onComplete={handleBack} />
         )}
+      </div>
+    );
+  }
+
+  if (clientOrdersView && !editingOrder) {
+    const { clientInfo, orders: clientOrders, loading: loadingClientOrders } = clientOrdersView;
+    return (
+      <div className="space-y-5">
+        {/* Header bar */}
+        <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center gap-4">
+          <button
+            onClick={() => { setClientOrdersView(null); fetchOrders(); }}
+            className="flex items-center gap-1.5 text-sm font-medium text-[#005670] hover:text-[#004558] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Orders
+          </button>
+          <div className="h-5 w-px bg-gray-200" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+              {(clientInfo?.name || 'C').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 text-sm leading-tight">{clientInfo?.name || 'Unknown Client'}</p>
+              {clientInfo?.unitNumber && <p className="text-xs text-gray-400">Unit {clientInfo.unitNumber}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Orders table card */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-800 text-sm">All Orders</h3>
+            <button
+              onClick={handleNewOrderFromTable}
+              disabled={addingNewOrder}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] text-white text-xs font-semibold rounded-lg hover:bg-[#004558] transition-colors disabled:opacity-50"
+            >
+              {addingNewOrder
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Plus className="w-3.5 h-3.5" />}
+              New Order
+            </button>
+          </div>
+
+          {loadingClientOrders ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-[#005670]" />
+            </div>
+          ) : clientOrders.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">No orders found</div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/80">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Products</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Modified</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {clientOrders.map((order) => {
+                  const rawLabel = order.orderLabel?.trim();
+                  const phaseMatch = rawLabel?.match(/^phase\s*(\d+)$/i);
+                  const displayName = phaseMatch
+                    ? `Order ${phaseMatch[1]}`
+                    : rawLabel || (order.orderNumber ? `Order ${order.orderNumber}` : 'Order');
+                  return (
+                    <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <span className="font-medium text-gray-800 text-sm">{displayName}</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="text-sm text-gray-500">{order.selectedProducts?.length || 0} items</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusChanger
+                          order={order}
+                          onStatusChange={(orderId, newStatus) => {
+                            setClientOrdersView(prev => prev ? {
+                              ...prev,
+                              orders: prev.orders.map(o => o._id === orderId ? { ...o, status: newStatus } : o),
+                            } : null);
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-gray-400">
+                        {order.updatedAt
+                          ? new Date(order.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          onClick={() => handleManageProducts(order)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] text-white text-xs font-semibold rounded-lg hover:bg-[#004558] transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" /> Manage Products
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     );
   }
@@ -868,7 +1019,10 @@ const AdminOrderList = ({ onOrderClick }) => {
                           </div>
                           <div>
                             <p className="font-medium text-gray-800 text-sm leading-tight">{order.clientInfo?.name || 'Unknown Client'}</p>
-                            {order.clientInfo?.unitNumber && <p className="text-xs text-gray-400 mt-0.5">Unit {order.clientInfo.unitNumber}</p>}
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              {order.clientInfo?.unitNumber && <span className="text-xs text-gray-400">Unit {order.clientInfo.unitNumber}</span>}
+                              {order.orderLabel && <span className="text-xs text-gray-500 font-medium">{order.orderLabel}</span>}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -894,14 +1048,12 @@ const AdminOrderList = ({ onOrderClick }) => {
                           order={order}
                           onEdit={() => handleEdit(order)}
                           onView={() => onOrderClick && onOrderClick(order._id)}
-                          onProposal={() => window.open(`/admin/proposal/${order._id}`, '_blank')}
                           onInstallBinder={() => window.open(`/admin/install-binder/${order._id}`, '_blank')}
                           onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel', order.clientInfo?.name, 'Install Binder')}
                           onDownload={(type, label) => handleDownload(order._id, type, order.clientInfo?.name, label)}
                           onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
                           onCOGWithBill={() => handleCOGWithBillDownload(order._id, order.clientInfo?.name)}
                           onCOGPdf={() => setCogOrderId(order._id)}
-                          onPO={() => { setSelectedPOOrderId(order._id); setSelectedPOClientInfo(order.clientInfo); setShowPOModal(true); }}
                           onProjectSummary={() => {
                             const cid = typeof order.user === 'object' ? order.user?._id : order.user;
                             setProjectSummaryClientId(cid || null);
@@ -931,10 +1083,6 @@ const AdminOrderList = ({ onOrderClick }) => {
           )}
         </>
       )}
-
-      <POVendorSelector isOpen={showPOModal}
-        onClose={() => { setShowPOModal(false); setSelectedPOOrderId(null); setSelectedPOClientInfo(null); }}
-        orderId={selectedPOOrderId} orderClientInfo={selectedPOClientInfo} />
 
       {projectSummaryClientId && (
         <ProjectSummaryEditorModal
