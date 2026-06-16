@@ -1372,31 +1372,21 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
                 <div className="lp-slot" style={slotStyle}>
-                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty Terms and Conditions</div>
-                  <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-                    <p style={{ marginTop: 0 }}><strong>Coverage Period:</strong> Furniture is warranted to be free from defects in workmanship, materials, and functionality for a period of 30 days from the date of installation.</p>
-                    <p><strong>Scope of Warranty:</strong></p>
-                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
-                      <li>Workmanship, Materials, and Functionality: The warranty covers defects in workmanship, materials, and functionality under normal wear and tear conditions.</li>
-                      <li>Repair or Replacement: If a defect is identified within the 30-day period, Henderson Design Group will, at its discretion, either repair or replace the defective item.</li>
+                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
+                  <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
+                    <p style={{ marginTop: 0, marginBottom: '10px' }}>Henderson Design Group (HDG) stands behind the quality of the furnishings, fixtures, lighting, accessories, and related products provided as part of the Ālia Furnishings Collections.</p>
+                    <p style={{ marginBottom: '6px' }}>Warranty coverage begins on the installation date and includes:</p>
+                    <ul style={{ marginLeft: '14px', marginTop: 0, marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <li><strong>90-Day Installation Warranty</strong> – Covers installation workmanship and adjustments.</li>
+                      <li><strong>3-Year Structural Warranty</strong> – Covers furniture frames, cabinetry, millwork, and joinery against defects in materials and workmanship.</li>
+                      <li><strong>2-Year Upholstery Construction Warranty</strong> – Covers upholstery construction, suspension systems, cushion support systems, and manufacturing-related seam failures.</li>
+                      <li><strong>1-Year Finishes, Hardware &amp; Components Warranty</strong> – Covers manufacturing defects in finishes, hardware, lighting, accessories, and related components.</li>
                     </ul>
-                    <p><strong>Returns and Exchanges:</strong></p>
-                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
-                      <li>No Returns: Items are not eligible for returns.</li>
-                      <li>No Exchanges: Exchanges are not permitted except in cases of defects.</li>
-                      <li>Custom Items: Custom items, including upholstery, are not eligible for returns or exchanges.</li>
-                    </ul>
-                    <p><strong>Exclusions:</strong></p>
-                    <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
-                      <li>Negligence, Misuse, or Accidents: The warranty does not cover defects resulting from negligence, misuse, or accidents after installation.</li>
-                      <li>Maintenance and Commercial Use: Void for any condition resulting from incorrect or inadequate maintenance.</li>
-                      <li>Non-Residential Use: Void for any condition resulting from other than ordinary residential wear.</li>
-                      <li>Natural Material Variations: Does not cover matching of color, grain, or texture of wood, leather, or fabrics.</li>
-                      <li>Environmental Responses: Wood may expand and contract in response to temperature and humidity changes.</li>
-                      <li>Fabric and Leather Wear: Does not cover colorfastness, dye lot variations, wrinkling, or wear of fabrics or leather.</li>
-                      <li>Sun Exposure: Extensive exposure to the sun is not covered.</li>
-                      <li>Fabric Protectants: Applying a fabric protectant could void the Henderson warranty.</li>
-                    </ul>
+                    <p style={{ marginBottom: '10px' }}>Certain products, including appliances, electronics, motorized systems, and specialty lighting, may be covered by separate manufacturer warranties.</p>
+                    <p style={{ marginBottom: '10px' }}>This warranty does not cover normal wear and tear, misuse, accidents, improper maintenance, environmental damage, natural material variations, or other exclusions outlined in the full warranty documentation.</p>
+                    <p style={{ marginBottom: '10px' }}>Warranty claims must be submitted through the HDG Client Portal or to your HDG Project Manager and should include photographs and a description of the issue.</p>
+                    <p style={{ marginBottom: '10px' }}>HDG also offers aftercare services, including repairs, refinishing, reupholstery, replacement parts, and furnishing enhancements, which may be available on a fee-for-service basis after the warranty period expires.</p>
+                    <p style={{ marginBottom: 0 }}>For complete warranty terms, exclusions, limitations, care requirements, and claim procedures, please refer to the Warranty &amp; Care section of the DeCora website.</p>
                   </div>
                 </div>
                 <PageFooter />
