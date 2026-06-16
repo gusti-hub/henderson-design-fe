@@ -223,7 +223,6 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
             ))}
           </div>
         )} */}
-        {o.notes && <div style={{ marginTop: '4px', borderTop: '1px dashed #e5e7eb', paddingTop: '4px', fontSize: '11px', color: '#6b7280', whiteSpace: 'pre-wrap' }}><em>{o.notes}</em></div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
