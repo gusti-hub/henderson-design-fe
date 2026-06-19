@@ -126,7 +126,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onPO, onProjectSummary }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -179,6 +179,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={Download}     label="Order Summary (Excel)"         onClick={() => onDownload('summary', 'Order Summary')} />
           <Item icon={TrendingUp}   label="Status Report"                 onClick={() => onDownload('status-report', 'Status Report')} color="text-teal-600" />
           <Item icon={BarChart2}    label="COG Report (Excel)"            onClick={onCOGExcel}              color="text-purple-600" />
+          <Item icon={BarChart2}    label="COG + Bill Comparison"         onClick={onCOGWithBill}           color="text-indigo-600" />
           <Sep />
           <Item icon={ShoppingCart} label="Purchase Orders"               onClick={onPO}                   color="text-amber-600" />
           <Sep />
@@ -497,6 +498,25 @@ const AdminOrderList = ({ onOrderClick }) => {
     finally { setDownloading(false); }
   };
 
+  const handleCOGWithBillDownload = async (orderId, clientName) => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/${orderId}/cog-report-with-bill`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const safeClient = (clientName || 'Client').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `${safeClient} - COG Bill Comparison.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showSuccess('COG Bill Comparison downloaded');
+    } catch { alert('Failed to generate COG Bill Comparison.'); }
+    finally { setDownloading(false); }
+  };
+
   // ── Download ALL products report (across all clients) ─────────────────────
   const handleDownloadAllReport = async () => {
     setDownloading(true);
@@ -676,6 +696,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                           onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel', order.clientInfo?.name, 'Install Binder')}
                           onDownload={(type, label) => handleDownload(order._id, type, order.clientInfo?.name, label)}
                           onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
+                          onCOGWithBill={() => handleCOGWithBillDownload(order._id, order.clientInfo?.name)}
                           onCOGPdf={() => setCogOrderId(order._id)}
                           onPO={() => { setSelectedPOOrderId(order._id); setSelectedPOClientInfo(order.clientInfo); setShowPOModal(true); }}
                           onProjectSummary={() => {
