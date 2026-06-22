@@ -310,7 +310,7 @@ const PrintView = ({ expense, onClose }) => {
                   <th style={{ width:'72pt' }}>Date</th>
                   <th style={{ width:'100pt' }}>Type</th>
                   <th>Description</th>
-                  <th className="r" style={{ width:'44pt' }}>Hours</th>
+                  <th className="r" style={{ width:'44pt' }}>{expense.hoursLabel || 'Hours'}</th>
                   <th className="r" style={{ width:'56pt' }}>Rate</th>
                   <th className="r" style={{ width:'64pt' }}>Amount</th>
                 </tr>
@@ -609,7 +609,24 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              <tr><th className="px-3 py-2 text-left w-32">Date</th><th className="px-3 py-2 text-left w-44">Type</th><th className="px-3 py-2 text-left">Description</th><th className="px-3 py-2 text-right w-20">Hours</th><th className="px-3 py-2 text-right w-28">Rate</th><th className="px-3 py-2 text-right w-28">Amount</th><th className="px-3 py-2 w-8"></th></tr>
+              <tr>
+                <th className="px-3 py-2 text-left w-32">Date</th>
+                <th className="px-3 py-2 text-left w-44">Type</th>
+                <th className="px-3 py-2 text-left">Description</th>
+                <th className="px-3 py-2 text-right w-20">
+                  <button
+                    onClick={() => upd('hoursLabel', inv.hoursLabel === 'QTY' ? 'Hours' : 'QTY')}
+                    title="Click to toggle between Hours and QTY"
+                    className="flex items-center justify-end gap-1 ml-auto hover:text-[#005670] transition-colors group"
+                  >
+                    {inv.hoursLabel || 'Hours'}
+                    <span className="text-[9px] opacity-40 group-hover:opacity-100">⇄</span>
+                  </button>
+                </th>
+                <th className="px-3 py-2 text-right w-28">Rate</th>
+                <th className="px-3 py-2 text-right w-28">Amount</th>
+                <th className="px-3 py-2 w-8"></th>
+              </tr>
             </thead>
             <tbody>{inv.lines.map((line, i) => <LineRow key={line.id} line={line} index={i} onChange={u => updateLine(line.id, u)} onRemove={() => removeLine(line.id)} />)}</tbody>
             <tfoot><tr className="bg-gray-50 border-t-2 border-gray-200"><td colSpan={5} className="px-3 py-3 text-right text-sm font-semibold text-gray-700">Total</td><td className="px-3 py-3 text-right text-base font-bold text-[#005670]">{fmt(tot)}</td><td /></tr></tfoot>
