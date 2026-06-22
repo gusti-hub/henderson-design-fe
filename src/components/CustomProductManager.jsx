@@ -793,7 +793,38 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     }
   };
 
-  // ─── Group by room ────────────────────────────────────────────────────────
+  // ─── Room sort order (matches ProposalEditor) ─────────────────────────────
+  const ROOM_ORDER = [
+    'COURTYARD','EXTERIOR ENTRY','INTERIOR ENTRY','FOYER','LIVING ROOM','DINING ROOM',
+    'KITCHEN','PANTRY','PRIMARY BEDROOM','PRIMARY BEDROOM LANAI','PRIMARY BATHROOM',
+    'PRIMARY CLOSET','BEDROOM 2','BATHROOM 2','BEDROOM 2 CLOSET','BEDROOM 2 LANAI',
+    'BEDROOM 3','BATHROOM 3','BEDROOM 3 CLOSET','BEDROOM 3 LANAI','BEDROOM 4','BATHROOM 4',
+    'BEDROOM 4 CLOSET','BEDROOM 4 LANAI','POWDER ROOM','OFFICE','MEDIA ROOM','DEN','HALLWAY',
+    'LANAI','MAIN LANAI','POOL LANAI','POOL AREA','BREAKFAST NOOK','GREAT ROOM','FAMILY ROOM','WET BAR','BBQ AREA',
+    'POOL BATH','PAVILLION','GYM','WINE ROOM','REC ROOM','GARAGE','SITTING ROOM',
+    'FLEX SPACE','LAUNDRY ROOM','MUD ROOM','TERRACE','BALCONY','OUTDOOR DINING',
+    'OUTDOOR LIVING','GUEST SUITE','DESIGN SERVICES','PROJECT MANAGEMENT SERVICES',
+    'PROCUREMENT SERVICES','FDI SERVICES (FREIGHT, DELIVERY & INSTALLATION)',
+    'WALLPAPER INSTALLATION SERVICES','ELECTRICAL INSTALLATION SERVICES',
+    'ART INSTALLATION SERVICES','WALLPAPER TRADE COORDINATION',
+    'ELECTRICAL TRADE COORDINATION','CLOSET SOLUTIONS',
+    'KITCHEN & HOUSEHOLD ESSENTIALS PACKAGE','WINDOW COVERING SERVICES',
+    'AUDIO VISUAL SERVICES','GREENERY & PLANT STYLING',
+    'CONSTRUCTION DESIGN & PM SERVICES','CUSTOM MILLWORK SERVICES',
+    'CUSTOM FURNITURE SERVICES','LIGHTING PROCUREMENT & COORDINATION',
+    'APPLIANCE COORDINATION','PLUMBING FIXTURE COORDINATION',
+    'DECORATIVE PLUMBING COORDINATION','STONE & SLAB COORDINATION',
+    'TILE & SURFACE COORDINATION','HARDWARE & DECORATIVE HARDWARE COORDINATION',
+    'OUTDOOR FURNISHINGS','LANAI / TERRACE FURNISHINGS','STYLING & ACCESSORIES',
+    'BEDDING PACKAGE','TURNKEY MOVE-IN PACKAGE','OWNER STORAGE & INVENTORY COORDINATION',
+    'CLIENT SUPPLIED ITEMS COORDINATION','WHITE GLOVE RECEIVING & WAREHOUSING',
+    'PUNCH LIST & COMPLETION COORDINATION','SITE VISIT COORDINATION',
+    'EXPEDITING SERVICES','BUILDING COORDINATION SERVICES',
+    'CONTRACTOR COORDINATION SERVICES','INSTALLATION OVERSIGHT',
+    'FINAL STYLING & STAGING','REVEAL PREPARATION',
+  ];
+
+  // ─── Group by room (sorted to match ProposalEditor order) ─────────────────
   const groupProductsByRoom = (products) => {
     const groups = {};
     products.forEach((p, idx) => {
@@ -801,7 +832,17 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       if (!groups[room]) groups[room] = [];
       groups[room].push({ product: p, originalIndex: idx });
     });
-    return groups;
+    return Object.entries(groups).sort(([a], [b]) => {
+      const noRoom = '— No Room Assigned —';
+      if (a === noRoom) return 1;
+      if (b === noRoom) return -1;
+      const ia = ROOM_ORDER.indexOf(a.toUpperCase());
+      const ib = ROOM_ORDER.indexOf(b.toUpperCase());
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
   };
 
   // ✅ PATCH 11: drag-and-drop reorder handlers
@@ -1085,7 +1126,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             )}
 
             {/* ── Saved products grouped by room ── */}
-            {Object.entries(groupProductsByRoom(savedProducts)).map(([room, items]) => (
+            {groupProductsByRoom(savedProducts).map(([room, items]) => (
               <div key={room} className="space-y-3">
                 <div className="flex items-center gap-3 px-1">
                   <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-1.5">
