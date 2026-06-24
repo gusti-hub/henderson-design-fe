@@ -2361,7 +2361,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
     window: false,
     av: false,
     greenery: false,
-    kitchen: false,
     likedDesigns: false,
   });
 
@@ -2591,12 +2590,7 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
             </View>
 
             <View style={pdfStyles.section}>
-              <Text style={pdfStyles.addonSectionHeader}>11. ADD-ON: KITCHEN &amp; HOUSEHOLD ESSENTIALS</Text>
-              <PdfRow label="Selected Items" value={questionnaire.kitchen_essentials} />
-            </View>
-
-            <View style={pdfStyles.section}>
-              <Text style={pdfStyles.sectionHeader}>12. VISUAL INSPIRATION (LIKED DESIGNS)</Text>
+              <Text style={pdfStyles.sectionHeader}>11. VISUAL INSPIRATION (LIKED DESIGNS)</Text>
               {questionnaire.likedDesigns && questionnaire.likedDesigns.length > 0 ? (
                 <>
                   <View style={pdfStyles.fieldRow}>
@@ -2848,10 +2842,6 @@ const QuestionnaireModalCheck = React.memo(({ selectedClient, onClose }) => {
         <CollapsibleSection icon="🌿" title="Add-On: Greenery / Plants" isExpanded={expandedSections.greenery} onToggle={() => toggleSection('greenery')}>
           <Row label="Plant Type" value={questionnaire.plant_type} />
           <Row label="Areas"      value={questionnaire.plant_areas} />
-        </CollapsibleSection>
-
-        <CollapsibleSection icon="🍳" title="Add-On: Kitchen & Household Essentials" isExpanded={expandedSections.kitchen} onToggle={() => toggleSection('kitchen')}>
-          <Row label="Selected Items" value={questionnaire.kitchen_essentials} />
         </CollapsibleSection>
 
         <CollapsibleSection icon="⭐" title="Visual Inspiration (Liked Designs)" isExpanded={expandedSections.likedDesigns} onToggle={() => toggleSection('likedDesigns')}>

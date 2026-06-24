@@ -260,10 +260,6 @@ const DesignQuestionnaire = ({ unitNumber, email, onComplete }) => {
       plantType: '',
       locations: []
     },
-    kitchenEssentials: {
-      interested: false,
-      selectedItems: []
-    }
   });
 
   const steps = [
@@ -1946,45 +1942,6 @@ const Step6 = ({ formData, handleChange, handleArrayToggle }) => (
       )}
     </div>
 
-    {/* 5. Kitchen Essentials */}
-    <div className="p-6 border-2 border-gray-200 rounded-xl">
-      <div className="flex items-start gap-4 mb-6">
-        <input
-          type="checkbox"
-          checked={formData.kitchenEssentials.interested}
-          onChange={(e) => handleChange('kitchenEssentials', 'interested', e.target.checked)}
-          className="mt-1 w-6 h-6 text-[#005670] rounded"
-        />
-        <div className="flex-1">
-          <h3 className="text-2xl font-light text-[#005670] mb-2">5. Kitchen & Household Essentials Package</h3>
-          <p className="text-gray-600">
-            Select items you want included
-          </p>
-        </div>
-      </div>
-
-      {formData.kitchenEssentials.interested && (
-        <div className="ml-10 space-y-3 mt-6 pt-6 border-t border-gray-200">
-          {[
-            { value: 'kitchenware', label: 'Kitchenware (pots, pans, utensils, knives)' },
-            { value: 'dishware', label: 'Dishware (plates, bowls, serving dishes)' },
-            { value: 'glassware', label: 'Glassware (drinking glasses, wine glasses, mugs)' },
-            { value: 'appliances', label: 'Appliances (coffee maker, toaster, blender, etc.)' },
-            { value: 'cookware-bakeware', label: 'Cookware / Bakeware (mixing bowls, baking sheets, cookware sets)' },
-            { value: 'storage-organization', label: 'Storage / Organization (containers, racks, organizers)' },
-            { value: 'cleaning-utility', label: 'Cleaning & Utility Items (iron & ironing board, vacuum, mop, broom)' },
-            { value: 'none', label: 'Will order and manage all my own household items' }
-          ].map(opt => (
-            <CheckboxCard
-              key={opt.value}
-              label={opt.label}
-              checked={formData.kitchenEssentials.selectedItems.includes(opt.value)}
-              onChange={() => handleArrayToggle('kitchenEssentials', 'selectedItems', opt.value)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   </div>
 );
 

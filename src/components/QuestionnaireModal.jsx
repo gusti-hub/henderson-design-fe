@@ -9,7 +9,7 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalSteps = 12;
+  const totalSteps = 11;
 
   // Helper function to check if a checkbox array contains a value
   const checkboxIncludes = (fieldId, value) => {
@@ -656,26 +656,6 @@ const QuestionnaireModal = ({ onComplete, userData,  onClose, isAdminMode = fals
             'Bathroom',
             'Entry / Hallway',
             'Outdoor / Balcony'
-          ]
-        }
-      ]
-    },
-    {
-      title: 'Add-On Services: Kitchen & Household Essentials',
-      description: 'Optional kitchen package (Additional Design Fees apply)',
-      questions: [
-        {
-          id: 'kitchen_essentials',
-          label: 'Kitchen & Household Essentials Package (Select items you want included):',
-          type: 'checkbox',
-          options: [
-            'Kitchenware (pots, pans, utensils, knives)',
-            'Dishware (plates, bowls, serving dishes)',
-            'Glassware (drinking glasses, wine glasses, mugs)',
-            'Appliances (coffee maker, toaster, blender, etc.)',
-            'Cookware / Bakeware (mixing bowls, baking sheets, cookware sets)',
-            'Storage / Organization (containers, racks, organizers)',
-            'Cleaning & Utility Items (iron & ironing board, vacuum, mop, broom)'
           ]
         }
       ]
