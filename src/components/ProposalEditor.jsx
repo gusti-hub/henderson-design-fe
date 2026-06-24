@@ -33,6 +33,23 @@ const resolveFabric = c => { if (!c) return ''; const u = c.trim().toUpperCase()
 
 const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Renders **bold** markers as <strong> elements
+const parseBold = (text) => {
+  if (!text || !text.includes('**')) return text;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+};
+
+// Converts **bold** markers to <strong> HTML for measurement sandbox
+const parseBoldHtml = (text) => {
+  if (!text) return '';
+  return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+};
+
 const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 60, PX = 96;
 const CONTENT_H = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
@@ -129,17 +146,17 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
+        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#000000', marginBottom: '1px' }}>{parseBold(o.specifications)}</div>}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
         {o.size && <div><strong>Size:</strong> {o.size}</div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Unit:</span><span>${fmt(sell)}</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
-        {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Tax ({taxRate}%):</span><span>${fmt(tax)}</span></div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Unit:</span><span>${fmt(sell)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
+        {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Tax ({taxRate}%):</span><span>${fmt(tax)}</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid #d1d5db', paddingTop: '2px', marginTop: '2px' }}>
           <span>Total:</span><span>${fmt(total)}</span>
         </div>
@@ -200,14 +217,14 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         }
         {(onRefresh || onDelete) && (
           <div className="no-print" style={{ display: 'flex', gap: '3px', justifyContent: 'center', marginTop: '5px' }}>
-            {onRefresh && <button onClick={onRefresh} style={{ padding: '3px 6px', fontSize: '10px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}>↻ Price</button>}
+            {onRefresh && <button onClick={onRefresh} style={{ padding: '3px 6px', fontSize: '10px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}>↻ Sync</button>}
             {onDelete && <button onClick={onDelete} style={{ padding: '3px 6px', fontSize: '10px', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}>✕</button>}
           </div>
         )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#374151', marginBottom: '1px' }}>{o.specifications}</div>}
+        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#000000', marginBottom: '1px' }}>{parseBold(o.specifications)}</div>}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -225,10 +242,10 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         )} */}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Unit:</span><span>${fmt(sell)}</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
-        {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6b7280' }}>Tax ({taxRate}%):</span><span>${fmt(tax)}</span></div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Unit:</span><span>${fmt(sell)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
+        {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Tax ({taxRate}%):</span><span>${fmt(tax)}</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid #d1d5db', paddingTop: '2px', marginTop: '2px' }}>
           <span>Total:</span><span>${fmt(total)}</span>
         </div>
@@ -1073,7 +1090,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const o = p.selectedOptions || {};
         const lines = [];
         if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
-        if (o.specifications) lines.push('<div style="white-space:pre-wrap">' + o.specifications + '</div>');
+        if (o.specifications) lines.push('<div style="white-space:pre-wrap">' + parseBoldHtml(o.specifications) + '</div>');
         if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
         if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
         if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');

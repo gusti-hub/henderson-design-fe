@@ -1698,6 +1698,43 @@ const ProductCard = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const productRef = useRef(product);
+  const specsRef = useRef(null);
+
+  const applyBoldToSpecs = () => {
+    const ta = specsRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) return;
+    const val = localFields.specifications;
+    const selected = val.substring(start, end);
+
+    // Unbold: selection includes the ** markers (e.g. user selected "**text**")
+    if (selected.startsWith('**') && selected.endsWith('**') && selected.length > 4) {
+      const inner = selected.slice(2, -2);
+      const newVal = val.substring(0, start) + inner + val.substring(end);
+      setLocal('specifications', newVal);
+      upd('specifications', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start, start + inner.length); }, 0);
+      return;
+    }
+
+    // Unbold: selection is surrounded by ** outside (e.g. val chars before/after are **)
+    if (start >= 2 && val.substring(start - 2, start) === '**' &&
+        end <= val.length - 2 && val.substring(end, end + 2) === '**') {
+      const newVal = val.substring(0, start - 2) + selected + val.substring(end + 2);
+      setLocal('specifications', newVal);
+      upd('specifications', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start - 2, start - 2 + selected.length); }, 0);
+      return;
+    }
+
+    // Bold: wrap with **
+    const newVal = val.substring(0, start) + '**' + selected + '**' + val.substring(end);
+    setLocal('specifications', newVal);
+    upd('specifications', newVal);
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
+  };
 
   const opts = product.selectedOptions || {};
 
@@ -2027,9 +2064,6 @@ const ProductCard = ({
           ? 'border-[#005670] shadow-lg scale-[1.01]'
           : 'border-gray-200'
       }`}
-      // ✅ PATCH 11: drag event bindings
-      draggable={draggable}
-      onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
       onDrop={onDrop}
@@ -2039,9 +2073,11 @@ const ProductCard = ({
       <div className="p-4">
         <div className="flex items-center gap-4">
 
-          {/* ✅ PATCH 11: drag handle — only for saved products */}
+          {/* drag handle — draggable only on the handle, not the whole card */}
           {draggable && (
             <div
+              draggable={true}
+              onDragStart={onDragStart}
               className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors"
               title="Drag to reorder"
             >
@@ -2421,8 +2457,19 @@ const ProductCard = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Client Description</label>
+                      <button
+                        type="button"
+                        onClick={applyBoldToSpecs}
+                        title="Bold selected text (**bold**)"
+                        className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700 leading-none"
+                      >
+                        B
+                      </button>
+                    </div>
                     <textarea
+                      ref={specsRef}
                       value={localFields.specifications}
                       onChange={(e) => { setLocal('specifications', e.target.value); upd('specifications', e.target.value); }}
                       className={`${inputCls} resize-none`}

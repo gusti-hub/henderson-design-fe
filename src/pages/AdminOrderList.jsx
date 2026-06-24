@@ -10,7 +10,7 @@ import {
   Loader2, Download, FileText, Edit2, ArrowLeft, X, Check,
   Search, ChevronDown, BarChart2, BookOpen,
   ShoppingCart, TrendingUp, Eye, LayoutList, FolderOpen,
-  Package, DollarSign, Filter,
+  Package, DollarSign, Filter, CheckSquare, Square, Printer,
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
@@ -415,6 +415,11 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [selectedPOClientInfo, setSelectedPOClientInfo] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
+  const [vendorModal, setVendorModal] = useState(false);
+  const [vendorList, setVendorList] = useState([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState('');
 
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(null), 4000); };
 
@@ -517,6 +522,86 @@ const AdminOrderList = ({ onOrderClick }) => {
     finally { setDownloading(false); }
   };
 
+  // ── Toggle selection ──────────────────────────────────────────────────────
+  const toggleOrder = (orderId) => {
+    setSelectedOrderIds(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId); else next.add(orderId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOrderIds.size === orders.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(orders.map(o => o._id)));
+    }
+  };
+
+  // ── Bulk Excel export ─────────────────────────────────────────────────────
+  const handleBulkExcel = async () => {
+    if (selectedOrderIds.size === 0) return;
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/bulk-export`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds) }),
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `Alia - Combined Export - ${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showSuccess('Combined Excel exported');
+    } catch { alert('Failed to export. Please try again.'); }
+    finally { setDownloading(false); }
+  };
+
+  // ── Bulk PDF — open vendor picker first ──────────────────────────────────
+  const handleBulkPdfOpen = async () => {
+    if (selectedOrderIds.size === 0) return;
+    setLoadingVendors(true);
+    setVendorModal(true);
+    setSelectedVendorId('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/bulk-po-vendors`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds) }),
+      });
+      const data = await res.json();
+      setVendorList(data.vendors || []);
+    } catch { setVendorModal(false); alert('Failed to load vendors.'); }
+    finally { setLoadingVendors(false); }
+  };
+
+  const handleBulkPdfGenerate = async () => {
+    if (!selectedVendorId) return;
+    setVendorModal(false);
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/bulk-po`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds), vendorId: selectedVendorId }),
+      });
+      if (!res.ok) throw new Error();
+      const html = await res.text();
+      const win = window.open('', '_blank');
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    } catch { alert('Failed to generate PDF. Please try again.'); }
+    finally { setDownloading(false); }
+  };
+
   // ── Download ALL products report (across all clients) ─────────────────────
   const handleDownloadAllReport = async () => {
     setDownloading(true);
@@ -577,6 +662,57 @@ const AdminOrderList = ({ onOrderClick }) => {
       {downloading && <LoadingOverlay />}
       {successMessage && <SuccessToast message={successMessage} onClose={() => setSuccessMessage(null)} />}
 
+      {/* Vendor picker modal for bulk PDF */}
+      {vendorModal && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+            <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
+              <h3 className="font-semibold text-base">Select Vendor for PDF</h3>
+              <button onClick={() => setVendorModal(false)} className="hover:bg-white/20 rounded p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              {loadingVendors ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Loading vendors…
+                </div>
+              ) : vendorList.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-6">No POs found for the selected units.</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {vendorList.map(v => (
+                    <button
+                      key={v.vendorId}
+                      onClick={() => setSelectedVendorId(v.vendorId)}
+                      className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                        selectedVendorId === v.vendorId
+                          ? 'border-[#005670] bg-[#005670]/5 text-[#005670]'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      {v.vendorName}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => setVendorModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkPdfGenerate}
+                  disabled={!selectedVendorId || loadingVendors}
+                  className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
+                >
+                  Generate PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -635,6 +771,41 @@ const AdminOrderList = ({ onOrderClick }) => {
             </div>
           </div>
 
+          {/* ── Bulk PO export bar ── */}
+          {selectedOrderIds.size > 0 && (
+            <div className="flex items-center justify-between bg-[#005670] text-white rounded-xl px-5 py-3 shadow-sm">
+              <div>
+                <span className="text-sm font-semibold">{selectedOrderIds.size} unit{selectedOrderIds.size !== 1 ? 's' : ''} selected</span>
+                <span className="ml-2 text-xs opacity-70">— PO export</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkExcel}
+                  disabled={downloading}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#005670] rounded-lg text-sm font-semibold hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Export Excel
+                </button>
+                <button
+                  onClick={handleBulkPdfOpen}
+                  disabled={downloading}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-semibold hover:bg-white/30 disabled:opacity-50"
+                >
+                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                  Export PDF
+                </button>
+                <button
+                  onClick={() => setSelectedOrderIds(new Set())}
+                  className="p-2 hover:bg-white/20 rounded-lg"
+                  title="Clear selection"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-[#005670]" /></div>
           ) : (orders?.length ?? 0) === 0 ? (
@@ -647,6 +818,14 @@ const AdminOrderList = ({ onOrderClick }) => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
+                    <th className="px-3 py-3 w-8">
+                      <button onClick={toggleSelectAll} className="text-gray-400 hover:text-[#005670]">
+                        {selectedOrderIds.size === orders.length && orders.length > 0
+                          ? <CheckSquare className="w-4 h-4 text-[#005670]" />
+                          : <Square className="w-4 h-4" />
+                        }
+                      </button>
+                    </th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Package</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Floor Plan</th>
@@ -657,7 +836,15 @@ const AdminOrderList = ({ onOrderClick }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {(orders || []).map((order) => (
-                    <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={order._id} className={`hover:bg-gray-50/50 transition-colors ${selectedOrderIds.has(order._id) ? 'bg-blue-50/40' : ''}`}>
+                      <td className="px-3 py-3.5 w-8">
+                        <button onClick={() => toggleOrder(order._id)} className="text-gray-400 hover:text-[#005670]">
+                          {selectedOrderIds.has(order._id)
+                            ? <CheckSquare className="w-4 h-4 text-[#005670]" />
+                            : <Square className="w-4 h-4" />
+                          }
+                        </button>
+                      </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
