@@ -439,6 +439,16 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     }
   };
 
+  const parseBold = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={i}>{part.slice(2, -2)}</strong>
+        : part
+    );
+  };
+
   const updateProduct = (index, field, value) => {
     const updated = [...products];
     if (field.includes('.')) {
@@ -878,7 +888,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       {specs ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Specs</span>
-                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{specs}</span>
+                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{parseBold(specs)}</span>
                         </div>
                       ) : null}
                       {product.name ? (

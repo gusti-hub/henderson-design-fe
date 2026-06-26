@@ -1699,6 +1699,7 @@ const ProductCard = ({
   const [saving, setSaving] = useState(false);
   const productRef = useRef(product);
   const specsRef = useRef(null);
+  const vendorDescRef = useRef(null);
 
   const applyBoldToSpecs = () => {
     const ta = specsRef.current;
@@ -1733,6 +1734,39 @@ const ProductCard = ({
     const newVal = val.substring(0, start) + '**' + selected + '**' + val.substring(end);
     setLocal('specifications', newVal);
     upd('specifications', newVal);
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
+  };
+
+  const applyBoldToVendorDesc = () => {
+    const ta = vendorDescRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) return;
+    const val = localFields.vendorDescription;
+    const selected = val.substring(start, end);
+
+    if (selected.startsWith('**') && selected.endsWith('**') && selected.length > 4) {
+      const inner = selected.slice(2, -2);
+      const newVal = val.substring(0, start) + inner + val.substring(end);
+      setLocal('vendorDescription', newVal);
+      upd('vendorDescription', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start, start + inner.length); }, 0);
+      return;
+    }
+
+    if (start >= 2 && val.substring(start - 2, start) === '**' &&
+        end <= val.length - 2 && val.substring(end, end + 2) === '**') {
+      const newVal = val.substring(0, start - 2) + selected + val.substring(end + 2);
+      setLocal('vendorDescription', newVal);
+      upd('vendorDescription', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start - 2, start - 2 + selected.length); }, 0);
+      return;
+    }
+
+    const newVal = val.substring(0, start) + '**' + selected + '**' + val.substring(end);
+    setLocal('vendorDescription', newVal);
+    upd('vendorDescription', newVal);
     setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
   };
 
@@ -2477,14 +2511,25 @@ const ProductCard = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
-                      <span>Vendor Description</span>
-                      <button type="button" onClick={() => {
-                        setLocal('vendorDescription', localFields.specifications);
-                        upd('vendorDescription', localFields.specifications);
-                      }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Vendor Description</label>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => {
+                          setLocal('vendorDescription', localFields.specifications);
+                          upd('vendorDescription', localFields.specifications);
+                        }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
+                        <button
+                          type="button"
+                          onClick={applyBoldToVendorDesc}
+                          title="Bold selected text (**bold**)"
+                          className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700 leading-none"
+                        >
+                          B
+                        </button>
+                      </div>
+                    </div>
                     <textarea
+                      ref={vendorDescRef}
                       value={localFields.vendorDescription}
                       onChange={(e) => { setLocal('vendorDescription', e.target.value); upd('vendorDescription', e.target.value); }}
                       className={`${inputCls} resize-none`}

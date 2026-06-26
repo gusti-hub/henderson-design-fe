@@ -75,6 +75,8 @@ const BillInvoiceEditor = ({ orderId, vendorId, poVersionId, poNumber, onClose }
   const [billData, setBillData]       = useState(null);
   const [showComparison, setShowComparison] = useState(false);
   const [products, setProducts]       = useState([]);
+  const [livePoProducts, setLivePoProducts] = useState([]);
+  const [poReference, setPoReference]     = useState(null); // { additionalLines, shipping, others, subTotal }
   const [additionalLines, setAdditionalLines] = useState([]);
   const [headerFields, setHeaderFields] = useState({
     billNumber: '', poNumber: '', orderDate: '', accountNumber: '',
@@ -113,13 +115,23 @@ const BillInvoiceEditor = ({ orderId, vendorId, poVersionId, poNumber, onClose }
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res   = await fetch(
+      const res = await fetch(
         `${backendServer}/api/orders/${orderId}/po/${vendorId}/bill-invoice?poVersionId=${poVersionId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const result = await res.json();
       if (!result.success) throw new Error(result.message || 'Failed to load');
+      // Backend always returns products enriched from POVersion + order (same as PO editor)
       hydrate(result.data);
+      setLivePoProducts(result.data.products || []);
+      if (result.data._poSubTotal != null) {
+        setPoReference({
+          additionalLines: result.data._poAdditionalLines || [],
+          shipping: result.data._poShipping || 0,
+          others:   result.data._poOthers   || 0,
+          subTotal: result.data._poSubTotal || 0,
+        });
+      }
     } catch (err) {
       showToast('Failed to load Bill Invoice: ' + err.message, 'error');
     } finally {
@@ -409,75 +421,70 @@ const BillInvoiceEditor = ({ orderId, vendorId, poVersionId, poNumber, onClose }
       </div>
 
       {/* ── PO vs Bill Invoice Comparison Panel ── */}
-      {showComparison && billData?.originalProducts?.length > 0 && (() => {
-        const origMap = {};
-        (billData.originalProducts || []).forEach(p => { if (p.product_id) origMap[p.product_id] = p; });
+      {showComparison && (() => {
+        const productSub = products.reduce((s, p) => s + parseFloat(p.unitPrice || 0) * (p.quantity || 1), 0);
+        const biAddSub   = additionalLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+        const biShipping = parseFloat(headerFields.shipping) || 0;
+        const biOthers   = parseFloat(headerFields.others)   || 0;
+        const biTotal    = productSub + biAddSub + biShipping + biOthers;
 
-        const rows = products.map(p => {
-          const orig = origMap[p.product_id];
-          const biPrice  = parseFloat(p.unitPrice || 0);
-          const poPrice  = orig ? parseFloat(orig.unitPrice || 0) : null;
-          const diff     = poPrice != null ? biPrice - poPrice : null;
-          return { name: p.name || p.product_id || '—', qty: p.quantity || 1, biPrice, poPrice, diff };
-        });
+        const poAddSub   = poReference ? (poReference.additionalLines || []).reduce((s, l) => s + (parseFloat(l.amount) || 0), 0) : null;
+        const poShipping = poReference ? (poReference.shipping || 0) : null;
+        const poOthers   = poReference ? (poReference.others   || 0) : null;
+        const poTotal    = poReference != null ? productSub + poAddSub + poShipping + poOthers : null;
+        const totalDiff  = poTotal != null ? biTotal - poTotal : null;
 
-        const poTotal = rows.reduce((s, r) => s + (r.poPrice != null ? r.poPrice * r.qty : 0), 0);
-        const biTotal = rows.reduce((s, r) => s + r.biPrice * r.qty, 0);
-        const totalDiff = biTotal - poTotal;
+        const Row = ({ label, po, bi }) => {
+          const diff = po != null ? bi - po : null;
+          return (
+            <tr className="border-b border-amber-100">
+              <td className="py-1.5 pr-4 text-amber-800">{label}</td>
+              <td className="py-1.5 px-3 text-right text-gray-600">{po != null ? `$${fmt2(po)}` : <span className="text-gray-300">—</span>}</td>
+              <td className={`py-1.5 px-3 text-right font-semibold ${diff != null && diff !== 0 ? (diff > 0 ? 'text-red-600' : 'text-green-600') : 'text-gray-800'}`}>
+                ${fmt2(bi)}
+              </td>
+              <td className={`py-1.5 pl-3 text-right text-xs ${diff == null ? 'text-gray-300' : diff > 0 ? 'text-red-500' : diff < 0 ? 'text-green-500' : 'text-gray-400'}`}>
+                {diff == null ? '—' : diff === 0 ? '=' : `${diff > 0 ? '+' : ''}$${fmt2(diff)}`}
+              </td>
+            </tr>
+          );
+        };
 
         return (
           <div className="no-print bg-amber-50 border-b border-amber-200 px-6 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
-                <GitCompare className="w-4 h-4" />
-                PO vs Bill Invoice — Price Comparison
-              </h3>
-              <div className={`text-sm font-bold px-3 py-1 rounded-full ${
-                totalDiff > 0 ? 'bg-red-100 text-red-700' : totalDiff < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-              }`}>
-                Total difference: {totalDiff >= 0 ? '+' : ''}${fmt2(totalDiff)}
-                {totalDiff !== 0 && poTotal > 0 && (
-                  <span className="ml-1 font-normal opacity-75">({totalDiff > 0 ? '+' : ''}{((totalDiff / poTotal) * 100).toFixed(1)}%)</span>
-                )}
-              </div>
+            <div className="flex items-center gap-2 mb-3">
+              <GitCompare className="w-4 h-4 text-amber-700" />
+              <h3 className="text-sm font-bold text-amber-900">PO vs Bill Invoice Comparison</h3>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-amber-200">
-                    <th className="text-left py-1.5 pr-4 text-amber-700 font-semibold">Product</th>
-                    <th className="text-right py-1.5 px-3 text-amber-700 font-semibold w-10">Qty</th>
-                    <th className="text-right py-1.5 px-3 text-amber-700 font-semibold w-28">PO Unit Price</th>
-                    <th className="text-right py-1.5 px-3 text-amber-700 font-semibold w-28">BI Unit Price</th>
-                    <th className="text-right py-1.5 px-3 text-amber-700 font-semibold w-28">Difference</th>
-                    <th className="text-right py-1.5 pl-3 text-amber-700 font-semibold w-28">PO Total</th>
-                    <th className="text-right py-1.5 pl-3 text-amber-700 font-semibold w-28">BI Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i} className={`border-b border-amber-100 ${r.diff != null && r.diff !== 0 ? (r.diff > 0 ? 'bg-red-50' : 'bg-green-50') : ''}`}>
-                      <td className="py-1.5 pr-4 text-gray-800 font-medium">{r.name}</td>
-                      <td className="py-1.5 px-3 text-right text-gray-600">{r.qty}</td>
-                      <td className="py-1.5 px-3 text-right text-gray-600">{r.poPrice != null ? `$${fmt2(r.poPrice)}` : <span className="text-gray-400 italic">N/A</span>}</td>
-                      <td className="py-1.5 px-3 text-right font-semibold text-gray-800">${fmt2(r.biPrice)}</td>
-                      <td className={`py-1.5 px-3 text-right font-bold ${r.diff == null ? 'text-gray-400' : r.diff > 0 ? 'text-red-600' : r.diff < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                        {r.diff == null ? '—' : `${r.diff >= 0 ? '+' : ''}$${fmt2(r.diff)}`}
-                      </td>
-                      <td className="py-1.5 pl-3 text-right text-gray-500">{r.poPrice != null ? `$${fmt2(r.poPrice * r.qty)}` : '—'}</td>
-                      <td className="py-1.5 pl-3 text-right text-gray-800">${fmt2(r.biPrice * r.qty)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-amber-300 font-bold">
-                    <td colSpan={5} className="py-2 pr-4 text-amber-900">Products Subtotal</td>
-                    <td className="py-2 pl-3 text-right text-gray-700">${fmt2(poTotal)}</td>
-                    <td className={`py-2 pl-3 text-right ${totalDiff > 0 ? 'text-red-700' : totalDiff < 0 ? 'text-green-700' : 'text-gray-700'}`}>${fmt2(biTotal)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <table className="text-xs w-full max-w-lg">
+              <thead>
+                <tr className="border-b-2 border-amber-200">
+                  <th className="text-left py-1.5 pr-4 text-amber-700 font-semibold"></th>
+                  <th className="text-right py-1.5 px-3 text-amber-700 font-semibold w-28">PO</th>
+                  <th className="text-right py-1.5 px-3 text-amber-700 font-semibold w-28">Bill Invoice</th>
+                  <th className="text-right py-1.5 pl-3 text-amber-700 font-semibold w-20">Diff</th>
+                </tr>
+              </thead>
+              <tbody>
+                <Row label="Products subtotal" po={productSub} bi={productSub} />
+                {additionalLines.map((l, i) => {
+                  const poLine = poReference?.additionalLines?.[i];
+                  return <Row key={i} label={l.lineType || l.description || `Line ${i + 1}`} po={poLine ? parseFloat(poLine.amount) || 0 : null} bi={parseFloat(l.amount) || 0} />;
+                })}
+                {biShipping > 0 || poShipping > 0 ? <Row label="Shipping" po={poShipping} bi={biShipping} /> : null}
+                {biOthers > 0 || poOthers > 0 ? <Row label="Tax/Others" po={poOthers} bi={biOthers} /> : null}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-amber-300 font-bold">
+                  <td className="py-2 pr-4 text-amber-900">Total</td>
+                  <td className="py-2 px-3 text-right text-gray-700">{poTotal != null ? `$${fmt2(poTotal)}` : '—'}</td>
+                  <td className="py-2 px-3 text-right text-[#005670]">${fmt2(biTotal)}</td>
+                  <td className={`py-2 pl-3 text-right text-xs font-bold ${totalDiff == null ? 'text-gray-300' : totalDiff > 0 ? 'text-red-600' : totalDiff < 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                    {totalDiff == null ? '—' : totalDiff === 0 ? '=' : `${totalDiff > 0 ? '+' : ''}$${fmt2(totalDiff)}`}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         );
       })()}
@@ -621,21 +628,9 @@ const BillInvoiceEditor = ({ orderId, vendorId, poVersionId, poNumber, onClose }
                       {product.selectedOptions?.leadTime && <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{product.selectedOptions.leadTime}</span></div>}
                       {sidemark && <div className="sidemark-strip"><span className="desc-row-label">Sidemark </span><span style={{ color: '#333', wordBreak: 'break-word' }}>{sidemark}</span></div>}
                     </td>
-                    {/* Editable unit price */}
-                    <td className="price-cell">
-                      <input
-                        type="number"
-                        value={netCost}
-                        onChange={e => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setProducts(prev => prev.map((p, i) =>
-                            i === index ? { ...p, unitPrice: val, totalPrice: val * (p.quantity || 1) } : p
-                          ));
-                        }}
-                        step="0.01"
-                        style={{ textAlign: 'right', width: '90px', fontSize: '11px', border: '1px solid #eee', borderRadius: '4px', padding: '2px 4px' }}
-                        className="po-input"
-                      />
+                    {/* Unit price — read-only, always from order */}
+                    <td className="price-cell" style={{ fontWeight: '500' }}>
+                      ${fmt2(netCost)}
                     </td>
                     <td className="price-cell" style={{ fontWeight: '500' }}>
                       ${fmt2(netTotal)}
