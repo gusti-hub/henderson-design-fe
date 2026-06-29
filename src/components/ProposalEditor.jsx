@@ -10,7 +10,7 @@
 //   - Each product row has ↻ Price (refresh from order) and ✕ Remove buttons
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Clock, Printer, ChevronLeft, Loader2, EyeOff, Eye, PlusCircle, Save, Plus } from 'lucide-react';
+import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 // Constants
@@ -135,7 +135,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
             {onDelete && (
               <button
                 onClick={onDelete}
-                title="Hapus dari proposal"
+                title="Remove from proposal"
                 style={{ padding: '3px 6px', fontSize: '10px', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}
               >
                 ✕
@@ -487,96 +487,6 @@ const ItemTogglePanel = ({ productsWithIds, hiddenIds, toggleHidden, onClose, on
   );
 };
 
-// ─── New Version Modal ────────────────────────────────────────────────────────
-const NewVersionModal = ({ onClose, onSave, saving }) => {
-  const [notes, setNotes] = useState('');
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
-      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
-        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 rounded-t-xl flex justify-between items-center">
-          <h3 className="text-xl font-bold">Save as New Version</h3>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-            The new version will start with <strong>new products</strong> added since the last proposal.
-            Products from the previous version can be added back via the "Not in Proposal" panel.
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Version Notes <span className="text-red-500">*</span></label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Describe what changed in this version..."
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
-              rows={4}
-              autoFocus
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-1">
-            <button onClick={onClose} className="px-6 py-2.5 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
-            <button
-              onClick={() => onSave(notes)}
-              disabled={saving || !notes.trim()}
-              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 text-sm font-medium flex items-center gap-2"
-            >
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><PlusCircle className="w-4 h-4" /> Save New Version</>}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Version History Modal ────────────────────────────────────────────────────
-const VersionModal = ({ orderId, isOpen, onClose, onSelectVersion }) => {
-  const [versions, setVersions] = useState([]);
-  const [lv, setLv] = useState(true);
-  useEffect(() => { if (isOpen) load(); }, [isOpen]);
-  const load = async () => {
-    try {
-      const t = localStorage.getItem('token');
-      const r = await (await fetch(`${backendServer}/api/proposals/${orderId}/versions/all`, { headers: { Authorization: `Bearer ${t}` } })).json();
-      if (r.success) setVersions(r.data);
-    } catch (e) { console.error(e); } finally { setLv(false); }
-  };
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
-        <div className="bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
-          <div><h3 className="text-xl font-bold">Version History</h3><p className="text-sm text-white/80 mt-1">View and manage all proposal versions</p></div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="overflow-auto max-h-[calc(80vh-88px)]">
-          {lv ? <div className="p-12 text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670] mx-auto" /></div>
-            : versions.length === 0 ? <div className="p-12 text-center text-gray-500">No versions found</div>
-              : <div className="divide-y">{versions.map(v => (
-                <div key={v._id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Version {v.version}</span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${v.status === 'draft' ? 'bg-gray-100 text-gray-700' : v.status === 'sent' ? 'bg-blue-100 text-blue-700' : v.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.status.charAt(0).toUpperCase() + v.status.slice(1)}</span>
-                        {v.proposalNumber && <span className="text-xs text-gray-500 font-mono">{v.proposalNumber}</span>}
-                      </div>
-                      <p className="text-gray-700 mb-2">{v.notes}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>Created: {new Date(v.createdAt).toLocaleDateString()} by {v.createdBy?.name || 'Unknown'}</span>
-                        {v.updatedAt && v.updatedAt !== v.createdAt && <span>Updated: {new Date(v.updatedAt).toLocaleDateString()}</span>}
-                      </div>
-                    </div>
-                    <button onClick={() => onSelectVersion(v.version)} className="ml-4 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium whitespace-nowrap">View/Edit</button>
-                  </div>
-                </div>
-              ))}</div>}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProposalEditor = ({ orderId, version, onClose }) => {
   const [loading, setLoading]           = useState(true);
@@ -586,18 +496,17 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [proposalNumber, setProposalNumber] = useState(null);
   const [proposalStatus, setProposalStatus] = useState('draft');
   const [savingStatus, setSavingStatus]     = useState(false);
-  const [showVersionModal, setShowVersionModal]         = useState(false);
-  const [showNewVersionModal, setShowNewVersionModal]   = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [depositPercent, setDepositPercent] = useState(100);
   const [confirmModal, setConfirmModal] = useState(null);
   const [originalTitle] = useState(document.title);
 
+  const [orderInfo, setOrderInfo] = useState(null);
+
   const [productsWithIds, setProductsWithIds] = useState([]);
   const [excludedProducts, setExcludedProducts] = useState([]);
 
   const [hiddenIds, setHiddenIds]           = useState(new Set());
-  const [showItemPanel, setShowItemPanel]   = useState(false);
   const [showExcludedPanel, setShowExcludedPanel] = useState(false);
   const [savingHidden, setSavingHidden]     = useState(false);
   const [saveHiddenSuccess, setSaveHiddenSuccess] = useState(false);
@@ -785,7 +694,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     }
 
     if (!fresh) {
-      alert('Product tidak ditemukan di order — tidak bisa direfresh.');
+      alert('Product not found in order — cannot refresh price.');
       return;
     }
 
@@ -795,7 +704,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     ));
 
   } catch (e) {
-    alert('Gagal refresh: ' + e.message);
+    alert('Failed to refresh: ' + e.message);
   }
 }, [orderId, productsWithIds]);
 
@@ -825,7 +734,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_v' + (proposalData.version || 1) + '_' + new Date().toISOString().split('T')[0];
+      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
     }
     return () => { document.title = originalTitle; };
   }, [proposalData, clientInfo, originalTitle]);
@@ -864,6 +773,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       });
       setProposalNumber(r.data.proposalNumber || null);
       setProposalStatus(r.data.status || 'draft');
+      setOrderInfo({ orderNumber: r.data.orderNumber, orderLabel: r.data.orderLabel });
       setDepositPercent(r.data.depositPercent ?? 100);
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
     finally { setLoading(false); }
@@ -885,12 +795,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
   };
 
   const handleStatusChange = (newStatus) => {
-    if (proposalStatus === 'approved') {
-      setConfirmModal({ newStatus: null, title: 'Locked', message: 'Proposal sudah Approved dan tidak dapat diubah lagi.', infoOnly: true });
-      return;
-    }
     if (newStatus === 'approved') {
-      setConfirmModal({ newStatus, title: 'Approve Proposal?', message: 'Setelah Approved, status tidak dapat diubah lagi dan Finance team dapat mengirim Proposal ini ke QuickBooks sebagai Invoice.' });
+      setConfirmModal({ newStatus, title: 'Approve Proposal?', message: 'This will mark the proposal as Approved. The Finance team will be able to send it to QuickBooks as an Invoice.' });
       return;
     }
     doStatusUpdate(newStatus);
@@ -943,28 +849,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       }
     } catch (e) { alert('Failed to save: ' + e.message); }
     finally { setSavingHidden(false); }
-  };
-
-  // ── Save as new version (deposit reset to 100) ──
-  const handleSaveNewVersion = async (notes) => {
-    if (!notes.trim()) return;
-    setSaving(true);
-    try {
-      const t = localStorage.getItem('token');
-      const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientInfo, notes, depositPercent: 100 }),
-      });
-      const r = await res.json();
-      if (r.success) {
-        setShowNewVersionModal(false);
-        window.location.href = '/admin/proposal/' + orderId + '/' + r.data.version;
-      } else {
-        alert('Failed: ' + (r.message || 'Unknown error'));
-      }
-    } catch (e) { alert('Failed to create new version'); }
-    finally { setSaving(false); }
   };
 
   // ── Totals ──
@@ -1135,7 +1019,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_v' + (proposalData.version || 1) + '_' + new Date().toISOString().split('T')[0];
+      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
     }
     setTimeout(() => window.print(), 100);
   };
@@ -1147,9 +1031,17 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
   const today         = new Date().toLocaleDateString();
   const rg            = buildRoomGroups();
   const totalPP       = pages?.length || 0;
-  const hiddenCount   = hiddenIds.size;
   const excludedCount = excludedProducts.length;
-  const sidebarOpen   = showItemPanel || showExcludedPanel;
+  const sidebarOpen   = showExcludedPanel;
+
+  const orderDisplayName = (() => {
+    const label = orderInfo?.orderLabel?.trim();
+    if (label) {
+      const m = label.match(/^phase\s*(\d+)$/i);
+      return m ? `Order ${m[1]}` : label;
+    }
+    return orderInfo?.orderNumber ? `Order ${orderInfo.orderNumber}` : null;
+  })();
 
 
   const P1Header = ({ forMeasure = false }) => (
@@ -1215,10 +1107,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           <div className="h-6 w-px bg-gray-300" />
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#005670] font-mono">{dpn}</span>
-            <span className="text-gray-400 text-sm">·</span>
-            <span className="text-sm text-gray-500">Version {proposalData?.version || 1}</span>
-            {hiddenCount > 0 && (
-              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold">{hiddenCount} hidden</span>
+            {orderDisplayName && (
+              <span className="px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 rounded-full text-xs font-semibold">{orderDisplayName}</span>
             )}
             {excludedCount > 0 && (
               <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">{excludedCount} not included</span>
@@ -1247,7 +1137,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           {/* Not Included panel toggle */}
           {excludedCount > 0 && (
             <button
-              onClick={() => { setShowExcludedPanel(p => !p); setShowItemPanel(false); }}
+              onClick={() => setShowExcludedPanel(p => !p)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showExcludedPanel ? 'bg-[#005670] text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
             >
               <Plus className="w-4 h-4" />
@@ -1255,21 +1145,12 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
             </button>
           )}
 
-          {/* Show/Hide items panel */}
-          <button
-            onClick={() => { setShowItemPanel(p => !p); setShowExcludedPanel(false); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showItemPanel ? 'bg-[#005670] text-white' : hiddenCount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-          >
-            <EyeOff className="w-4 h-4" />
-            {hiddenCount > 0 ? 'Items (' + hiddenCount + ' hidden)' : 'Show/Hide Items'}
-          </button>
-
           {/* Save All — saves all products + depositPercent */}
           <button
             onClick={handleSaveAllProducts}
             disabled={savingHidden}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${saveHiddenSuccess ? 'bg-green-100 text-green-700' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800'}`}
-            title="Simpan semua produk dan persentase deposit"
+            title="Save all products and deposit percentage"
           >
             {savingHidden
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -1278,16 +1159,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               : <Save className="w-4 h-4" />
             }
             {saveHiddenSuccess ? 'Saved!' : 'Save All'}
-          </button>
-
-          {/* New Version */}
-          <button onClick={() => setShowNewVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
-            <PlusCircle className="w-4 h-4" /> New Version
-          </button>
-
-          {/* Version History */}
-          <button onClick={() => setShowVersionModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
-            <Clock className="w-4 h-4" /> Version History
           </button>
 
           {/* Deposit % */}
@@ -1321,18 +1192,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           onClose={() => setShowExcludedPanel(false)}
         />
       )}
-      {showItemPanel && !showExcludedPanel && (
-        <ItemTogglePanel
-          productsWithIds={productsWithIds}
-          hiddenIds={hiddenIds}
-          toggleHidden={toggleHidden}
-          onClose={() => setShowItemPanel(false)}
-          onSave={handleSaveHidden}
-          saving={savingHidden}
-          saveSuccess={saveHiddenSuccess}
-        />
-      )}
-
       {/* ── Hidden measure box ── */}
       <div className="mbox" ref={measureRef}>
         <P1Header forMeasure={true} />
@@ -1368,7 +1227,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                   <div className="lp">
                     <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
-                      {renderItems(items, handleDeleteProduct, handleRefreshPrice, productsMap, ProductRowV2)}
+                      {renderItems(items, undefined, undefined, productsMap, ProductRowV2)}
                       {pi === (pages || []).length - 1 && (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
@@ -1454,23 +1313,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       </div>
 
       {/* ── Modals ── */}
-      {showVersionModal && (
-        <VersionModal
-          orderId={orderId}
-          isOpen={showVersionModal}
-          onClose={() => setShowVersionModal(false)}
-          onSelectVersion={v => { window.location.href = '/admin/proposal/' + orderId + '/' + v; }}
-        />
-      )}
-
-      {showNewVersionModal && (
-        <NewVersionModal
-          onClose={() => setShowNewVersionModal(false)}
-          onSave={handleSaveNewVersion}
-          saving={saving}
-        />
-      )}
-
       {showPrintInstructions && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">

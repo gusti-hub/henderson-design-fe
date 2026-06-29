@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Trash2, Save, FileText, Loader2, AlertCircle,
   Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon, Check,
-  Package, Truck, DollarSign, ClipboardList, Activity, Tag, GripVertical
+  Package, Truck, DollarSign, ClipboardList, Activity, Tag, GripVertical, ShoppingCart
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
@@ -19,6 +19,7 @@ import StatusReportFields from './StatusReportFields';
 import PricingFields from './PricingFields';
 import { uploadFileToS3 } from '../utils/uploadToS3';
 import AuditLogDrawer from './AuditLogDrawer';
+import POVendorSelector from './POVendorSelector';
 
 const PRODUCT_TABS = [
   { id: 'general',       label: 'General Info',  icon: Package },
@@ -244,7 +245,7 @@ const applyFieldUpdate = (item, field, value) => {
   return updated;
 };
 
-const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confirmVariant = 'danger', onConfirm, onCancel }) => {
+const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confirmVariant = 'danger', onConfirm, onCancel, hideCancel = false }) => {
   if (!isOpen) return null;
   return (
     <div
@@ -277,12 +278,14 @@ const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confir
           </div>
         </div>
         <div className="px-6 pb-6 flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
+          {!hideCancel && (
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <button
             onClick={onConfirm}
             className={`px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors ${
@@ -292,6 +295,57 @@ const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confir
             }`}
           >
             {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BlockedModal = ({ isOpen, productName, blockedBy, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-gray-900">Cannot Remove Product</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">"{productName}"</span> cannot be removed because it is included in confirmed documents:
+              </p>
+              {blockedBy?.pos?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Confirmed POs</p>
+                  {blockedBy.pos.map((po, i) => (
+                    <div key={i} className="text-sm text-gray-700 bg-red-50 rounded px-3 py-1 mb-1">
+                      PO #{po.poNumber} — {po.vendor}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {blockedBy?.proposals?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Confirmed Proposals</p>
+                  {blockedBy.proposals.map((p, i) => (
+                    <div key={i} className="text-sm text-gray-700 bg-red-50 rounded px-3 py-1 mb-1">
+                      Proposal #{p.proposalNumber} v{p.version} ({p.status})
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">To remove this product, first cancel or revise the confirmed documents above.</p>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors">
+            Understood
           </button>
         </div>
       </div>
@@ -354,6 +408,19 @@ const useToast = () => {
   return { toasts, addToast, dismiss };
 };
 
+// ==================== HELPERS ====================
+
+// Normalises legacy "Phase N" labels → "Order N" for display only (doesn't touch DB)
+const displayOrderName = (order) => {
+  const label = order?.orderLabel?.trim();
+  if (label) {
+    const m = label.match(/^phase\s*(\d+)$/i);
+    if (m) return `Order #${m[1]}`;
+    return label;
+  }
+  return `Order #${order?.orderNumber ?? '?'}`;
+};
+
 // ==================== MAIN COMPONENT ====================
 
 const CustomProductManager = ({ order, onSave, onBack }) => {
@@ -387,7 +454,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const { toasts, addToast, dismiss: dismissToast } = useToast();
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false, title: '', message: '',
-    confirmLabel: 'Confirm', confirmVariant: 'danger', onConfirm: null,
+    confirmLabel: 'Confirm', confirmVariant: 'danger', onConfirm: null, hideCancel: false,
+  });
+  const [blockedModal, setBlockedModal] = useState({
+    isOpen: false, productName: '', blockedBy: null,
   });
 
   // ✅ PATCH 11: drag state
@@ -396,9 +466,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
   const [auditFocusProduct, setAuditFocusProduct] = useState(null);
+  const [linkedDocs, setLinkedDocs] = useState(null);
+  const [showPOModal, setShowPOModal] = useState(false);
 
-  const showConfirm = ({ title, message, confirmLabel, confirmVariant = 'danger', onConfirm }) => {
-    setConfirmModal({ isOpen: true, title, message, confirmLabel, confirmVariant, onConfirm });
+  const showConfirm = ({ title, message, confirmLabel, confirmVariant = 'danger', onConfirm, hideCancel = false }) => {
+    setConfirmModal({ isOpen: true, title, message, confirmLabel, confirmVariant, onConfirm, hideCancel });
   };
   const closeConfirm = () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false, onConfirm: null }));
@@ -436,6 +508,22 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       }
     };
     if (order?._id) fetchLiveOrder();
+  }, [order?._id]);
+
+  useEffect(() => {
+    const fetchLinkedDocs = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${backendServer}/api/orders/${order._id}/linked-documents`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) setLinkedDocs(data.data);
+        }
+      } catch (_) {}
+    };
+    if (order?._id) fetchLinkedDocs();
   }, [order?._id]);
 
   useEffect(() => {
@@ -674,9 +762,44 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     }
 
     const productName = savedProducts[index]?.name || 'this product';
+
+    // Block removal if proposal is approved
+    if (linkedDocs?.proposalApproved) {
+      showConfirm({
+        title: 'Cannot Remove Product',
+        message: `"${productName}" cannot be removed — the linked Proposal${linkedDocs.proposalNumber ? ` (${linkedDocs.proposalNumber})` : ''} is already approved. To make changes, first reject or revise the proposal.`,
+        confirmLabel: 'Got it',
+        confirmVariant: 'warning',
+        onConfirm: closeConfirm,
+        hideCancel: true,
+      });
+      return;
+    }
+
+    const linkedInfo = (() => {
+      if (!linkedDocs || (!linkedDocs.hasProposal && !linkedDocs.hasPO)) return '';
+      const parts = [];
+      if (linkedDocs.hasProposal) {
+        parts.push(linkedDocs.proposalNumber ? `Proposal ${linkedDocs.proposalNumber}` : 'a Proposal');
+      }
+      if (linkedDocs.hasPO) {
+        // Only show the PO vendor that matches this product's vendor
+        const productVendor = savedProducts[index]?.vendor;
+        const productVendorId = productVendor
+          ? (typeof productVendor === 'object' ? String(productVendor._id || productVendor.id || '') : String(productVendor))
+          : null;
+        const matchedVendors = productVendorId
+          ? (linkedDocs.poVendors || []).filter(v => v.vendorId === productVendorId)
+          : (linkedDocs.poVendors || []);
+        const names = matchedVendors.map(v => v.vendorName).filter(Boolean).join(', ');
+        if (names) parts.push(`PO (${names})`);
+      }
+      return parts.length ? `\n\nThis product also appears in: ${parts.join(', ')}.` : '';
+    })();
+
     showConfirm({
       title: 'Remove Product',
-      message: `Remove "${productName}" from this order? This cannot be undone.`,
+      message: `Remove "${productName}" from this order?${linkedInfo}`,
       confirmLabel: 'Remove',
       confirmVariant: 'danger',
       onConfirm: async () => {
@@ -711,6 +834,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             }),
           });
 
+          if (res.status === 409) {
+            const err = await res.json();
+            setSavedProducts(savedProducts); // revert optimistic update
+            setBlockedModal({ isOpen: true, productName, blockedBy: err.blockedBy });
+            return;
+          }
           if (!res.ok) {
             const err = await res.json();
             throw new Error(err.message || 'Failed to delete product');
@@ -902,9 +1031,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       addToast('Order saved', 'success');
     } catch (err) {
       setSavedProducts(previous);     // revert kalau gagal — tidak ada perubahan tergantung
-      addToast('Gagal menyimpan urutan: ' + err.message, 'error');
+      addToast('Failed to save order: ' + err.message, 'error');
     }
   }, [savedProducts, order._id, onSave, handleDragEnd, addToast]);
+
+  const isOrderLocked = !!linkedDocs?.proposalApproved;
 
   const previewUrl = getFloorPlanPreviewUrl();
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
@@ -922,21 +1053,40 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               Back to Order List
             </button>
             <h2 className="text-2xl font-bold text-gray-900">🎨 Custom Product Manager</h2>
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
               <p className="text-sm text-gray-600">
                 {order?.clientInfo?.name} • Unit {order?.clientInfo?.unitNumber}
               </p>
-              {liveOrder?.proposalNumber && (
+              {/* {liveOrder?.proposalNumber && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005670]/10 text-[#005670] rounded-lg text-xs font-semibold font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   {liveOrder.proposalNumber}
                 </span>
-              )}
+              )} */}
+
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-xs font-semibold">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                {displayOrderName(order)}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* ── Proposal Editor button ── */}
+            <button
+              onClick={() => window.open(`/admin/proposal/${order._id}`, '_blank')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 shadow-sm hover:shadow transition-all text-sm font-medium"
+            >
+              <FileText className="w-4 h-4" /> Proposal
+            </button>
+            {/* ── Purchase Orders button ── */}
+            <button
+              onClick={() => setShowPOModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-100 shadow-sm hover:shadow transition-all text-sm font-medium"
+            >
+              <ShoppingCart className="w-4 h-4" /> Purchase Orders
+            </button>
             {/* ── History button ── */}
             <button
               onClick={() => {
@@ -951,36 +1101,64 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               </svg>
               History
             </button>
-            <button
-              onClick={() => setShowLibraryModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all"
-            >
-              <Library className="w-5 h-5" /> Browse Library
-            </button>
-            <button
-              onClick={addManualProduct}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all"
-            >
-              <Plus className="w-5 h-5" /> Add Product
-            </button>
+            {!isOrderLocked && (
+              <>
+                <button
+                  onClick={() => setShowLibraryModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all"
+                >
+                  <Library className="w-5 h-5" /> Browse Library
+                </button>
+                <button
+                  onClick={addManualProduct}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all"
+                >
+                  <Plus className="w-5 h-5" /> Add Product
+                </button>
+              </>
+            )}
+            {isOrderLocked && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold">
+                <Lock className="w-3.5 h-3.5" /> Locked — Proposal Approved
+              </span>
+            )}
           </div>
         </div>
 
-        {totalCount === 0 && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-blue-900">Two Ways to Add Products:</p>
-                <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc list-inside">
-                  <li><strong>Browse Library</strong>: Select from existing product catalog</li>
-                  <li><strong>Add Product</strong>: Create new products with custom attributes</li>
-                </ul>
-              </div>
+      </div>
+
+      {/* ── Linked docs banner ── */}
+      {linkedDocs && (linkedDocs.hasProposal || linkedDocs.hasPO) && (
+        <div className={`mb-4 px-4 py-2.5 rounded-xl flex items-center gap-3 ${linkedDocs.proposalApproved ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+          <svg className={`w-4 h-4 shrink-0 ${linkedDocs.proposalApproved ? 'text-red-500' : 'text-amber-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <p className={`text-xs ${linkedDocs.proposalApproved ? 'text-red-800' : 'text-amber-800'}`}>
+            {linkedDocs.proposalApproved
+              ? <><strong>Proposal approved —</strong> Products cannot be removed while the linked Proposal{linkedDocs.proposalNumber ? ` (${linkedDocs.proposalNumber})` : ''} is approved. Reject or revise the proposal first.</>
+              : <><strong>Live sync active —</strong> This order is linked to{' '}
+                  {linkedDocs.hasProposal && <span>Proposal <span className="font-mono font-semibold">{linkedDocs.proposalNumber || '(draft)'}</span></span>}
+                  {linkedDocs.hasProposal && linkedDocs.hasPO && ' and '}
+                  {linkedDocs.hasPO && <span>Purchase Orders for <span className="font-semibold">{linkedDocs.poVendors.map(v => v.vendorName).filter(Boolean).join(', ') || 'vendors'}</span></span>}.
+                  {' '}Price & detail changes sync automatically. Removing an item will break the sync for that item.
+                </>
+            }
+          </p>
+        </div>
+      )}
+
+      {totalCount === 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">Two Ways to Add Products:</p>
+              <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                <li><strong>Browse Library</strong>: Select from existing product catalog</li>
+                <li><strong>Add Product</strong>: Create new products with custom attributes</li>
+              </ul>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Floor Plan Upload ── */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -1057,14 +1235,16 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Products Added</h3>
             <p className="text-gray-600 mb-6">Select from library or create manual products</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => setShowLibraryModal(true)} className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all">
-                <Library className="w-5 h-5" /> Browse Library
-              </button>
-              <button onClick={addManualProduct} className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all">
-                <Plus className="w-5 h-5" /> Add Product
-              </button>
-            </div>
+            {!isOrderLocked && (
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => setShowLibraryModal(true)} className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all">
+                  <Library className="w-5 h-5" /> Browse Library
+                </button>
+                <button onClick={addManualProduct} className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all">
+                  <Plus className="w-5 h-5" /> Add Product
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -1103,6 +1283,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   expanded={expandedProduct === 'draft'}
                   onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
                   onUpdate={updateProduct}
+                  locked={isOrderLocked}
                   onRemove={removeProduct}
                   onSaved={async (newSavedProducts) => {
                     setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -1152,6 +1333,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
                     onUpdate={updateProduct}
                     onRemove={removeProduct}
+                    locked={isOrderLocked}
                     onSaved={(newSavedProducts) => {
                       setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                       if (onSave) onSave(newSavedProducts);
@@ -1238,6 +1420,13 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         confirmVariant={confirmModal.confirmVariant}
         onConfirm={confirmModal.onConfirm}
         onCancel={closeConfirm}
+        hideCancel={confirmModal.hideCancel}
+      />
+      <BlockedModal
+        isOpen={blockedModal.isOpen}
+        productName={blockedModal.productName}
+        blockedBy={blockedModal.blockedBy}
+        onClose={() => setBlockedModal({ isOpen: false, productName: '', blockedBy: null })}
       />
 
       <ProductSelectionModal
@@ -1270,6 +1459,15 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           } catch (_) {}
         }}
       />
+
+      {/* ── PO Vendor Selector ── */}
+      <POVendorSelector
+        isOpen={showPOModal}
+        onClose={() => setShowPOModal(false)}
+        orderId={order._id}
+        orderClientInfo={order.clientInfo}
+      />
+
     </div>
   );
 };
@@ -1683,6 +1881,7 @@ const AutocompleteField = ({ value, onChange, options, placeholder = '', inputCl
 const ProductCard = ({
   product, index, order, allProducts, expanded,
   onToggleExpand, onUpdate, onRemove, onSaved, onToast,
+  locked = false,
   // ✅ PATCH 11: drag props
   draggable = false,
   isDragOver = false,
@@ -2259,8 +2458,14 @@ const ProductCard = ({
       {/* ── Expanded Content with Tabs ── */}
       {expanded && (
         <div className="border-t border-gray-200">
+          {locked && (
+            <div className="px-6 py-2 bg-red-50 border-b border-red-100 flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-red-500 shrink-0" />
+              <span className="text-xs text-red-700 font-medium">Read-only — proposal is approved</span>
+            </div>
+          )}
 
-          {/* Tab Bar */}
+          {/* Tab Bar — always interactive (outside fieldset) */}
           <div className="flex border-b border-gray-200 px-6 pt-4 gap-1 overflow-x-auto">
             {PRODUCT_TABS.map(tab => {
               const Icon = tab.icon;
@@ -2275,6 +2480,7 @@ const ProductCard = ({
             })}
           </div>
 
+          <fieldset disabled={locked} className="disabled:opacity-60">
           <div className="p-6 space-y-5">
 
             {/* ════ TAB: GENERAL INFO ════ */}
@@ -2776,13 +2982,16 @@ const ProductCard = ({
             )}
 
             {/* ── Save Button ── */}
-            <div className="flex justify-end pt-4 border-t border-gray-200">
-              <button onClick={handleSaveProduct} disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-semibold shadow-sm hover:shadow-md">
-                {saving ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</> : <><Check className="w-5 h-5" /> Save Product</>}
-              </button>
-            </div>
+            {!locked && (
+              <div className="flex justify-end pt-4 border-t border-gray-200">
+                <button onClick={handleSaveProduct} disabled={saving}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-semibold shadow-sm hover:shadow-md">
+                  {saving ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</> : <><Check className="w-5 h-5" /> Save Product</>}
+                </button>
+              </div>
+            )}
           </div>
+          </fieldset>
         </div>
       )}
     </div>
