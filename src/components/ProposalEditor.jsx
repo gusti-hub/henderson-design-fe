@@ -10,7 +10,7 @@
 //   - Each product row has ↻ Price (refresh from order) and ✕ Remove buttons
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save } from 'lucide-react';
+import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save, Plus } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
 // Constants
