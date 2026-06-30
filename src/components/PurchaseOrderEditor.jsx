@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, FileText, Printer, ChevronLeft, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
+const parseBold = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+};
+
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
   const [dataUrl, setDataUrl] = useState(null);
