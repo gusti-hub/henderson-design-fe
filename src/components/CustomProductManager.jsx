@@ -48,13 +48,15 @@ const ITEM_CLASS_DISPLAY_OPTIONS = [
 const ROOM_OPTIONS = [
   'COURTYARD','EXTERIOR ENTRY','INTERIOR ENTRY','FOYER','KITCHEN','PANTRY',
   'BREAKFAST NOOK','DINING ROOM','LIVING ROOM','GREAT ROOM','FAMILY ROOM',
-  'DEN','WET BAR','MEDIA ROOM','HALLWAY 1','HALLWAY 2','MAIN LANAI','BBQ AREA',
+  'DEN','WET BAR','MEDIA ROOM','HALLWAY','HALLWAY 1','HALLWAY 2','LANAI','LANAI 1','LANAI 2','LANAI 3','MAIN LANAI','BBQ AREA',
   'POOL LANAI','POWDER ROOM','POOL AREA','POOL BATH','PAVILLION','GYM',
-  'OFFICE 1','OFFICE 2','WINE ROOM','REC ROOM','GARAGE','PRIMARY BEDROOM',
+  'OFFICE','OFFICE 1','OFFICE 2','WINE ROOM','REC ROOM','GARAGE','PRIMARY BEDROOM',
   'PRIMARY BATHROOM','PRIMARY CLOSET','PRIMARY BEDROOM LANAI','BEDROOM 2',
   'BATHROOM 2','BEDROOM 2 CLOSET','BEDROOM 2 LANAI','BEDROOM 3','BATHROOM 3',
   'BEDROOM 3 CLOSET','BEDROOM 3 LANAI','BEDROOM 4','BATHROOM 4',
   'BEDROOM 4 CLOSET','BEDROOM 4 LANAI','SITTING ROOM',
+  'FLEX SPACE','LAUNDRY ROOM','MUD ROOM','TERRACE','BALCONY','OUTDOOR DINING',
+  'OUTDOOR LIVING','GUEST SUITE',
 ];
 
 
@@ -922,7 +924,38 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     }
   };
 
-  // ─── Group by room ────────────────────────────────────────────────────────
+  // ─── Room sort order (matches ProposalEditor) ─────────────────────────────
+  const ROOM_ORDER = [
+    'COURTYARD','EXTERIOR ENTRY','INTERIOR ENTRY','FOYER','LIVING ROOM','DINING ROOM',
+    'KITCHEN','PANTRY','PRIMARY BEDROOM','PRIMARY BEDROOM LANAI','PRIMARY BATHROOM',
+    'PRIMARY CLOSET','BEDROOM 2','BATHROOM 2','BEDROOM 2 CLOSET','BEDROOM 2 LANAI',
+    'BEDROOM 3','BATHROOM 3','BEDROOM 3 CLOSET','BEDROOM 3 LANAI','BEDROOM 4','BATHROOM 4',
+    'BEDROOM 4 CLOSET','BEDROOM 4 LANAI','POWDER ROOM','OFFICE','MEDIA ROOM','DEN','HALLWAY',
+    'LANAI','LANAI 1','LANAI 2','LANAI 3','MAIN LANAI','POOL LANAI','POOL AREA','BREAKFAST NOOK','GREAT ROOM','FAMILY ROOM','WET BAR','BBQ AREA',
+    'POOL BATH','PAVILLION','GYM','WINE ROOM','REC ROOM','GARAGE','SITTING ROOM',
+    'FLEX SPACE','LAUNDRY ROOM','MUD ROOM','TERRACE','BALCONY','OUTDOOR DINING',
+    'OUTDOOR LIVING','GUEST SUITE','DESIGN SERVICES','PROJECT MANAGEMENT SERVICES',
+    'PROCUREMENT SERVICES','FDI SERVICES (FREIGHT, DELIVERY & INSTALLATION)',
+    'WALLPAPER INSTALLATION SERVICES','ELECTRICAL INSTALLATION SERVICES',
+    'ART INSTALLATION SERVICES','WALLPAPER TRADE COORDINATION',
+    'ELECTRICAL TRADE COORDINATION','CLOSET SOLUTIONS',
+    'KITCHEN & HOUSEHOLD ESSENTIALS PACKAGE','WINDOW COVERING SERVICES',
+    'AUDIO VISUAL SERVICES','GREENERY & PLANT STYLING',
+    'CONSTRUCTION DESIGN & PM SERVICES','CUSTOM MILLWORK SERVICES',
+    'CUSTOM FURNITURE SERVICES','LIGHTING PROCUREMENT & COORDINATION',
+    'APPLIANCE COORDINATION','PLUMBING FIXTURE COORDINATION',
+    'DECORATIVE PLUMBING COORDINATION','STONE & SLAB COORDINATION',
+    'TILE & SURFACE COORDINATION','HARDWARE & DECORATIVE HARDWARE COORDINATION',
+    'OUTDOOR FURNISHINGS','LANAI / TERRACE FURNISHINGS','STYLING & ACCESSORIES',
+    'BEDDING PACKAGE','TURNKEY MOVE-IN PACKAGE','OWNER STORAGE & INVENTORY COORDINATION',
+    'CLIENT SUPPLIED ITEMS COORDINATION','WHITE GLOVE RECEIVING & WAREHOUSING',
+    'PUNCH LIST & COMPLETION COORDINATION','SITE VISIT COORDINATION',
+    'EXPEDITING SERVICES','BUILDING COORDINATION SERVICES',
+    'CONTRACTOR COORDINATION SERVICES','INSTALLATION OVERSIGHT',
+    'FINAL STYLING & STAGING','REVEAL PREPARATION',
+  ];
+
+  // ─── Group by room (sorted to match ProposalEditor order) ─────────────────
   const groupProductsByRoom = (products) => {
     const groups = {};
     products.forEach((p, idx) => {
@@ -930,7 +963,17 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       if (!groups[room]) groups[room] = [];
       groups[room].push({ product: p, originalIndex: idx });
     });
-    return groups;
+    return Object.entries(groups).sort(([a], [b]) => {
+      const noRoom = '— No Room Assigned —';
+      if (a === noRoom) return 1;
+      if (b === noRoom) return -1;
+      const ia = ROOM_ORDER.indexOf(a.toUpperCase());
+      const ib = ROOM_ORDER.indexOf(b.toUpperCase());
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
   };
 
   // ✅ PATCH 11: drag-and-drop reorder handlers
@@ -1266,7 +1309,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             )}
 
             {/* ── Saved products grouped by room ── */}
-            {Object.entries(groupProductsByRoom(savedProducts)).map(([room, items]) => (
+            {groupProductsByRoom(savedProducts).map(([room, items]) => (
               <div key={room} className="space-y-3">
                 <div className="flex items-center gap-3 px-1">
                   <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-1.5">
@@ -1856,6 +1899,77 @@ const ProductCard = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const productRef = useRef(product);
+  const specsRef = useRef(null);
+  const vendorDescRef = useRef(null);
+
+  const applyBoldToSpecs = () => {
+    const ta = specsRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) return;
+    const val = localFields.specifications;
+    const selected = val.substring(start, end);
+
+    // Unbold: selection includes the ** markers (e.g. user selected "**text**")
+    if (selected.startsWith('**') && selected.endsWith('**') && selected.length > 4) {
+      const inner = selected.slice(2, -2);
+      const newVal = val.substring(0, start) + inner + val.substring(end);
+      setLocal('specifications', newVal);
+      upd('specifications', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start, start + inner.length); }, 0);
+      return;
+    }
+
+    // Unbold: selection is surrounded by ** outside (e.g. val chars before/after are **)
+    if (start >= 2 && val.substring(start - 2, start) === '**' &&
+        end <= val.length - 2 && val.substring(end, end + 2) === '**') {
+      const newVal = val.substring(0, start - 2) + selected + val.substring(end + 2);
+      setLocal('specifications', newVal);
+      upd('specifications', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start - 2, start - 2 + selected.length); }, 0);
+      return;
+    }
+
+    // Bold: wrap with **
+    const newVal = val.substring(0, start) + '**' + selected + '**' + val.substring(end);
+    setLocal('specifications', newVal);
+    upd('specifications', newVal);
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
+  };
+
+  const applyBoldToVendorDesc = () => {
+    const ta = vendorDescRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) return;
+    const val = localFields.vendorDescription;
+    const selected = val.substring(start, end);
+
+    if (selected.startsWith('**') && selected.endsWith('**') && selected.length > 4) {
+      const inner = selected.slice(2, -2);
+      const newVal = val.substring(0, start) + inner + val.substring(end);
+      setLocal('vendorDescription', newVal);
+      upd('vendorDescription', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start, start + inner.length); }, 0);
+      return;
+    }
+
+    if (start >= 2 && val.substring(start - 2, start) === '**' &&
+        end <= val.length - 2 && val.substring(end, end + 2) === '**') {
+      const newVal = val.substring(0, start - 2) + selected + val.substring(end + 2);
+      setLocal('vendorDescription', newVal);
+      upd('vendorDescription', newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start - 2, start - 2 + selected.length); }, 0);
+      return;
+    }
+
+    const newVal = val.substring(0, start) + '**' + selected + '**' + val.substring(end);
+    setLocal('vendorDescription', newVal);
+    upd('vendorDescription', newVal);
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
+  };
 
   const opts = product.selectedOptions || {};
 
@@ -2185,9 +2299,6 @@ const ProductCard = ({
           ? 'border-[#005670] shadow-lg scale-[1.01]'
           : 'border-gray-200'
       }`}
-      // ✅ PATCH 11: drag event bindings
-      draggable={draggable}
-      onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
       onDrop={onDrop}
@@ -2197,9 +2308,11 @@ const ProductCard = ({
       <div className="p-4">
         <div className="flex items-center gap-4">
 
-          {/* ✅ PATCH 11: drag handle — only for saved products */}
+          {/* drag handle — draggable only on the handle, not the whole card */}
           {draggable && (
             <div
+              draggable={true}
+              onDragStart={onDragStart}
               className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors"
               title="Drag to reorder"
             >
@@ -2586,8 +2699,19 @@ const ProductCard = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Client Description</label>
+                      <button
+                        type="button"
+                        onClick={applyBoldToSpecs}
+                        title="Bold selected text (**bold**)"
+                        className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700 leading-none"
+                      >
+                        B
+                      </button>
+                    </div>
                     <textarea
+                      ref={specsRef}
                       value={localFields.specifications}
                       onChange={(e) => { setLocal('specifications', e.target.value); upd('specifications', e.target.value); }}
                       className={`${inputCls} resize-none`}
@@ -2595,14 +2719,25 @@ const ProductCard = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
-                      <span>Vendor Description</span>
-                      <button type="button" onClick={() => {
-                        setLocal('vendorDescription', localFields.specifications);
-                        upd('vendorDescription', localFields.specifications);
-                      }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-gray-700">Vendor Description</label>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => {
+                          setLocal('vendorDescription', localFields.specifications);
+                          upd('vendorDescription', localFields.specifications);
+                        }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
+                        <button
+                          type="button"
+                          onClick={applyBoldToVendorDesc}
+                          title="Bold selected text (**bold**)"
+                          className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700 leading-none"
+                        >
+                          B
+                        </button>
+                      </div>
+                    </div>
                     <textarea
+                      ref={vendorDescRef}
                       value={localFields.vendorDescription}
                       onChange={(e) => { setLocal('vendorDescription', e.target.value); upd('vendorDescription', e.target.value); }}
                       className={`${inputCls} resize-none`}
