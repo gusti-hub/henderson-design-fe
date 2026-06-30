@@ -531,10 +531,9 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
     setHiddenIds(prev => {
       const next = new Set(prev);
       if (next.has(sid)) next.delete(sid); else next.add(sid);
-      localStorage.setItem(`proposal_hidden_${orderId}`, JSON.stringify([...next]));
       return next;
     });
-  }, [orderId]);
+  }, []);
 
   // ── Add excluded product back ──
   const handleAddExcluded = useCallback((product) => {
@@ -754,8 +753,13 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       const rawProducts = r.data.selectedProducts || [];
       const withIds = rawProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
       setProductsWithIds(withIds);
-      const savedHidden = localStorage.getItem(`proposal_hidden_${orderId}`);
-      setHiddenIds(savedHidden ? new Set(JSON.parse(savedHidden)) : new Set());
+      const hiddenFromDb = r.data.hiddenProductIds || [];
+      const restoredHidden = new Set(
+        withIds
+          .filter(({ product }) => hiddenFromDb.includes(product._id?.toString()))
+          .map(({ sid }) => sid)
+      );
+      setHiddenIds(restoredHidden);
 
       const excluded = r.data.excludedProducts || [];
       setExcludedProducts(excluded);
@@ -805,21 +809,22 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     doStatusUpdate(newStatus);
   };
 
-  // ── Save visible products only (from ItemTogglePanel) ──
+  // ── Save show/hide state to DB (from ItemTogglePanel Save button) ──
   const handleSaveHidden = async () => {
     setSavingHidden(true);
     try {
       const t = localStorage.getItem('token');
+      const hiddenProductIds = [...hiddenIds].map(sid => {
+        const entry = productsWithIds.find(e => e.sid === sid);
+        return entry?.product?._id?.toString();
+      }).filter(Boolean);
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: visibleProducts, clientInfo, depositPercent, version: proposalData?.version }),
+        body: JSON.stringify({ clientInfo, depositPercent, version: proposalData?.version, hiddenProductIds }),
       });
       const r = await res.json();
       if (r.success) {
-        const withIds = visibleProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
-        setProductsWithIds(withIds);
-        setHiddenIds(new Set());
         setSaveHiddenSuccess(true);
         setTimeout(() => setSaveHiddenSuccess(false), 2500);
       } else {
