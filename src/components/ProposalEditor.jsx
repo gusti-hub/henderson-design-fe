@@ -753,13 +753,10 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       const rawProducts = r.data.selectedProducts || [];
       const withIds = rawProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
       setProductsWithIds(withIds);
-      const hiddenFromDb = r.data.hiddenProductIds || [];
-      const restoredHidden = new Set(
-        withIds
-          .filter(({ product }) => hiddenFromDb.includes(product._id?.toString()))
-          .map(({ sid }) => sid)
-      );
-      setHiddenIds(restoredHidden);
+      const hiddenFromDb = new Set(r.data.hiddenProductIds || []);
+      const validSids = new Set(withIds.map(({ sid }) => sid));
+      // Filter to only sids that still exist — guards against index shifts if products were removed
+      setHiddenIds(new Set([...hiddenFromDb].filter(sid => validSids.has(sid))));
 
       const excluded = r.data.excludedProducts || [];
       setExcludedProducts(excluded);
@@ -814,10 +811,9 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     setSavingHidden(true);
     try {
       const t = localStorage.getItem('token');
-      const hiddenProductIds = [...hiddenIds].map(sid => {
-        const entry = productsWithIds.find(e => e.sid === sid);
-        return entry?.product?._id?.toString();
-      }).filter(Boolean);
+      // Store sids directly (not _id) — sids are slot_${idx}__${_id}, unique per instance
+      // even when the same product appears multiple times in an order
+      const hiddenProductIds = [...hiddenIds];
       const res = await fetch(`${backendServer}/api/proposals/${orderId}/save-current`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
