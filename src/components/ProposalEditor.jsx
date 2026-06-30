@@ -508,6 +508,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
 
   const [hiddenIds, setHiddenIds]           = useState(new Set());
   const [showExcludedPanel, setShowExcludedPanel] = useState(false);
+  const [showTogglePanel, setShowTogglePanel]     = useState(false);
   const [savingHidden, setSavingHidden]     = useState(false);
   const [saveHiddenSuccess, setSaveHiddenSuccess] = useState(false);
 
@@ -1134,16 +1135,15 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           )}
           <div className="h-5 w-px bg-gray-200" />
 
-          {/* Not Included panel toggle */}
-          {excludedCount > 0 && (
-            <button
-              onClick={() => setShowExcludedPanel(p => !p)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showExcludedPanel ? 'bg-[#005670] text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
-            >
-              <Plus className="w-4 h-4" />
-              Not Included ({excludedCount})
-            </button>
-          )}
+          {/* Show/Hide items toggle */}
+          <button
+            onClick={() => setShowTogglePanel(p => !p)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showTogglePanel ? 'bg-[#005670] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            {showTogglePanel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            Show/Hide
+            {hiddenIds.size > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-bold">{hiddenIds.size}</span>}
+          </button>
 
           {/* Save All — saves all products + depositPercent */}
           <button
@@ -1184,6 +1184,17 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       </div>
 
       {/* ── Side Panels ── */}
+      {showTogglePanel && (
+        <ItemTogglePanel
+          productsWithIds={productsWithIds}
+          hiddenIds={hiddenIds}
+          toggleHidden={toggleHidden}
+          onClose={() => setShowTogglePanel(false)}
+          onSave={handleSaveHidden}
+          saving={savingHidden}
+          saveSuccess={saveHiddenSuccess}
+        />
+      )}
       {showExcludedPanel && excludedCount > 0 && (
         <ExcludedProductsPanel
           excludedProducts={excludedProducts}
