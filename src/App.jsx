@@ -10,7 +10,6 @@ import InvoiceHTML from './components/InvoiceHTML';
 import QuickBooksConnect from './components/QuickBooksConnect';
 import AgreementViewer from './components/AgreementViewer';
 import ProposalEditor from './components/ProposalEditor';
-import BulkProposalPrint from './pages/BulkProposalPrint';
 import AdminInstallBinder from './pages/AdminInstallBinder';
 import PurchaseOrderPage from './pages/PurchaseOrderPage';
 import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute'; // ← pakai ini
@@ -45,10 +44,6 @@ function App() {
       <Route path="/invoice/:clientId/:invoiceNumber" element={<InvoiceHTML />} />
 
       <Route path="/admin/proposal/:orderId/:version?" element={<ProposalEditorWrapper />} />
-
-      <Route path="/admin/bulk-print" element={
-        <ProtectedRoute element={<BulkProposalPrint />} allowedRoles={['admin', 'designer']} />
-      } />
 
       <Route path="/admin/quickbooks" element={
         <ProtectedRoute element={<QuickBooksConnect />} allowedRoles={['admin', 'designer']} />
