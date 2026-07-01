@@ -142,6 +142,7 @@ const POVendorSelector = ({ isOpen, onClose, orderId, orderClientInfo }) => {
                             group.latestPO.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
                             group.latestPO.status === 'sent' ? 'bg-blue-100 text-blue-700' :
                             group.latestPO.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                            group.latestPO.status === 'paid' ? 'bg-purple-100 text-purple-700' :
                             'bg-gray-100 text-gray-600'
                           }`}>
                             <FileText className="w-3 h-3" />

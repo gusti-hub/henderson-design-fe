@@ -1051,7 +1051,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
     const confirmedIds = new Set((poSummary?.details || []).map(d => d.poVersionId?.toString()));
     const allPORows    = allPOVersions.map(v => ({
       ...v,
-      _type:       v.status === 'confirmed' ? 'confirmed' : 'pending',
+      _type:       (v.status === 'confirmed' || v.status === 'paid') ? 'confirmed' : 'pending',
       quickbooksId: confirmedIds.has(v.poVersionId?.toString())
         ? (poSummary.details.find(d => d.poVersionId?.toString() === v.poVersionId?.toString())?.quickbooksId ?? v.quickbooksId)
         : v.quickbooksId,
@@ -1247,8 +1247,8 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
             <div className="flex items-center gap-3">
               <h3 className="text-base font-semibold text-gray-800">🏷️ Purchase Orders</h3>
               {(() => {
-                const confirmed = allPOVersions.filter(v => v.status === 'confirmed').length;
-                const pending   = allPOVersions.filter(v => v.status !== 'confirmed').length;
+                const confirmed = allPOVersions.filter(v => v.status === 'confirmed' || v.status === 'paid').length;
+                const pending   = allPOVersions.filter(v => v.status !== 'confirmed' && v.status !== 'paid').length;
                 const total     = allPOVersions.length;
                 if (total === 0) return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">No POs yet</span>;
                 return <div className="flex items-center gap-1.5">{confirmed > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">{confirmed} Confirmed</span>}{pending > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">{pending} Pending</span>}</div>;
@@ -1290,7 +1290,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                           </td>
                           <td className="px-3 py-2">{po._orderLabel ? <span className="text-[10px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">{po._orderLabel}</span> : <span className="text-gray-300">—</span>}</td>
                           <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
-                          <td className="px-3 py-2"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" /> Confirmed</span></td>
+                          <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${po.status === 'paid' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}><span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${po.status === 'paid' ? 'bg-blue-500' : 'bg-emerald-500'}`} />{po.status === 'paid' ? 'Paid' : 'Confirmed'}</span></td>
                           <td className="px-3 py-2">
                             <QBCell
                               qbId={qbId}
