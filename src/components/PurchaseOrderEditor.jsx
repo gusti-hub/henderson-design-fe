@@ -206,7 +206,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   };
 
   const handleStatusChange = async (newStatus) => {
-    if (poStatus === 'confirmed') { alert('Confirmed PO cannot be changed'); return; }
     setSavingStatus(true);
     try {
       const token = localStorage.getItem('token');
