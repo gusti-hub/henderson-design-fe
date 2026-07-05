@@ -69,6 +69,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [poData, setPOData] = useState(null);
   const [products, setProducts] = useState([]);
+  const [versionsList, setVersionsList] = useState([]);
+  const [activeVersion, setActiveVersion] = useState(version || 'latest');
   const [vendorInfo, setVendorInfo] = useState({
     name: '', vendorCode: '', representativeName: '', website: '',
     address: { street: '', city: '', state: '', zip: '', country: '' },
@@ -92,7 +94,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const [additionalLines, setAdditionalLines] = useState([]);
   const [orderInfo, setOrderInfo] = useState(null);
 
-  useEffect(() => { loadPOData(); }, [orderId, vendorId, version]);
+  useEffect(() => { loadPOData(); loadVersionsList(); }, [orderId, vendorId]);
+  useEffect(() => { if (versionsList.length) loadPOData(); }, [activeVersion]);
 
   useEffect(() => {
     if (poData && vendorInfo.name) {
@@ -108,7 +111,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   const loadPOData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const versionParam = version || 'latest';
+      const versionParam = activeVersion || 'latest';
 
       const [poResponse, orderResponse] = await Promise.all([
         fetch(`${backendServer}/api/orders/${orderId}/po/${vendorId}/${versionParam}`,
@@ -204,6 +207,21 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
       setLoading(false);
     }
   };
+
+  const loadVersionsList = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(
+        `${backendServer}/api/orders/${orderId}/po/${vendorId}/versions/all`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const result = await res.json();
+      if (result.success) setVersionsList(result.data || []);
+    } catch (e) { console.error('Failed to load versions list', e); }
+  };
+
+  const isLatestVersion = versionsList.length === 0 ||
+    (poData && versionsList[0]?.version === poData.version);
 
   const handleStatusChange = async (newStatus) => {
     setSavingStatus(true);
@@ -446,17 +464,38 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             PO — {vendorInfo.name || 'Vendor'}
           </span>
 
+          {/* Version switcher */}
+          {versionsList.length > 1 && (
+            <select
+              value={activeVersion === 'latest' ? (versionsList[0]?.version ?? 'latest') : activeVersion}
+              onChange={e => { setActiveVersion(Number(e.target.value)); setLoading(true); }}
+              className="px-2.5 py-1 rounded-full text-xs font-bold border border-gray-300 bg-white text-gray-700 outline-none cursor-pointer"
+            >
+              {versionsList.map(v => (
+                <option key={v.version} value={v.version}>
+                  v{v.version}{v.version === versionsList[0]?.version ? ' (latest)' : ''} — {v.status}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {!isLatestVersion && (
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+              Read-only — older version
+            </span>
+          )}
+
             <div className="flex items-center gap-1.5">
               <select
                 value={poStatus}
                 onChange={e => handleStatusChange(e.target.value)}
-                disabled={savingStatus}
+                disabled={savingStatus || !isLatestVersion}
                 className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${
                   poStatus === 'draft'     ? 'bg-yellow-100 text-yellow-700' :
                   poStatus === 'sent'      ? 'bg-blue-100 text-blue-700' :
                   poStatus === 'cancelled' ? 'bg-red-100 text-red-600' :
                   'bg-gray-100 text-gray-600'
-                } ${savingStatus ? 'opacity-50' : ''}`}
+                } ${(savingStatus || !isLatestVersion) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <option value="draft">Draft</option>
                 <option value="sent">Sent to Vendor</option>
@@ -471,8 +510,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            disabled={saving || !isLatestVersion}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
