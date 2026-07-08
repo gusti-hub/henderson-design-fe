@@ -321,7 +321,7 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                {['Client / Proposal','Vendor','Product Name','SKU','Room','Qty','Net Cost','Sell Price','PO #','Delivery Status'].map(h => (
+                {['Client','Proposal #','Vendor','Product Name','SKU','Room','Qty','Net Cost','Sell Price','PO #'].map(h => (
                   <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -329,22 +329,22 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
                 <tr><td colSpan={10} className="text-center py-16 text-gray-400 text-sm">No products found</td></tr>
+
               ) : paginated.map((p, i) => {
                 const netCost = getNetCost(p);
                 const sellPrice = getSellPrice(p);
                 const qty = p.quantity || 1;
-                const deliveryStatus = [
-                  p.selectedOptions?.deliveryStatus,
-                  p.selectedOptions?.vendorOrderNumber ? `Order#: ${p.selectedOptions.vendorOrderNumber}` : '',
-                  p.selectedOptions?.trackingInfo      ? `Track: ${p.selectedOptions.trackingInfo}` : '',
-                ].filter(Boolean).join(' · ');
                 return (
                   <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-3 py-2.5 min-w-[140px]">
+                    <td className="px-3 py-2.5 min-w-[130px]">
                       <p className="font-medium text-gray-800 text-xs whitespace-nowrap">{p._clientName}</p>
-                      <p className="text-[11px] text-gray-400">
-                        {[p._clientUnit ? `Unit ${p._clientUnit}` : '', p._proposalNum, p._orderNum].filter(Boolean).join(' · ')}
-                      </p>
+                      {p._clientUnit && <p className="text-[11px] text-gray-400">Unit {p._clientUnit}</p>}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {p._proposalNum
+                        ? <span className="inline-block px-2 py-0.5 rounded-full bg-[#005670]/10 text-[#005670] text-[11px] font-semibold">{p._proposalNum}</span>
+                        : <span className="text-[11px] text-gray-300">—</span>}
+                      {p._orderNum && <p className="text-[10px] text-gray-400 mt-0.5">{p._orderNum}</p>}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">{p._vendorName}</td>
                     <td className="px-3 py-2.5 min-w-[160px]">
@@ -365,9 +365,6 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
                       <p className="text-[11px] text-gray-400">× {qty} = {fmt(sellPrice * qty)}</p>
                     </td>
                     <td className="px-3 py-2.5 text-[11px] font-mono text-gray-500 whitespace-nowrap">{p.selectedOptions?.poNumber || '—'}</td>
-                    <td className="px-3 py-2.5 text-[11px] text-gray-500 max-w-[160px] truncate" title={deliveryStatus || undefined}>
-                      {deliveryStatus || '—'}
-                    </td>
                   </tr>
                 );
               })}
@@ -453,7 +450,7 @@ const AdminOrderList = ({ onOrderClick }) => {
     if (allOrders.length > 0) return; // already loaded
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${backendServer}/api/orders?page=1&limit=500&status=all`,
+      const res = await fetch(`${backendServer}/api/orders?page=1&limit=500&status=all&groupByClient=false`,
         { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setAllOrders((data.orders || []).filter(o => o && o.selectedProducts?.length > 0));
