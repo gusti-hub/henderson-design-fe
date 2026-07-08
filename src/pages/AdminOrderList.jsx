@@ -172,7 +172,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={Eye}          label="View Client Summary"           onClick={onView} />
           <Sep />
           <Group label="Documents" />
-          <Item icon={BookOpen}     label="Install Binder (HTML)"         onClick={onInstallBinder}         color="text-green-600" />
+          <Item icon={Download}     label="Install Binder (PDF)"          onClick={onInstallBinder}         color="text-green-600" />
           <Item icon={Download}     label="Install Binder (Excel)"        onClick={onInstallBinderExcel}    color="text-emerald-600" />
           <Sep />
           <Item icon={Download}     label="Order Summary (Excel)"         onClick={() => onDownload('summary', 'Order Summary')} />
@@ -464,7 +464,7 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   // ── Download helpers ──────────────────────────────────────────────────────
-  const handleDownload = async (orderId, type, clientName, label) => {
+  const handleDownload = async (orderId, type, clientName, label, ext = 'xlsx') => {
     setDownloading(true);
     try {
       const token = localStorage.getItem('token');
@@ -473,7 +473,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       if (!res.ok) throw new Error();
       const blob = await res.blob();
       const safeClient = (clientName || 'Client').replace(/[^a-zA-Z0-9 ]/g, '').trim();
-      const filename = `${safeClient} - ${label || type}.xlsx`;
+      const filename = `${safeClient} - ${label || type}.${ext}`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1048,7 +1048,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                           order={order}
                           onEdit={() => handleEdit(order)}
                           onView={() => onOrderClick && onOrderClick(order._id)}
-                          onInstallBinder={() => window.open(`/admin/install-binder/${order._id}`, '_blank')}
+                          onInstallBinder={() => handleDownload(order._id, 'install-binder', order.clientInfo?.name, 'Install Binder', 'pdf')}
                           onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel', order.clientInfo?.name, 'Install Binder')}
                           onDownload={(type, label) => handleDownload(order._id, type, order.clientInfo?.name, label)}
                           onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
