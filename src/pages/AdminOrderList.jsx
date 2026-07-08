@@ -203,11 +203,13 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
       (order.selectedProducts || []).forEach(p => {
         flat.push({
           ...p,
-          _orderId: order._id,
-          _clientName: order.clientInfo?.name || '—',
-          _clientUnit: order.clientInfo?.unitNumber || '',
-          _orderStatus: order.status,
-          _vendorName: (p.vendor && typeof p.vendor === 'object') ? p.vendor.name : 'HDG Inventory',
+          _orderId:       order._id,
+          _clientName:    order.clientInfo?.name || '—',
+          _clientUnit:    order.clientInfo?.unitNumber || '',
+          _orderStatus:   order.status,
+          _proposalNum:   order.proposalNumber ? `#${order.proposalNumber}` : '',
+          _orderNum:      order.orderNumber    ? `Order ${order.orderNumber}` : '',
+          _vendorName:    (p.vendor && typeof p.vendor === 'object') ? p.vendor.name : 'HDG Inventory',
         });
       });
     });
@@ -228,11 +230,14 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
         p.product_id?.toLowerCase().includes(q) ||
         p._clientName?.toLowerCase().includes(q) ||
         p._vendorName?.toLowerCase().includes(q) ||
+        p._proposalNum?.toLowerCase().includes(q) ||
         p.selectedOptions?.room?.toLowerCase().includes(q) ||
         p.selectedOptions?.finish?.toLowerCase().includes(q) ||
         p.selectedOptions?.fabric?.toLowerCase().includes(q) ||
         p.selectedOptions?.specifications?.toLowerCase().includes(q) ||
-        p.selectedOptions?.poNumber?.toLowerCase().includes(q);
+        p.selectedOptions?.poNumber?.toLowerCase().includes(q) ||
+        p.selectedOptions?.vendorOrderNumber?.toLowerCase().includes(q) ||
+        p.selectedOptions?.trackingInfo?.toLowerCase().includes(q);
       const matchClient = clientFilter === 'all' || p._clientName === clientFilter;
       const matchVendor = vendorFilter === 'all' || p._vendorName === vendorFilter;
       return matchSearch && matchClient && matchVendor;
@@ -263,7 +268,7 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
       <div className="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Search products, clients, vendors, SKU, room..."
+          <input type="text" placeholder="Search by SKU, product name, client, vendor, PO #, room, tracking..."
             value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] transition-colors" />
         </div>
@@ -316,45 +321,53 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                {['Client','Vendor','Product Name','SKU','Room','Qty','Net Cost','Sell Price','PO #','Finish','Fabric'].map(h => (
+                {['Client / Proposal','Vendor','Product Name','SKU','Room','Qty','Net Cost','Sell Price','PO #','Delivery Status'].map(h => (
                   <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-16 text-gray-400 text-sm">No products found</td></tr>
+                <tr><td colSpan={10} className="text-center py-16 text-gray-400 text-sm">No products found</td></tr>
               ) : paginated.map((p, i) => {
                 const netCost = getNetCost(p);
                 const sellPrice = getSellPrice(p);
                 const qty = p.quantity || 1;
+                const deliveryStatus = [
+                  p.selectedOptions?.deliveryStatus,
+                  p.selectedOptions?.vendorOrderNumber ? `Order#: ${p.selectedOptions.vendorOrderNumber}` : '',
+                  p.selectedOptions?.trackingInfo      ? `Track: ${p.selectedOptions.trackingInfo}` : '',
+                ].filter(Boolean).join(' · ');
                 return (
                   <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 min-w-[140px]">
                       <p className="font-medium text-gray-800 text-xs whitespace-nowrap">{p._clientName}</p>
-                      {p._clientUnit && <p className="text-[11px] text-gray-400">Unit {p._clientUnit}</p>}
+                      <p className="text-[11px] text-gray-400">
+                        {[p._clientUnit ? `Unit ${p._clientUnit}` : '', p._proposalNum, p._orderNum].filter(Boolean).join(' · ')}
+                      </p>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">{p._vendorName}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 min-w-[160px]">
                       <p className="font-medium text-gray-800 text-xs">{p.name || '—'}</p>
                       {p.selectedOptions?.specifications && (
                         <p className="text-[11px] text-gray-400 max-w-[200px] truncate">{p.selectedOptions.specifications}</p>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-[11px] text-gray-500 font-mono whitespace-nowrap">{p.product_id || '—'}</td>
+                    <td className="px-3 py-2.5 text-[11px] text-[#005670] font-mono whitespace-nowrap font-semibold">{p.product_id || '—'}</td>
                     <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">{p.selectedOptions?.room || p.category || '—'}</td>
                     <td className="px-3 py-2.5 text-xs text-center text-gray-700">{qty}</td>
                     <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">
                       <p>{fmt(netCost)}</p>
-                      <p className="text-[11px] text-gray-400">Total: {fmt(netCost * qty)}</p>
+                      <p className="text-[11px] text-gray-400">× {qty} = {fmt(netCost * qty)}</p>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">
                       <p>{fmt(sellPrice)}</p>
-                      <p className="text-[11px] text-gray-400">Total: {fmt(sellPrice * qty)}</p>
+                      <p className="text-[11px] text-gray-400">× {qty} = {fmt(sellPrice * qty)}</p>
                     </td>
                     <td className="px-3 py-2.5 text-[11px] font-mono text-gray-500 whitespace-nowrap">{p.selectedOptions?.poNumber || '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">{p.selectedOptions?.finish || '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">{p.selectedOptions?.fabric || '—'}</td>
+                    <td className="px-3 py-2.5 text-[11px] text-gray-500 max-w-[160px] truncate" title={deliveryStatus || undefined}>
+                      {deliveryStatus || '—'}
+                    </td>
                   </tr>
                 );
               })}
@@ -443,7 +456,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       const res = await fetch(`${backendServer}/api/orders?page=1&limit=500&status=all`,
         { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setAllOrders((data.orders || []).filter(o => o && o.selectedPlan));
+      setAllOrders((data.orders || []).filter(o => o && o.selectedProducts?.length > 0));
     } catch (err) { console.error(err); }
   }, [allOrders.length]);
 
