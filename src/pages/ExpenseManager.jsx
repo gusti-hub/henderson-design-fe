@@ -1304,7 +1304,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-1">
                               <button
-                                onClick={() => window.open(`/admin/purchase-order/${po._orderId || selectedOrder._id}/${vendorId}`, '_blank')}
+                                onClick={() => window.open(`/admin/purchase-order/${po._orderId || selectedOrder._id}/${vendorId}${po.version != null ? '/' + po.version : ''}`, '_blank')}
                                 title="View/Edit PO"
                                 className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
                               >
@@ -1344,7 +1344,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                         <td className="px-3 py-2"><QBCell /></td>
                         <td className="px-4 py-2">
                           <button
-                            onClick={() => window.open(`/admin/purchase-order/${po._orderId || selectedOrder._id}/${pendingVendorId}`, '_blank')}
+                            onClick={() => window.open(`/admin/purchase-order/${po._orderId || selectedOrder._id}/${pendingVendorId}${po.version != null ? '/' + po.version : ''}`, '_blank')}
                             title="View/Edit PO"
                             className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"
                           >
