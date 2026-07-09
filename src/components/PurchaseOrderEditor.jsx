@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, FileText, Printer, ChevronLeft, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 const parseBold = (text) => {
   if (!text) return null;
@@ -626,10 +627,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             </thead>
             <tbody>
               {products.map((product, index) => {
-                const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
+                const imgSrc = toJsDelivrUrl(
+                               product.selectedOptions?.uploadedImages?.[0]?.url ||
                                product.selectedOptions?.image ||
                                product.selectedOptions?.images?.[0] ||
-                               product.imageUrl || null;
+                               product.imageUrl || null);
                 const netCost = (product.selectedOptions?.netCostOverride != null && product.selectedOptions?.netCostOverride !== '')
                   ? parseFloat(product.selectedOptions.netCostOverride)
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);

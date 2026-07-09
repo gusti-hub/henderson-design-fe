@@ -18,6 +18,7 @@ import ShipToVendorDropdown from './ShipToVendorDropdown';
 import StatusReportFields from './StatusReportFields';
 import PricingFields from './PricingFields';
 import { uploadFileToS3 } from '../utils/uploadToS3';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 import AuditLogDrawer from './AuditLogDrawer';
 import POVendorSelector from './POVendorSelector';
 
@@ -2049,10 +2050,14 @@ const ProductCard = ({
 
   const getAllImages = () => {
     const images = [];
-    if (opts.image) images.push({ url: opts.image, source: 'primary' });
-    (opts.images || []).forEach(url => { if (url && !images.find(i => i.url === url)) images.push({ url, source: 'gallery' }); });
+    if (opts.image) images.push({ url: toJsDelivrUrl(opts.image), source: 'primary' });
+    (opts.images || []).forEach(raw => {
+      const url = toJsDelivrUrl(raw);
+      if (url && !images.find(i => i.url === url)) images.push({ url, source: 'gallery' });
+    });
     (opts.uploadedImages || []).forEach(img => {
-      const url = img.url || img.previewUrl || (img.data ? `data:${img.contentType};base64,${img.data}` : null);
+      const raw = img.url || img.previewUrl || (img.data ? `data:${img.contentType};base64,${img.data}` : null);
+      const url = toJsDelivrUrl(raw);
       if (url) images.push({ url, source: 'uploaded', filename: img.filename });
     });
     return images;

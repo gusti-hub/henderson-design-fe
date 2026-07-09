@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, action }) => {
   if (!isOpen) return null;
@@ -149,7 +150,7 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
         {order.selectedProducts?.map((product, index) => (
           <div key={index} className="flex items-start gap-4 border-b pb-4 last:border-b-0">
             <img
-              src={product.selectedOptions?.image || '/placeholder.png'}
+              src={toJsDelivrUrl(product.selectedOptions?.image) || '/placeholder.png'}
               alt={product.name}
               className="w-20 h-20 object-cover rounded"
               onError={(e) => {

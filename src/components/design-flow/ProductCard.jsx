@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { toJsDelivrUrl } from '../../utils/imageUrl';
 
 const ProductCard = ({ product, onCustomize }) => {
   const [imageLoading, setImageLoading] = useState(true);
@@ -13,7 +14,7 @@ const ProductCard = ({ product, onCustomize }) => {
   const sceneRef = useRef(null);
   
   // Check if product has 3D model (OBJ file)
-  const imageUrl = product.variants && product.variants[0]?.image?.url ? product.variants[0].image.url : null;
+  const imageUrl = toJsDelivrUrl(product.variants && product.variants[0]?.image?.url ? product.variants[0].image.url : null);
   const is3DModel = imageUrl && imageUrl.toLowerCase().endsWith('.obj');
   
   // Set up the 3D model viewer as soon as the component mounts

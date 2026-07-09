@@ -19,6 +19,7 @@ import {
   Move
 } from 'lucide-react';
 import { backendServer } from '../../utils/info';
+import { toJsDelivrUrl } from '../../utils/imageUrl';
 import { FLOOR_PLAN_TYPES } from '../../config/floorPlans';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import Furniture360Viewer from './Furniture360Viewer';
@@ -107,10 +108,10 @@ const ProductImageZoom = ({ imageUrl, altText, onLoad, onError }) => {
         onMouseDown={handleMouseDown}
       >
         <img
-          src={imageUrl}
+          src={toJsDelivrUrl(imageUrl)}
           alt={altText}
           className="max-w-full max-h-full h-auto w-auto object-contain transition-transform duration-200"
-          style={{ 
+          style={{
             transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
             transformOrigin: 'center',
           }}
@@ -237,7 +238,7 @@ const ProductDetailModal = ({ product, onClose }) => {
               />
             ) : mediaType === 'video' && product.selectedOptions?.image ? (
               <video
-                src={product.selectedOptions.image}
+                src={toJsDelivrUrl(product.selectedOptions.image)}
                 controls
                 autoPlay
                 loop
@@ -1073,7 +1074,7 @@ const PaymentPage = ({
             <div className="relative w-16 h-16 flex-shrink-0">
               {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
                 <video
-                  src={product.selectedOptions.image}
+                  src={toJsDelivrUrl(product.selectedOptions.image)}
                   className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                   autoPlay
                   loop
@@ -1092,7 +1093,7 @@ const PaymentPage = ({
                 />
               ) : (
                 <img
-                  src={product.selectedOptions?.image || '/images/placeholder.png'}
+                  src={toJsDelivrUrl(product.selectedOptions?.image) || '/images/placeholder.png'}
                   alt={product.name}
                   className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => handleViewSelectedProduct(product)}

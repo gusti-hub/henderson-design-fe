@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Printer, X, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 // ─── Print-safe image (converts to base64 before print) ──────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
@@ -100,7 +101,7 @@ const COGReportViewer = ({ orderId, onClose }) => {
 
   const getPrimaryImage = (p) => {
     const opts = p.selectedOptions || {};
-    return opts.uploadedImages?.[0]?.url || opts.image || opts.images?.[0] || null;
+    return toJsDelivrUrl(opts.uploadedImages?.[0]?.url || opts.image || opts.images?.[0] || null);
   };
 
   const groupByRoom = (products) => {

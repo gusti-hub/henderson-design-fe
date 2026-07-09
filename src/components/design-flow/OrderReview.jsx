@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, AlertCircle, X, Loader, ZoomIn, ZoomOut, Move } from 'lucide-react';
 import { FLOOR_PLAN_TYPES } from '../../config/floorPlans';
 import { backendServer } from '../../utils/info';
+import { toJsDelivrUrl } from '../../utils/imageUrl';
 import Furniture360Viewer from './Furniture360Viewer';
 
 // ProductImageZoom component (sama seperti di AreaCustomization)
@@ -88,7 +89,7 @@ const ProductImageZoom = ({ imageUrl, altText, onLoad, onError }) => {
         onMouseDown={handleMouseDown}
       >
         <img
-          src={imageUrl}
+          src={toJsDelivrUrl(imageUrl)}
           alt={altText}
           className="max-w-full max-h-full h-auto w-auto object-contain transition-transform duration-200"
           style={{ 
@@ -219,7 +220,7 @@ const ProductDetailModal = ({ product, onClose }) => {
               />
             ) : mediaType === 'video' && product.selectedOptions?.image ? (
               <video
-                src={product.selectedOptions.image}
+                src={toJsDelivrUrl(product.selectedOptions.image)}
                 controls
                 autoPlay
                 loop
@@ -436,7 +437,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                 <div className="relative w-24 h-24 flex-shrink-0">
                   {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
                     <video
-                      src={product.selectedOptions.image}
+                      src={toJsDelivrUrl(product.selectedOptions.image)}
                       className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                       autoPlay
                       loop
@@ -455,7 +456,7 @@ const OrderReview = ({ selectedPlan, designSelections, clientInfo, onConfirmOrde
                     />
                   ) : (
                     <img
-                      src={product.selectedOptions?.image || '/images/placeholder.png'}
+                      src={toJsDelivrUrl(product.selectedOptions?.image) || '/images/placeholder.png'}
                       alt={product.name}
                       className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => handleViewSelectedProduct(product)}

@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Loader2, Check, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 // ─── Get image URL from flat product schema ────────────────────────────────
 const getProductImage = (product) => {
   if (!product) return null;
-  if (product.image?.url) return product.image.url;
-  if (Array.isArray(product.uploadedImages) && product.uploadedImages.length > 0) {
+  let url = null;
+  if (product.image?.url) url = product.image.url;
+  else if (Array.isArray(product.uploadedImages) && product.uploadedImages.length > 0) {
     const primary = product.uploadedImages.find(img => img.isPrimary);
-    return primary?.url || product.uploadedImages[0]?.url || null;
-  }
-  if (Array.isArray(product.images) && product.images.length > 0) {
+    url = primary?.url || product.uploadedImages[0]?.url || null;
+  } else if (Array.isArray(product.images) && product.images.length > 0) {
     const primary = product.images.find(img => img.isPrimary);
-    return primary?.url || product.images[0]?.url || null;
+    url = primary?.url || product.images[0]?.url || null;
   }
-  return null;
+  return toJsDelivrUrl(url);
 };
 
 // ─── Finish badges ─────────────────────────────────────────────────────────

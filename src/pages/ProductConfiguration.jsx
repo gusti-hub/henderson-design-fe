@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, ImageIcon, Upload } from 'lucide-react';
 import SearchFilter from '../components/common/SearchFilter';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 import BulkProductImport from '../pages/BulkProductImport';
 import BulkDeleteProducts from './BulkDeleteProduct';
 import BulkUpdateProducts from './BulkUpdateProducts';
@@ -73,7 +74,7 @@ const ImageCell = ({ url, name }) => {
   }
   return (
     <div className="relative group w-12 h-12">
-      <img src={url} alt={name}
+      <img src={toJsDelivrUrl(url)} alt={name}
         className="w-12 h-12 rounded-lg object-cover border border-gray-200"
         onError={() => setFailed(true)}
         referrerPolicy="no-referrer"

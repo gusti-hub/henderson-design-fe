@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Printer, Loader2, AlertCircle } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
@@ -108,7 +109,7 @@ const ProposalUnit = ({ proposalData, clientInfo, proposalNumber }) => {
                 const lineTotal = sub + tax;
                 const bt = i === 0 ? 'none' : '1px solid #e5e7eb';
                 const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
-                const imgSrc = [o?.uploadedImages?.[0]?.url, o?.image, o?.images?.[0], p.image, p.imageUrl].find(s => s && typeof s === 'string' && s.trim()) || null;
+                const imgSrc = toJsDelivrUrl([o?.uploadedImages?.[0]?.url, o?.image, o?.images?.[0], p.image, p.imageUrl].find(s => s && typeof s === 'string' && s.trim()) || null);
                 return (
                   <tr key={i}>
                     <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle' }}>

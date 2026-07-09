@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Trash2, AlertCircle, Loader, ZoomIn, ZoomOut, Move } from 'lucide-react';
 import { generateFurnitureAreas, getPlanDimensions } from './floorPlanConfig';
 import { backendServer } from '../../utils/info';
+import { toJsDelivrUrl } from '../../utils/imageUrl';
 import Furniture360Viewer from './Furniture360Viewer';
 import ProductCard from './ProductCard';
 
@@ -88,7 +89,7 @@ const ProductImageZoom = ({ imageUrl, altText, onLoad, onError }) => {
         onMouseDown={handleMouseDown}
       >
         <img
-          src={imageUrl}
+          src={toJsDelivrUrl(imageUrl)}
           alt={altText}
           className="max-w-full max-h-full h-auto w-auto object-contain transition-transform duration-200"
           style={{ 
@@ -742,7 +743,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                 />
               ) : mediaType === 'video' && product.selectedOptions?.image ? (
                 <video
-                  src={product.selectedOptions.image}
+                  src={toJsDelivrUrl(product.selectedOptions.image)}
                   controls
                   autoPlay
                   loop
@@ -979,7 +980,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                   <>
                     {getSelectedVariant().image.url.toLowerCase().endsWith('.mp4') ? (
                       <video
-                        src={getSelectedVariant().image.url}
+                        src={toJsDelivrUrl(getSelectedVariant().image.url)}
                         controls
                         autoPlay
                         loop
@@ -1485,7 +1486,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                        <div className="relative w-20 h-20 flex-shrink-0">
                          {product.selectedOptions?.image?.toLowerCase().endsWith('.mp4') ? (
                            <video
-                             src={product.selectedOptions.image}
+                             src={toJsDelivrUrl(product.selectedOptions.image)}
                              className="w-full h-full object-cover rounded cursor-pointer"
                              muted
                              autoPlay
@@ -1504,7 +1505,7 @@ const AreaCustomization = ({ selectedPlan, floorPlanImage, onComplete, existingO
                            />
                          ) : (
                            <img
-                             src={product.selectedOptions?.image || '/images/placeholder.png'}
+                             src={toJsDelivrUrl(product.selectedOptions?.image) || '/images/placeholder.png'}
                              alt={product.name}
                              className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                              onClick={() => handleViewSelectedProduct(product)}

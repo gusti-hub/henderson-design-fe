@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Printer, ChevronLeft, Loader2, RefreshCw, Send, GitCompare } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 // ─── Inline image with print-safe base64 ─────────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
@@ -593,10 +594,11 @@ const BillInvoiceEditor = ({ orderId, vendorId, poVersionId, poNumber, onClose }
             </thead>
             <tbody>
               {products.map((product, index) => {
-                const imgSrc = product.selectedOptions?.uploadedImages?.[0]?.url ||
+                const imgSrc = toJsDelivrUrl(
+                               product.selectedOptions?.uploadedImages?.[0]?.url ||
                                product.selectedOptions?.image ||
                                product.selectedOptions?.images?.[0] ||
-                               product.imageUrl || null;
+                               product.imageUrl || null);
                 const netCost = (product.selectedOptions?.netCostOverride != null && product.selectedOptions?.netCostOverride !== '')
                   ? parseFloat(product.selectedOptions.netCostOverride)
                   : parseFloat(product.unitPrice || 0);

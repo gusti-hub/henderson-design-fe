@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save, Plus } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
@@ -55,8 +56,9 @@ const CONTENT_H = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
 const getImgSrc = p => {
   const o = p.selectedOptions || {};
-  return [o?.uploadedImages?.[0]?.url, o?.image, o?.images?.[0], p.image, p.imageUrl]
+  const url = [o?.uploadedImages?.[0]?.url, o?.image, o?.images?.[0], p.image, p.imageUrl]
     .find(s => s && typeof s === 'string' && s.trim()) || null;
+  return toJsDelivrUrl(url);
 };
 
 const ROOM_ORDER = [
