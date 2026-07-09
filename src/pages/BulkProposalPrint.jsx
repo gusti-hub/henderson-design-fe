@@ -394,8 +394,9 @@ const BulkProposalPrint = () => {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; background: white; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          /* Running footer on every print page */
+          /* Running footer — fixed at bottom of every printed page */
           .bulk-page-footer {
+            display: block !important;
             position: fixed;
             bottom: 0.28in;
             left: ${PAD_IN}in;
@@ -412,21 +413,12 @@ const BulkProposalPrint = () => {
         @page { size: 8.5in 11in; margin: 0; }
         @keyframes spin { to { transform: rotate(360deg); } }
         body { margin: 0; background: #b8b8b8; }
-        /* Screen-only footer preview at bottom of each page */
-        .bulk-page-footer {
-          border-top: 1px solid #d1d5db;
-          padding-top: 5px;
-          text-align: center;
-          font-size: 10px;
-          color: rgb(0,86,112);
-          line-height: 1.5;
-          margin-top: auto;
-          padding-bottom: 0.28in;
-        }
+        /* Hidden on screen — only appears via position:fixed in print */
+        .bulk-page-footer { display: none; }
       `}</style>
 
-      {/* Single running footer div (fixed in print, appears on every page) */}
-      <div className="bulk-page-footer" aria-hidden="true">
+      {/* Footer div: hidden on screen, fixed at bottom of every printed page */}
+      <div className="bulk-page-footer">
         <p style={{ margin: 0 }}>Henderson Design Group 4343 Royal Place, Honolulu, HI, 96816</p>
         <p style={{ margin: 0 }}>Phone: (808) 315-8782</p>
       </div>
