@@ -432,6 +432,10 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [vendorList, setVendorList] = useState([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState('');
+  const [proposalSelectModal, setProposalSelectModal] = useState(false);
+  const [proposalVersionsData, setProposalVersionsData] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [selectedVersionRefs, setSelectedVersionRefs] = useState(new Set());
   // Client-level view: { userId, clientInfo }
   const [selectedClient, setSelectedClient] = useState(null);
 
@@ -617,10 +621,54 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   // ── Bulk Proposal print ───────────────────────────────────────────────────
-  const handleBulkProposals = () => {
+  const handleBulkProposals = async () => {
     if (selectedOrderIds.size === 0) return;
-    const ids = Array.from(selectedOrderIds).join(',');
-    window.open(`/admin/bulk-print?ids=${ids}`, '_blank');
+    setLoadingVersions(true);
+    setProposalSelectModal(true);
+    setProposalVersionsData([]);
+    setSelectedVersionRefs(new Set());
+    try {
+      const token = localStorage.getItem('token');
+      const results = await Promise.all(
+        Array.from(selectedOrderIds).map(async (id) => {
+          const res = await fetch(`${backendServer}/api/proposals/${id}/versions/all`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const r = await res.json();
+          return { orderId: id, versions: r.success ? (r.data || []) : [] };
+        })
+      );
+      const orderMap = new Map(orders.map(o => [o._id, o]));
+      const data = results.map(({ orderId, versions }) => {
+        const order = orderMap.get(orderId);
+        const clientName = order?.clientInfo?.name || '—';
+        const unit = order?.clientInfo?.unitNumber ? `Unit ${order.clientInfo.unitNumber}` : '';
+        const orderLabel = [clientName, unit].filter(Boolean).join(' · ');
+        return { orderId, orderLabel, versions };
+      });
+      setProposalVersionsData(data);
+      const allRefs = new Set();
+      data.forEach(({ orderId, versions }) => {
+        if (versions.length === 0) {
+          allRefs.add(`${orderId}:latest`);
+        } else {
+          versions.forEach(v => allRefs.add(`${orderId}:${v.version}`));
+        }
+      });
+      setSelectedVersionRefs(allRefs);
+    } catch (e) {
+      alert('Failed to load proposal versions.');
+      setProposalSelectModal(false);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const handleConfirmBulkProposals = () => {
+    if (selectedVersionRefs.size === 0) return;
+    const refs = Array.from(selectedVersionRefs).join(',');
+    window.open(`/admin/bulk-print?refs=${refs}`, '_blank');
+    setProposalSelectModal(false);
   };
 
   // ── Download ALL products report (across all clients) ─────────────────────
@@ -1103,6 +1151,132 @@ const AdminOrderList = ({ onOrderClick }) => {
                   className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
                 >
                   Generate PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proposal version selection modal */}
+      {proposalSelectModal && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+            <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <BookMarked className="w-5 h-5" />
+                <h3 className="font-semibold text-base">Select Proposals to Print</h3>
+              </div>
+              <button onClick={() => setProposalSelectModal(false)} className="hover:bg-white/20 rounded-lg p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {loadingVersions ? (
+                <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Loading versions…
+                </div>
+              ) : proposalVersionsData.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">No proposal data found.</p>
+              ) : (
+                proposalVersionsData.map(({ orderId, orderLabel, versions }) => {
+                  const allSelected = versions.length === 0
+                    ? selectedVersionRefs.has(`${orderId}:latest`)
+                    : versions.every(v => selectedVersionRefs.has(`${orderId}:${v.version}`));
+                  const toggleAll = () => {
+                    setSelectedVersionRefs(prev => {
+                      const next = new Set(prev);
+                      if (versions.length === 0) {
+                        allSelected ? next.delete(`${orderId}:latest`) : next.add(`${orderId}:latest`);
+                      } else {
+                        versions.forEach(v => {
+                          allSelected ? next.delete(`${orderId}:${v.version}`) : next.add(`${orderId}:${v.version}`);
+                        });
+                      }
+                      return next;
+                    });
+                  };
+                  return (
+                    <div key={orderId} className="border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                        <span className="text-sm font-semibold text-gray-700">{orderLabel}</span>
+                        <button onClick={toggleAll} className="text-xs text-[#005670] font-medium hover:underline">
+                          {allSelected ? 'Deselect all' : 'Select all'}
+                        </button>
+                      </div>
+                      {versions.length === 0 ? (
+                        <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 accent-[#005670]"
+                            checked={selectedVersionRefs.has(`${orderId}:latest`)}
+                            onChange={() => {
+                              setSelectedVersionRefs(prev => {
+                                const next = new Set(prev);
+                                const ref = `${orderId}:latest`;
+                                next.has(ref) ? next.delete(ref) : next.add(ref);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="text-sm text-gray-700">Latest (no saved versions)</span>
+                        </label>
+                      ) : (
+                        versions.map(v => {
+                          const ref = `${orderId}:${v.version}`;
+                          const checked = selectedVersionRefs.has(ref);
+                          const statusCls = v.status === 'approved' ? 'bg-emerald-100 text-emerald-700'
+                            : v.status === 'sent' ? 'bg-blue-100 text-blue-700'
+                            : v.status === 'rejected' ? 'bg-red-100 text-red-600'
+                            : 'bg-gray-100 text-gray-500';
+                          return (
+                            <label key={ref} className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${checked ? 'bg-[#005670]/5' : 'hover:bg-gray-50'}`}>
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 accent-[#005670] flex-shrink-0"
+                                checked={checked}
+                                onChange={() => {
+                                  setSelectedVersionRefs(prev => {
+                                    const next = new Set(prev);
+                                    next.has(ref) ? next.delete(ref) : next.add(ref);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-gray-800">Version {v.version}</span>
+                                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${statusCls}`}>{v.status || 'draft'}</span>
+                                </div>
+                                <p className="text-xs text-gray-400 font-mono mt-0.5">{v.proposalNumber || '—'}</p>
+                              </div>
+                              <span className="text-xs text-gray-400 whitespace-nowrap">
+                                {v.updatedAt ? new Date(v.updatedAt).toLocaleDateString() : ''}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
+              <span className="text-xs text-gray-500">{selectedVersionRefs.size} proposal{selectedVersionRefs.size !== 1 ? 's' : ''} selected</span>
+              <div className="flex gap-2">
+                <button onClick={() => setProposalSelectModal(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmBulkProposals}
+                  disabled={selectedVersionRefs.size === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Open Print Page
                 </button>
               </div>
             </div>
