@@ -620,9 +620,8 @@ const AdminOrderList = ({ onOrderClick }) => {
     finally { setDownloading(false); }
   };
 
-  // ── Bulk Proposal print ───────────────────────────────────────────────────
-  const handleBulkProposals = async () => {
-    if (selectedOrderIds.size === 0) return;
+  // ── Shared: open proposal version-selection modal for a list of order IDs ──
+  const openProposalModal = async (orderIds, labelFn) => {
     setLoadingVersions(true);
     setProposalSelectModal(true);
     setProposalVersionsData([]);
@@ -630,21 +629,27 @@ const AdminOrderList = ({ onOrderClick }) => {
     try {
       const token = localStorage.getItem('token');
       const results = await Promise.all(
-        Array.from(selectedOrderIds).map(async (id) => {
+        orderIds.map(async (id) => {
           const res = await fetch(`${backendServer}/api/proposals/${id}/versions/all`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const r = await res.json();
-          return { orderId: id, versions: r.success ? (r.data || []) : [] };
+          return {
+            orderId: id,
+            versions: r.success ? (r.data || []) : [],
+            orderClientInfo: r.orderClientInfo || null,
+            orderLabel: r.orderLabel || null,
+            orderNumber: r.orderNumber || null,
+          };
         })
       );
-      const orderMap = new Map(orders.map(o => [o._id, o]));
-      const data = results.map(({ orderId, versions }) => {
-        const order = orderMap.get(orderId);
-        const clientName = order?.clientInfo?.name || '—';
-        const unit = order?.clientInfo?.unitNumber ? `Unit ${order.clientInfo.unitNumber}` : '';
-        const orderLabel = [clientName, unit].filter(Boolean).join(' · ');
-        return { orderId, orderLabel, versions };
+      const data = results.map((row) => {
+        const ci = row.versions[0]?.clientInfo || row.orderClientInfo || {};
+        const clientName = ci.name || '—';
+        const unit = ci.unitNumber ? `Unit ${ci.unitNumber}` : '';
+        const clientPart = [clientName, unit].filter(Boolean).join(' · ');
+        const label = labelFn ? labelFn(row) : clientPart;
+        return { orderId: row.orderId, orderLabel: label, versions: row.versions };
       });
       setProposalVersionsData(data);
       const allRefs = new Set();
@@ -662,6 +667,30 @@ const AdminOrderList = ({ onOrderClick }) => {
     } finally {
       setLoadingVersions(false);
     }
+  };
+
+  // ── Bulk Proposal print (from main order selection) ───────────────────────
+  const handleBulkProposals = () => {
+    if (selectedOrderIds.size === 0) return;
+    openProposalModal(Array.from(selectedOrderIds));
+  };
+
+  // ── Print Proposals from client orders view ───────────────────────────────
+  const handleClientProposals = () => {
+    const clientOrders = clientOrdersView?.orders || [];
+    if (clientOrders.length === 0) return;
+    const clientName = clientOrdersView?.clientInfo?.name || '—';
+    const unit = clientOrdersView?.clientInfo?.unitNumber ? `Unit ${clientOrdersView.clientInfo.unitNumber}` : '';
+    const clientPart = [clientName, unit].filter(Boolean).join(' · ');
+    openProposalModal(
+      clientOrders.map(o => o._id),
+      (row) => {
+        const rawLabel = row.orderLabel?.trim();
+        const phaseMatch = rawLabel?.match(/^phase\s*(\d+)$/i);
+        const orderName = phaseMatch ? `Order ${phaseMatch[1]}` : rawLabel || `Order ${row.orderNumber || ''}`;
+        return `${clientPart} — ${orderName}`;
+      }
+    );
   };
 
   const handleConfirmBulkProposals = () => {
@@ -857,10 +886,16 @@ const AdminOrderList = ({ onOrderClick }) => {
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-800 text-sm">All Orders</h3>
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleClientProposals}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors"
+              >
+                <BookMarked className="w-3.5 h-3.5" /> Print Proposals
+              </button>
               {clientOrders.length >= 2 && (
                 <button
                   onClick={openMoveModal}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#005670] border border-[#005670]/30 text-xs font-semibold rounded-lg hover:bg-[#005670]/5 transition-colors"
                 >
                   <ArrowRightLeft className="w-3.5 h-3.5" /> Move Items
                 </button>

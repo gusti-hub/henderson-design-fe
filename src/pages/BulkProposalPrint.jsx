@@ -7,11 +7,9 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 
 const PAD_IN  = 0.5;
-const FOOT_IN = 0.45;
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
 const resolveFinish = c => { if (!c) return ''; const u = c.trim().toUpperCase(); return FINISH_LABELS[u] || c; };
-const resolveFabric = f => f || '';
 const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const parseBold = (text) => {
@@ -29,8 +27,10 @@ const ROOM_ORDER = [
   'KITCHEN','PANTRY','PRIMARY BEDROOM','PRIMARY BEDROOM LANAI','PRIMARY BATHROOM',
   'PRIMARY CLOSET','BEDROOM 2','BATHROOM 2','BEDROOM 2 CLOSET','BEDROOM 2 LANAI',
   'BEDROOM 3','BATHROOM 3','BEDROOM 3 CLOSET','BEDROOM 3 LANAI','BEDROOM 4','BATHROOM 4',
-  'BEDROOM 4 CLOSET','BEDROOM 4 LANAI','POWDER ROOM','OFFICE','OFFICE 1','OFFICE 2','MEDIA ROOM','DEN','HALLWAY','HALLWAY 1','HALLWAY 2',
-  'LANAI','LANAI 1','LANAI 2','LANAI 3','MAIN LANAI','POOL LANAI','POOL AREA','BREAKFAST NOOK','GREAT ROOM','FAMILY ROOM','WET BAR','BBQ AREA',
+  'BEDROOM 4 CLOSET','BEDROOM 4 LANAI','POWDER ROOM','OFFICE','OFFICE 1','OFFICE 2',
+  'MEDIA ROOM','DEN','HALLWAY','HALLWAY 1','HALLWAY 2',
+  'LANAI','LANAI 1','LANAI 2','LANAI 3','MAIN LANAI','POOL LANAI','POOL AREA',
+  'BREAKFAST NOOK','GREAT ROOM','FAMILY ROOM','WET BAR','BBQ AREA',
   'POOL BATH','PAVILLION','GYM','WINE ROOM','REC ROOM','GARAGE','SITTING ROOM',
   'FLEX SPACE','LAUNDRY ROOM','MUD ROOM','TERRACE','BALCONY','OUTDOOR DINING',
   'OUTDOOR LIVING','GUEST SUITE','DESIGN SERVICES','PROJECT MANAGEMENT SERVICES',
@@ -55,7 +55,7 @@ const ROOM_ORDER = [
 ];
 
 const sortRoomEntries = (entries) =>
-  entries.sort(([a], [b]) => {
+  [...entries].sort(([a], [b]) => {
     if (a === '-' || a === '—') return 1;
     if (b === '-' || b === '—') return -1;
     const ia = ROOM_ORDER.indexOf(a.toUpperCase());
@@ -73,19 +73,7 @@ const getImgSrc = p => {
   return toJsDelivrUrl(url);
 };
 
-const PageFooter = () => (
-  <div style={{
-    position: 'absolute', bottom: '0.28in',
-    left: PAD_IN + 'in', right: PAD_IN + 'in',
-    borderTop: '1px solid #d1d5db', paddingTop: '5px',
-    textAlign: 'center', fontSize: '10px', color: 'rgb(0,86,112)',
-    lineHeight: '1.5', background: 'white',
-  }}>
-    <p style={{ margin: 0 }}>Henderson Design Group 4343 Royal Place, Honolulu, HI, 96816</p>
-    <p style={{ margin: 0 }}>Phone: (808) 315-8782</p>
-  </div>
-);
-
+// ─── Product row — matches ProposalEditor ProductRowV2 exactly ─────────────────
 const ProductRow = ({ product, isFirst }) => {
   const o = product.selectedOptions || {};
   const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
@@ -115,7 +103,7 @@ const ProductRow = ({ product, isFirst }) => {
         {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#000000', marginBottom: '1px' }}>{parseBold(o.specifications)}</div>}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
-        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
+        {o.fabric && <div><strong>Fabric:</strong> {o.fabric}</div>}
         {o.size && <div><strong>Dimensions:</strong> {o.size}</div>}
         {materials && <div><strong>Materials:</strong> {materials}</div>}
       </td>
@@ -132,12 +120,14 @@ const ProductRow = ({ product, isFirst }) => {
   );
 };
 
-const ProposalUnit = ({ proposalData, clientInfo, proposalNumber, depositPercent }) => {
+// ─── One proposal unit (products pages only) ──────────────────────────────────
+// Uses normal document flow — content spans multiple print pages naturally.
+// A CSS fixed-position footer appears on every print page via .bulk-page-footer.
+const ProposalUnit = ({ proposalData, clientInfo, proposalNumber, depositPercent, isFirst }) => {
   const today = new Date().toLocaleDateString();
   const products = proposalData.selectedProducts || [];
   const dpct = depositPercent ?? 100;
 
-  // Group by room and sort
   const roomMap = new Map();
   products.forEach(p => {
     const room = p.selectedOptions?.room?.trim() || '—';
@@ -160,14 +150,18 @@ const ProposalUnit = ({ proposalData, clientInfo, proposalNumber, depositPercent
   const total = subtotal + taxTotal;
   const deposit = total * (dpct / 100);
 
-  const slotStyle = {
-    position: 'absolute',
-    top: PAD_IN + 'in', left: PAD_IN + 'in',
-    right: PAD_IN + 'in', bottom: FOOT_IN + 'in',
-  };
-
-  const Header = () => (
-    <div>
+  return (
+    // pageBreakBefore: 'always' on every unit except the very first
+    <div style={{
+      background: 'white',
+      width: '8.5in',
+      boxSizing: 'border-box',
+      padding: `${PAD_IN}in ${PAD_IN}in 1in ${PAD_IN}in`,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '12px',
+      pageBreakBefore: isFirst ? 'auto' : 'always',
+    }}>
+      {/* Header — matches ProposalEditor P1Header */}
       <div style={{ textAlign: 'center', marginBottom: '14px' }}>
         <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
       </div>
@@ -187,116 +181,118 @@ const ProposalUnit = ({ proposalData, clientInfo, proposalNumber, depositPercent
       <div style={{ marginBottom: '12px', fontSize: '12px' }}>
         <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
       </div>
-    </div>
-  );
 
-  return (
-    <>
-      {/* Products page(s) — CSS handles pagination within this unit */}
-      <div style={{ position: 'relative', background: 'white', width: '8.5in', minHeight: '11in', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif', fontSize: '12px', pageBreakAfter: 'always' }}>
-        <div style={slotStyle}>
-          <Header />
-          {roomGroups.map(([room, rps]) => (
-            <div key={room} style={{ marginBottom: '10px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
-                <colgroup>
-                  <col style={{ width: '88px' }} /><col /><col style={{ width: '148px' }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th colSpan={3} style={{ background: '#f0f0f0', padding: '6px 8px', textAlign: 'center', fontWeight: '600', fontSize: '13px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #ccc' }}>
-                      {room}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rps.map((p, i) => (
-                    <ProductRow key={i} product={p} isFirst={i === 0} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-          {/* Totals */}
-          <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
-            <p style={{ margin: 0 }}>Sub Total: ${fmt(subtotal)}</p>
-            <p style={{ margin: 0 }}>Sales Tax: ${fmt(taxTotal)}</p>
-            <p style={{ margin: 0 }}>Total: ${fmt(total)}</p>
-            <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit ({dpct}%): ${fmt(deposit)}</p>
-          </div>
+      {/* Room tables — break-inside: avoid keeps each room together */}
+      {roomGroups.map(([room, rps]) => (
+        <div key={room} style={{ marginBottom: '10px', breakInside: 'avoid-page', pageBreakInside: 'avoid' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
+            <colgroup>
+              <col style={{ width: '88px' }} /><col /><col style={{ width: '148px' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th colSpan={3} style={{ background: '#f0f0f0', padding: '6px 8px', textAlign: 'center', fontWeight: '600', fontSize: '13px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #ccc' }}>
+                  {room}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rps.map((p, i) => <ProductRow key={i} product={p} isFirst={i === 0} />)}
+            </tbody>
+          </table>
         </div>
-        <PageFooter />
+      ))}
+
+      {/* Totals — matches ProposalEditor last-page totals block */}
+      <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8', breakInside: 'avoid-page', pageBreakInside: 'avoid' }}>
+        <p style={{ margin: 0 }}>Sub Total: ${fmt(subtotal)}</p>
+        <p style={{ margin: 0 }}>Sales Tax: ${fmt(taxTotal)}</p>
+        <p style={{ margin: 0 }}>Total: ${fmt(total)}</p>
+        <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit ({dpct}%): ${fmt(deposit)}</p>
       </div>
-    </>
+    </div>
   );
 };
 
+// ─── Warranty page — matches ProposalEditor warranty page exactly ─────────────
 const WarrantyPage = () => (
-  <div style={{ position: 'relative', background: 'white', width: '8.5in', height: '11in', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif', fontSize: '12px', pageBreakAfter: 'always' }}>
-    <div style={{ position: 'absolute', top: '0.5in', left: '0.5in', right: '0.5in', bottom: '0.45in' }}>
-      <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
-      <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
-        <p style={{ marginTop: 0, marginBottom: '10px' }}>Henderson Design Group (HDG) stands behind the quality of the furnishings, fixtures, lighting, accessories, and related products provided as part of the Ālia Furnishings Collections.</p>
-        <p style={{ marginBottom: '6px' }}>Warranty coverage begins on the installation date and includes:</p>
-        <ul style={{ marginLeft: '14px', marginTop: 0, marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <li><strong>90-Day Installation Warranty</strong> – Covers installation workmanship and adjustments.</li>
-          <li><strong>3-Year Structural Warranty</strong> – Covers furniture frames, cabinetry, millwork, and joinery against defects in materials and workmanship.</li>
-          <li><strong>2-Year Upholstery Construction Warranty</strong> – Covers upholstery construction, suspension systems, cushion support systems, and manufacturing-related seam failures.</li>
-          <li><strong>1-Year Finishes, Hardware &amp; Components Warranty</strong> – Covers manufacturing defects in finishes, hardware, lighting, accessories, and related components.</li>
-        </ul>
-        <p style={{ marginBottom: '10px' }}>Certain products, including appliances, electronics, motorized systems, and specialty lighting, may be covered by separate manufacturer warranties.</p>
-        <p style={{ marginBottom: '10px' }}>This warranty does not cover normal wear and tear, misuse, accidents, improper maintenance, environmental damage, natural material variations, or other exclusions outlined in the full warranty documentation.</p>
-        <p style={{ marginBottom: '10px' }}>Warranty claims must be submitted through the HDG Client Portal or to your HDG Project Manager and should include photographs and a description of the issue.</p>
-        <p style={{ marginBottom: '10px' }}>HDG also offers aftercare services, including repairs, refinishing, reupholstery, replacement parts, and furnishing enhancements, which may be available on a fee-for-service basis after the warranty period expires.</p>
-        <p style={{ marginBottom: 0 }}>For complete warranty terms, exclusions, limitations, care requirements, and claim procedures, please refer to the Warranty &amp; Care section of the DeCora website.</p>
-      </div>
+  <div style={{
+    background: 'white',
+    width: '8.5in',
+    boxSizing: 'border-box',
+    padding: `${PAD_IN}in ${PAD_IN}in 1in ${PAD_IN}in`,
+    fontFamily: 'Arial, sans-serif',
+    fontSize: '12px',
+    pageBreakBefore: 'always',
+  }}>
+    <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
+    <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
+      <p style={{ marginTop: 0, marginBottom: '10px' }}>Henderson Design Group (HDG) stands behind the quality of the furnishings, fixtures, lighting, accessories, and related products provided as part of the Ālia Furnishings Collections.</p>
+      <p style={{ marginBottom: '6px' }}>Warranty coverage begins on the installation date and includes:</p>
+      <ul style={{ marginLeft: '14px', marginTop: 0, marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <li><strong>90-Day Installation Warranty</strong> – Covers installation workmanship and adjustments.</li>
+        <li><strong>3-Year Structural Warranty</strong> – Covers furniture frames, cabinetry, millwork, and joinery against defects in materials and workmanship.</li>
+        <li><strong>2-Year Upholstery Construction Warranty</strong> – Covers upholstery construction, suspension systems, cushion support systems, and manufacturing-related seam failures.</li>
+        <li><strong>1-Year Finishes, Hardware &amp; Components Warranty</strong> – Covers manufacturing defects in finishes, hardware, lighting, accessories, and related components.</li>
+      </ul>
+      <p style={{ marginBottom: '10px' }}>Certain products, including appliances, electronics, motorized systems, and specialty lighting, may be covered by separate manufacturer warranties.</p>
+      <p style={{ marginBottom: '10px' }}>This warranty does not cover normal wear and tear, misuse, accidents, improper maintenance, environmental damage, natural material variations, or other exclusions outlined in the full warranty documentation.</p>
+      <p style={{ marginBottom: '10px' }}>Warranty claims must be submitted through the HDG Client Portal or to your HDG Project Manager and should include photographs and a description of the issue.</p>
+      <p style={{ marginBottom: '10px' }}>HDG also offers aftercare services, including repairs, refinishing, reupholstery, replacement parts, and furnishing enhancements, which may be available on a fee-for-service basis after the warranty period expires.</p>
+      <p style={{ marginBottom: 0 }}>For complete warranty terms, exclusions, limitations, care requirements, and claim procedures, please refer to the Warranty &amp; Care section of the DeCora website.</p>
     </div>
-    <PageFooter />
   </div>
 );
 
+// ─── Signature page — matches ProposalEditor signature page exactly ───────────
 const SignaturePage = ({ clientInfo, proposalNumber }) => {
   const today = new Date().toLocaleDateString();
   return (
-    <div style={{ position: 'relative', background: 'white', width: '8.5in', height: '11in', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-      <div style={{ position: 'absolute', top: '0.5in', left: '0.5in', right: '0.5in', bottom: '0.45in' }}>
-        <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-          <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+    <div style={{
+      background: 'white',
+      width: '8.5in',
+      boxSizing: 'border-box',
+      padding: `${PAD_IN}in ${PAD_IN}in 1in ${PAD_IN}in`,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '12px',
+      pageBreakBefore: 'always',
+    }}>
+      <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+        <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+      </div>
+      <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
+          <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
+          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
+          {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
+          {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
         </div>
-        <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-          <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
-            <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
-            {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
-            {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
-            {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
-          </div>
-          <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
-            <p style={{ margin: 0 }}><strong>Proposal #:</strong> {proposalNumber || '—'}</p>
-            <p style={{ margin: 0 }}>Proposal Date: {today}</p>
-          </div>
-        </div>
-        <div style={{ marginBottom: '12px', fontSize: '12px' }}>
-          <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
-        </div>
-        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-          <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
-            <li>Original Buyer: The warranty applies to the original buyer only.</li>
-            <li>Original Installation Location: Valid only for furnishings in the space where they were originally installed.</li>
-            <li>Repair, Touch-Up, or Replacement Only: No refunds.</li>
-            <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
-            <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
-          </ul>
-          <p style={{ marginTop: '30px', fontWeight: '700' }}>100% Deposit</p>
-          <p style={{ marginTop: '30px' }}>Accept and Approve:</p>
-          <div style={{ borderTop: '1px solid black', marginTop: '56px', paddingTop: '6px', fontSize: '11.5px' }}>Signature</div>
+        <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
+          <p style={{ margin: 0 }}><strong>Proposal #:</strong> {proposalNumber || '—'}</p>
+          <p style={{ margin: 0 }}>Proposal Date: {today}</p>
         </div>
       </div>
-      <PageFooter />
+      <div style={{ marginBottom: '12px', fontSize: '12px' }}>
+        <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
+      </div>
+      <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+        <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
+          <li>Original Buyer: The warranty applies to the original buyer only.</li>
+          <li>Original Installation Location: Valid only for furnishings in the space where they were originally installed.</li>
+          <li>Repair, Touch-Up, or Replacement Only: No refunds.</li>
+          <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
+          <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
+        </ul>
+        <p style={{ marginTop: '30px', fontWeight: '700' }}>100% Deposit</p>
+        <p style={{ marginTop: '30px' }}>Accept and Approve:</p>
+        <div style={{ borderTop: '1px solid black', marginTop: '56px', paddingTop: '6px', fontSize: '11.5px' }}>Signature</div>
+      </div>
     </div>
   );
 };
 
+// ─── Main component ───────────────────────────────────────────────────────────
 const BulkProposalPrint = () => {
   const [searchParams] = useSearchParams();
   const refs = (searchParams.get('refs') || '').split(',').filter(Boolean);
@@ -313,7 +309,9 @@ const BulkProposalPrint = () => {
         let fetches;
         if (refs.length > 0) {
           fetches = refs.map(ref => {
-            const [orderId, ver] = ref.split(':');
+            const colonIdx = ref.lastIndexOf(':');
+            const orderId = ref.slice(0, colonIdx);
+            const ver = ref.slice(colonIdx + 1);
             return fetch(`${backendServer}/api/proposals/${orderId}/${ver}`, {
               headers: { Authorization: `Bearer ${token}` },
             }).then(r => r.json());
@@ -333,9 +331,11 @@ const BulkProposalPrint = () => {
             const d = r.data;
             const u = d.user || {};
             const addr = u.address || {};
-            const street = addr.street?.trim() || '';
-            const cityParts = [addr.city, addr.state, addr.zipcode].filter(p => p && p.trim());
             const ci = d.clientInfo || {};
+            const street = ci.street || addr.street?.trim() || '';
+            const cityParts = ci.cityLine
+              ? [ci.cityLine]
+              : [addr.city, addr.state, addr.zipcode].filter(p => p && p.trim());
             return {
               proposalData: d,
               proposalNumber: d.proposalNumber || '—',
@@ -345,8 +345,8 @@ const BulkProposalPrint = () => {
                 name: ci.name || u.name || '—',
                 email: ci.email || u.email || '',
                 unitNumber: ci.unitNumber || u.unitNumber || '',
-                street: ci.street || street,
-                cityLine: ci.cityLine || cityParts.join(', '),
+                street,
+                cityLine: cityParts.join(', '),
               },
             };
           });
@@ -394,11 +394,42 @@ const BulkProposalPrint = () => {
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; background: white; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          /* Running footer on every print page */
+          .bulk-page-footer {
+            position: fixed;
+            bottom: 0.28in;
+            left: ${PAD_IN}in;
+            right: ${PAD_IN}in;
+            border-top: 1px solid #d1d5db;
+            padding-top: 5px;
+            text-align: center;
+            font-size: 10px;
+            color: rgb(0,86,112);
+            line-height: 1.5;
+            background: white;
+          }
         }
         @page { size: 8.5in 11in; margin: 0; }
         @keyframes spin { to { transform: rotate(360deg); } }
         body { margin: 0; background: #b8b8b8; }
+        /* Screen-only footer preview at bottom of each page */
+        .bulk-page-footer {
+          border-top: 1px solid #d1d5db;
+          padding-top: 5px;
+          text-align: center;
+          font-size: 10px;
+          color: rgb(0,86,112);
+          line-height: 1.5;
+          margin-top: auto;
+          padding-bottom: 0.28in;
+        }
       `}</style>
+
+      {/* Single running footer div (fixed in print, appears on every page) */}
+      <div className="bulk-page-footer" aria-hidden="true">
+        <p style={{ margin: 0 }}>Henderson Design Group 4343 Royal Place, Honolulu, HI, 96816</p>
+        <p style={{ margin: 0 }}>Phone: (808) 315-8782</p>
+      </div>
 
       {/* Print toolbar */}
       <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 100, background: '#005670', color: 'white', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Arial, sans-serif' }}>
@@ -417,20 +448,20 @@ const BulkProposalPrint = () => {
         </div>
       </div>
 
-      {/* Proposals */}
+      {/* Content */}
       <div style={{ padding: '20px 0' }}>
         {proposals.map(({ proposalData, clientInfo, proposalNumber, depositPercent }, i) => (
-          <div key={i} style={{ marginBottom: 0 }}>
-            <ProposalUnit
-              proposalData={proposalData}
-              clientInfo={clientInfo}
-              proposalNumber={proposalNumber}
-              depositPercent={depositPercent}
-            />
-          </div>
+          <ProposalUnit
+            key={i}
+            proposalData={proposalData}
+            clientInfo={clientInfo}
+            proposalNumber={proposalNumber}
+            depositPercent={depositPercent}
+            isFirst={i === 0}
+          />
         ))}
 
-        {/* Warranty page — once at the end */}
+        {/* Warranty page — one per print job, after all proposals */}
         <WarrantyPage />
 
         {/* Signature page — uses last proposal's client info */}
