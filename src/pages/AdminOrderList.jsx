@@ -10,7 +10,7 @@ import {
   Loader2, Download, FileText, Edit2, ArrowLeft, X, Check,
   Search, ChevronDown, BarChart2, BookOpen,
   ShoppingCart, TrendingUp, Eye, LayoutList, FolderOpen,
-  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus, ArrowRightLeft,
+  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus, ArrowRightLeft, BookMarked,
 } from 'lucide-react';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { backendServer } from '../utils/info';
@@ -616,6 +616,13 @@ const AdminOrderList = ({ onOrderClick }) => {
     finally { setDownloading(false); }
   };
 
+  // ── Bulk Proposal print ───────────────────────────────────────────────────
+  const handleBulkProposals = () => {
+    if (selectedOrderIds.size === 0) return;
+    const ids = Array.from(selectedOrderIds).join(',');
+    window.open(`/admin/bulk-print?ids=${ids}`, '_blank');
+  };
+
   // ── Download ALL products report (across all clients) ─────────────────────
   const handleDownloadAllReport = async () => {
     setDownloading(true);
@@ -1161,21 +1168,31 @@ const AdminOrderList = ({ onOrderClick }) => {
             </div>
           </div>
 
-          {/* ── Bulk PO export bar ── */}
+          {/* ── Bulk export bar ── */}
           {selectedOrderIds.size > 0 && (
             <div className="flex items-center justify-between bg-[#005670] text-white rounded-xl px-5 py-3 shadow-sm">
               <div>
                 <span className="text-sm font-semibold">{selectedOrderIds.size} unit{selectedOrderIds.size !== 1 ? 's' : ''} selected</span>
-                <span className="ml-2 text-xs opacity-70">— PO export</span>
               </div>
               <div className="flex items-center gap-2">
+                {/* Proposal */}
+                <button
+                  onClick={handleBulkProposals}
+                  disabled={downloading}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
+                >
+                  <BookMarked className="w-4 h-4" />
+                  Print Proposals
+                </button>
+                <div className="w-px h-6 bg-white/30" />
+                {/* PO */}
                 <button
                   onClick={handleBulkExcel}
                   disabled={downloading}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-[#005670] rounded-lg text-sm font-semibold hover:bg-gray-100 disabled:opacity-50"
                 >
                   {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Export Excel
+                  PO Excel
                 </button>
                 <button
                   onClick={handleBulkPdfOpen}
@@ -1183,7 +1200,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                   className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-semibold hover:bg-white/30 disabled:opacity-50"
                 >
                   {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-                  Export PDF
+                  PO PDF
                 </button>
                 <button
                   onClick={() => setSelectedOrderIds(new Set())}
