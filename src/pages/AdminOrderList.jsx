@@ -10,8 +10,9 @@ import {
   Loader2, Download, FileText, Edit2, ArrowLeft, X, Check,
   Search, ChevronDown, BarChart2, BookOpen,
   ShoppingCart, TrendingUp, Eye, LayoutList, FolderOpen,
-  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus,
+  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus, ArrowRightLeft,
 } from 'lucide-react';
+import { toJsDelivrUrl } from '../utils/imageUrl';
 import { backendServer } from '../utils/info';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
 import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor';
@@ -418,6 +419,11 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [editingOrder, setEditingOrder]     = useState(null);
   const [clientOrdersView, setClientOrdersView] = useState(null); // { clientId, clientInfo, orders, loading }
   const [addingNewOrder, setAddingNewOrder] = useState(false);
+  const [moveModal, setMoveModal] = useState(false);
+  const [moveSourceId, setMoveSourceId] = useState('');
+  const [moveTargetId, setMoveTargetId] = useState('');
+  const [moveSelectedIds, setMoveSelectedIds] = useState(new Set());
+  const [movingItems, setMovingItems] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
@@ -679,6 +685,48 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
+  const openMoveModal = () => {
+    const orders = clientOrdersView?.orders || [];
+    if (orders.length < 2) return;
+    const firstId = orders[0]._id;
+    const secondId = orders[1]._id;
+    setMoveSourceId(firstId);
+    setMoveTargetId(secondId);
+    setMoveSelectedIds(new Set());
+    setMoveModal(true);
+  };
+
+  const handleMoveProducts = async () => {
+    if (!moveSourceId || !moveTargetId || moveSelectedIds.size === 0) return;
+    setMovingItems(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/move-products`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceOrderId: moveSourceId,
+          targetOrderId: moveTargetId,
+          productIds: [...moveSelectedIds],
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed');
+      }
+      const refetch = await fetch(`${backendServer}/api/orders/client/${clientOrdersView.clientId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      const data = await refetch.json();
+      setClientOrdersView(prev => prev ? { ...prev, orders: data.orders || [] } : null);
+      setMoveModal(false);
+      setSuccessMessage(`Moved ${moveSelectedIds.size} item(s) successfully`);
+    } catch (err) {
+      alert(err.message || 'Failed to move items.');
+    } finally {
+      setMovingItems(false);
+    }
+  };
+
   const handleBack = () => {
     setEditingOrder(null);
     if (clientOrdersView) {
@@ -753,16 +801,26 @@ const AdminOrderList = ({ onOrderClick }) => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-800 text-sm">All Orders</h3>
-            <button
-              onClick={handleNewOrderFromTable}
-              disabled={addingNewOrder}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] text-white text-xs font-semibold rounded-lg hover:bg-[#004558] transition-colors disabled:opacity-50"
-            >
-              {addingNewOrder
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Plus className="w-3.5 h-3.5" />}
-              New Order
-            </button>
+            <div className="flex items-center gap-2">
+              {clientOrders.length >= 2 && (
+                <button
+                  onClick={openMoveModal}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5" /> Move Items
+                </button>
+              )}
+              <button
+                onClick={handleNewOrderFromTable}
+                disabled={addingNewOrder}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] text-white text-xs font-semibold rounded-lg hover:bg-[#004558] transition-colors disabled:opacity-50"
+              >
+                {addingNewOrder
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Plus className="w-3.5 h-3.5" />}
+                New Order
+              </button>
+            </div>
           </div>
 
           {loadingClientOrders ? (
@@ -828,6 +886,161 @@ const AdminOrderList = ({ onOrderClick }) => {
             </table>
           )}
         </div>
+
+        {/* ── Move Items Modal ───────────────────────────────────── */}
+        {moveModal && (() => {
+          const orders = clientOrders;
+          const sourceOrder = orders.find(o => o._id === moveSourceId);
+          const sourceProducts = sourceOrder?.selectedProducts || [];
+          const allChecked = sourceProducts.length > 0 && sourceProducts.every(p => moveSelectedIds.has(p._id));
+
+          const orderLabel = (o) => {
+            const raw = o.orderLabel?.trim();
+            return raw || (o.orderNumber ? `Order ${o.orderNumber}` : 'Order');
+          };
+
+          return (
+            <div className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+                {/* Header */}
+                <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <ArrowRightLeft className="w-5 h-5" />
+                    <h3 className="font-semibold text-base">Move Items Between Orders</h3>
+                  </div>
+                  <button onClick={() => setMoveModal(false)} className="hover:bg-white/20 rounded-lg p-1 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-5 overflow-y-auto flex-1 space-y-4">
+                  {/* From / To selectors */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">From</label>
+                      <select
+                        value={moveSourceId}
+                        onChange={e => {
+                          setMoveSourceId(e.target.value);
+                          setMoveSelectedIds(new Set());
+                          if (e.target.value === moveTargetId) {
+                            const other = orders.find(o => o._id !== e.target.value);
+                            if (other) setMoveTargetId(other._id);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
+                      >
+                        {orders.map(o => (
+                          <option key={o._id} value={o._id}>{orderLabel(o)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">To</label>
+                      <select
+                        value={moveTargetId}
+                        onChange={e => {
+                          setMoveTargetId(e.target.value);
+                          if (e.target.value === moveSourceId) {
+                            const other = orders.find(o => o._id !== e.target.value);
+                            if (other) setMoveSourceId(other._id);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
+                      >
+                        {orders.filter(o => o._id !== moveSourceId).map(o => (
+                          <option key={o._id} value={o._id}>{orderLabel(o)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Product list */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Select items to move ({moveSelectedIds.size} selected)
+                      </p>
+                      {sourceProducts.length > 0 && (
+                        <button
+                          onClick={() => setMoveSelectedIds(allChecked ? new Set() : new Set(sourceProducts.map(p => p._id)))}
+                          className="text-xs text-[#005670] font-medium hover:underline"
+                        >
+                          {allChecked ? 'Deselect all' : 'Select all'}
+                        </button>
+                      )}
+                    </div>
+                    {sourceProducts.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-6">No products in this order</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                        {sourceProducts.map(p => {
+                          const imgUrl = toJsDelivrUrl(
+                            p.selectedOptions?.uploadedImages?.[0]?.url ||
+                            p.selectedOptions?.image || p.imageUrl || null
+                          );
+                          const checked = moveSelectedIds.has(p._id);
+                          return (
+                            <label
+                              key={p._id}
+                              className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                                checked ? 'bg-[#005670]/5 border-[#005670]/30' : 'border-gray-100 hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 accent-[#005670] flex-shrink-0"
+                                checked={checked}
+                                onChange={() => {
+                                  setMoveSelectedIds(prev => {
+                                    const next = new Set(prev);
+                                    next.has(p._id) ? next.delete(p._id) : next.add(p._id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              {imgUrl ? (
+                                <img src={imgUrl} alt={p.name} className="w-10 h-10 rounded object-cover flex-shrink-0 bg-gray-100" />
+                              ) : (
+                                <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                  <Package className="w-4 h-4 text-gray-300" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-800 truncate">{p.name || 'Untitled'}</p>
+                                <p className="text-xs text-gray-400">{p.selectedOptions?.room || '—'}</p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-end gap-3 flex-shrink-0">
+                  <button
+                    onClick={() => setMoveModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMoveProducts}
+                    disabled={moveSelectedIds.size === 0 || movingItems}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {movingItems
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <ArrowRightLeft className="w-4 h-4" />}
+                    Move {moveSelectedIds.size > 0 ? `${moveSelectedIds.size} Item${moveSelectedIds.size > 1 ? 's' : ''}` : 'Items'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }
