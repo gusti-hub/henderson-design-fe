@@ -10,6 +10,19 @@ const PAD_IN  = 0.5;
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
 const resolveFinish = c => { if (!c) return ''; const u = c.trim().toUpperCase(); return FINISH_LABELS[u] || c; };
+
+const FABRIC_CODES = {
+  '01':'Merino Snow','02':'Merino Wool','03':'Merino Cloud','04':'Peppin Silver','05':'Peppin Jute',
+  '06':'Peppin Chess','07':'Navara-011','08':'Navara-012','09':'Navara-013','10':'Palopo #WR160',
+  '11':'Dayevella Stone','12':'Peppin Portobelo','13':'Merino Silver','14':'Merino Light Grey',
+  '15':'Merino Pebble','16':'Lagoon #WR141','17':'Lagoon #WR160','18':'Peppin Coblestone',
+  '19':'Peppin Jute','20':'Peppin Chess','0A':'Gusto Angora','0B':'Gusto Shell','0C':'Gusto Dune',
+  '0D':'Indulge Swan','0E':'Indulge Dune','0F':'Indulge Sand','0G':'Navara-011','0H':'Navara-012',
+  '0I':'Navara-013','0J':'Evo Creame','0K':'Evo Plaza','0L':'Evo Sand','0M':'Drama Wool',
+  '0N':'Drama Marble','0O':'Drama Linen','0P':'Chill Out Ivory','0Q':'Chill Out Antique',
+  '0R':'Chill Out Chinchilla','0S':'Rewind Sesame','0T':'Rewind Marble','0U':'Rewind Gull',
+};
+const resolveFabric = c => { if (!c) return ''; const u = c.trim().toUpperCase(); return FABRIC_CODES[u] || c; };
 const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const parseBold = (text) => {
@@ -103,7 +116,7 @@ const ProductRow = ({ product, isFirst }) => {
         {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#000000', marginBottom: '1px' }}>{parseBold(o.specifications)}</div>}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
-        {o.fabric && <div><strong>Fabric:</strong> {o.fabric}</div>}
+        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
         {o.size && <div><strong>Dimensions:</strong> {o.size}</div>}
         {materials && <div><strong>Materials:</strong> {materials}</div>}
       </td>
@@ -245,7 +258,7 @@ const WarrantyPage = () => (
 );
 
 // ─── Signature page — matches ProposalEditor signature page exactly ───────────
-const SignaturePage = ({ clientInfo, proposalNumber }) => {
+const SignaturePage = ({ clientInfo, proposalNumber, depositPercent = 100 }) => {
   const today = new Date().toLocaleDateString();
   return (
     <div style={{
@@ -284,7 +297,7 @@ const SignaturePage = ({ clientInfo, proposalNumber }) => {
           <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
           <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
         </ul>
-        <p style={{ marginTop: '30px', fontWeight: '700' }}>100% Deposit</p>
+        <p style={{ marginTop: '30px', fontWeight: '700' }}>{depositPercent}% Deposit</p>
         <p style={{ marginTop: '30px' }}>Accept and Approve:</p>
         <div style={{ borderTop: '1px solid black', marginTop: '56px', paddingTop: '6px', fontSize: '11.5px' }}>Signature</div>
       </div>
@@ -460,6 +473,7 @@ const BulkProposalPrint = () => {
         <SignaturePage
           clientInfo={lastProposal.clientInfo}
           proposalNumber={lastProposal.proposalNumber}
+          depositPercent={lastProposal.depositPercent}
         />
       </div>
     </>

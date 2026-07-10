@@ -126,7 +126,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary, onPrintProposals }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -182,6 +182,11 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={BarChart2}    label="COG + Bill Comparison"         onClick={onCOGWithBill}           color="text-indigo-600" />
           <Sep />
           <Item icon={TrendingUp}   label="Project Summary"               onClick={onProjectSummary}        color="text-teal-600" />
+          {onPrintProposals && <>
+            <Sep />
+            <Group label="Proposals" />
+            <Item icon={BookMarked} label="Print Proposals"               onClick={onPrintProposals}        color="text-amber-600" />
+          </>}
         </div>,
         document.body
       )}
@@ -562,6 +567,7 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [proposalVersionsData, setProposalVersionsData] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [selectedVersionRefs, setSelectedVersionRefs] = useState(new Set());
+  const [clientPrintIds, setClientPrintIds] = useState(new Set());
   // Client-level view: { userId, clientInfo }
   const [selectedClient, setSelectedClient] = useState(null);
 
@@ -603,6 +609,8 @@ const AdminOrderList = ({ onOrderClick }) => {
   useEffect(() => {
     if (view === 'products') fetchAllOrders();
   }, [view]);
+
+  useEffect(() => { setClientPrintIds(new Set()); }, [clientOrdersView?.clientId]);
 
   const handleStatusChange = (orderId, newStatus) => {
     setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: newStatus } : o));
@@ -778,15 +786,17 @@ const AdminOrderList = ({ onOrderClick }) => {
         return { orderId: row.orderId, orderLabel: label, versions: row.versions };
       });
       setProposalVersionsData(data);
-      const allRefs = new Set();
+      // Auto-select only the latest version per order (not all versions)
+      const autoRefs = new Set();
       data.forEach(({ orderId, versions }) => {
         if (versions.length === 0) {
-          allRefs.add(`${orderId}:latest`);
+          autoRefs.add(`${orderId}:latest`);
         } else {
-          versions.forEach(v => allRefs.add(`${orderId}:${v.version}`));
+          const latest = versions.reduce((max, v) => v.version > max.version ? v : max, versions[0]);
+          autoRefs.add(`${orderId}:${latest.version}`);
         }
       });
-      setSelectedVersionRefs(allRefs);
+      setSelectedVersionRefs(autoRefs);
     } catch (e) {
       alert('Failed to load proposal versions.');
       setProposalSelectModal(false);
@@ -801,15 +811,45 @@ const AdminOrderList = ({ onOrderClick }) => {
     openProposalModal(Array.from(selectedOrderIds));
   };
 
+  // ── Print Proposals from a single order row in the main list ─────────────
+  const handleOrderRowPrintProposals = async (order) => {
+    const clientId = typeof order.user === 'object' ? (order.user?._id || order.user?.id) : order.user;
+    if (!clientId) return;
+    const clientName = order.clientInfo?.name || '—';
+    const unit = order.clientInfo?.unitNumber ? `Unit ${order.clientInfo.unitNumber}` : '';
+    const clientPart = [clientName, unit].filter(Boolean).join(' · ');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/client/${clientId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const clientOrders = data.orders || [];
+      if (clientOrders.length === 0) return;
+      openProposalModal(
+        clientOrders.map(o => o._id),
+        (row) => {
+          const rawLabel = row.orderLabel?.trim();
+          const phaseMatch = rawLabel?.match(/^phase\s*(\d+)$/i);
+          const orderName = phaseMatch ? `Order ${phaseMatch[1]}` : rawLabel || `Order ${row.orderNumber || ''}`;
+          return `${clientPart} — ${orderName}`;
+        }
+      );
+    } catch { alert('Failed to load client proposals.'); }
+  };
+
   // ── Print Proposals from client orders view ───────────────────────────────
   const handleClientProposals = () => {
     const clientOrders = clientOrdersView?.orders || [];
     if (clientOrders.length === 0) return;
+    const ordersToUse = clientPrintIds.size > 0
+      ? clientOrders.filter(o => clientPrintIds.has(o._id))
+      : clientOrders;
+    if (ordersToUse.length === 0) return;
     const clientName = clientOrdersView?.clientInfo?.name || '—';
     const unit = clientOrdersView?.clientInfo?.unitNumber ? `Unit ${clientOrdersView.clientInfo.unitNumber}` : '';
     const clientPart = [clientName, unit].filter(Boolean).join(' · ');
     openProposalModal(
-      clientOrders.map(o => o._id),
+      ordersToUse.map(o => o._id),
       (row) => {
         const rawLabel = row.orderLabel?.trim();
         const phaseMatch = rawLabel?.match(/^phase\s*(\d+)$/i);
@@ -1016,7 +1056,8 @@ const AdminOrderList = ({ onOrderClick }) => {
                 onClick={handleClientProposals}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors"
               >
-                <BookMarked className="w-3.5 h-3.5" /> Print Proposals
+                <BookMarked className="w-3.5 h-3.5" />
+                Print Proposals{clientPrintIds.size > 0 ? ` (${clientPrintIds.size})` : ''}
               </button>
               {clientOrders.length >= 2 && (
                 <button
@@ -1049,6 +1090,14 @@ const AdminOrderList = ({ onOrderClick }) => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
+                  <th className="w-10 px-3 py-3">
+                    <input type="checkbox" className="w-4 h-4 accent-[#005670] rounded"
+                      checked={clientOrders.length > 0 && clientOrders.every(o => clientPrintIds.has(o._id))}
+                      onChange={e => e.target.checked
+                        ? setClientPrintIds(new Set(clientOrders.map(o => o._id)))
+                        : setClientPrintIds(new Set())}
+                    />
+                  </th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Products</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -1064,7 +1113,17 @@ const AdminOrderList = ({ onOrderClick }) => {
                     ? `Order ${phaseMatch[1]}`
                     : rawLabel || (order.orderNumber ? `Order ${order.orderNumber}` : 'Order');
                   return (
-                    <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={order._id} className={`hover:bg-gray-50/50 transition-colors ${clientPrintIds.has(order._id) ? 'bg-amber-50/40' : ''}`}>
+                      <td className="px-3 py-3.5 w-10">
+                        <input type="checkbox" className="w-4 h-4 accent-[#005670] rounded"
+                          checked={clientPrintIds.has(order._id)}
+                          onChange={() => setClientPrintIds(prev => {
+                            const next = new Set(prev);
+                            next.has(order._id) ? next.delete(order._id) : next.add(order._id);
+                            return next;
+                          })}
+                        />
+                      </td>
                       <td className="px-5 py-3.5">
                         <span className="font-medium text-gray-800 text-sm">{displayName}</span>
                       </td>
@@ -1527,6 +1586,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                             const cid = typeof order.user === 'object' ? order.user?._id : order.user;
                             setProjectSummaryClientId(cid || null);
                           }}
+                          onPrintProposals={() => handleOrderRowPrintProposals(order)}
                         />
                       </td>
                     </tr>
