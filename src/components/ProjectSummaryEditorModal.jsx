@@ -89,6 +89,22 @@ const SummaryPreview = ({ preview, lang = 'en' }) => {
           <LineRow label={t.s1Original} value={s1.originalCollectionInvestment} />
           <Div />
           <LineRow label={t.s1Deposit}  value={s1.depositReceived} negative />
+          {s1.depositReceived > 0 && (
+            <div className="pl-2 border-l-2 border-[#005670]/20 mt-1 mb-1 space-y-0.5">
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>{t.s1DepDesignFee}</span>
+                <span>${(s1.depositDesignFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>{t.s1DepTax}</span>
+                <span>${(s1.depositTax || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>{t.s1DepAmount}</span>
+                <span>${(s1.depositAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          )}
           <Div />
           <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
         </SectionCard>
