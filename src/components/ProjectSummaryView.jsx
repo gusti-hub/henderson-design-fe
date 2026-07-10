@@ -278,7 +278,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
     approvedCostsToDate:             approvedToDate,
     estimatedRemainingCosts:         s3Total,
     estimatedFinalProjectInvestment: finalInvestment,
-    depositHeldOnAccount:            s1.depositReceived || 0,
+    depositHeldOnAccount:            s1.depositAmount || 0,
   };
 
   return (

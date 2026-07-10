@@ -246,7 +246,9 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     proposalLabel:            '',
     originalCollectionInvestment: 0,
     depositDesignFee:             0,
-    depositTax:                   0,
+    taxRate:                      4.5,
+    taxOnDesignFee:               false,
+    taxOnDeposit:                 false,
     depositAmount:                0,
     approvedTotalToDate:          0,
     paymentsReceived:             0,
@@ -286,7 +288,9 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
           proposalLabel:            ps.proposalLabel || '',
           originalCollectionInvestment: oc.originalCollectionInvestment || 0,
           depositDesignFee:             oc.depositDesignFee             || 0,
-          depositTax:                   oc.depositTax                   || 0,
+          taxRate:                      oc.taxRate ?? 4.5,
+          taxOnDesignFee:               oc.taxOnDesignFee === true,
+          taxOnDeposit:                 oc.taxOnDeposit  === true,
           depositAmount:                hasSubFields ? (oc.depositAmount || 0) : legacyDeposit,
           approvedTotalToDate:          cst.approvedTotalToDate         || 0,
           paymentsReceived:             cst.paymentsReceived            || 0,
@@ -330,13 +334,15 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     Number(form.avCost) +
     Number(form.additionalServices);
 
-  // Section 1 & 2 are manual inputs; balances are derived from them
-  const s1Original     = Number(form.originalCollectionInvestment);
-  const s1DesignFee    = Number(form.depositDesignFee);
-  const s1Tax          = Number(form.depositTax);
-  const s1DepAmt       = Number(form.depositAmount);
-  const s1Deposit      = s1DesignFee + s1Tax + s1DepAmt;
-  const s1Remaining    = Math.max(0, s1Original - s1Deposit);
+  // Section 1 — tax is auto-calculated from toggles × rate
+  const s1Original   = Number(form.originalCollectionInvestment);
+  const s1DesignFee  = Number(form.depositDesignFee);
+  const s1DepAmt     = Number(form.depositAmount);
+  const taxRate      = Number(form.taxRate) || 4.5;
+  const taxableAmt   = (form.taxOnDesignFee ? s1DesignFee : 0) + (form.taxOnDeposit ? s1DepAmt : 0);
+  const s1Tax        = Math.round(taxableAmt * taxRate) / 100;
+  const s1Deposit    = s1DesignFee + s1Tax + s1DepAmt;
+  const s1Remaining  = Math.max(0, s1Original - s1Deposit);
   const s2Approved  = Number(form.approvedTotalToDate);
   const s2Payments  = Number(form.paymentsReceived);
   const s2Outstanding = Math.max(0, s2Approved - s2Payments);
@@ -382,7 +388,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
       approvedCostsToDate:             s2Approved,
       estimatedRemainingCosts:         s3Total,
       estimatedFinalProjectInvestment: s2Approved + s3Total,
-      depositHeldOnAccount:            s1Deposit,
+      depositHeldOnAccount:            s1DepAmt,
     },
   };
 
@@ -553,13 +559,88 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Section 1 – Original Collection</p>
                 <div className="space-y-3">
                   {numField('Original Collection Estimate ($)', 'originalCollectionInvestment')}
+
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-[#005670] mb-2">Deposit Received (auto-calculated)</p>
-                    <div className="space-y-2 pl-2 border-l-2 border-[#005670]/20">
-                      {numField('Design Fee ($)', 'depositDesignFee')}
-                      {numField('Tax ($)',         'depositTax')}
-                      {numField('Deposit ($)',     'depositAmount')}
+
+                    {/* Tax Rate selector */}
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-xs text-gray-600 font-medium">Tax Rate:</span>
+                      {[4.5, 4.712].map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setField('taxRate', r)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${form.taxRate === r ? 'bg-[#005670] text-white border-[#005670]' : 'bg-white text-gray-500 border-gray-300 hover:border-[#005670]'}`}
+                        >
+                          {r}%
+                        </button>
+                      ))}
                     </div>
+
+                    <div className="space-y-2 pl-2 border-l-2 border-[#005670]/20">
+                      {/* Design Fee + tax toggle */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-medium text-gray-600">Design Fee ($)</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <span className="text-[10px] text-gray-500">Tax</span>
+                            <div
+                              onClick={() => setField('taxOnDesignFee', !form.taxOnDesignFee)}
+                              className={`w-7 h-4 rounded-full transition-colors relative cursor-pointer ${form.taxOnDesignFee ? 'bg-[#005670]' : 'bg-gray-300'}`}
+                            >
+                              <span className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${form.taxOnDesignFee ? 'translate-x-3' : 'translate-x-0'}`} />
+                            </div>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                          <input
+                            type="number" min="0" step="100"
+                            value={form.depositDesignFee === 0 ? '' : form.depositDesignFee}
+                            onChange={e => setField('depositDesignFee', e.target.value === '' ? 0 : Number(e.target.value))}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tax — read-only, auto-calculated */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Tax ({taxRate}%) <span className="text-[#005670] font-normal">— auto-calculated</span>
+                        </label>
+                        <div className="w-full pl-7 pr-3 py-2 border border-gray-100 rounded-lg text-sm bg-gray-50 text-gray-700 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                          {s1Tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      {/* Deposit + tax toggle */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-medium text-gray-600">Deposit ($)</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <span className="text-[10px] text-gray-500">Tax</span>
+                            <div
+                              onClick={() => setField('taxOnDeposit', !form.taxOnDeposit)}
+                              className={`w-7 h-4 rounded-full transition-colors relative cursor-pointer ${form.taxOnDeposit ? 'bg-[#005670]' : 'bg-gray-300'}`}
+                            >
+                              <span className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${form.taxOnDeposit ? 'translate-x-3' : 'translate-x-0'}`} />
+                            </div>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                          <input
+                            type="number" min="0" step="100"
+                            value={form.depositAmount === 0 ? '' : form.depositAmount}
+                            onChange={e => setField('depositAmount', e.target.value === '' ? 0 : Number(e.target.value))}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="mt-2 flex justify-between items-center bg-[#005670]/5 border border-[#005670]/15 rounded-lg px-3 py-2">
                       <span className="text-xs font-semibold text-[#005670]">Deposit Received (Total)</span>
                       <span className="text-sm font-bold text-[#005670]">{fmt(s1Deposit)}</span>
