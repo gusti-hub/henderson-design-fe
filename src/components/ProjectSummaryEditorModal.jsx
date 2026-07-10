@@ -260,6 +260,10 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
         const est = ps.estimatedRemainingCosts || {};
         const oc  = ps.originalCollection || {};
         const cst = ps.currentStatus || {};
+        // Migrate: if new sub-fields are all 0 but old depositReceived has a value,
+        // carry the old value into depositAmount so existing data isn't lost.
+        const legacyDeposit = oc.depositReceived || 0;
+        const hasSubFields  = (oc.depositDesignFee || 0) + (oc.depositTax || 0) + (oc.depositAmount || 0) > 0;
         setForm({
           published:                ps.published === true,
           statementDate:            new Date().toISOString().split('T')[0],
@@ -267,7 +271,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
           originalCollectionInvestment: oc.originalCollectionInvestment || 0,
           depositDesignFee:             oc.depositDesignFee             || 0,
           depositTax:                   oc.depositTax                   || 0,
-          depositAmount:                oc.depositAmount                || 0,
+          depositAmount:                hasSubFields ? (oc.depositAmount || 0) : legacyDeposit,
           approvedTotalToDate:          cst.approvedTotalToDate         || 0,
           paymentsReceived:             cst.paymentsReceived            || 0,
           accentsAllowance:         est.accentsAllowance         || 0,
