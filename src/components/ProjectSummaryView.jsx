@@ -14,10 +14,13 @@ export const T = {
     statementDate:'Statement Date',
     advisor:      'Project Advisor',
 
-    s1Title:      'ORIGINAL COLLECTION CHOICE',
-    s1Original:   'Original Collection Estimate',
-    s1Deposit:    'Deposit Received',
-    s1Balance:    'Remaining Original Estimate Balance',
+    s1Title:         'ORIGINAL COLLECTION CHOICE',
+    s1Original:      'Original Collection Estimate',
+    s1Deposit:       'Deposit Received',
+    s1DepDesignFee:  'Design Fee',
+    s1DepTax:        'Tax',
+    s1DepAmount:     'Deposit',
+    s1Balance:       'Remaining Original Estimate Balance',
     s1Note:       'Your original collection pricing is secured. Your deposit holds this pricing and is reserved toward final reconciliation.',
 
     s2Title:      'CURRENT PROJECT STATUS',
@@ -74,10 +77,13 @@ export const T = {
     statementDate:'発行日',
     advisor:      'プロジェクトアドバイザー',
 
-    s1Title:      'オリジナルコレクションの選択',
-    s1Original:   'オリジナルコレクション見積額',
-    s1Deposit:    '受領済みデポジット',
-    s1Balance:    'オリジナル見積残高',
+    s1Title:         'オリジナルコレクションの選択',
+    s1Original:      'オリジナルコレクション見積額',
+    s1Deposit:       '受領済みデポジット',
+    s1DepDesignFee:  'デザインフィー',
+    s1DepTax:        '税金',
+    s1DepAmount:     'デポジット',
+    s1Balance:       'オリジナル見積残高',
     s1Note:       'お客様のオリジナルコレクション価格は確保されています。お預かりしたデポジットがこの価格を保証し、最終精算時に充当されます。',
 
     s2Title:      '現在のプロジェクト状況',
@@ -171,7 +177,10 @@ const DEMO_DATA = {
   },
   section1: {
     originalCollectionInvestment: 180000,
-    depositReceived: 54000,
+    depositDesignFee: 18000,
+    depositTax:        1350,
+    depositAmount:    34650,
+    depositReceived:  54000,
     remainingOriginalBalance: 126000,
   },
   section2: {
@@ -365,7 +374,29 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
 
               <LineRow label={t.s1Original} value={s1.originalCollectionInvestment} />
               <Divider />
-              <LineRow label={t.s1Deposit}  value={s1.depositReceived} negative />
+              <LineRow label={t.s1Deposit} value={s1.depositReceived} negative />
+              {(s1.depositDesignFee > 0 || s1.depositTax > 0 || s1.depositAmount > 0) && (
+                <div className="pl-3 border-l-2 border-[#005670]/20 mt-1 mb-1 space-y-0.5">
+                  {s1.depositDesignFee > 0 && (
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>{t.s1DepDesignFee}</span>
+                      <span>${(s1.depositDesignFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  {s1.depositTax > 0 && (
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>{t.s1DepTax}</span>
+                      <span>${(s1.depositTax || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                  {s1.depositAmount > 0 && (
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>{t.s1DepAmount}</span>
+                      <span>${(s1.depositAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <Divider />
               <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
 

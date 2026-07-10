@@ -229,7 +229,9 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     statementDate:            new Date().toISOString().split('T')[0],
     proposalLabel:            '',
     originalCollectionInvestment: 0,
-    depositReceived:              0,
+    depositDesignFee:             0,
+    depositTax:                   0,
+    depositAmount:                0,
     approvedTotalToDate:          0,
     paymentsReceived:             0,
     accentsAllowance:         0,
@@ -263,7 +265,9 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
           statementDate:            new Date().toISOString().split('T')[0],
           proposalLabel:            ps.proposalLabel || '',
           originalCollectionInvestment: oc.originalCollectionInvestment || 0,
-          depositReceived:              oc.depositReceived              || 0,
+          depositDesignFee:             oc.depositDesignFee             || 0,
+          depositTax:                   oc.depositTax                   || 0,
+          depositAmount:                oc.depositAmount                || 0,
           approvedTotalToDate:          cst.approvedTotalToDate         || 0,
           paymentsReceived:             cst.paymentsReceived            || 0,
           accentsAllowance:         est.accentsAllowance         || 0,
@@ -307,9 +311,12 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     Number(form.additionalServices);
 
   // Section 1 & 2 are manual inputs; balances are derived from them
-  const s1Original  = Number(form.originalCollectionInvestment);
-  const s1Deposit   = Number(form.depositReceived);
-  const s1Remaining = Math.max(0, s1Original - s1Deposit);
+  const s1Original     = Number(form.originalCollectionInvestment);
+  const s1DesignFee    = Number(form.depositDesignFee);
+  const s1Tax          = Number(form.depositTax);
+  const s1DepAmt       = Number(form.depositAmount);
+  const s1Deposit      = s1DesignFee + s1Tax + s1DepAmt;
+  const s1Remaining    = Math.max(0, s1Original - s1Deposit);
   const s2Approved  = Number(form.approvedTotalToDate);
   const s2Payments  = Number(form.paymentsReceived);
   const s2Outstanding = Math.max(0, s2Approved - s2Payments);
@@ -324,6 +331,9 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     },
     section1: {
       originalCollectionInvestment: s1Original,
+      depositDesignFee:             s1DesignFee,
+      depositTax:                   s1Tax,
+      depositAmount:                s1DepAmt,
       depositReceived:              s1Deposit,
       remainingOriginalBalance:     s1Remaining,
     },
@@ -523,7 +533,18 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Section 1 – Original Collection</p>
                 <div className="space-y-3">
                   {numField('Original Collection Estimate ($)', 'originalCollectionInvestment')}
-                  {numField('Deposit Received ($)',             'depositReceived')}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#005670] mb-2">Deposit Received (auto-calculated)</p>
+                    <div className="space-y-2 pl-2 border-l-2 border-[#005670]/20">
+                      {numField('Design Fee ($)', 'depositDesignFee')}
+                      {numField('Tax ($)',         'depositTax')}
+                      {numField('Deposit ($)',     'depositAmount')}
+                    </div>
+                    <div className="mt-2 flex justify-between items-center bg-[#005670]/5 border border-[#005670]/15 rounded-lg px-3 py-2">
+                      <span className="text-xs font-semibold text-[#005670]">Deposit Received (Total)</span>
+                      <span className="text-sm font-bold text-[#005670]">{fmt(s1Deposit)}</span>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 flex justify-between items-center bg-gray-100 rounded-lg px-3 py-2">
                   <span className="text-xs font-semibold text-gray-700">Remaining Balance</span>
