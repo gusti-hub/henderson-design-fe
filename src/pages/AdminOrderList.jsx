@@ -806,9 +806,46 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   // ── Bulk Proposal print (from main order selection) ───────────────────────
-  const handleBulkProposals = () => {
+  // Groups selected rows by client, fetches ALL orders per client, then shows modal
+  const handleBulkProposals = async () => {
     if (selectedOrderIds.size === 0) return;
-    openProposalModal(Array.from(selectedOrderIds));
+
+    const clientMap = new Map(); // clientId -> clientInfo
+    orders.forEach(order => {
+      if (!selectedOrderIds.has(order._id)) return;
+      const clientId = typeof order.user === 'object'
+        ? (order.user?._id || order.user?.id)
+        : order.user;
+      if (clientId && !clientMap.has(clientId)) {
+        clientMap.set(clientId, order.clientInfo);
+      }
+    });
+
+    if (clientMap.size === 0) {
+      openProposalModal(Array.from(selectedOrderIds));
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const allOrderIds = [];
+      for (const [clientId] of clientMap) {
+        const res = await fetch(`${backendServer}/api/orders/client/${clientId}`,
+          { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        (data.orders || []).forEach(o => allOrderIds.push(o._id));
+      }
+      openProposalModal(allOrderIds, (row) => {
+        const ci = row.orderClientInfo || {};
+        const name = ci.name || '—';
+        const unit = ci.unitNumber ? `Unit ${ci.unitNumber}` : '';
+        const clientPart = [name, unit].filter(Boolean).join(' · ');
+        const rawLabel = row.orderLabel?.trim();
+        const phaseMatch = rawLabel?.match(/^phase\s*(\d+)$/i);
+        const orderName = phaseMatch ? `Order ${phaseMatch[1]}` : rawLabel || `Order ${row.orderNumber || ''}`;
+        return `${clientPart} — ${orderName}`;
+      });
+    } catch { alert('Failed to load client orders.'); }
   };
 
   // ── Print Proposals from a single order row in the main list ─────────────
