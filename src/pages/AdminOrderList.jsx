@@ -126,7 +126,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary, onPrintProposals }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -182,11 +182,6 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={BarChart2}    label="COG + Bill Comparison"         onClick={onCOGWithBill}           color="text-indigo-600" />
           <Sep />
           <Item icon={TrendingUp}   label="Project Summary"               onClick={onProjectSummary}        color="text-teal-600" />
-          {onPrintProposals && <>
-            <Sep />
-            <Group label="Proposals" />
-            <Item icon={BookMarked} label="Print Proposals"               onClick={onPrintProposals}        color="text-amber-600" />
-          </>}
         </div>,
         document.body
       )}
@@ -1623,7 +1618,6 @@ const AdminOrderList = ({ onOrderClick }) => {
                             const cid = typeof order.user === 'object' ? order.user?._id : order.user;
                             setProjectSummaryClientId(cid || null);
                           }}
-                          onPrintProposals={() => handleOrderRowPrintProposals(order)}
                         />
                       </td>
                     </tr>
