@@ -1,7 +1,7 @@
 // local dev
 //export const backendServer = "http://localhost:5002"
 
-// tesstaging (nginx proxies /api → :5002)
+// staging (nginx proxies /api → :5002)
 export const backendServer = ""
 
 // production
