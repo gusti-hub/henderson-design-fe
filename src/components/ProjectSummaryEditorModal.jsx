@@ -231,6 +231,51 @@ const SummaryPreview = ({ preview, lang = 'en' }) => {
   );
 };
 
+// ─── Currency Input ───────────────────────────────────────────────────────────
+const CurrencyInput = ({ value, onChange, className = '' }) => {
+  const [focused, setFocused] = React.useState(false);
+  const [raw, setRaw] = React.useState('');
+
+  const handleFocus = () => {
+    setFocused(true);
+    setRaw(value === 0 ? '' : String(value));
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    const cleaned = raw.replace(/[^0-9.]/g, '');
+    onChange(parseFloat(cleaned) || 0);
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setRaw(val);
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    onChange(parseFloat(cleaned) || 0);
+  };
+
+  const displayValue = focused
+    ? raw
+    : value === 0
+      ? ''
+      : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <div className={`relative ${className}`}>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={displayValue}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
+      />
+    </div>
+  );
+};
+
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const [loading, setLoading]       = useState(true);
@@ -478,17 +523,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const numField = (label, key) => (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-        <input
-          type="number"
-          min="0"
-          step="1000"
-          value={form[key] === 0 ? '' : form[key]}
-          onChange={e => setField(key, e.target.value === '' ? 0 : Number(e.target.value))}
-          className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
-        />
-      </div>
+      <CurrencyInput value={form[key]} onChange={val => setField(key, val)} />
     </div>
   );
 
@@ -593,15 +628,10 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
                             </div>
                           </label>
                         </div>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                          <input
-                            type="number" min="0" step="100"
-                            value={form.depositDesignFee === 0 ? '' : form.depositDesignFee}
-                            onChange={e => setField('depositDesignFee', e.target.value === '' ? 0 : Number(e.target.value))}
-                            className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
-                          />
-                        </div>
+                        <CurrencyInput
+                          value={form.depositDesignFee}
+                          onChange={val => setField('depositDesignFee', val)}
+                        />
                       </div>
 
                       {/* Tax — read-only, auto-calculated */}
@@ -629,15 +659,10 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
                             </div>
                           </label>
                         </div>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                          <input
-                            type="number" min="0" step="100"
-                            value={form.depositAmount === 0 ? '' : form.depositAmount}
-                            onChange={e => setField('depositAmount', e.target.value === '' ? 0 : Number(e.target.value))}
-                            className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] outline-none"
-                          />
-                        </div>
+                        <CurrencyInput
+                          value={form.depositAmount}
+                          onChange={val => setField('depositAmount', val)}
+                        />
                       </div>
                     </div>
 
