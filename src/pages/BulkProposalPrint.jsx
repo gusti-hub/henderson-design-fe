@@ -1,17 +1,15 @@
-// BulkProposalPrint.jsx — JS-paginated multi-proposal print (matches ProposalEditor exactly)
-// Each proposal is split into explicit 8.5×11in pages via DOM measurement, identical to
-// ProposalEditor's pagination engine, so nothing gets cut off.
+// BulkProposalPrint.jsx — Bulk print matching ProposalEditor layout exactly
+// Uses identical .lp/.lp-slot CSS structure, same pagination engine, same page dimensions.
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Printer, Loader2, AlertCircle } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 
-// ─── Page dimensions (match ProposalEditor exactly) ───────────────────────────
+// ─── Page geometry — identical to ProposalEditor ──────────────────────────────
 const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 60, PX = 96;
 const CONTENT_H = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
@@ -95,7 +93,7 @@ const getImgSrc = p => {
 
 const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-// Greedy page packer — identical logic to ProposalEditor
+// Greedy page packer — identical to ProposalEditor
 const packItems = (items, firstPageH, contPageH) => {
   const pages = []; let cur = []; let rem = firstPageH;
   items.forEach(item => {
@@ -107,7 +105,7 @@ const packItems = (items, firstPageH, contPageH) => {
   return pages;
 };
 
-// ─── PageFooter ───────────────────────────────────────────────────────────────
+// ─── PageFooter — identical to ProposalEditor ─────────────────────────────────
 const PageFooter = () => (
   <div style={{
     position: 'absolute', bottom: '0.28in',
@@ -121,7 +119,7 @@ const PageFooter = () => (
   </div>
 );
 
-// ─── ProductRow — matches ProposalEditor ProductRowV2 ─────────────────────────
+// ─── ProductRow — matches ProposalEditor ProductRowV2 exactly ─────────────────
 const ProductRow = ({ product, isFirst }) => {
   const o = product.selectedOptions || {};
   const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
@@ -167,67 +165,7 @@ const ProductRow = ({ product, isFirst }) => {
   );
 };
 
-// ─── First-page header (logo + full client block) ─────────────────────────────
-const P1Header = ({ clientInfo, proposalNumber }) => {
-  const today = new Date().toLocaleDateString();
-  return (
-    <div>
-      <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-        <img src="/images/HDG-Logo.png" alt="Henderson Design Group"
-          style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
-      </div>
-      <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-        <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
-          <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
-          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
-          {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
-          {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
-        </div>
-        <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
-          <p style={{ margin: 0 }}><strong>Proposal #:</strong> {proposalNumber || '—'}</p>
-          <p style={{ margin: 0 }}>Proposal Date: {today}</p>
-        </div>
-      </div>
-      <div style={{ marginBottom: '12px', fontSize: '12px' }}>
-        <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
-      </div>
-    </div>
-  );
-};
-
-// ─── Continuation header (compact, page 2+) ───────────────────────────────────
-const ContHeader = ({ clientInfo, proposalNumber }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '11px', color: '#6b7280', borderBottom: '1px solid #e5e7eb', paddingBottom: '5px' }}>
-    <span>{clientInfo.name || '—'} — Products (continued)</span>
-    <span>Proposal #: {proposalNumber || '—'}</span>
-  </div>
-);
-
-// ─── Totals block (last page of each proposal) ────────────────────────────────
-const TotalsBlock = ({ products, depositPercent }) => {
-  let subtotal = 0, taxTotal = 0;
-  (products || []).forEach(p => {
-    const o = p.selectedOptions || {};
-    const qty = p.quantity || 1;
-    const sell = (parseFloat(o.msrp) || 0) * (1 + (parseFloat(o.markupPercent) || 0) / 100) * qty;
-    const taxRate = parseFloat(o.salesTaxRate) || 0;
-    subtotal += sell;
-    taxTotal += taxRate > 0 ? sell * (taxRate / 100) : 0;
-  });
-  const total = subtotal + taxTotal;
-  const dpct = depositPercent ?? 100;
-  return (
-    <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
-      <p style={{ margin: 0 }}>Sub Total: ${fmt(subtotal)}</p>
-      <p style={{ margin: 0 }}>Sales Tax: ${fmt(taxTotal)}</p>
-      <p style={{ margin: 0 }}>Total: ${fmt(total)}</p>
-      <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit ({dpct}%): ${fmt(total * dpct / 100)}</p>
-    </div>
-  );
-};
-
-// ─── Convert paginated item list into room tables ─────────────────────────────
+// ─── Convert paginated items to room tables ───────────────────────────────────
 const renderPageItems = (items) => {
   const sections = []; let cur = null;
   items.forEach(item => {
@@ -254,70 +192,6 @@ const renderPageItems = (items) => {
   ));
 };
 
-// ─── Warranty page ────────────────────────────────────────────────────────────
-const WarrantyPage = () => (
-  <div style={{ width: '8.5in', height: '11in', overflow: 'hidden', position: 'relative', boxSizing: 'border-box', padding: `${PAD_IN}in ${PAD_IN}in ${FOOT_IN}in ${PAD_IN}in`, fontFamily: 'Arial, sans-serif', fontSize: '12px', background: 'white', pageBreakBefore: 'always', breakBefore: 'page' }}>
-    <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
-    <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
-      <p style={{ marginTop: 0, marginBottom: '10px' }}>Henderson Design Group (HDG) stands behind the quality of the furnishings, fixtures, lighting, accessories, and related products provided as part of the Ālia Furnishings Collections.</p>
-      <p style={{ marginBottom: '6px' }}>Warranty coverage begins on the installation date and includes:</p>
-      <ul style={{ marginLeft: '14px', marginTop: 0, marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <li><strong>90-Day Installation Warranty</strong> – Covers installation workmanship and adjustments.</li>
-        <li><strong>3-Year Structural Warranty</strong> – Covers furniture frames, cabinetry, millwork, and joinery against defects in materials and workmanship.</li>
-        <li><strong>2-Year Upholstery Construction Warranty</strong> – Covers upholstery construction, suspension systems, cushion support systems, and manufacturing-related seam failures.</li>
-        <li><strong>1-Year Finishes, Hardware &amp; Components Warranty</strong> – Covers manufacturing defects in finishes, hardware, lighting, accessories, and related components.</li>
-      </ul>
-      <p style={{ marginBottom: '10px' }}>Certain products, including appliances, electronics, motorized systems, and specialty lighting, may be covered by separate manufacturer warranties.</p>
-      <p style={{ marginBottom: '10px' }}>This warranty does not cover normal wear and tear, misuse, accidents, improper maintenance, environmental damage, natural material variations, or other exclusions outlined in the full warranty documentation.</p>
-      <p style={{ marginBottom: '10px' }}>Warranty claims must be submitted through the HDG Client Portal or to your HDG Project Manager and should include photographs and a description of the issue.</p>
-      <p style={{ marginBottom: '10px' }}>HDG also offers aftercare services, including repairs, refinishing, reupholstery, replacement parts, and furnishing enhancements, which may be available on a fee-for-service basis after the warranty period expires.</p>
-      <p style={{ marginBottom: 0 }}>For complete warranty terms, exclusions, limitations, care requirements, and claim procedures, please refer to the Warranty &amp; Care section of the DeCora website.</p>
-    </div>
-    <PageFooter />
-  </div>
-);
-
-// ─── Signature page ───────────────────────────────────────────────────────────
-const SignaturePage = ({ clientInfo, proposalNumber, depositPercent = 100 }) => {
-  const today = new Date().toLocaleDateString();
-  return (
-    <div style={{ width: '8.5in', height: '11in', overflow: 'hidden', position: 'relative', boxSizing: 'border-box', padding: `${PAD_IN}in ${PAD_IN}in ${FOOT_IN}in ${PAD_IN}in`, fontFamily: 'Arial, sans-serif', fontSize: '12px', background: 'white', pageBreakBefore: 'always', breakBefore: 'page' }}>
-      <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-        <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
-      </div>
-      <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-        <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
-          <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
-          {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
-          {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
-          {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
-        </div>
-        <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
-          <p style={{ margin: 0 }}><strong>Proposal #:</strong> {proposalNumber || '—'}</p>
-          <p style={{ margin: 0 }}>Proposal Date: {today}</p>
-        </div>
-      </div>
-      <div style={{ marginBottom: '12px', fontSize: '12px' }}>
-        <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
-      </div>
-      <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-        <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
-          <li>Original Buyer: The warranty applies to the original buyer only.</li>
-          <li>Original Installation Location: Valid only for furnishings in the space where they were originally installed.</li>
-          <li>Repair, Touch-Up, or Replacement Only: No refunds.</li>
-          <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
-          <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
-        </ul>
-        <p style={{ marginTop: '30px', fontWeight: '700' }}>{depositPercent}% Deposit</p>
-        <p style={{ marginTop: '30px' }}>Accept and Approve:</p>
-        <div style={{ borderTop: '1px solid black', marginTop: '56px', paddingTop: '6px', fontSize: '11.5px' }}>Signature</div>
-      </div>
-      <PageFooter />
-    </div>
-  );
-};
-
 // ─── Main component ───────────────────────────────────────────────────────────
 const BulkProposalPrint = () => {
   const [searchParams] = useSearchParams();
@@ -329,7 +203,7 @@ const BulkProposalPrint = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ── Step 1: fetch proposal data ──────────────────────────────────────────────
+  // ── Step 1: fetch data ───────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
@@ -338,9 +212,7 @@ const BulkProposalPrint = () => {
         if (refs.length > 0) {
           fetches = refs.map(ref => {
             const ci = ref.lastIndexOf(':');
-            const orderId = ref.slice(0, ci);
-            const ver = ref.slice(ci + 1);
-            return fetch(`${backendServer}/api/proposals/${orderId}/${ver}`, {
+            return fetch(`${backendServer}/api/proposals/${ref.slice(0, ci)}/${ref.slice(ci + 1)}`, {
               headers: { Authorization: `Bearer ${token}` },
             }).then(r => r.json());
           });
@@ -362,7 +234,7 @@ const BulkProposalPrint = () => {
             ? [ci.cityLine]
             : [addr.city, addr.state, addr.zipcode].filter(p => p && p.trim());
           return {
-            proposalData: d,
+            products: d.selectedProducts || [],
             proposalNumber: d.proposalNumber || '—',
             depositPercent: d.depositPercent ?? 100,
             clientInfo: {
@@ -385,109 +257,122 @@ const BulkProposalPrint = () => {
     if (refs.length > 0 || ids.length > 0) load(); else setLoading(false);
   }, []);
 
-  // ── Step 2: JS pagination via DOM measurement (identical to ProposalEditor) ──
+  // ── Step 2: JS pagination (same engine as ProposalEditor) ────────────────────
   useEffect(() => {
     if (rawProposals.length === 0 || paginatedProposals !== null) return;
 
-    const CONTENT_W = (PAGE_W_IN - PAD_IN * 2) * PX;
-    const COL1 = 88, COL3 = 148;
-    const midW = CONTENT_W - COL1 - COL3;
+    // 300ms delay — gives fonts/layout time to settle (same as ProposalEditor)
+    const timer = setTimeout(() => {
+      const CONTENT_W = (PAGE_W_IN - PAD_IN * 2) * PX;
+      const COL1 = 88, COL3 = 148;
+      const midW = CONTENT_W - COL1 - COL3;
 
-    // Hidden sandbox for measurement
-    const sandbox = document.createElement('div');
-    sandbox.style.cssText = `position:fixed;top:0;left:-9999px;width:${CONTENT_W}px;background:white;z-index:-9999;font-size:12px;line-height:1.55;font-family:Arial,sans-serif;visibility:visible;opacity:0;pointer-events:none`;
-    document.body.appendChild(sandbox);
+      const sandbox = document.createElement('div');
+      sandbox.style.cssText = `position:fixed;top:0;left:-9999px;width:${CONTENT_W}px;background:white;z-index:-9999;font-size:12px;line-height:1.55;font-family:Arial,sans-serif;visibility:visible;opacity:0;pointer-events:none`;
+      document.body.appendChild(sandbox);
 
-    const measure = (el) => {
-      sandbox.appendChild(el);
-      const h = el.getBoundingClientRect().height;
-      sandbox.removeChild(el);
-      return Math.ceil(h) + 8;
-    };
+      const measure = (el) => {
+        sandbox.appendChild(el);
+        const h = el.getBoundingClientRect().height;
+        sandbox.removeChild(el);
+        return Math.ceil(h) + 8;
+      };
 
-    // Measure continuation header (same for all proposals)
-    const contEl = document.createElement('div');
-    contEl.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px';
-    contEl.innerHTML = '<span>Client — Products (continued)</span><span>Proposal #: ---</span>';
-    const contH = measure(contEl);
+      // Measure continuation header height
+      const contEl = document.createElement('div');
+      contEl.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px';
+      contEl.innerHTML = '<span>Client — Products (continued)</span><span>Proposal #: ---</span>';
+      const contH = measure(contEl);
 
-    const result = rawProposals.map(({ proposalData, clientInfo, proposalNumber, depositPercent }) => {
-      // Measure P1Header height for this specific proposal's client info
-      const hEl = document.createElement('div');
-      const ciLines = [
-        `<p style="margin:0;font-weight:600">${esc(clientInfo.name || '—')}</p>`,
-        clientInfo.street ? `<p style="margin:0">${esc(clientInfo.street)}${clientInfo.unitNumber?.trim() ? ', #' + esc(clientInfo.unitNumber) : ''}</p>` : '',
-        clientInfo.cityLine ? `<p style="margin:0">${esc(clientInfo.cityLine)}</p>` : '',
-        clientInfo.email ? `<p style="margin:0">${esc(clientInfo.email)}</p>` : '',
-      ].join('');
-      hEl.innerHTML = `
-        <div style="text-align:center;margin-bottom:14px"><div style="height:44px;display:inline-block;width:1px"></div></div>
-        <div style="font-weight:700;margin-bottom:12px;font-size:16px">Proposal</div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-          <div style="font-size:12px;line-height:1.7">${ciLines}</div>
-          <div style="text-align:right;font-size:12px;line-height:1.7">
-            <p style="margin:0"><strong>Proposal #:</strong> ${esc(proposalNumber || '—')}</p>
-            <p style="margin:0">Proposal Date: today</p>
+      const result = rawProposals.map(({ products, clientInfo, proposalNumber, depositPercent }) => {
+        // Measure P1Header with real client data
+        const hEl = document.createElement('div');
+        const ciLines = [
+          `<p style="margin:0;font-weight:600">${esc(clientInfo.name || '—')}</p>`,
+          clientInfo.street ? `<p style="margin:0">${esc(clientInfo.street)}${clientInfo.unitNumber?.trim() ? ', #' + esc(clientInfo.unitNumber) : ''}</p>` : '',
+          clientInfo.cityLine ? `<p style="margin:0">${esc(clientInfo.cityLine)}</p>` : '',
+          clientInfo.email ? `<p style="margin:0">${esc(clientInfo.email)}</p>` : '',
+        ].join('');
+        hEl.innerHTML = `
+          <div style="text-align:center;margin-bottom:14px"><div style="height:44px;width:1px;display:inline-block"></div></div>
+          <div style="font-weight:700;margin-bottom:12px;font-size:16px">Proposal</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div style="font-size:12px;line-height:1.7">${ciLines}</div>
+            <div style="text-align:right;font-size:12px;line-height:1.7">
+              <p style="margin:0">Proposal #: ${esc(proposalNumber)}</p>
+              <p style="margin:0">Proposal Date: today</p>
+            </div>
           </div>
-        </div>
-        <div style="margin-bottom:12px;font-size:12px"><span style="color:#1e3a5f;font-weight:500">Project: Ālia</span></div>
-      `;
-      const headerH = measure(hEl);
+          <div style="margin-bottom:12px;font-size:12px">Project: Ālia</div>
+        `;
+        const headerH = measure(hEl);
 
-      // Build room groups
-      const roomMap = new Map();
-      (proposalData.selectedProducts || []).forEach(p => {
-        const room = p.selectedOptions?.room?.trim() || '—';
-        if (!roomMap.has(room)) roomMap.set(room, []);
-        roomMap.get(room).push(p);
-      });
-      const roomGroups = sortRoomEntries(Array.from(roomMap.entries()));
-
-      // Measure each item
-      const items = [];
-      roomGroups.forEach(([room, rps]) => {
-        const rhEl = document.createElement('div');
-        rhEl.style.cssText = 'padding:6px 8px;font-weight:600;font-size:13px;background:#f0f0f0';
-        rhEl.textContent = room;
-        items.push({ type: 'room-header', room, height: measure(rhEl) });
-
-        rps.forEach((p, i) => {
-          const o = p.selectedOptions || {};
-          const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
-          const materials = ca.materials || '';
-          const lines = [];
-          if (p.name) lines.push(`<div style="font-weight:600;font-size:13px;margin-bottom:3px">${esc(p.name)}</div>`);
-          if (o.specifications) lines.push(`<div style="white-space:pre-wrap">${esc(String(o.specifications))}</div>`);
-          if (o.finish) lines.push(`<div><strong>Color / Finish:</strong> ${esc(resolveFinish(o.finish))}</div>`);
-          if (o.leadTime) lines.push(`<div><strong>Lead Time:</strong> ${esc(o.leadTime)}</div>`);
-          if (o.fabric) lines.push(`<div><strong>Fabric:</strong> ${esc(resolveFabric(o.fabric))}</div>`);
-          if (o.size) lines.push(`<div><strong>Dimensions:</strong> ${esc(o.size)}</div>`);
-          if (materials) lines.push(`<div><strong>Materials:</strong> ${esc(materials)}</div>`);
-
-          const mw = document.createElement('div');
-          mw.style.cssText = `width:${midW}px;padding:7px 9px;font-size:12px;line-height:1.55;box-sizing:border-box`;
-          mw.innerHTML = lines.join('');
-          const midH = measure(mw) + 6;
-
-          items.push({ type: 'product', room, product: p, isFirst: i === 0, height: Math.max(92, midH) + 8 });
+        // Build room groups
+        const roomMap = new Map();
+        products.forEach(p => {
+          const room = p.selectedOptions?.room?.trim() || '—';
+          if (!roomMap.has(room)) roomMap.set(room, []);
+          roomMap.get(room).push(p);
         });
+        const roomGroups = sortRoomEntries(Array.from(roomMap.entries()));
+
+        // Measure items
+        const items = [];
+        roomGroups.forEach(([room, rps]) => {
+          const rhEl = document.createElement('div');
+          rhEl.style.cssText = 'padding:6px 8px;font-weight:600;font-size:13px;background:#f0f0f0';
+          rhEl.textContent = room;
+          items.push({ type: 'room-header', room, height: measure(rhEl) });
+
+          rps.forEach((p, i) => {
+            const o = p.selectedOptions || {};
+            const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
+            const materials = ca.materials || '';
+            const taxRate = parseFloat(o.salesTaxRate) || 0;
+
+            // Middle column
+            const lines = [];
+            if (p.name) lines.push(`<div style="font-weight:600;font-size:13px;margin-bottom:3px">${esc(p.name)}</div>`);
+            if (o.specifications) lines.push(`<div style="white-space:pre-wrap">${esc(String(o.specifications))}</div>`);
+            if (o.finish) lines.push(`<div><strong>Color / Finish:</strong> ${esc(resolveFinish(o.finish))}</div>`);
+            if (o.leadTime) lines.push(`<div><strong>Lead Time:</strong> ${esc(o.leadTime)}</div>`);
+            if (o.fabric) lines.push(`<div><strong>Fabric:</strong> ${esc(resolveFabric(o.fabric))}</div>`);
+            if (o.size) lines.push(`<div><strong>Dimensions:</strong> ${esc(o.size)}</div>`);
+            if (materials) lines.push(`<div><strong>Materials:</strong> ${esc(materials)}</div>`);
+            const mw = document.createElement('div');
+            mw.style.cssText = `width:${midW}px;padding:7px 9px;font-size:12px;line-height:1.55;box-sizing:border-box`;
+            mw.innerHTML = lines.join('');
+            const midH = measure(mw) + 6;
+
+            // Price column (same approach as ProposalEditor)
+            const pw = document.createElement('div');
+            pw.style.cssText = 'width:145px;padding:7px 5px;font-size:12px;line-height:1.55;text-align:right;box-sizing:border-box';
+            pw.innerHTML = '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>1 Each</span></div>'
+              + '<div style="display:flex;justify-content:space-between"><span>Unit:</span><span>$0.00</span></div>'
+              + '<div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>$0.00</span></div>'
+              + (taxRate > 0 ? '<div style="display:flex;justify-content:space-between"><span>Tax:</span><span>$0.00</span></div>' : '')
+              + '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #d1d5db;padding-top:2px;margin-top:2px"><span>Total:</span><span>$0.00</span></div>';
+            const priceH = measure(pw);
+
+            items.push({ type: 'product', room, product: p, isFirst: i === 0, height: Math.max(92, midH, priceH) + 8 });
+          });
+        });
+
+        const pages = packItems(items, CONTENT_H - headerH, CONTENT_H - contH);
+        return { pages, clientInfo, proposalNumber, depositPercent, products };
       });
 
-      const firstPageH = CONTENT_H - headerH;
-      const contPageH  = CONTENT_H - contH;
-      const pages = packItems(items, firstPageH, contPageH);
+      document.body.removeChild(sandbox);
+      setPaginatedProposals(result);
+    }, 300);
 
-      return { pages, clientInfo, proposalNumber, depositPercent, products: proposalData.selectedProducts || [] };
-    });
-
-    document.body.removeChild(sandbox);
-    setPaginatedProposals(result);
+    return () => clearTimeout(timer);
   }, [rawProposals, paginatedProposals]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-  const stillPaginating = !loading && rawProposals.length > 0 && paginatedProposals === null;
+  // ── Loading / error states ───────────────────────────────────────────────────
+  const paginating = !loading && rawProposals.length > 0 && paginatedProposals === null;
 
-  if (loading || stillPaginating) {
+  if (loading || paginating) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 12, fontFamily: 'Arial, sans-serif' }}>
         <Loader2 style={{ width: 40, height: 40, animation: 'spin 1s linear infinite', color: '#005670' }} />
@@ -495,7 +380,6 @@ const BulkProposalPrint = () => {
       </div>
     );
   }
-
   if (error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 12 }}>
@@ -504,7 +388,6 @@ const BulkProposalPrint = () => {
       </div>
     );
   }
-
   if (!paginatedProposals || paginatedProposals.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'Arial, sans-serif', color: '#6b7280' }}>
@@ -513,28 +396,33 @@ const BulkProposalPrint = () => {
     );
   }
 
-  const lastProposal = paginatedProposals[paginatedProposals.length - 1];
-  const pageStyle = {
-    width: '8.5in', height: '11in', overflow: 'hidden',
-    position: 'relative', boxSizing: 'border-box',
-    padding: `${PAD_IN}in ${PAD_IN}in ${FOOT_IN}in ${PAD_IN}in`,
-    fontFamily: 'Arial, sans-serif', fontSize: '12px',
-    background: 'white',
-    pageBreakAfter: 'always', breakAfter: 'page',
-    marginBottom: '8px',
-  };
+  const today = new Date().toLocaleDateString();
+  const last = paginatedProposals[paginatedProposals.length - 1];
+
+  // slotStyle — identical to ProposalEditor
+  const slotStyle = { position: 'absolute', top: PAD_IN + 'in', left: PAD_IN + 'in', right: PAD_IN + 'in', bottom: FOOT_IN + 'in' };
 
   return (
     <>
       <style>{`
         @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; padding: 0; background: white; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+          body * { visibility: hidden; }
+          .bulk-print-area, .bulk-print-area * { visibility: visible; }
+          .bulk-print-area { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+          .no-print { display: none !important; }
+          .lp { width: 8.5in !important; height: 11in !important; overflow: hidden !important; page-break-after: always !important; break-after: page !important; box-shadow: none !important; margin: 0 !important; position: relative !important; }
+          .lp.last { page-break-after: avoid !important; break-after: avoid !important; }
+          .lp-slot { overflow: hidden !important; }
         }
         @page { size: 8.5in 11in; margin: 0; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        body { margin: 0; background: #b8b8b8; }
+        .pw { background: #b8b8b8; padding: 20px 0 40px; }
+        .pgl { display: block; width: 8.5in; margin: 0 auto; background: #005670; color: white; font-size: 10px; font-weight: 600; padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box; letter-spacing: 0.03em; }
+        .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: visible; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
+        .lp-slot { overflow: visible; }
+        .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
       `}</style>
 
       {/* Toolbar */}
@@ -554,31 +442,154 @@ const BulkProposalPrint = () => {
         </div>
       </div>
 
-      {/* Pages */}
-      <div style={{ padding: '20px 0' }}>
-        {paginatedProposals.map(({ pages, clientInfo, proposalNumber, depositPercent, products }, pi) =>
-          pages.map((pageItems, pageIdx) => (
-            <div key={`${pi}-${pageIdx}`} style={pageStyle}>
-              {pageIdx === 0
-                ? <P1Header clientInfo={clientInfo} proposalNumber={proposalNumber} />
-                : <ContHeader clientInfo={clientInfo} proposalNumber={proposalNumber} />
-              }
-              {renderPageItems(pageItems)}
-              {pageIdx === pages.length - 1 && (
-                <TotalsBlock products={products} depositPercent={depositPercent} />
-              )}
-              <PageFooter />
+      {/* Pages — identical structure to ProposalEditor */}
+      <div className="pw">
+        <div className="bulk-print-area">
+
+          {paginatedProposals.map(({ pages, clientInfo, proposalNumber, depositPercent, products }, pi) => {
+            const totalPP = pages.length;
+            // Calculate totals for this proposal
+            let subtotal = 0, taxTotal = 0;
+            products.forEach(p => {
+              const o = p.selectedOptions || {};
+              const qty = p.quantity || 1;
+              const sell = (parseFloat(o.msrp) || 0) * (1 + (parseFloat(o.markupPercent) || 0) / 100) * qty;
+              const taxRate = parseFloat(o.salesTaxRate) || 0;
+              subtotal += sell;
+              taxTotal += taxRate > 0 ? sell * taxRate / 100 : 0;
+            });
+            const total = subtotal + taxTotal;
+            const dpct = depositPercent ?? 100;
+
+            return (
+              <React.Fragment key={pi}>
+                {pages.map((pageItems, pageIdx) => {
+                  const isLast = pageIdx === totalPP - 1;
+                  return (
+                    <React.Fragment key={pageIdx}>
+                      <span className="pgl no-print">
+                        {clientInfo.name} — {proposalNumber} — Page {pageIdx + 1}{totalPP > 1 ? ` of ${totalPP}` : ''}
+                      </span>
+                      <div className={`lp${isLast && pi === paginatedProposals.length - 1 ? '' : ''}`}>
+                        <div className="lp-slot" style={slotStyle}>
+                          {pageIdx === 0 ? (
+                            // First page header
+                            <div>
+                              <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                                <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+                              </div>
+                              <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                                <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
+                                  <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
+                                  {clientInfo.street && <p style={{ margin: 0 }}>{clientInfo.street}{clientInfo.unitNumber?.trim() ? ', #' + clientInfo.unitNumber : ''}</p>}
+                                  {clientInfo.cityLine && <p style={{ margin: 0 }}>{clientInfo.cityLine}</p>}
+                                  {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
+                                  <p style={{ margin: 0 }}><strong>Proposal #:</strong> {proposalNumber || '—'}</p>
+                                  <p style={{ margin: 0 }}>Proposal Date: {today}</p>
+                                </div>
+                              </div>
+                              <div style={{ marginBottom: '12px', fontSize: '12px' }}>
+                                <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
+                              </div>
+                            </div>
+                          ) : (
+                            // Continuation header
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '11px', color: '#6b7280', borderBottom: '1px solid #e5e7eb', paddingBottom: '5px' }}>
+                              <span>{clientInfo.name || '—'} — Products (continued)</span>
+                              <span>Proposal #: {proposalNumber || '—'}</span>
+                            </div>
+                          )}
+
+                          {renderPageItems(pageItems)}
+
+                          {isLast && (
+                            <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
+                              <p style={{ margin: 0 }}>Sub Total: ${fmt(subtotal)}</p>
+                              <p style={{ margin: 0 }}>Sales Tax: ${fmt(taxTotal)}</p>
+                              <p style={{ margin: 0 }}>Total: ${fmt(total)}</p>
+                              <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit ({dpct}%): ${fmt(total * dpct / 100)}</p>
+                            </div>
+                          )}
+                        </div>
+                        <PageFooter />
+                      </div>
+                      <div className="pgap no-print" />
+                    </React.Fragment>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+
+          {/* Warranty page */}
+          <span className="pgl no-print">Warranty &amp; Terms</span>
+          <div className="lp">
+            <div className="lp-slot" style={slotStyle}>
+              <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
+              <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
+                <p style={{ marginTop: 0, marginBottom: '10px' }}>Henderson Design Group (HDG) stands behind the quality of the furnishings, fixtures, lighting, accessories, and related products provided as part of the Ālia Furnishings Collections.</p>
+                <p style={{ marginBottom: '6px' }}>Warranty coverage begins on the installation date and includes:</p>
+                <ul style={{ marginLeft: '14px', marginTop: 0, marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <li><strong>90-Day Installation Warranty</strong> – Covers installation workmanship and adjustments.</li>
+                  <li><strong>3-Year Structural Warranty</strong> – Covers furniture frames, cabinetry, millwork, and joinery against defects in materials and workmanship.</li>
+                  <li><strong>2-Year Upholstery Construction Warranty</strong> – Covers upholstery construction, suspension systems, cushion support systems, and manufacturing-related seam failures.</li>
+                  <li><strong>1-Year Finishes, Hardware &amp; Components Warranty</strong> – Covers manufacturing defects in finishes, hardware, lighting, accessories, and related components.</li>
+                </ul>
+                <p style={{ marginBottom: '10px' }}>Certain products, including appliances, electronics, motorized systems, and specialty lighting, may be covered by separate manufacturer warranties.</p>
+                <p style={{ marginBottom: '10px' }}>This warranty does not cover normal wear and tear, misuse, accidents, improper maintenance, environmental damage, natural material variations, or other exclusions outlined in the full warranty documentation.</p>
+                <p style={{ marginBottom: '10px' }}>Warranty claims must be submitted through the HDG Client Portal or to your HDG Project Manager and should include photographs and a description of the issue.</p>
+                <p style={{ marginBottom: '10px' }}>HDG also offers aftercare services, including repairs, refinishing, reupholstery, replacement parts, and furnishing enhancements, which may be available on a fee-for-service basis after the warranty period expires.</p>
+                <p style={{ marginBottom: 0 }}>For complete warranty terms, exclusions, limitations, care requirements, and claim procedures, please refer to the Warranty &amp; Care section of the DeCora website.</p>
+              </div>
             </div>
-          ))
-        )}
+            <PageFooter />
+          </div>
+          <div className="pgap no-print" />
 
-        <WarrantyPage />
+          {/* Signature page */}
+          <span className="pgl no-print">Signature</span>
+          <div className="lp last">
+            <div className="lp-slot" style={slotStyle}>
+              <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
+              </div>
+              <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
+                  <p style={{ margin: 0, fontWeight: '600' }}>{last.clientInfo.name || '—'}</p>
+                  {last.clientInfo.street && <p style={{ margin: 0 }}>{last.clientInfo.street}{last.clientInfo.unitNumber?.trim() ? ', #' + last.clientInfo.unitNumber : ''}</p>}
+                  {last.clientInfo.cityLine && <p style={{ margin: 0 }}>{last.clientInfo.cityLine}</p>}
+                  {last.clientInfo.email && <p style={{ margin: 0 }}>{last.clientInfo.email}</p>}
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
+                  <p style={{ margin: 0 }}><strong>Proposal #:</strong> {last.proposalNumber || '—'}</p>
+                  <p style={{ margin: 0 }}>Proposal Date: {today}</p>
+                </div>
+              </div>
+              <div style={{ marginBottom: '12px', fontSize: '12px' }}>
+                <span style={{ color: '#1e3a5f', fontWeight: '500' }}>Project: Ālia</span>
+              </div>
+              <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+                <ul style={{ marginLeft: '14px', marginTop: '2px', marginBottom: '6px' }}>
+                  <li>Original Buyer: The warranty applies to the original buyer only.</li>
+                  <li>Original Installation Location: Valid only for furnishings in the space where they were originally installed.</li>
+                  <li>Repair, Touch-Up, or Replacement Only: No refunds.</li>
+                  <li>Non-Returnable Custom Upholstery: Custom upholstery is non-returnable.</li>
+                  <li>Non-Transferable Warranty: The warranty is non-transferable.</li>
+                </ul>
+                <p style={{ marginTop: '30px', fontWeight: '700' }}>{last.depositPercent ?? 100}% Deposit</p>
+                <p style={{ marginTop: '30px' }}>Accept and Approve:</p>
+                <div style={{ borderTop: '1px solid black', marginTop: '56px', paddingTop: '6px', fontSize: '11.5px' }}>Signature</div>
+              </div>
+            </div>
+            <PageFooter />
+          </div>
+          <div className="no-print" style={{ height: '20px', width: '8.5in', margin: '0 auto', background: '#b8b8b8' }} />
 
-        <SignaturePage
-          clientInfo={lastProposal.clientInfo}
-          proposalNumber={lastProposal.proposalNumber}
-          depositPercent={lastProposal.depositPercent}
-        />
+        </div>
       </div>
     </>
   );

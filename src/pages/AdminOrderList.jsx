@@ -1084,13 +1084,6 @@ const AdminOrderList = ({ onOrderClick }) => {
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-800 text-sm">All Orders</h3>
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleClientProposals}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors"
-              >
-                <BookMarked className="w-3.5 h-3.5" />
-                Print Proposals{clientPrintIds.size > 0 ? ` (${clientPrintIds.size})` : ''}
-              </button>
               {clientOrders.length >= 2 && (
                 <button
                   onClick={openMoveModal}
