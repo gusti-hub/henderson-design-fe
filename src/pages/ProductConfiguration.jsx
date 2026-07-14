@@ -139,7 +139,7 @@ const ProductConfiguration = () => {
       product_id: value,
       woodFinish: prev.woodFinish || parsed.woodFinish,
       fabric:     prev.fabric     || parsed.fabric,
-      others:     prev.others.length ? prev.others : parsed.others,
+      others:     prev.others.length ? prev.others : (Array.isArray(parsed.others) ? parsed.others.filter(Boolean).join(', ') : (parsed.others || '')),
     }));
   };
 
@@ -242,9 +242,11 @@ const ProductConfiguration = () => {
       fd.append('woodFinish',        formData.woodFinish);
       fd.append('fabric',            formData.fabric);
       // others: split comma-separated string back to array for the API
-      const othersArr = formData.others
-        ? formData.others.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-        : [];
+      const othersArr = Array.isArray(formData.others)
+        ? formData.others.map(s => String(s).trim().toUpperCase()).filter(Boolean)
+        : formData.others
+          ? formData.others.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+          : [];
       fd.append('others', JSON.stringify(othersArr));
       if (formData.imageFile) {
         fd.append('image', formData.imageFile);
