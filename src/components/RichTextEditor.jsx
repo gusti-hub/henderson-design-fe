@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import { Extension } from '@tiptap/core';
+import { Extension, Node } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
@@ -65,6 +65,30 @@ export const renderRichTextHtml = (value) => {
   if (!value) return '';
   return isHtml(value) ? value : plainToHtml(value);
 };
+
+// ─── Custom Node: tab stop ────────────────────────────────────────────────────
+// Tab key inserts a fixed-width inline span instead of moving focus to next field.
+const TabStop = Node.create({
+  name: 'tabStop',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: false,
+
+  parseHTML() {
+    return [{ tag: 'span[data-tab]' }];
+  },
+
+  renderHTML() {
+    return ['span', { 'data-tab': '1', class: 'rte-tab' }];
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => this.editor.chain().focus().insertContent({ type: 'tabStop' }).run(),
+    };
+  },
+});
 
 // ─── Custom Extension: colon hanging indent ───────────────────────────────────
 // When Enter is pressed on a line containing ": ", the next line is automatically
@@ -157,6 +181,7 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
       StarterKit.configure({ heading: false }),
       TextAlign.configure({ types: ['paragraph'] }),
       Underline,
+      TabStop,
       ColonHangingIndent,
     ],
     content: plainToHtml(value),
@@ -228,11 +253,13 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
           content: attr(data-placeholder);
           color: #9ca3af; pointer-events: none; float: left; height: 0;
         }
+        .rte-tab, span[data-tab] { display:inline-block; min-width:3em; }
         .rich-text-output p { margin: 0 0 2px; }
         .rich-text-output ul { list-style: disc; padding-left: 1.2em; margin: 2px 0; }
         .rich-text-output ol { list-style: decimal; padding-left: 1.2em; margin: 2px 0; }
         .rich-text-output li { margin: 1px 0; }
         .rich-text-output p:last-child { margin-bottom: 0; }
+        .rich-text-output span[data-tab] { display:inline-block; min-width:3em; }
       `}</style>
     </div>
   );
