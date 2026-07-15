@@ -5,6 +5,7 @@
 //   11. [NEW] Drag-to-reorder products within/across room groups (HTML5 drag-and-drop, no extra deps)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import RichTextEditor from './RichTextEditor';
 import {
   Plus, Trash2, Save, FileText, Loader2, AlertCircle,
   Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon, Check,
@@ -2704,49 +2705,27 @@ const ProductCard = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-sm font-medium text-gray-700">Client Description</label>
-                      <button
-                        type="button"
-                        onClick={applyBoldToSpecs}
-                        title="Bold selected text (**bold**)"
-                        className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700 leading-none"
-                      >
-                        B
-                      </button>
-                    </div>
-                    <textarea
-                      ref={specsRef}
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
+                    <RichTextEditor
                       value={localFields.specifications}
-                      onChange={(e) => { setLocal('specifications', e.target.value); upd('specifications', e.target.value); }}
-                      className={`${inputCls} resize-none`}
-                      rows={5}
+                      onChange={(html) => { setLocal('specifications', html); upd('specifications', html); }}
+                      placeholder="Describe the product for the client…"
+                      minRows={5}
                     />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-sm font-medium text-gray-700">Vendor Description</label>
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => {
-                          setLocal('vendorDescription', localFields.specifications);
-                          upd('vendorDescription', localFields.specifications);
-                        }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
-                        <button
-                          type="button"
-                          onClick={applyBoldToVendorDesc}
-                          title="Bold selected text (**bold**)"
-                          className="px-2 py-0.5 text-xs font-bold border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700 leading-none"
-                        >
-                          B
-                        </button>
-                      </div>
+                      <button type="button" onClick={() => {
+                        setLocal('vendorDescription', localFields.specifications);
+                        upd('vendorDescription', localFields.specifications);
+                      }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
                     </div>
-                    <textarea
-                      ref={vendorDescRef}
+                    <RichTextEditor
                       value={localFields.vendorDescription}
-                      onChange={(e) => { setLocal('vendorDescription', e.target.value); upd('vendorDescription', e.target.value); }}
-                      className={`${inputCls} resize-none`}
-                      rows={5}
+                      onChange={(html) => { setLocal('vendorDescription', html); upd('vendorDescription', html); }}
+                      placeholder="Vendor-facing description…"
+                      minRows={5}
                     />
                   </div>
                 </div>

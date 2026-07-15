@@ -13,6 +13,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save, Plus } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
+import { renderRichText, renderRichTextHtml } from './RichTextEditor';
 
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
@@ -190,7 +191,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#000000', marginBottom: '1px' }}>{parseBold(o.specifications)}</div>}
+        {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -268,7 +269,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {o.specifications && <div style={{ whiteSpace: 'pre-wrap', color: '#000000', marginBottom: '1px' }}>{parseBold(o.specifications)}</div>}
+        {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -985,7 +986,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const o = p.selectedOptions || {};
         const lines = [];
         if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
-        if (o.specifications) lines.push('<div style="white-space:pre-wrap">' + parseBoldHtml(o.specifications) + '</div>');
+        if (o.specifications) lines.push(renderRichTextHtml(o.specifications));
         if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
         if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
         if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');

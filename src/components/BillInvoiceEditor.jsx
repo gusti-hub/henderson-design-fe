@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Printer, ChevronLeft, Loader2, RefreshCw, Send, GitCompare } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
+import { renderRichText } from './RichTextEditor';
 
 // ─── Inline image with print-safe base64 ─────────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
@@ -619,7 +620,7 @@ const BillInvoiceEditor = ({ orderId, vendorId, poVersionId, poNumber, onClose }
                         <span className="desc-row-label">Quantity</span>
                         <span className="desc-row-value">{product.quantity || 1} {product.selectedOptions?.units || 'Each'}</span>
                       </div>
-                      {specs     && <div className="desc-row"><span className="desc-row-label">Specs</span><span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{specs}</span></div>}
+                      {specs     && <div className="desc-row"><span className="desc-row-label">Specs</span><span className="desc-row-value" style={{ lineHeight: '1.5', textAlign: 'left' }}>{renderRichText(specs)}</span></div>}
                       {product.name       && <div className="desc-row"><span className="desc-row-label">Name</span><span className="desc-row-value">{product.name}</span></div>}
                       {product.product_id && <div className="desc-row"><span className="desc-row-label">SKU</span><span className="desc-row-value">{product.product_id}</span></div>}
                       {(product.selectedOptions?.dimension || product.selectedOptions?.size) && (

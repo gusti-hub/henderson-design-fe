@@ -2,16 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, FileText, Printer, ChevronLeft, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
-
-const parseBold = (text) => {
-  if (!text) return null;
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) =>
-    part.startsWith('**') && part.endsWith('**')
-      ? <strong key={i}>{part.slice(2, -2)}</strong>
-      : part
-  );
-};
+import { renderRichText } from './RichTextEditor';
 
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
@@ -666,7 +657,9 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       {specs ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Specs</span>
-                          <span className="desc-row-value" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', textAlign: 'left' }}>{parseBold(specs)}</span>
+                          <span className="desc-row-value" style={{ lineHeight: '1.5', textAlign: 'left' }}>
+                            {renderRichText(specs)}
+                          </span>
                         </div>
                       ) : null}
                       {product.name ? (
