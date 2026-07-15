@@ -11,18 +11,19 @@ export const isHtml = (val) => {
   return /<[a-z][\s\S]*>/i.test(val);
 };
 
-// ─── Measure pixel width of a label string (for colon hanging indent) ────────
-const measureLabel = (label) => {
+// ─── Measure pixel width of a label string using the editor's actual font ─────
+const measureLabel = (label, editorDom) => {
   try {
     const el = document.createElement('span');
-    el.style.cssText =
-      'position:absolute;visibility:hidden;white-space:nowrap;' +
-      'font-size:14px;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;';
+    const font = editorDom
+      ? window.getComputedStyle(editorDom).font
+      : '14px ui-sans-serif,system-ui,sans-serif';
+    el.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${font};`;
     el.textContent = label;
     document.body.appendChild(el);
     const w = el.offsetWidth;
     document.body.removeChild(el);
-    return Math.ceil(w) + 2;
+    return Math.ceil(w);
   } catch {
     return null;
   }
@@ -107,10 +108,15 @@ const ColonHangingIndent = Extension.create({
           return false;
         }
 
-        // Already-indented line → next Enter resets to normal paragraph
+        // Already-indented line
         if (node.attrs?.indent) {
-          editor.chain().splitBlock().updateAttributes('paragraph', { indent: null }).run();
-          return true;
+          if (!node.textContent.trim()) {
+            // Empty indented line → reset to normal (no split, just clear indent)
+            editor.chain().updateAttributes('paragraph', { indent: null }).run();
+            return true;
+          }
+          // Non-empty indented line → let TipTap default splitBlock copy the indent attribute
+          return false;
         }
 
         const text = node.textContent;
@@ -118,7 +124,7 @@ const ColonHangingIndent = Extension.create({
         if (colonIdx === -1) return false; // no ": " pattern → default Enter
 
         const label = text.substring(0, colonIdx + 2); // e.g. "Lighting: "
-        const px = measureLabel(label);
+        const px = measureLabel(label, editor.view.dom);
         if (!px) return false;
 
         editor.chain().splitBlock().updateAttributes('paragraph', { indent: px }).run();
