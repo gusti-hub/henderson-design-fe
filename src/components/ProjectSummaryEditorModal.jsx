@@ -115,6 +115,11 @@ const SummaryPreview = ({ preview, lang = 'en' }) => {
           <LineRow label={t.s2Approved} value={s2.approvedTotalToDate} />
           <Div />
           <LineRow label={t.s2Payments} value={s2.paymentsReceived} negative />
+          {s2.creditAmount > 0 && (
+            <>
+              <LineRow label={t.s2Credit} value={s2.creditAmount} negative />
+            </>
+          )}
           <Div />
           <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold teal={s2.outstandingBalance > 0} />
         </SectionCard>
@@ -297,6 +302,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
     depositAmount:                0,
     approvedTotalToDate:          0,
     paymentsReceived:             0,
+    creditAmount:                 0,
     accentsAllowance:         0,
     closetSystemsAllowance:   0,
     windowCoveringsAllowance: 0,
@@ -339,6 +345,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
           depositAmount:                hasSubFields ? (oc.depositAmount || 0) : legacyDeposit,
           approvedTotalToDate:          cst.approvedTotalToDate         || 0,
           paymentsReceived:             cst.paymentsReceived            || 0,
+          creditAmount:                 cst.creditAmount                || 0,
           accentsAllowance:         est.accentsAllowance         || 0,
           closetSystemsAllowance:   est.closetSystemsAllowance   || 0,
           windowCoveringsAllowance: est.windowCoveringsAllowance || 0,
@@ -390,7 +397,8 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const s1Remaining  = Math.max(0, s1Original - s1Deposit);
   const s2Approved  = Number(form.approvedTotalToDate);
   const s2Payments  = Number(form.paymentsReceived);
-  const s2Outstanding = Math.max(0, s2Approved - s2Payments);
+  const s2Credit    = Number(form.creditAmount);
+  const s2Outstanding = Math.max(0, s2Approved - s2Payments - s2Credit);
 
   const preview = {
     statementDate: form.statementDate,
@@ -412,6 +420,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
       proposalLabel:       form.proposalLabel,
       approvedTotalToDate: s2Approved,
       paymentsReceived:    s2Payments,
+      creditAmount:        s2Credit,
       outstandingBalance:  s2Outstanding,
     },
     section3: {
@@ -683,6 +692,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
                 <div className="space-y-3">
                   {numField('Proposal Total To Date ($)', 'approvedTotalToDate')}
                   {numField('Less Payments Received ($)', 'paymentsReceived')}
+                  {numField('Less Credit / Overpayment ($)', 'creditAmount')}
                 </div>
                 <div className="mt-3 flex justify-between items-center bg-gray-100 rounded-lg px-3 py-2">
                   <span className="text-xs font-semibold text-gray-700">Outstanding Balance</span>

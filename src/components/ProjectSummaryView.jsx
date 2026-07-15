@@ -26,6 +26,7 @@ export const T = {
     s2Title:      'CURRENT PROJECT STATUS',
     s2Approved:   'Proposal Total To Date',
     s2Payments:   'Less Payments Received',
+    s2Credit:     'Less Credit / Overpayment',
     s2Outstanding:'Current Outstanding Balance',
     s2Current:    'Thank you. Your account is current.',
 
@@ -89,6 +90,7 @@ export const T = {
     s2Title:      '現在のプロジェクト状況',
     s2Approved:   'ご提案総額（現在まで）',
     s2Payments:   'お支払い受領額（控除）',
+    s2Credit:     'クレジット / 過払い金（控除）',
     s2Outstanding:'現在の未払い残高',
     s2Current:    'ありがとうございます。お支払いは完了しております。',
 
@@ -415,6 +417,9 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               <LineRow label={t.s2Approved}    value={s2.approvedTotalToDate} />
               <Divider />
               <LineRow label={t.s2Payments}    value={s2.paymentsReceived} negative />
+              {s2.creditAmount > 0 && (
+                <LineRow label={t.s2Credit} value={s2.creditAmount} negative />
+              )}
               <Divider />
               <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold teal={s2.outstandingBalance > 0} />
 
