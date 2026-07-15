@@ -160,6 +160,7 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
       ColonHangingIndent,
     ],
     content: plainToHtml(value),
+    enableInputRules: false, // prevent '- ' auto-converting to bullet (use toolbar instead)
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
