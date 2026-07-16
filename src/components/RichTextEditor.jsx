@@ -79,12 +79,11 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
           ...this.parent?.(),
           indent: {
             default: null,
-            parseHTML: (el) => {
-              const v = el.style?.paddingLeft;
-              return v ? parseInt(v) : null;
-            },
+            // Store the full CSS value string (e.g. "3.93em" or legacy "55px")
+            // so the value renders correctly at any font-size context.
+            parseHTML: (el) => el.style?.paddingLeft || null,
             renderHTML: (attrs) =>
-              attrs.indent ? { style: `padding-left: ${attrs.indent}px` } : {},
+              attrs.indent ? { style: `padding-left: ${attrs.indent}` } : {},
           },
         };
       },
@@ -145,10 +144,15 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
               const coords = editor.view.coordsAtPos(afterColonPos);
               const tiptapEl = editor.view.dom;
               const rect = tiptapEl.getBoundingClientRect();
-              const padLeft = parseFloat(window.getComputedStyle(tiptapEl).paddingLeft) || 0;
-              const px = Math.round(coords.left - rect.left - padLeft);
+              const style = window.getComputedStyle(tiptapEl);
+              const padLeft = parseFloat(style.paddingLeft) || 0;
+              const fontSize = parseFloat(style.fontSize) || 14;
+              const px = coords.left - rect.left - padLeft;
               if (px <= 0) return false;
-              editor.chain().splitBlock().updateAttributes('paragraph', { indent: px }).run();
+              // Store as em so the indent scales with font-size in any context
+              // (editor uses text-sm/14px; Proposal/PO may use a larger font).
+              const em = (px / fontSize).toFixed(3);
+              editor.chain().splitBlock().updateAttributes('paragraph', { indent: `${em}em` }).run();
               return true;
             } catch {
               return false;
