@@ -103,12 +103,15 @@ const SummaryPreview = ({ preview, lang = 'en' }) => {
                 <span>{t.s1DepAmount}</span>
                 <span>${(s1.depositAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
+              {s1.creditAmount > 0 && (
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>{t.s1Credit}</span>
+                  <span>${(s1.creditAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
             </div>
           )}
           <Div />
-          {s1.creditAmount > 0 && (
-            <LineRow label={t.s1Credit} value={s1.creditAmount} negative />
-          )}
           <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
         </SectionCard>
 
@@ -391,7 +394,7 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const taxRate      = Number(form.taxRate) || 4.5;
   const taxableAmt   = (form.taxOnDesignFee ? s1DesignFee : 0) + (form.taxOnDeposit ? s1DepAmt : 0);
   const s1Tax        = Math.round(taxableAmt * taxRate) / 100;
-  const s1Deposit    = s1DesignFee + s1Tax + s1DepAmt;
+  const s1Deposit    = s1DesignFee + s1Tax + s1DepAmt + s1Credit;
   const s1Remaining  = Math.max(0, s1Original - s1Deposit);
   const s1Credit    = Number(form.creditAmount);
   const s2Approved  = Number(form.approvedTotalToDate);

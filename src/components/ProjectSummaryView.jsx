@@ -280,7 +280,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
     approvedCostsToDate:             approvedToDate,
     estimatedRemainingCosts:         s3Total,
     estimatedFinalProjectInvestment: finalInvestment,
-    depositHeldOnAccount:            (s1.depositAmount || 0) + (s2.creditAmount || 0),
+    depositHeldOnAccount:            (s1.depositAmount || 0) + (s1.creditAmount || 0),
   };
 
   return (
@@ -391,10 +391,13 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
                     <span>{t.s1DepAmount}</span>
                     <span>${(s1.depositAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
+                  {s1.creditAmount > 0 && (
+                    <div className="flex justify-between text-[11px] text-gray-500">
+                      <span>{t.s1Credit}</span>
+                      <span>${(s1.creditAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {s1.creditAmount > 0 && (
-                <LineRow label={t.s1Credit} value={s1.creditAmount} negative />
               )}
               <Divider />
               <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
