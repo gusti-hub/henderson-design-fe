@@ -4,7 +4,6 @@ import { Extension, Node } from '@tiptap/core';
 import Paragraph from '@tiptap/extension-paragraph';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import Underline from '@tiptap/extension-underline';
 import { plainToHtml } from '../utils/richTextUtils';
 
 // Re-export utilities so existing import paths keep working.
@@ -127,7 +126,6 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
       StarterKit.configure({ heading: false, paragraph: false }),
       CustomParagraph,
       TextAlign.configure({ types: ['paragraph'] }),
-      Underline,
       TabStop,
       ColonHangingIndent,
     ];

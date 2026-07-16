@@ -391,12 +391,12 @@ const ProjectSummaryEditorModal = ({ clientId, onClose, onSaved }) => {
   const s1Original   = Number(form.originalCollectionInvestment);
   const s1DesignFee  = Number(form.depositDesignFee);
   const s1DepAmt     = Number(form.depositAmount);
+  const s1Credit     = Number(form.creditAmount);
   const taxRate      = Number(form.taxRate) || 4.5;
   const taxableAmt   = (form.taxOnDesignFee ? s1DesignFee : 0) + (form.taxOnDeposit ? s1DepAmt : 0);
   const s1Tax        = Math.round(taxableAmt * taxRate) / 100;
   const s1Deposit    = s1DesignFee + s1Tax + s1DepAmt + s1Credit;
   const s1Remaining  = Math.max(0, s1Original - s1Deposit);
-  const s1Credit    = Number(form.creditAmount);
   const s2Approved  = Number(form.approvedTotalToDate);
   const s2Payments  = Number(form.paymentsReceived);
   const s2Outstanding = Math.max(0, s2Approved - s2Payments);
