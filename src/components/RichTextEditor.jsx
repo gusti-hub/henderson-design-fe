@@ -12,23 +12,6 @@ export const isHtml = (val) => {
   return /<[a-z][\s\S]*>/i.test(val);
 };
 
-// ─── Measure pixel width of a label string using the editor's actual font ─────
-const measureLabel = (label, editorDom) => {
-  try {
-    const el = document.createElement('span');
-    const font = editorDom
-      ? window.getComputedStyle(editorDom).font
-      : '14px ui-sans-serif,system-ui,sans-serif';
-    el.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${font};`;
-    el.textContent = label;
-    document.body.appendChild(el);
-    const w = el.offsetWidth;
-    document.body.removeChild(el);
-    return Math.ceil(w);
-  } catch {
-    return null;
-  }
-};
 
 // ─── Convert legacy plain text to HTML ───────────────────────────────────────
 export const plainToHtml = (text) => {
@@ -155,12 +138,21 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
             const colonIdx = text.indexOf(': ');
             if (colonIdx === -1) return false;
 
-            const label = text.substring(0, colonIdx + 2);
-            const px = measureLabel(label, editor.view.dom);
-            if (!px) return false;
-
-            editor.chain().splitBlock().updateAttributes('paragraph', { indent: px }).run();
-            return true;
+            // Use coordsAtPos to get the exact rendered X of the first char
+            // after ": " — accurate regardless of bold/font-size on the label.
+            try {
+              const afterColonPos = $from.start() + colonIdx + 2;
+              const coords = editor.view.coordsAtPos(afterColonPos);
+              const tiptapEl = editor.view.dom;
+              const rect = tiptapEl.getBoundingClientRect();
+              const padLeft = parseFloat(window.getComputedStyle(tiptapEl).paddingLeft) || 0;
+              const px = Math.round(coords.left - rect.left - padLeft);
+              if (px <= 0) return false;
+              editor.chain().splitBlock().updateAttributes('paragraph', { indent: px }).run();
+              return true;
+            } catch {
+              return false;
+            }
           },
         };
       },
