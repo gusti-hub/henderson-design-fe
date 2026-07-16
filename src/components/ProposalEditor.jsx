@@ -13,7 +13,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save, Plus } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
-import { renderRichText, renderRichTextHtml } from './RichTextEditor';
+import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
 
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';

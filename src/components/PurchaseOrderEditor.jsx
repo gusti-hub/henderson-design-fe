@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, FileText, Printer, ChevronLeft, Loader2 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
-import { renderRichText } from './RichTextEditor';
+import { renderRichText } from '../utils/richTextUtils';
 
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {

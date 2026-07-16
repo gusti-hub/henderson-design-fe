@@ -4,8 +4,11 @@
 //   10. [NEW] Lead Time field — added to localFields, buildProductPayload, Order model, backend save
 //   11. [NEW] Drag-to-reorder products within/across room groups (HTML5 drag-and-drop, no extra deps)
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import RichTextEditor from './RichTextEditor';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+
+// Lazy-load to break TipTap circular-dep TDZ — TipTap only loads after
+// the main bundle is fully initialized, when the editor first renders.
+const RichTextEditor = lazy(() => import('./RichTextEditor'));
 import {
   Plus, Trash2, Save, FileText, Loader2, AlertCircle,
   Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon, Check,
@@ -2706,12 +2709,14 @@ const ProductCard = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
-                    <RichTextEditor
-                      value={localFields.specifications}
-                      onChange={(html) => { setLocal('specifications', html); upd('specifications', html); }}
-                      placeholder="Describe the product for the client…"
-                      minRows={5}
-                    />
+                    <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
+                      <RichTextEditor
+                        value={localFields.specifications}
+                        onChange={(html) => { setLocal('specifications', html); upd('specifications', html); }}
+                        placeholder="Describe the product for the client…"
+                        minRows={5}
+                      />
+                    </Suspense>
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -2721,12 +2726,14 @@ const ProductCard = ({
                         upd('vendorDescription', localFields.specifications);
                       }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
                     </div>
-                    <RichTextEditor
-                      value={localFields.vendorDescription}
-                      onChange={(html) => { setLocal('vendorDescription', html); upd('vendorDescription', html); }}
-                      placeholder="Vendor-facing description…"
-                      minRows={5}
-                    />
+                    <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
+                      <RichTextEditor
+                        value={localFields.vendorDescription}
+                        onChange={(html) => { setLocal('vendorDescription', html); upd('vendorDescription', html); }}
+                        placeholder="Vendor-facing description…"
+                        minRows={5}
+                      />
+                    </Suspense>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">

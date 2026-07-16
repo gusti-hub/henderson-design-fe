@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Printer, ChevronLeft, Loader2, RefreshCw, Send, GitCompare } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
-import { renderRichText } from './RichTextEditor';
+import { renderRichText } from '../utils/richTextUtils';
 
 // ─── Inline image with print-safe base64 ─────────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
