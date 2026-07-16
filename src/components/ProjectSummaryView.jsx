@@ -20,13 +20,13 @@ export const T = {
     s1DepDesignFee:  'Design Fee',
     s1DepTax:        'Tax',
     s1DepAmount:     'Deposit',
+    s1Credit:        'Less Credit / Overpayment',
     s1Balance:       'Remaining Original Estimate Balance',
     s1Note:       'Your original collection pricing is secured. Your deposit holds this pricing and is reserved toward final reconciliation.',
 
     s2Title:      'CURRENT PROJECT STATUS',
     s2Approved:   'Proposal Total To Date',
     s2Payments:   'Less Payments Received',
-    s2Credit:     'Less Credit / Overpayment',
     s2Outstanding:'Current Outstanding Balance',
     s2Current:    'Thank you. Your account is current.',
 
@@ -84,13 +84,13 @@ export const T = {
     s1DepDesignFee:  'デザインフィー',
     s1DepTax:        '税金',
     s1DepAmount:     'デポジット',
+    s1Credit:        'クレジット / 過払い金（控除）',
     s1Balance:       'オリジナル見積残高',
     s1Note:       'お客様のオリジナルコレクション価格は確保されています。お預かりしたデポジットがこの価格を保証し、最終精算時に充当されます。',
 
     s2Title:      '現在のプロジェクト状況',
     s2Approved:   'ご提案総額（現在まで）',
     s2Payments:   'お支払い受領額（控除）',
-    s2Credit:     'クレジット / 過払い金（控除）',
     s2Outstanding:'現在の未払い残高',
     s2Current:    'ありがとうございます。お支払いは完了しております。',
 
@@ -280,7 +280,7 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
     approvedCostsToDate:             approvedToDate,
     estimatedRemainingCosts:         s3Total,
     estimatedFinalProjectInvestment: finalInvestment,
-    depositHeldOnAccount:            s1.depositAmount || 0,
+    depositHeldOnAccount:            (s1.depositAmount || 0) + (s2.creditAmount || 0),
   };
 
   return (
@@ -393,6 +393,9 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
                   </div>
                 </div>
               )}
+              {s1.creditAmount > 0 && (
+                <LineRow label={t.s1Credit} value={s1.creditAmount} negative />
+              )}
               <Divider />
               <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
 
@@ -417,9 +420,6 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
               <LineRow label={t.s2Approved}    value={s2.approvedTotalToDate} />
               <Divider />
               <LineRow label={t.s2Payments}    value={s2.paymentsReceived} negative />
-              {s2.creditAmount > 0 && (
-                <LineRow label={t.s2Credit} value={s2.creditAmount} negative />
-              )}
               <Divider />
               <LineRow label={t.s2Outstanding} value={s2.outstandingBalance} bold teal={s2.outstandingBalance > 0} />
 
