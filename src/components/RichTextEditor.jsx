@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { Extension, Node } from '@tiptap/core';
+import Paragraph from '@tiptap/extension-paragraph';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
@@ -30,7 +31,6 @@ const measureLabel = (label, editorDom) => {
 };
 
 // ─── Convert legacy plain text to HTML ───────────────────────────────────────
-// Handles: **bold** (double asterisk), *bold* (single asterisk — legacy format)
 export const plainToHtml = (text) => {
   if (!text) return '<p></p>';
   if (isHtml(text)) return text;
@@ -39,8 +39,8 @@ export const plainToHtml = (text) => {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
   const withBold = escaped
-    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')           // **bold**
-    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '<strong>$1</strong>'); // *bold*
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '<strong>$1</strong>');
   return withBold
     .split('\n')
     .map(line => `<p>${line || '<br>'}</p>`)
@@ -66,98 +66,6 @@ export const renderRichTextHtml = (value) => {
   return isHtml(value) ? value : plainToHtml(value);
 };
 
-// ─── Custom Node: tab stop ────────────────────────────────────────────────────
-// Tab key inserts a fixed-width inline span instead of moving focus to next field.
-const TabStop = Node.create({
-  name: 'tabStop',
-  group: 'inline',
-  inline: true,
-  atom: true,
-  selectable: false,
-
-  parseHTML() {
-    return [{ tag: 'span[data-tab]' }];
-  },
-
-  renderHTML() {
-    return ['span', { 'data-tab': '1', class: 'rte-tab' }];
-  },
-
-  addKeyboardShortcuts() {
-    return {
-      Tab: () => this.editor.chain().focus().insertContent({ type: 'tabStop' }).run(),
-    };
-  },
-});
-
-// ─── Custom Extension: colon hanging indent ───────────────────────────────────
-// When Enter is pressed on a line containing ": ", the next line is automatically
-// indented to align with the text after the colon.
-// Pressing Enter on an already-indented line resets to a normal paragraph.
-const ColonHangingIndent = Extension.create({
-  name: 'colonHangingIndent',
-
-  addGlobalAttributes() {
-    return [
-      {
-        types: ['paragraph'],
-        attributes: {
-          indent: {
-            default: null,
-            parseHTML: (el) => {
-              const v = el.style?.paddingLeft;
-              return v ? parseInt(v) : null;
-            },
-            renderHTML: (attrs) =>
-              attrs.indent ? { style: `padding-left: ${attrs.indent}px` } : {},
-          },
-        },
-      },
-    ];
-  },
-
-  addKeyboardShortcuts() {
-    return {
-      Enter: () => {
-        const editor = this.editor;
-        const { $from } = editor.state.selection;
-        const node = $from.parent;
-
-        // Don't intercept inside lists
-        if (
-          editor.isActive('listItem') ||
-          editor.isActive('bulletList') ||
-          editor.isActive('orderedList')
-        ) {
-          return false;
-        }
-
-        // Already-indented line
-        if (node.attrs?.indent) {
-          if (!node.textContent.trim()) {
-            // Empty indented line → reset to normal (no split, just clear indent)
-            editor.chain().updateAttributes('paragraph', { indent: null }).run();
-            return true;
-          }
-          // Non-empty indented line → let TipTap default splitBlock copy the indent attribute
-          return false;
-        }
-
-        const text = node.textContent;
-        const colonIdx = text.indexOf(': ');
-        if (colonIdx === -1) return false; // no ": " pattern → default Enter
-
-        const label = text.substring(0, colonIdx + 2); // e.g. "Lighting: "
-        const px = measureLabel(label, editor.view.dom);
-        if (!px) return false;
-
-        editor.chain().splitBlock().updateAttributes('paragraph', { indent: px }).run();
-        return true;
-      },
-    };
-  },
-});
-
 // ─── Toolbar helpers ──────────────────────────────────────────────────────────
 const Btn = ({ onClick, active, title, children }) => (
   <button
@@ -176,16 +84,102 @@ const Sep = () => <div className="w-px h-4 bg-gray-200 mx-0.5 self-center" />;
 
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: false }),
+  // All TipTap extension creation is deferred into useMemo to avoid
+  // circular-initialization (TDZ) errors in production bundles.
+  const extensions = useMemo(() => {
+    // Extend Paragraph with addAttributes() so padding-left is correctly
+    // serialized to HTML by getHTML() — addGlobalAttributes doesn't reliably
+    // emit style attributes in TipTap v3.
+    const CustomParagraph = Paragraph.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          indent: {
+            default: null,
+            parseHTML: (el) => {
+              const v = el.style?.paddingLeft;
+              return v ? parseInt(v) : null;
+            },
+            renderHTML: (attrs) =>
+              attrs.indent ? { style: `padding-left: ${attrs.indent}px` } : {},
+          },
+        };
+      },
+    });
+
+    // Tab key inserts a fixed-width inline span so text can be aligned
+    // without moving focus to the next form field.
+    const TabStop = Node.create({
+      name: 'tabStop',
+      group: 'inline',
+      inline: true,
+      atom: true,
+      selectable: false,
+      parseHTML() { return [{ tag: 'span[data-tab]' }]; },
+      renderHTML() { return ['span', { 'data-tab': '1', class: 'rte-tab' }]; },
+      addKeyboardShortcuts() {
+        return {
+          Tab: () => this.editor.chain().focus().insertContent({ type: 'tabStop' }).run(),
+        };
+      },
+    });
+
+    // When Enter is pressed after a "Label: value" line, the next line
+    // is automatically indented to align with the value. Enter on an
+    // empty indented line resets to normal; non-empty indented + Enter
+    // continues the indent (TipTap copies the attribute naturally).
+    const ColonHangingIndent = Extension.create({
+      name: 'colonHangingIndent',
+      addKeyboardShortcuts() {
+        return {
+          Enter: () => {
+            const editor = this.editor;
+            const { $from } = editor.state.selection;
+            const node = $from.parent;
+
+            if (
+              editor.isActive('listItem') ||
+              editor.isActive('bulletList') ||
+              editor.isActive('orderedList')
+            ) return false;
+
+            if (node.attrs?.indent) {
+              if (!node.textContent.trim()) {
+                editor.chain().updateAttributes('paragraph', { indent: null }).run();
+                return true;
+              }
+              return false;
+            }
+
+            const text = node.textContent;
+            const colonIdx = text.indexOf(': ');
+            if (colonIdx === -1) return false;
+
+            const label = text.substring(0, colonIdx + 2);
+            const px = measureLabel(label, editor.view.dom);
+            if (!px) return false;
+
+            editor.chain().splitBlock().updateAttributes('paragraph', { indent: px }).run();
+            return true;
+          },
+        };
+      },
+    });
+
+    return [
+      StarterKit.configure({ heading: false, paragraph: false }),
+      CustomParagraph,
       TextAlign.configure({ types: ['paragraph'] }),
       Underline,
       TabStop,
       ColonHangingIndent,
-    ],
+    ];
+  }, []);
+
+  const editor = useEditor({
+    extensions,
     content: plainToHtml(value),
-    enableInputRules: false, // prevent '- ' auto-converting to bullet (use toolbar instead)
+    enableInputRules: false,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
@@ -195,7 +189,6 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
     },
   });
 
-  // Sync when external value changes (e.g. "Copy from Client" button)
   useEffect(() => {
     if (!editor) return;
     const incoming = plainToHtml(value);
@@ -242,25 +235,6 @@ const RichTextEditor = ({ value, onChange, placeholder = '', minRows = 4 }) => {
       <div style={{ minHeight: minH }}>
         <EditorContent editor={editor} />
       </div>
-
-      <style>{`
-        .tiptap p { margin: 0 0 2px; }
-        .tiptap ul { list-style: disc; padding-left: 1.2em; margin: 2px 0; }
-        .tiptap ol { list-style: decimal; padding-left: 1.2em; margin: 2px 0; }
-        .tiptap li { margin: 1px 0; }
-        .tiptap p:last-child { margin-bottom: 0; }
-        .tiptap p.is-editor-empty:first-child::before {
-          content: attr(data-placeholder);
-          color: #9ca3af; pointer-events: none; float: left; height: 0;
-        }
-        .rte-tab, span[data-tab] { display:inline-block; min-width:3em; }
-        .rich-text-output p { margin: 0 0 2px; }
-        .rich-text-output ul { list-style: disc; padding-left: 1.2em; margin: 2px 0; }
-        .rich-text-output ol { list-style: decimal; padding-left: 1.2em; margin: 2px 0; }
-        .rich-text-output li { margin: 1px 0; }
-        .rich-text-output p:last-child { margin-bottom: 0; }
-        .rich-text-output span[data-tab] { display:inline-block; min-width:3em; }
-      `}</style>
     </div>
   );
 };
