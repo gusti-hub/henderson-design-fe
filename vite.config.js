@@ -4,17 +4,23 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    // Force Vite to pre-bundle TipTap packages together with esbuild,
-    // which resolves their internal circular dependencies before the
-    // main Rollup bundle is built (fixes TDZ "Cannot access before init").
-    include: [
-      '@tiptap/core',
-      '@tiptap/react',
-      '@tiptap/starter-kit',
-      '@tiptap/extension-paragraph',
-      '@tiptap/extension-text-align',
-      '@tiptap/extension-underline',
-    ],
+  build: {
+    rollupOptions: {
+      output: {
+        // TipTap v3 + ProseMirror have internal circular imports that cause
+        // "Cannot access before initialization" TDZ errors when Rollup inlines
+        // them into the main chunk. Splitting them into a dedicated vendor chunk
+        // lets Rollup resolve their circular deps in isolation.
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/@tiptap') ||
+            id.includes('node_modules/prosemirror') ||
+            id.includes('node_modules/@lezer')
+          ) {
+            return 'editor-vendor';
+          }
+        },
+      },
+    },
   },
 })
