@@ -111,8 +111,6 @@ const SummaryPreview = ({ preview, lang = 'en' }) => {
               )}
             </div>
           )}
-          <Div />
-          <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
         </SectionCard>
 
         {/* Section 2 */}

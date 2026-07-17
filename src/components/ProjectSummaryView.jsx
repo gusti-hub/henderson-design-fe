@@ -399,9 +399,6 @@ const ProjectSummaryView = ({ email, unitNumber, onContinue }) => {
                   )}
                 </div>
               )}
-              <Divider />
-              <LineRow label={t.s1Balance}  value={s1.remainingOriginalBalance} bold />
-
               {/* <div className="mt-4 bg-[#005670]/5 border border-[#005670]/10 rounded-lg p-3 flex gap-2">
                 <span className="text-lg">🔒</span>
                 <p className="text-xs text-gray-500 italic leading-snug">{t.s1Note}</p>
