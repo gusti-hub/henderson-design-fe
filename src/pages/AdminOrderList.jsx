@@ -983,13 +983,25 @@ const AdminOrderList = ({ onOrderClick }) => {
     setMovingItems(true);
     try {
       const token = localStorage.getItem('token');
+      // Split selected keys into real IDs vs index-based fallback keys
+      // (products with null _id use '__idx__N' keys to avoid Set collision)
+      const productIds = [];
+      const productIndices = [];
+      moveSelectedIds.forEach(key => {
+        if (typeof key === 'string' && key.startsWith('__idx__')) {
+          productIndices.push(parseInt(key.slice(7), 10));
+        } else {
+          productIds.push(key);
+        }
+      });
       const res = await fetch(`${backendServer}/api/orders/move-products`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sourceOrderId: moveSourceId,
           targetOrderId: moveTargetId,
-          productIds: [...moveSelectedIds],
+          productIds,
+          productIndices,
         }),
       });
       if (!res.ok) {
@@ -1192,7 +1204,9 @@ const AdminOrderList = ({ onOrderClick }) => {
           const orders = clientOrders;
           const sourceOrder = orders.find(o => o._id === moveSourceId);
           const sourceProducts = sourceOrder?.selectedProducts || [];
-          const allChecked = sourceProducts.length > 0 && sourceProducts.every(p => moveSelectedIds.has(p._id));
+          // Products with null _id use index-based key to avoid Set collision
+          const prodKey = (p, idx) => p._id != null ? String(p._id) : `__idx__${idx}`;
+          const allChecked = sourceProducts.length > 0 && sourceProducts.every((p, idx) => moveSelectedIds.has(prodKey(p, idx)));
 
           const orderLabel = (o) => {
             const raw = o.orderLabel?.trim();
@@ -1263,7 +1277,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                       </p>
                       {sourceProducts.length > 0 && (
                         <button
-                          onClick={() => setMoveSelectedIds(allChecked ? new Set() : new Set(sourceProducts.map(p => p._id)))}
+                          onClick={() => setMoveSelectedIds(allChecked ? new Set() : new Set(sourceProducts.map((p, idx) => prodKey(p, idx))))}
                           className="text-xs text-[#005670] font-medium hover:underline"
                         >
                           {allChecked ? 'Deselect all' : 'Select all'}
@@ -1274,15 +1288,16 @@ const AdminOrderList = ({ onOrderClick }) => {
                       <p className="text-sm text-gray-400 text-center py-6">No products in this order</p>
                     ) : (
                       <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                        {sourceProducts.map(p => {
+                        {sourceProducts.map((p, idx) => {
+                          const itemKey = prodKey(p, idx);
                           const imgUrl = toJsDelivrUrl(
                             p.selectedOptions?.uploadedImages?.[0]?.url ||
                             p.selectedOptions?.image || p.imageUrl || null
                           );
-                          const checked = moveSelectedIds.has(p._id);
+                          const checked = moveSelectedIds.has(itemKey);
                           return (
                             <label
-                              key={p._id}
+                              key={itemKey}
                               className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                                 checked ? 'bg-[#005670]/5 border-[#005670]/30' : 'border-gray-100 hover:bg-gray-50'
                               }`}
@@ -1294,7 +1309,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                                 onChange={() => {
                                   setMoveSelectedIds(prev => {
                                     const next = new Set(prev);
-                                    next.has(p._id) ? next.delete(p._id) : next.add(p._id);
+                                    next.has(itemKey) ? next.delete(itemKey) : next.add(itemKey);
                                     return next;
                                   });
                                 }}
