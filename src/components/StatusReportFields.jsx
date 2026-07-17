@@ -199,6 +199,13 @@ const StatusReportFields = ({
           disabled={disabled} className={inputCls} />
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">Revised Order Date</label>
+        <input type="date" value={opts.revisedOrderDate || ''}
+          onChange={(e) => upd('revisedOrderDate', e.target.value)}
+          disabled={disabled} className={inputCls} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Expected Ship Date</label>

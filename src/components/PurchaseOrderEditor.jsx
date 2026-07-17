@@ -74,7 +74,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   });
   const [clientInfo, setClientInfo] = useState({});
   const [headerFields, setHeaderFields] = useState({
-    poNumber: '', orderDate: '', accountNumber: '', repName: '',
+    poNumber: '', orderDate: '', revisedOrderDate: '', accountNumber: '', repName: '',
     repPhone: '', repEmail: '', terms: '', estimateNumber: '',
     comments: '', notes: '', shipping: 0, others: 0
   });
@@ -177,6 +177,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           orderDate: data.orderDate
             ? new Date(data.orderDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
             : '',
+          revisedOrderDate: data.revisedOrderDate || '',
           accountNumber: data.accountNumber || '',
           repName: data.repName || '',
           repPhone: data.repPhone || '',
@@ -582,14 +583,23 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <span className="po-field-label">Notes: </span>
                 <input className="po-input" value={headerFields.notes} onChange={(e) => setHeaderFields({ ...headerFields, notes: e.target.value })} style={{ width: '74%', display: 'inline-block' }} />
               </div>
+              <div>
+                <span className="po-field-label">Rev. PO Date: </span>
+                <input className="po-input" type="date" value={headerFields.revisedOrderDate || ''} onChange={(e) => {
+                  const raw = e.target.value;
+                  const formatted = raw ? new Date(raw + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '';
+                  setHeaderFields({ ...headerFields, revisedOrderDate: formatted });
+                }} style={{ width: '62%', display: 'inline-block' }} />
+              </div>
             </div>
 
             {/* RIGHT: Order Details */}
             <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
               {[
-                { label: 'Order #:',        value: headerFields.poNumber },
-                { label: 'Order Date:',     value: headerFields.orderDate },
-                { label: 'Printed Date:',   value: printedDate },
+                { label: 'Order #:',          value: headerFields.poNumber },
+                { label: 'Order Date:',       value: headerFields.orderDate },
+                { label: 'Revised PO Date:',  value: headerFields.revisedOrderDate },
+                { label: 'Shipment Date:',    value: printedDate },
                 { label: 'Account Number:', value: headerFields.accountNumber },
                 { label: 'Rep Name:',       value: headerFields.repName },
                 { label: 'Rep Phone:',      value: headerFields.repPhone },
