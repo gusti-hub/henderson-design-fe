@@ -318,7 +318,10 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   }
 
   const totals = calculateTotals();
-  const printedDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  const rawShipDate = products.find(p => p.selectedOptions?.expectedShipDate)?.selectedOptions?.expectedShipDate || '';
+  const shipmentDate = rawShipDate
+    ? new Date(rawShipDate + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+    : '';
 
   const COMPANY_ADDRESS = {
     street: '4343 Royal Place',
@@ -583,23 +586,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 <span className="po-field-label">Notes: </span>
                 <input className="po-input" value={headerFields.notes} onChange={(e) => setHeaderFields({ ...headerFields, notes: e.target.value })} style={{ width: '74%', display: 'inline-block' }} />
               </div>
-              <div>
-                <span className="po-field-label">Rev. PO Date: </span>
-                <input className="po-input" type="date" value={headerFields.revisedOrderDate || ''} onChange={(e) => {
-                  const raw = e.target.value;
-                  const formatted = raw ? new Date(raw + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '';
-                  setHeaderFields({ ...headerFields, revisedOrderDate: formatted });
-                }} style={{ width: '62%', display: 'inline-block' }} />
-              </div>
             </div>
 
             {/* RIGHT: Order Details */}
             <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
               {[
-                { label: 'Order #:',          value: headerFields.poNumber },
-                { label: 'Order Date:',       value: headerFields.orderDate },
-                { label: 'Revised PO Date:',  value: headerFields.revisedOrderDate },
-                { label: 'Shipment Date:',    value: printedDate },
+                { label: 'Order #:',        value: headerFields.poNumber },
+                { label: 'Order Date:',     value: headerFields.orderDate },
                 { label: 'Account Number:', value: headerFields.accountNumber },
                 { label: 'Rep Name:',       value: headerFields.repName },
                 { label: 'Rep Phone:',      value: headerFields.repPhone },
@@ -607,12 +600,26 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 { label: 'Terms:',          value: headerFields.terms },
                 { label: 'Client:',         value: clientInfo.name || '' },
                 { label: 'Estimate #:',     value: headerFields.estimateNumber },
+                { label: 'Shipment Date:',  value: shipmentDate },
               ].map((row, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
                   <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>{row.label}</span>
                   <span style={{ textAlign: 'right', fontSize: '11px', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{row.value || ''}</span>
                 </div>
               ))}
+              {/* Revised PO Date — editable inline */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
+                <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>Revised PO Date:</span>
+                <input className="po-input" type="date"
+                  value={headerFields.revisedOrderDate || ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const formatted = raw ? new Date(raw + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '';
+                    setHeaderFields({ ...headerFields, revisedOrderDate: formatted });
+                  }}
+                  style={{ textAlign: 'right', fontSize: '11px', flex: 1, minWidth: 0 }}
+                />
+              </div>
             </div>
           </div>
 
