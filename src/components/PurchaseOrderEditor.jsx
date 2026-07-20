@@ -590,16 +590,16 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
             {/* RIGHT: Order Details */}
             <div style={{ paddingLeft: '20px', fontSize: '11px' }}>
-              {/* Order # */}
               {[{ label: 'Order #:', value: headerFields.poNumber },
                 { label: 'Order Date:', value: headerFields.orderDate },
+                { label: 'Shipment Date:', value: shipmentDate },
               ].map((row, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
                   <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>{row.label}</span>
                   <span style={{ textAlign: 'right', fontSize: '11px', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{row.value || ''}</span>
                 </div>
               ))}
-              {/* Revised PO Date — editable inline, right below Order Date */}
+              {/* Revised PO Date — editable inline, below Shipment Date */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '1px 0', gap: '8px' }}>
                 <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', color: '#333', fontSize: '11px' }}>Revised PO Date:</span>
                 <input className="po-input" type="date"
@@ -609,7 +609,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                 />
               </div>
               {[
-                { label: 'Shipment Date:',  value: shipmentDate },
                 { label: 'Account Number:', value: headerFields.accountNumber },
                 { label: 'Rep Name:',       value: headerFields.repName },
                 { label: 'Rep Phone:',      value: headerFields.repPhone },
