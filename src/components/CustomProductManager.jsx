@@ -2221,18 +2221,24 @@ const GroupProductCard = ({
             <h4 className="text-sm font-bold text-gray-900">Group Info</h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Group Name *</label>
-                <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Living Room Package" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Living Room Package" disabled={locked} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Room</label>
-                <input value={room} onChange={e => setRoom(e.target.value)} className={inputCls} placeholder="e.g. Living Room" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Room</label>
+                <RoomServiceField value={room} onChange={setRoom} disabled={locked} inputCls={inputCls} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Client Description (shown in Proposal)</label>
-              <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3}
-                className={inputCls + ' resize-none'} placeholder="Describe this group for the client…" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
+              <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
+                <RichTextEditor
+                  value={desc}
+                  onChange={(html) => setDesc(html)}
+                  placeholder="Describe this group for the client…"
+                  minRows={5}
+                />
+              </Suspense>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600">Group Total (auto-sum of children)</span>
