@@ -1538,6 +1538,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     setExpandedProduct(null);
                     if (onSave) onSave(newProducts);
                   }}
+                  onSavedChild={(newProducts) => {
+                    setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                    if (onSave) onSave(newProducts);
+                  }}
+                  onRemoveChild={removeProduct}
                   onToast={addToast}
                   onAddChildFromLibrary={() => { setGroupLibraryTarget(draftGroup.product_id); setShowLibraryModal(true); }}
                   onAddCustomChild={() => addCustomChild(draftGroup.product_id)}
@@ -1582,6 +1587,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                             setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                             if (onSave) onSave(newProducts);
                           }}
+                          onSavedChild={(newProducts) => {
+                            setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                            if (onSave) onSave(newProducts);
+                          }}
+                          onRemoveChild={removeProduct}
                           onToast={addToast}
                           onAddChildFromLibrary={() => { setGroupLibraryTarget(product.product_id); setShowLibraryModal(true); }}
                           onAddCustomChild={() => addCustomChild(product.product_id)}
@@ -2150,7 +2160,7 @@ const AutocompleteField = ({ value, onChange, options, placeholder = '', inputCl
 const GroupProductCard = ({
   parent, children, parentIndex, order, allProducts,
   expanded, onToggleExpand,
-  onUpdateParent, onRemoveGroup, onSavedGroup, onToast,
+  onUpdateParent, onRemoveGroup, onSavedGroup, onSavedChild, onRemoveChild, onToast,
   onAddChildFromLibrary, onAddCustomChild,
   locked = false,
 }) => {
@@ -2158,6 +2168,7 @@ const GroupProductCard = ({
   const [room, setRoom]   = useState(parent.selectedOptions?.room || '');
   const [desc, setDesc]   = useState(parent.selectedOptions?.specifications || '');
   const [saving, setSaving] = useState(false);
+  const [expandedChild, setExpandedChild] = useState(null);
 
   useEffect(() => {
     setName(parent.name || '');
@@ -2309,19 +2320,26 @@ const GroupProductCard = ({
             ) : (
               <div className="space-y-2">
                 {children.map((child, ci) => {
-                  const childImg = child.selectedOptions?.image || child.selectedOptions?.images?.[0] || null;
-                  const price = parseFloat(child.finalPrice) || parseFloat(child.unitPrice) || 0;
+                  const childIndex = allProducts.findIndex(p =>
+                    (child._id && !String(child._id).startsWith('temp_') && String(p._id) === String(child._id)) ||
+                    p.product_id === child.product_id
+                  );
                   return (
-                    <div key={child._id || ci} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
-                      {childImg
-                        ? <img src={childImg} alt="" className="w-10 h-10 object-cover rounded-lg shrink-0" />
-                        : <div className="w-10 h-10 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center"><Package className="w-4 h-4 text-gray-400" /></div>
-                      }
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{child.name || '(unnamed)'}</p>
-                        <p className="text-xs text-gray-500">Qty: {child.quantity || 1} · ${fmt(price)}</p>
-                      </div>
-                    </div>
+                    <ProductCard
+                      key={child._id || ci}
+                      product={child}
+                      index={childIndex}
+                      order={order}
+                      allProducts={allProducts}
+                      expanded={expandedChild === ci}
+                      onToggleExpand={() => setExpandedChild(expandedChild === ci ? null : ci)}
+                      onUpdate={onUpdateParent}
+                      onRemove={onRemoveChild}
+                      onSaved={onSavedChild}
+                      onToast={onToast}
+                      locked={locked}
+                      draggable={false}
+                    />
                   );
                 })}
               </div>
