@@ -1531,6 +1531,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   expanded={expandedProduct === 'draftGroup'}
                   onToggleExpand={() => setExpandedProduct(expandedProduct === 'draftGroup' ? null : 'draftGroup')}
                   onUpdateParent={(_idx, field, value) => setDraftGroup(prev => applyFieldUpdate(prev, field, value))}
+                  onUpdateChild={updateProduct}
                   onRemoveGroup={() => { setDraftGroup(null); setExpandedProduct(null); }}
                   onSavedGroup={(newProducts) => {
                     setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -1582,6 +1583,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                           expanded={expandedProduct === originalIndex}
                           onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
                           onUpdateParent={updateProduct}
+                          onUpdateChild={updateProduct}
                           onRemoveGroup={() => removeGroup(product, originalIndex)}
                           onSavedGroup={(newProducts) => {
                             setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -1649,7 +1651,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <div className="text-right">
                 <p className="text-xs text-gray-500 mb-0.5">Total Purchase Cost</p>
                 <p className="text-base font-bold text-emerald-700">
-                  ${savedProducts.reduce((sum, p) => {
+                  ${savedProducts.filter(p => !p.isParent).reduce((sum, p) => {
                     const opts = p.selectedOptions || {};
                     const qty = parseFloat(p.quantity) || 1;
                     const msrp = parseFloat(opts.msrp) || 0;
@@ -1665,7 +1667,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <div className="text-right">
                 <p className="text-xs text-gray-500 mb-0.5">Total Sell Price</p>
                 <p className="text-base font-bold text-[#005670]">
-                  ${savedProducts.reduce((sum, p) => sum + (parseFloat(p.finalPrice) || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${savedProducts.filter(p => !p.isParent).reduce((sum, p) => sum + (parseFloat(p.finalPrice) || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -2160,7 +2162,7 @@ const AutocompleteField = ({ value, onChange, options, placeholder = '', inputCl
 const GroupProductCard = ({
   parent, children, parentIndex, order, allProducts,
   expanded, onToggleExpand,
-  onUpdateParent, onRemoveGroup, onSavedGroup, onSavedChild, onRemoveChild, onToast,
+  onUpdateParent, onUpdateChild, onRemoveGroup, onSavedGroup, onSavedChild, onRemoveChild, onToast,
   onAddChildFromLibrary, onAddCustomChild,
   locked = false,
 }) => {
@@ -2333,7 +2335,7 @@ const GroupProductCard = ({
                       allProducts={allProducts}
                       expanded={expandedChild === ci}
                       onToggleExpand={() => setExpandedChild(expandedChild === ci ? null : ci)}
-                      onUpdate={onUpdateParent}
+                      onUpdate={onUpdateChild || onUpdateParent}
                       onRemove={onRemoveChild}
                       onSaved={onSavedChild}
                       onToast={onToast}
