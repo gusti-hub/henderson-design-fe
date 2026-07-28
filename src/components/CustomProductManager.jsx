@@ -2178,9 +2178,19 @@ const GroupProductCard = ({
     setDesc(parent.selectedOptions?.specifications || '');
   }, [parent]);
 
-  const childTotal = children.reduce((sum, c) => {
-    const price = parseFloat(c.finalPrice) || parseFloat(c.unitPrice) || 0;
-    return sum + price;
+  const childSellTotal = children.reduce((sum, c) => {
+    return sum + (parseFloat(c.finalPrice) || parseFloat(c.unitPrice) || 0);
+  }, 0);
+  const childTotal = childSellTotal; // alias kept for save logic
+  const childPurchaseTotal = children.reduce((sum, c) => {
+    const opts = c.selectedOptions || {};
+    const qty = parseFloat(c.quantity) || 1;
+    const msrp = parseFloat(opts.msrp) || 0;
+    const disc = parseFloat(opts.discountPercent) || 0;
+    const netUnit = (opts.netCostOverride != null && opts.netCostOverride !== '')
+      ? parseFloat(opts.netCostOverride)
+      : (opts.noNetPurchaseCost ? 0 : msrp * (1 - disc / 100));
+    return sum + netUnit * qty + (parseFloat(opts.shippingCost) || 0) + (parseFloat(opts.otherCost) || 0);
   }, 0);
   const fmt = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -2254,7 +2264,12 @@ const GroupProductCard = ({
             {room && <span className="text-xs text-gray-500">· {room}</span>}
           </div>
           <p className="font-semibold text-gray-900 truncate">{name || '(unnamed group)'}</p>
-          <p className="text-xs text-gray-500">{children.length} item{children.length !== 1 ? 's' : ''} · Total: ${fmt(childTotal)}</p>
+          <p className="text-xs text-gray-500">
+            {children.length} item{children.length !== 1 ? 's' : ''} ·{' '}
+            <span className="text-emerald-700 font-medium">Cost: ${fmt(childPurchaseTotal)}</span>
+            {' · '}
+            <span className="text-[#005670] font-medium">Sell: ${fmt(childSellTotal)}</span>
+          </p>
         </div>
         {!locked && (
           <button onClick={(e) => { e.stopPropagation(); onRemoveGroup(); }}
@@ -2294,9 +2309,15 @@ const GroupProductCard = ({
                 />
               </Suspense>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Group Total (auto-sum of children)</span>
-              <span className="text-base font-bold text-[#005670]">${fmt(childTotal)}</span>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                <span className="text-xs text-emerald-700 font-medium">Total Purchase Cost</span>
+                <span className="text-sm font-bold text-emerald-700">${fmt(childPurchaseTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-[#f0f7fa] rounded-lg border border-[#005670]/15">
+                <span className="text-xs text-[#005670] font-medium">Total Sell Price</span>
+                <span className="text-sm font-bold text-[#005670]">${fmt(childSellTotal)}</span>
+              </div>
             </div>
           </div>
 
