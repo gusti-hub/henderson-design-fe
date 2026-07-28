@@ -795,7 +795,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
       setProposalData(r.data);
 
-      const rawProducts = r.data.selectedProducts || [];
+      const rawProducts = (r.data.selectedProducts || []).filter(p => !p.parentId);
       const withIds = rawProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
       setProductsWithIds(withIds);
       const hiddenFromDb = new Set(r.data.hiddenProductIds || []);

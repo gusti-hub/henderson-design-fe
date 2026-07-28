@@ -124,6 +124,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
 
         // ── Always derive products from the live order, filtered by this vendor ──
         const vendorProducts = (orderData.selectedProducts || []).filter(p => {
+          if (p.isParent) return false; // group parents are not line items
           const pv = p.vendor;
           if (!pv) return false;
           const pvId = typeof pv === 'string' ? pv : String(pv._id || pv.id || pv);

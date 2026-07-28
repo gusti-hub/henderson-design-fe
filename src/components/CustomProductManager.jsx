@@ -12,7 +12,8 @@ const RichTextEditor = lazy(() => import('./RichTextEditor'));
 import {
   Plus, Trash2, Save, FileText, Loader2, AlertCircle,
   Library, Lock, Edit2, Upload, File, X, Eye, ImageIcon, Check,
-  Package, Truck, DollarSign, ClipboardList, Activity, Tag, GripVertical, ShoppingCart
+  Package, Truck, DollarSign, ClipboardList, Activity, Tag, GripVertical, ShoppingCart,
+  Layers, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import ProductSelectionModal from './ProductSelectionModal';
@@ -431,6 +432,7 @@ const displayOrderName = (order) => {
 const CustomProductManager = ({ order, onSave, onBack }) => {
   const [savedProducts, setSavedProducts] = useState([]);
   const [draftProduct, setDraftProduct] = useState(null);
+  const [draftGroup, setDraftGroup] = useState(null);
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [liveOrder, setLiveOrder] = useState(order);
 
@@ -456,6 +458,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [showFloorPlanPreview, setShowFloorPlanPreview] = useState(false);
   const [savingFloorPlan, setSavingFloorPlan] = useState(false);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [groupLibraryTarget, setGroupLibraryTarget] = useState(null); // parentId when adding child from library
   const { toasts, addToast, dismiss: dismissToast } = useToast();
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false, title: '', message: '',
@@ -543,7 +546,9 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
 
   // ─── Library ─────────────────────────────────────────────────────────────
   const handleAddFromLibrary = async (selectedProducts) => {
+    const targetParentId = groupLibraryTarget;
     setShowLibraryModal(false);
+    setGroupLibraryTarget(null);
 
     const newProducts = selectedProducts.map((product) => {
       const imageUrl =
@@ -570,6 +575,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         sourceType: 'library',
         isEditable: true,
         libraryProductId: product._id,
+        isParent:   false,
+        parentId:   targetParentId || null,
         selectedOptions: {
           ...defaultSelectedOptions(),
           image:                 imageUrl || '',
@@ -627,6 +634,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         sourceType:      p.sourceType  || 'library',
         isEditable:      true,
         libraryProductId: p.libraryProductId || null,
+        isParent:        p.isParent    || false,
+        parentId:        p.parentId    || null,
         selectedOptions: p.selectedOptions || {},
         placement:       p.placement   || null,
       }));
@@ -727,6 +736,123 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       return;
     }
     createDraft();
+  };
+
+  // ─── Add Group Product ────────────────────────────────────────────────────
+  const addGroupProduct = () => {
+    const create = () => {
+      setDraftGroup({
+        _id:        `temp_group_${Date.now()}`,
+        product_id: `GROUP-${Date.now().toString().slice(-6)}`,
+        name:       '',
+        category:   'Group',
+        spotName:   'Group',
+        quantity:   1,
+        unitPrice:  0,
+        finalPrice: 0,
+        vendor:     null,
+        sourceType: 'manual',
+        isEditable: true,
+        isParent:   true,
+        parentId:   null,
+        selectedOptions: { ...defaultSelectedOptions(), specifications: '', room: '' },
+      });
+      setExpandedProduct('draftGroup');
+    };
+    if (draftGroup) {
+      showConfirm({
+        title: 'Unsaved Group',
+        message: 'You have an unsaved group. Discard it and create a new one?',
+        confirmLabel: 'Discard & Create New',
+        confirmVariant: 'warning',
+        onConfirm: () => { closeConfirm(); create(); },
+      });
+      return;
+    }
+    create();
+  };
+
+  // ─── Save draft group (parent + children) to DB ───────────────────────────
+  const saveDraftGroup = async (parentData, childrenData) => {
+    try {
+      const token = localStorage.getItem('token');
+      const parentId = parentData.product_id; // use product_id (stable after server save)
+
+      const newChildren = childrenData.map(c => ({
+        ...c,
+        parentId: String(parentId),
+        isParent: false,
+      }));
+
+      const allToSave = [...savedProducts, parentData, ...newChildren];
+      const payload = allToSave.map(p => ({
+        ...(p._id && !String(p._id).startsWith('temp_') && { _id: p._id }),
+        product_id: p.product_id, name: p.name, category: p.category || '',
+        package: p.package || '', spotName: p.spotName || 'Custom Item',
+        quantity: p.quantity || 1, unitPrice: p.unitPrice || 0, finalPrice: p.finalPrice || 0,
+        vendor: p.vendor ? (typeof p.vendor === 'object' ? p.vendor._id : p.vendor) : null,
+        sourceType: p.sourceType || 'manual', isEditable: p.isEditable !== false,
+        isParent: p.isParent || false, parentId: p.parentId || null,
+        selectedOptions: p.selectedOptions || {},
+        placement: p.placement || null,
+      }));
+
+      const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Save failed'); }
+      const saved = await res.json();
+      setSavedProducts((saved.selectedProducts || allToSave).map(p => ({ ...p, isEditable: p.isEditable !== false })));
+      setDraftGroup(null);
+      setExpandedProduct(null);
+      if (onSave) onSave(saved.selectedProducts || allToSave);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  // ─── Remove parent + all its children ────────────────────────────────────
+  const removeGroup = async (parentProduct, parentIndex) => {
+    const parentIdStr = parentProduct.product_id; // use product_id as stable link
+    showConfirm({
+      title: 'Delete Group',
+      message: `Delete "${parentProduct.name || 'this group'}" and all its items? This cannot be undone.`,
+      confirmLabel: 'Delete Group',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        closeConfirm();
+        try {
+          const token = localStorage.getItem('token');
+          const remaining = savedProducts.filter(p =>
+            p.product_id !== parentIdStr && p.parentId !== parentIdStr
+          );
+          const payload = remaining.map(p => ({
+            ...(p._id && !String(p._id).startsWith('temp_') && { _id: p._id }),
+            product_id: p.product_id, name: p.name, category: p.category || '',
+            package: p.package || '', spotName: p.spotName || 'Custom Item',
+            quantity: p.quantity || 1, unitPrice: p.unitPrice || 0, finalPrice: p.finalPrice || 0,
+            vendor: p.vendor ? (typeof p.vendor === 'object' ? p.vendor._id : p.vendor) : null,
+            sourceType: p.sourceType || 'manual', isEditable: p.isEditable !== false,
+            isParent: p.isParent || false, parentId: p.parentId || null,
+            selectedOptions: p.selectedOptions || {}, placement: p.placement || null,
+          }));
+          const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
+          });
+          if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+          const saved = await res.json();
+          setSavedProducts((saved.selectedProducts || remaining).map(p => ({ ...p, isEditable: p.isEditable !== false })));
+          addToast('Group deleted', 'success');
+        } catch (err) {
+          addToast(`Delete failed: ${err.message}`, 'error');
+        }
+      },
+    });
   };
 
   // ─── Update ───────────────────────────────────────────────────────────────
@@ -1120,6 +1246,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                 >
                   <Plus className="w-5 h-5" /> Add Product
                 </button>
+                <button
+                  onClick={addGroupProduct}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow hover:shadow-lg transition-all"
+                >
+                  <Layers className="w-5 h-5" /> Add Group
+                </button>
               </>
             )}
             {isOrderLocked && (
@@ -1241,12 +1373,15 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Products Added</h3>
             <p className="text-gray-600 mb-6">Select from library or create manual products</p>
             {!isOrderLocked && (
-              <div className="flex gap-3 justify-center">
+              <div className="flex gap-3 justify-center flex-wrap">
                 <button onClick={() => setShowLibraryModal(true)} className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:shadow-lg transition-all">
                   <Library className="w-5 h-5" /> Browse Library
                 </button>
                 <button onClick={addManualProduct} className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-lg shadow hover:shadow-lg transition-all">
                   <Plus className="w-5 h-5" /> Add Product
+                </button>
+                <button onClick={addGroupProduct} className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow hover:shadow-lg transition-all">
+                  <Layers className="w-5 h-5" /> Add Group
                 </button>
               </div>
             )}
@@ -1313,48 +1448,135 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               </div>
             )}
 
-            {/* ── Saved products grouped by room ── */}
-            {groupProductsByRoom(savedProducts).map(([room, items]) => (
-              <div key={room} className="space-y-3">
+            {/* ── Draft group ── */}
+            {draftGroup && (
+              <div className="space-y-2">
                 <div className="flex items-center gap-3 px-1">
-                  <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-1.5">
-                    <svg className="w-3.5 h-3.5 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    <span className="text-sm font-semibold text-teal-800">{room}</span>
-                    <span className="text-xs text-teal-600 font-medium">({items.length})</span>
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                    <Layers className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-800">New Group</span>
+                    <span className="text-xs text-amber-600">(unsaved — fill in and click Save)</span>
                   </div>
-                  <div className="flex-1 h-px bg-teal-100" />
+                  <div className="flex-1 h-px bg-amber-100" />
                 </div>
-
-                {items.map(({ product, originalIndex }) => (
-                  <ProductCard
-                    key={product._uid || `${product._id}-${originalIndex}`}
-                    product={product}
-                    index={originalIndex}
-                    order={liveOrder}
-                    allProducts={savedProducts}
-                    expanded={expandedProduct === originalIndex}
-                    onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
-                    onUpdate={updateProduct}
-                    onRemove={removeProduct}
-                    locked={isOrderLocked}
-                    onSaved={(newSavedProducts) => {
-                      setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
-                      if (onSave) onSave(newSavedProducts);
-                    }}
-                    onToast={addToast}
-                    // ✅ PATCH 11: drag props
-                    draggable={true}
-                    isDragOver={dragOverIndex === originalIndex}
-                    onDragStart={(e) => handleDragStart(e, originalIndex)}
-                    onDragOver={(e) => handleDragOver(e, originalIndex)}
-                    onDragEnd={handleDragEnd}
-                    onDrop={(e) => handleDrop(e, originalIndex)}
-                  />
-                ))}
+                <GroupProductCard
+                  parent={draftGroup}
+                  children={savedProducts.filter(c => c.parentId === draftGroup.product_id)}
+                  parentIndex={savedProducts.length}
+                  order={liveOrder}
+                  allProducts={[...savedProducts, draftGroup]}
+                  expanded={expandedProduct === 'draftGroup'}
+                  onToggleExpand={() => setExpandedProduct(expandedProduct === 'draftGroup' ? null : 'draftGroup')}
+                  onUpdateParent={(_idx, field, value) => setDraftGroup(prev => applyFieldUpdate(prev, field, value))}
+                  onRemoveGroup={() => { setDraftGroup(null); setExpandedProduct(null); }}
+                  onSavedGroup={(newProducts) => {
+                    setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                    setDraftGroup(null);
+                    setExpandedProduct(null);
+                    if (onSave) onSave(newProducts);
+                  }}
+                  onToast={addToast}
+                  onAddChildFromLibrary={() => { setGroupLibraryTarget(draftGroup.product_id); setShowLibraryModal(true); }}
+                  onAddCustomChild={() => {
+                    const child = {
+                      _id: `temp_child_${Date.now()}`,
+                      product_id: `CHILD-${Date.now().toString().slice(-6)}`,
+                      name: 'Custom Item', category: 'Custom Item', spotName: 'Custom Item',
+                      quantity: 1, unitPrice: 0, finalPrice: 0,
+                      vendor: null, sourceType: 'manual', isEditable: true,
+                      isParent: false, parentId: draftGroup.product_id,
+                      selectedOptions: { ...defaultSelectedOptions() },
+                    };
+                    setSavedProducts(prev => [...prev, child]);
+                  }}
+                  locked={isOrderLocked}
+                />
               </div>
-            ))}
+            )}
+
+            {/* ── Saved products grouped by room (parents + standalones only; children rendered inside GroupProductCard) ── */}
+            {groupProductsByRoom(savedProducts).map(([room, items]) => {
+              const visibleItems = items.filter(({ product }) => !product.parentId);
+              if (visibleItems.length === 0) return null;
+              return (
+                <div key={room} className="space-y-3">
+                  <div className="flex items-center gap-3 px-1">
+                    <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-1.5">
+                      <svg className="w-3.5 h-3.5 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                      <span className="text-sm font-semibold text-teal-800">{room}</span>
+                      <span className="text-xs text-teal-600 font-medium">({visibleItems.length})</span>
+                    </div>
+                    <div className="flex-1 h-px bg-teal-100" />
+                  </div>
+
+                  {visibleItems.map(({ product, originalIndex }) => {
+                    if (product.isParent) {
+                      const groupChildren = savedProducts.filter(c => c.parentId === product.product_id);
+                      return (
+                        <GroupProductCard
+                          key={product._uid || `${product._id}-${originalIndex}`}
+                          parent={product}
+                          children={groupChildren}
+                          parentIndex={originalIndex}
+                          order={liveOrder}
+                          allProducts={savedProducts}
+                          expanded={expandedProduct === originalIndex}
+                          onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
+                          onUpdateParent={updateProduct}
+                          onRemoveGroup={() => removeGroup(product, originalIndex)}
+                          onSavedGroup={(newProducts) => {
+                            setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                            if (onSave) onSave(newProducts);
+                          }}
+                          onToast={addToast}
+                          onAddChildFromLibrary={() => { setGroupLibraryTarget(product.product_id); setShowLibraryModal(true); }}
+                          onAddCustomChild={() => {
+                            const child = {
+                              _id: `temp_child_${Date.now()}`,
+                              product_id: `CHILD-${Date.now().toString().slice(-6)}`,
+                              name: 'Custom Item', category: 'Custom Item', spotName: 'Custom Item',
+                              quantity: 1, unitPrice: 0, finalPrice: 0,
+                              vendor: null, sourceType: 'manual', isEditable: true,
+                              isParent: false, parentId: product.product_id,
+                              selectedOptions: { ...defaultSelectedOptions() },
+                            };
+                            setSavedProducts(prev => [...prev, child]);
+                          }}
+                          locked={isOrderLocked}
+                        />
+                      );
+                    }
+                    return (
+                      <ProductCard
+                        key={product._uid || `${product._id}-${originalIndex}`}
+                        product={product}
+                        index={originalIndex}
+                        order={liveOrder}
+                        allProducts={savedProducts}
+                        expanded={expandedProduct === originalIndex}
+                        onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
+                        onUpdate={updateProduct}
+                        onRemove={removeProduct}
+                        locked={isOrderLocked}
+                        onSaved={(newSavedProducts) => {
+                          setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                          if (onSave) onSave(newSavedProducts);
+                        }}
+                        onToast={addToast}
+                        draggable={true}
+                        isDragOver={dragOverIndex === originalIndex}
+                        onDragStart={(e) => handleDragStart(e, originalIndex)}
+                        onDragOver={(e) => handleDragOver(e, originalIndex)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={(e) => handleDrop(e, originalIndex)}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
           </>
         )}
       </div>
@@ -1883,6 +2105,196 @@ const AutocompleteField = ({ value, onChange, options, placeholder = '', inputCl
 
 // ==================== PRODUCT CARD COMPONENT ====================
 
+// ─── GroupProductCard — simplified card for isParent products ────────────────
+const GroupProductCard = ({
+  parent, children, parentIndex, order, allProducts,
+  expanded, onToggleExpand,
+  onUpdateParent, onRemoveGroup, onSavedGroup, onToast,
+  onAddChildFromLibrary, onAddCustomChild,
+  locked = false,
+}) => {
+  const [name, setName]   = useState(parent.name || '');
+  const [room, setRoom]   = useState(parent.selectedOptions?.room || '');
+  const [desc, setDesc]   = useState(parent.selectedOptions?.specifications || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(parent.name || '');
+    setRoom(parent.selectedOptions?.room || '');
+    setDesc(parent.selectedOptions?.specifications || '');
+  }, [parent]);
+
+  const childTotal = children.reduce((sum, c) => {
+    const price = parseFloat(c.finalPrice) || parseFloat(c.unitPrice) || 0;
+    return sum + price;
+  }, 0);
+  const fmt = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const handleSave = async () => {
+    if (!name.trim()) { onToast('Group must have a name!', 'error'); return; }
+    if (saving) return;
+    setSaving(true);
+    try {
+      onUpdateParent(parentIndex, 'name', name);
+      onUpdateParent(parentIndex, 'selectedOptions.room', room);
+      onUpdateParent(parentIndex, 'selectedOptions.specifications', desc);
+      onUpdateParent(parentIndex, 'finalPrice', childTotal);
+      onUpdateParent(parentIndex, 'unitPrice', childTotal);
+
+      const token = localStorage.getItem('token');
+      const updatedAllProducts = allProducts.map((p, i) => {
+        if (i === parentIndex) {
+          return { ...p, name, finalPrice: childTotal, unitPrice: childTotal,
+            selectedOptions: { ...p.selectedOptions, room, specifications: desc } };
+        }
+        return p;
+      });
+
+      const payload = updatedAllProducts.map(p => ({
+        ...(p._id && !String(p._id).startsWith('temp_') && { _id: p._id }),
+        product_id: p.product_id, name: p.name, category: p.category || '',
+        package: p.package || '', spotName: p.spotName || 'Custom Item',
+        quantity: p.quantity || 1, unitPrice: p.unitPrice || 0, finalPrice: p.finalPrice || 0,
+        vendor: p.vendor ? (typeof p.vendor === 'object' ? p.vendor._id : p.vendor) : null,
+        sourceType: p.sourceType || 'manual', isEditable: p.isEditable !== false,
+        isParent: p.isParent || false, parentId: p.parentId || null,
+        selectedOptions: p.selectedOptions || {},
+        placement: p.placement || null,
+      }));
+
+      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Save failed'); }
+      const saved = await res.json();
+      onToast('Group saved!', 'success');
+      if (onSavedGroup) onSavedGroup(saved.selectedProducts || payload);
+    } catch (err) {
+      onToast(`Save failed: ${err.message}`, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const primaryImage = parent.selectedOptions?.image ||
+    parent.selectedOptions?.images?.[0] ||
+    parent.selectedOptions?.uploadedImages?.[0]?.url || null;
+
+  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]';
+
+  return (
+    <div className="rounded-xl border-2 border-[#005670]/30 bg-[#f0f7fa] shadow-sm">
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 p-4 cursor-pointer select-none"
+        onClick={onToggleExpand}
+      >
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#005670] text-white shrink-0">
+          <Layers className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#005670]">Group</span>
+            {room && <span className="text-xs text-gray-500">· {room}</span>}
+          </div>
+          <p className="font-semibold text-gray-900 truncate">{name || '(unnamed group)'}</p>
+          <p className="text-xs text-gray-500">{children.length} item{children.length !== 1 ? 's' : ''} · Total: ${fmt(childTotal)}</p>
+        </div>
+        {!locked && (
+          <button onClick={(e) => { e.stopPropagation(); onRemoveGroup(); }}
+            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+        <div className="text-gray-400 shrink-0">
+          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </div>
+      </div>
+
+      {/* Expanded form */}
+      {expanded && (
+        <div className="border-t border-[#005670]/20 px-4 pb-4 pt-4 space-y-4">
+          {/* Basic Info */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+            <h4 className="text-sm font-bold text-gray-900">Group Info</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Group Name *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Living Room Package" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Room</label>
+                <input value={room} onChange={e => setRoom(e.target.value)} className={inputCls} placeholder="e.g. Living Room" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Client Description (shown in Proposal)</label>
+              <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3}
+                className={inputCls + ' resize-none'} placeholder="Describe this group for the client…" />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Group Total (auto-sum of children)</span>
+              <span className="text-base font-bold text-[#005670]">${fmt(childTotal)}</span>
+            </div>
+          </div>
+
+          {/* Children list */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-gray-900">Items in this Group ({children.length})</h4>
+              {!locked && (
+                <div className="flex gap-2">
+                  <button onClick={onAddChildFromLibrary}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    <Library className="w-3.5 h-3.5" /> From Library
+                  </button>
+                  <button onClick={onAddCustomChild}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#005670] text-white rounded-lg hover:bg-[#004a5e] transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Custom Item
+                  </button>
+                </div>
+              )}
+            </div>
+            {children.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No items yet — add from library or create custom</p>
+            ) : (
+              <div className="space-y-2">
+                {children.map((child, ci) => {
+                  const childImg = child.selectedOptions?.image || child.selectedOptions?.images?.[0] || null;
+                  const price = parseFloat(child.finalPrice) || parseFloat(child.unitPrice) || 0;
+                  return (
+                    <div key={child._id || ci} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
+                      {childImg
+                        ? <img src={childImg} alt="" className="w-10 h-10 object-cover rounded-lg shrink-0" />
+                        : <div className="w-10 h-10 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center"><Package className="w-4 h-4 text-gray-400" /></div>
+                      }
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{child.name || '(unnamed)'}</p>
+                        <p className="text-xs text-gray-500">Qty: {child.quantity || 1} · ${fmt(price)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {!locked && (
+            <div className="flex justify-end pt-2">
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-semibold text-sm">
+                {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Check className="w-4 h-4" /> Save Group</>}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ProductCard = ({
   product, index, order, allProducts, expanded,
   onToggleExpand, onUpdate, onRemove, onSaved, onToast,
@@ -2085,6 +2497,8 @@ const ProductCard = ({
     sourceType:      src.sourceType || 'manual',
     isEditable:      src.isEditable !== false,
     libraryProductId: src.libraryProductId || null,
+    isParent:        src.isParent || false,
+    parentId:        src.parentId || null,
     selectedOptions: {
       finish:                src.selectedOptions?.finish                || '',
       woodFinish:            src.selectedOptions?.woodFinish            || '',
