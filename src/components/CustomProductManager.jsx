@@ -738,6 +738,65 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     createDraft();
   };
 
+  // ─── Add custom child product to a group ─────────────────────────────────
+  const addCustomChild = (parentProductId) => {
+    const createDraft = () => {
+      setDraftProduct({
+        _id:        `temp_${Date.now()}`,
+        product_id: `CUSTOM-${Date.now().toString().slice(-6)}`,
+        name:       '',
+        category:   '',
+        package:    '',
+        spotName:   'Custom Item',
+        quantity:   1,
+        unitPrice:  0,
+        finalPrice: 0,
+        vendor:     null,
+        sourceType: 'manual',
+        isEditable: true,
+        isParent:   false,
+        parentId:   parentProductId,
+        selectedOptions: {
+          ...defaultSelectedOptions(),
+          msrp:                  0,
+          discountPercent:       0,
+          netCostOverride:       null,
+          noNetPurchaseCost:     false,
+          units:                 'Each',
+          markupPercent:         50,
+          shippingMarkupPercent: 50,
+          otherMarkupPercent:    50,
+          shippingCost:          0,
+          otherCost:             0,
+          depositPercent:        90,
+          vendorDepositPercent:  0,
+          salesTaxRate:          4.712,
+          leadTime:              '',
+          taxableCost:            true,
+          taxableMarkup:          true,
+          taxableShippingCost:    true,
+          taxableShippingMarkup:  true,
+          taxableOtherCost:       true,
+          taxableOtherMarkup:     true,
+          discountTaken:         '',
+          installerNotes:        '',
+        },
+      });
+      setExpandedProduct('draft');
+    };
+    if (draftProduct) {
+      showConfirm({
+        title: 'Unsaved Item',
+        message: 'You have an unsaved item. Discard it and create a new one?',
+        confirmLabel: 'Discard & Create New',
+        confirmVariant: 'warning',
+        onConfirm: () => { closeConfirm(); createDraft(); },
+      });
+      return;
+    }
+    createDraft();
+  };
+
   // ─── Add Group Product ────────────────────────────────────────────────────
   const addGroupProduct = () => {
     const create = () => {
@@ -1410,8 +1469,12 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     <svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    <span className="text-sm font-semibold text-amber-800">New Product</span>
-                    <span className="text-xs text-amber-600">(unsaved — fill in and click Save)</span>
+                    <span className="text-sm font-semibold text-amber-800">
+                      {draftProduct?.parentId ? 'New Group Item' : 'New Product'}
+                    </span>
+                    <span className="text-xs text-amber-600">
+                      {draftProduct?.parentId ? '(unsaved — will be added to group on Save)' : '(unsaved — fill in and click Save)'}
+                    </span>
                   </div>
                   <div className="flex-1 h-px bg-amber-100" />
                 </div>
@@ -1477,18 +1540,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   }}
                   onToast={addToast}
                   onAddChildFromLibrary={() => { setGroupLibraryTarget(draftGroup.product_id); setShowLibraryModal(true); }}
-                  onAddCustomChild={() => {
-                    const child = {
-                      _id: `temp_child_${Date.now()}`,
-                      product_id: `CHILD-${Date.now().toString().slice(-6)}`,
-                      name: 'Custom Item', category: 'Custom Item', spotName: 'Custom Item',
-                      quantity: 1, unitPrice: 0, finalPrice: 0,
-                      vendor: null, sourceType: 'manual', isEditable: true,
-                      isParent: false, parentId: draftGroup.product_id,
-                      selectedOptions: { ...defaultSelectedOptions() },
-                    };
-                    setSavedProducts(prev => [...prev, child]);
-                  }}
+                  onAddCustomChild={() => addCustomChild(draftGroup.product_id)}
                   locked={isOrderLocked}
                 />
               </div>
@@ -1532,18 +1584,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                           }}
                           onToast={addToast}
                           onAddChildFromLibrary={() => { setGroupLibraryTarget(product.product_id); setShowLibraryModal(true); }}
-                          onAddCustomChild={() => {
-                            const child = {
-                              _id: `temp_child_${Date.now()}`,
-                              product_id: `CHILD-${Date.now().toString().slice(-6)}`,
-                              name: 'Custom Item', category: 'Custom Item', spotName: 'Custom Item',
-                              quantity: 1, unitPrice: 0, finalPrice: 0,
-                              vendor: null, sourceType: 'manual', isEditable: true,
-                              isParent: false, parentId: product.product_id,
-                              selectedOptions: { ...defaultSelectedOptions() },
-                            };
-                            setSavedProducts(prev => [...prev, child]);
-                          }}
+                          onAddCustomChild={() => addCustomChild(product.product_id)}
                           locked={isOrderLocked}
                         />
                       );
