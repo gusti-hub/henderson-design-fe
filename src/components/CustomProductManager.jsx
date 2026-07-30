@@ -467,6 +467,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const [blockedModal, setBlockedModal] = useState({
     isOpen: false, productName: '', blockedBy: null,
   });
+  const [proposalLocked, setProposalLocked] = useState(false);
 
   // ✅ PATCH 11: drag state
   const dragIndexRef = useRef(null);
@@ -532,6 +533,24 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       } catch (_) {}
     };
     if (order?._id) fetchLinkedDocs();
+  }, [order?._id]);
+
+  useEffect(() => {
+    const fetchProposalStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${backendServer}/api/proposals/${order._id}/versions/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const versions = data.data || [];
+        if (versions.length === 0) return;
+        const latest = versions.reduce((a, b) => (a.version > b.version ? a : b));
+        setProposalLocked(['approved', 'paid', 'rejected'].includes(latest.status));
+      } catch (_) {}
+    };
+    if (order?._id) fetchProposalStatus();
   }, [order?._id]);
 
   useEffect(() => {
@@ -1226,7 +1245,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   }, [savedProducts, order._id, onSave, handleDragEnd, addToast]);
 
   const isOrderLocked = ['approved', 'cancelled', 'rejected'].includes(order?.status)
-    || ['approved', 'paid'].includes(order?.proposalStatus);
+    || proposalLocked;
 
   const previewUrl = getFloorPlanPreviewUrl();
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
