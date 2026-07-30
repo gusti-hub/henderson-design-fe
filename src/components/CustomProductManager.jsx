@@ -3012,7 +3012,7 @@ const ProductCard = ({
             })}
           </div>
 
-          <fieldset disabled={locked} className="disabled:opacity-60">
+          <fieldset disabled={locked && activeTab !== 'status'} className="disabled:opacity-60">
           <div className="p-6 space-y-5">
 
             {/* ════ TAB: GENERAL INFO ════ */}
@@ -3495,8 +3495,8 @@ const ProductCard = ({
               </div>
             )}
 
-            {/* ── Save Button ── */}
-            {!locked && (
+            {/* ── Save Button — always visible on Status tab (notes editable when locked) ── */}
+            {(!locked || activeTab === 'status') && (
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button onClick={handleSaveProduct} disabled={saving}
                   className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-semibold shadow-sm hover:shadow-md">
