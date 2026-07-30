@@ -1267,6 +1267,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                   <tr>
                     <th className="text-left px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-36">PO # / Ver</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-20">Order</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-32">Proposal #</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-32">Vendor</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-24">Status</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QB via Bill Invoice</th>
@@ -1290,6 +1291,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                             {po.version != null && <span className="ml-1.5 text-[10px] text-gray-400">v{po.version}</span>}
                           </td>
                           <td className="px-3 py-2">{po._orderLabel ? <span className="text-[10px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">{po._orderLabel}</span> : <span className="text-gray-300">—</span>}</td>
+                          <td className="px-3 py-2"><span className="text-xs font-mono text-[#005670]">{proposalVersions.find(pv => pv._orderId === po._orderId)?.proposalNumber || '—'}</span></td>
                           <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                           <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${po.status === 'paid' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}><span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${po.status === 'paid' ? 'bg-blue-500' : 'bg-emerald-500'}`} />{po.status === 'paid' ? 'Paid' : 'Confirmed'}</span></td>
                           <td className="px-3 py-2">
@@ -1340,6 +1342,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                           {po.version != null && <span className="ml-1.5 text-[10px] text-gray-400">v{po.version}</span>}
                         </td>
                         <td className="px-3 py-2">{po._orderLabel ? <span className="text-[10px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">{po._orderLabel}</span> : <span className="text-gray-300">—</span>}</td>
+                        <td className="px-3 py-2"><span className="text-xs font-mono text-[#005670]">{proposalVersions.find(pv => pv._orderId === po._orderId)?.proposalNumber || '—'}</span></td>
                         <td className="px-3 py-2 text-xs font-medium text-gray-600 truncate max-w-[120px]" title={po.vendorName}>{po.vendorName}</td>
                         <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sCfg.cls} whitespace-nowrap`}>{sCfg.label}</span></td>
                         <td className="px-3 py-2"><QBCell /></td>
