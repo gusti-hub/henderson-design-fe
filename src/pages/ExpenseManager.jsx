@@ -1044,6 +1044,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
       draft:    { cls: 'bg-gray-100 text-gray-500 border-gray-200',          label: 'Draft'          },
       sent:     { cls: 'bg-blue-100 text-blue-700 border-blue-200',          label: 'Sent to Client' },
       approved: { cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Approved'       },
+      paid:     { cls: 'bg-purple-100 text-purple-700 border-purple-200',    label: 'Paid'           },
       rejected: { cls: 'bg-red-100 text-red-600 border-red-200',             label: 'Rejected'       },
     };
     const totalPvPages = Math.ceil(proposalVersions.length / ROWS_PER_PAGE);
@@ -1206,7 +1207,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                 <tbody className="divide-y divide-gray-50">
                   {pagedPv.map((pv) => {
                     const pvId       = pv._id?.toString();
-                    const isApproved = pv.status === 'approved';
+                    const isApproved = pv.status === 'approved' || pv.status === 'paid';
                     const psCfg      = PS_CFG[pv.status] || PS_CFG.draft;
                     const qbId       = getQBId(pvId, pv.quickbooksId);
                     return (
