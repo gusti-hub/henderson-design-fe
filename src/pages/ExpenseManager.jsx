@@ -959,7 +959,8 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
           );
           if (pvRes.ok) {
             const d = await pvRes.json();
-            const label = getOrderLabel(allOrders?.find(o => o._id?.toString() === orderId) || {});
+            const existingPV = proposalVersions.find(pv => pv._orderId === orderId);
+            const label = existingPV?._orderLabel || getOrderLabel(selectedOrder?._id?.toString() === orderId ? selectedOrder : {});
             setProposalVersions(prev => [
               ...prev.filter(p => p._orderId !== orderId),
               ...(d.data || []).map(pv => ({ ...pv, _orderLabel: label, _orderId: orderId })),
