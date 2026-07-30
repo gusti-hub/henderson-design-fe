@@ -1132,21 +1132,17 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
         <div className="flex items-center gap-2">
           {/* Status */}
-          {proposalStatus === 'approved' ? (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">&#10003; Approved</span>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <select value={proposalStatus} onChange={e => handleStatusChange(e.target.value)} disabled={savingStatus}
-                className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${proposalStatus === 'draft' ? 'bg-gray-100 text-gray-600' : proposalStatus === 'sent' ? 'bg-blue-100 text-blue-700' : proposalStatus === 'rejected' ? 'bg-red-100 text-red-600' : proposalStatus === 'paid' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'} ${savingStatus ? 'opacity-50' : ''}`}>
-                <option value="draft">Draft</option>
-                <option value="sent">Sent to Client</option>
-                <option value="approved">Approved</option>
-                <option value="paid">Paid</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <select value={proposalStatus} onChange={e => handleStatusChange(e.target.value)} disabled={savingStatus}
+              className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${proposalStatus === 'draft' ? 'bg-gray-100 text-gray-600' : proposalStatus === 'sent' ? 'bg-blue-100 text-blue-700' : proposalStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : proposalStatus === 'paid' ? 'bg-purple-100 text-purple-700' : proposalStatus === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'} ${savingStatus ? 'opacity-50' : ''}`}>
+              <option value="draft">Draft</option>
+              <option value="sent">Sent to Client</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+          </div>
           <div className="h-5 w-px bg-gray-200" />
 
           {/* Show/Hide items toggle */}

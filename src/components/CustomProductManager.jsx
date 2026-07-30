@@ -1225,7 +1225,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
     }
   }, [savedProducts, order._id, onSave, handleDragEnd, addToast]);
 
-  const isOrderLocked = false;
+  const isOrderLocked = ['approved', 'cancelled', 'rejected'].includes(order?.status);
 
   const previewUrl = getFloorPlanPreviewUrl();
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
