@@ -2189,6 +2189,7 @@ const GroupProductCard = ({
   const [name, setName]   = useState(parent.name || '');
   const [room, setRoom]   = useState(parent.selectedOptions?.room || '');
   const [desc, setDesc]   = useState(parent.selectedOptions?.specifications || '');
+  const [uploadedImages, setUploadedImages] = useState(parent.selectedOptions?.uploadedImages || []);
   const [saving, setSaving] = useState(false);
   const [expandedChild, setExpandedChild] = useState(null);
 
@@ -2196,6 +2197,7 @@ const GroupProductCard = ({
     setName(parent.name || '');
     setRoom(parent.selectedOptions?.room || '');
     setDesc(parent.selectedOptions?.specifications || '');
+    setUploadedImages(parent.selectedOptions?.uploadedImages || []);
   }, [parent]);
 
   const childSellTotal = children.reduce((sum, c) => {
@@ -2222,6 +2224,7 @@ const GroupProductCard = ({
       onUpdateParent(parentIndex, 'name', name);
       onUpdateParent(parentIndex, 'selectedOptions.room', room);
       onUpdateParent(parentIndex, 'selectedOptions.specifications', desc);
+      onUpdateParent(parentIndex, 'selectedOptions.uploadedImages', uploadedImages);
       onUpdateParent(parentIndex, 'finalPrice', childTotal);
       onUpdateParent(parentIndex, 'unitPrice', childTotal);
 
@@ -2229,7 +2232,7 @@ const GroupProductCard = ({
       const updatedAllProducts = allProducts.map((p, i) => {
         if (i === parentIndex) {
           return { ...p, name, finalPrice: childTotal, unitPrice: childTotal,
-            selectedOptions: { ...p.selectedOptions, room, specifications: desc } };
+            selectedOptions: { ...p.selectedOptions, room, specifications: desc, uploadedImages } };
         }
         return p;
       });
@@ -2262,10 +2265,6 @@ const GroupProductCard = ({
     }
   };
 
-  const primaryImage = parent.selectedOptions?.image ||
-    parent.selectedOptions?.images?.[0] ||
-    parent.selectedOptions?.uploadedImages?.[0]?.url || null;
-
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]';
 
   return (
@@ -2275,9 +2274,13 @@ const GroupProductCard = ({
         className="flex items-center gap-3 p-4 cursor-pointer select-none"
         onClick={onToggleExpand}
       >
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#005670] text-white shrink-0">
-          <Layers className="w-4 h-4" />
-        </div>
+        {uploadedImages[0]?.url ? (
+          <img src={uploadedImages[0].url} alt="group" className="w-9 h-9 rounded-lg object-cover border border-[#005670]/20 shrink-0" />
+        ) : (
+          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#005670] text-white shrink-0">
+            <Layers className="w-4 h-4" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-[#005670]">Group</span>
@@ -2328,6 +2331,14 @@ const GroupProductCard = ({
                   minRows={5}
                 />
               </Suspense>
+            </div>
+            <div>
+              <ImageUploadField
+                orderId={order._id}
+                images={uploadedImages}
+                onImagesChange={(imgs) => setUploadedImages(imgs)}
+                maxImages={3}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
