@@ -3023,7 +3023,7 @@ const ProductCard = ({
             })}
           </div>
 
-          <fieldset disabled={locked && activeTab !== 'status'} className="disabled:opacity-60">
+          <fieldset disabled={locked && !['status', 'shipping', 'installbinder', 'details'].includes(activeTab)} className="disabled:opacity-60">
           <div className="p-6 space-y-5">
 
             {/* ════ TAB: GENERAL INFO ════ */}
@@ -3218,7 +3218,7 @@ const ProductCard = ({
                     <VendorSearchDropdown
                       selectedVendor={product.vendor}
                       onSelectVendor={handleVendorSelect}
-                      disabled={false}
+                      disabled={locked}
                     />
                   </div>
                   <div>
@@ -3228,6 +3228,7 @@ const ProductCard = ({
                       value={localFields.product_id}
                       onChange={(e) => { setLocal('product_id', e.target.value); onUpdate(index, 'product_id', e.target.value); }}
                       className={inputCls}
+                      disabled={locked}
                     />
                   </div>
                   <div>
@@ -3240,7 +3241,7 @@ const ProductCard = ({
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid grid-cols-2 gap-4${locked ? ' pointer-events-none opacity-60' : ''}`}>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
                     <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
@@ -3278,6 +3279,7 @@ const ProductCard = ({
                       value={localFields.finish}
                       onChange={(e) => { setLocal('finish', e.target.value); upd('finish', e.target.value); }}
                       className={inputCls}
+                      disabled={locked}
                     />
                   </div>
                   <div>
@@ -3288,6 +3290,7 @@ const ProductCard = ({
                       onChange={(e) => { setLocal('size', e.target.value); upd('size', e.target.value); }}
                       className={inputCls}
                       placeholder="e.g. 48&quot; × 24&quot; × 36&quot;"
+                      disabled={locked}
                     />
                   </div>
                   <div>
@@ -3301,6 +3304,7 @@ const ProductCard = ({
                         upd('links', e.target.value ? [e.target.value, ...rest] : rest);
                       }}
                       className={inputCls}
+                      disabled={locked}
                     />
                   </div>
                 </div>
@@ -3315,6 +3319,7 @@ const ProductCard = ({
                       onChange={(e) => updCA('materials', e.target.value)}
                       className={inputCls}
                       placeholder="e.g. Solid oak, velvet upholstery"
+                      disabled={locked}
                     />
                   </div>
                   <div>
@@ -3328,6 +3333,7 @@ const ProductCard = ({
                       className={`${inputCls} resize-none`}
                       rows={3}
                       placeholder="Cleaning instructions, freight notes, fire ratings, vendor comments…"
+                      disabled={locked}
                     />
                   </div>
                 </div>
@@ -3335,7 +3341,7 @@ const ProductCard = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">CFA / Sample Approval</label>
-                    <select value={opts.cfaSampleApproval || ''} onChange={(e) => upd('cfaSampleApproval', e.target.value)} className={`${inputCls} bg-white`}>
+                    <select value={opts.cfaSampleApproval || ''} onChange={(e) => upd('cfaSampleApproval', e.target.value)} className={`${inputCls} bg-white`} disabled={locked}>
                       <option value="">Select...</option>
                       {CFA_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
@@ -3347,6 +3353,7 @@ const ProductCard = ({
                       value={localFields.fabric}
                       onChange={(e) => { setLocal('fabric', e.target.value); upd('fabric', e.target.value); }}
                       className={inputCls}
+                      disabled={locked}
                     />
                   </div>
                 </div>
@@ -3357,10 +3364,11 @@ const ProductCard = ({
                     value={localFields.category}
                     onChange={(e) => { setLocal('category', e.target.value); onUpdate(index, 'category', e.target.value); }}
                     className={inputCls}
+                    disabled={locked}
                   />
                 </div>
 
-                <div className="space-y-3 pt-3 border-t border-gray-100">
+                <div className={`space-y-3 pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
                   <h4 className="font-semibold text-gray-800 text-sm">Custom Attributes</h4>
                   {Object.keys(customAttrs).length > 0 && (
                     <div className="space-y-2">
@@ -3385,7 +3393,9 @@ const ProductCard = ({
                     </div>
                   </div>
                 </div>
-                <ImageUploadField orderId={order._id} images={opts.uploadedImages || []} onImagesChange={(images) => upd('uploadedImages', images)} />
+                <div className={locked ? 'pointer-events-none opacity-60' : ''}>
+                  <ImageUploadField orderId={order._id} images={opts.uploadedImages || []} onImagesChange={(images) => upd('uploadedImages', images)} />
+                </div>
               </div>
             )}
 
@@ -3506,8 +3516,8 @@ const ProductCard = ({
               </div>
             )}
 
-            {/* ── Save Button — always visible on Status tab (notes editable when locked) ── */}
-            {(!locked || activeTab === 'status') && (
+            {/* ── Save Button — visible on unlocked tabs ── */}
+            {(!locked || ['status', 'shipping', 'installbinder', 'details'].includes(activeTab)) && (
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button onClick={handleSaveProduct} disabled={saving}
                   className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-semibold shadow-sm hover:shadow-md">
