@@ -1035,6 +1035,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                 vendor: p.vendor || null,
                 sourceType: p.sourceType || 'manual',
                 isEditable: p.isEditable !== false,
+                isParent: p.isParent || false,
+                parentId: p.parentId || null,
                 selectedOptions: p.selectedOptions || {},
                 placement: p.placement || null,
               })),
