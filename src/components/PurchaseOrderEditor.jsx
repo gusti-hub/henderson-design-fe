@@ -702,8 +702,14 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       ) : null}
                       {product.selectedOptions?.fabric ? (
                         <div className="desc-row">
-                          <span className="desc-row-label">Material</span>
+                          <span className="desc-row-label">Fabric</span>
                           <span className="desc-row-value">{product.selectedOptions.fabric}</span>
+                        </div>
+                      ) : null}
+                      {product.selectedOptions?.customAttributes?.materials ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Materials</span>
+                          <span className="desc-row-value">{product.selectedOptions.customAttributes.materials}</span>
                         </div>
                       ) : null}
                       {product.selectedOptions?.finish ? (
