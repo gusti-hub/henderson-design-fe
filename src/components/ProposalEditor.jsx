@@ -195,16 +195,6 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
-        {Array.isArray(o.specRows) && o.specRows.length > 0 && (
-          <div style={{ marginBottom: '2px' }}>
-            {o.specRows.map((row, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span>{row.label}</span>
-                <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{row.qty}</span>
-              </div>
-            ))}
-          </div>
-        )}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -286,16 +276,6 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
-        {Array.isArray(o.specRows) && o.specRows.length > 0 && (
-          <div style={{ marginBottom: '2px' }}>
-            {o.specRows.map((row, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span>{row.label}</span>
-                <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{row.qty}</span>
-              </div>
-            ))}
-          </div>
-        )}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}

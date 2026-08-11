@@ -2533,7 +2533,6 @@ const ProductCard = ({
     installerNotes:    opts.installerNotes       || '',
     leadTime:          opts.leadTime             || '',  // ✅ PATCH 10
   });
-  const [specRows, setSpecRows] = useState(opts.specRows || []);
 
   useEffect(() => {
     const o = product.selectedOptions || {};
@@ -2559,7 +2558,6 @@ const ProductCard = ({
       leadTime:          o.leadTime                || '',
     });
     setCustomAttrs(o.customAttributes || {});
-    setSpecRows(o.specRows || []);
     // Depend on the product object identity (not _id/index): reorder keeps the same
     // object reference so local edits are preserved, while a real content change
     // (e.g. after save) swaps in a new object and re-syncs correctly.
@@ -2574,22 +2572,6 @@ const ProductCard = ({
   }, [product]);
 
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
-
-  const updateSpecRow = (i, key, value) => {
-    const updated = specRows.map((r, idx) => idx === i ? { ...r, [key]: value } : r);
-    setSpecRows(updated);
-    upd('specRows', updated);
-  };
-  const addSpecRow = () => {
-    const updated = [...specRows, { label: '', qty: '' }];
-    setSpecRows(updated);
-    upd('specRows', updated);
-  };
-  const removeSpecRow = (i) => {
-    const updated = specRows.filter((_, idx) => idx !== i);
-    setSpecRows(updated);
-    upd('specRows', updated);
-  };
 
   // Update a single key inside customAttributes
   const updCA = (key, value) => {
@@ -3291,39 +3273,6 @@ const ProductCard = ({
                     </Suspense>
                   </div>
                 </div>
-                {/* Spec Rows — structured label + qty rows for aligned columns */}
-                <div className={locked ? 'pointer-events-none opacity-60' : ''}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-gray-700">Spec Rows <span className="text-xs text-gray-400 font-normal">e.g. module dimensions with qty</span></label>
-                  </div>
-                  <div className="space-y-1.5">
-                    {specRows.map((row, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <input
-                          type="text"
-                          value={row.label}
-                          onChange={e => updateSpecRow(i, 'label', e.target.value)}
-                          placeholder={'Description (e.g. (1) LAF - 58"W x 68"D x 30"H)'}
-                          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#005670]"
-                        />
-                        <input
-                          type="text"
-                          value={row.qty}
-                          onChange={e => updateSpecRow(i, 'qty', e.target.value)}
-                          placeholder="Qty"
-                          className="w-20 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#005670]"
-                        />
-                        <button type="button" onClick={() => removeSpecRow(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={addSpecRow}
-                      className="text-sm text-[#005670] hover:underline font-medium"
-                    >+ Add Row</button>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Color / Finish</label>
