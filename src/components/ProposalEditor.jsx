@@ -153,7 +153,9 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
   const markupPct = parseFloat(o.markupPercent) || 0;
   const sell = isGroupParent ? (parseFloat(product.finalPrice) || 0) : msrp * (1 + markupPct / 100);
   const sub = isGroupParent ? sell : sell * qty;
-  const taxRate = isGroupParent ? 0 : (parseFloat(o.salesTaxRate) || 0);
+  const taxRate = isGroupParent
+    ? (product._avgChildTaxRate || 0)
+    : (parseFloat(o.salesTaxRate) || 0);
   const tax = taxRate > 0 ? sub * (taxRate / 100) : 0;
   const total = sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
@@ -193,6 +195,16 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+        {Array.isArray(o.specRows) && o.specRows.length > 0 && (
+          <div style={{ marginBottom: '2px' }}>
+            {o.specRows.map((row, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span>{row.label}</span>
+                <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{row.qty}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -243,7 +255,9 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
   const markupPct = parseFloat(o.markupPercent) || 0;
   const sell = isGroupParent ? (parseFloat(product.finalPrice) || 0) : msrp * (1 + markupPct / 100);
   const sub = isGroupParent ? sell : sell * qty;
-  const taxRate = isGroupParent ? 0 : (parseFloat(o.salesTaxRate) || 0);
+  const taxRate = isGroupParent
+    ? (product._avgChildTaxRate || 0)
+    : (parseFloat(o.salesTaxRate) || 0);
   const tax = taxRate > 0 ? sub * (taxRate / 100) : 0;
   const total = sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
@@ -272,6 +286,16 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+        {Array.isArray(o.specRows) && o.specRows.length > 0 && (
+          <div style={{ marginBottom: '2px' }}>
+            {o.specRows.map((row, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span>{row.label}</span>
+                <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{row.qty}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
         {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
         {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -797,8 +821,24 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
       setProposalData(r.data);
 
-      const rawProducts = (r.data.selectedProducts || []).filter(p => !p.parentId);
-      const withIds = rawProducts.map((p, idx) => ({ sid: stableId(p, idx), product: p }));
+      const allOrderProducts = r.data.selectedProducts || [];
+      const rawProducts = allOrderProducts.filter(p => !p.parentId);
+
+      // Pre-calculate avg child tax rate for group parents so ProductRow can show tax
+      const withIds = rawProducts.map((p, idx) => {
+        let product = p;
+        if (p.isParent) {
+          const children = allOrderProducts.filter(c => c.parentId === p.spotName);
+          const rates = children
+            .map(c => parseFloat(c.selectedOptions?.salesTaxRate) || 0)
+            .filter(r => r > 0);
+          if (rates.length > 0) {
+            const avgRate = Math.round((rates.reduce((a, b) => a + b, 0) / rates.length) * 1000) / 1000;
+            product = { ...p, _avgChildTaxRate: avgRate };
+          }
+        }
+        return { sid: stableId(p, idx), product };
+      });
       setProductsWithIds(withIds);
       const hiddenFromDb = new Set(r.data.hiddenProductIds || []);
       const validSids = new Set(withIds.map(({ sid }) => sid));

@@ -682,6 +682,19 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           </span>
                         </div>
                       ) : null}
+                      {Array.isArray(product.selectedOptions?.specRows) && product.selectedOptions.specRows.length > 0 ? (
+                        <div className="desc-row" style={{ alignItems: 'flex-start' }}>
+                          <span className="desc-row-label">Modules</span>
+                          <span className="desc-row-value">
+                            {product.selectedOptions.specRows.map((row, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                                <span>{row.label}</span>
+                                <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{row.qty}</span>
+                              </div>
+                            ))}
+                          </span>
+                        </div>
+                      ) : null}
                       {product.name ? (
                         <div className="desc-row">
                           <span className="desc-row-label">Name</span>
