@@ -1689,7 +1689,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <div className="text-right">
                 <p className="text-xs text-gray-500 mb-0.5">Total Sell Price</p>
                 <p className="text-base font-bold text-[#005670]">
-                  ${savedProducts.filter(p => !p.isParent).reduce((sum, p) => sum + (parseFloat(p.finalPrice) || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${savedProducts.filter(p => !p.parentId).reduce((sum, p) => sum + (parseFloat(p.finalPrice) || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
