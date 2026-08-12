@@ -808,7 +808,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       const withIds = rawProducts.map((p, idx) => {
         let product = p;
         if (p.isParent) {
-          const children = allOrderProducts.filter(c => c.parentId === p.spotName);
+          const children = allOrderProducts.filter(c => c.parentId === p.product_id || c.parentId === p.spotName);
           const rates = children
             .map(c => parseFloat(c.selectedOptions?.salesTaxRate) || 0)
             .filter(r => r > 0);
