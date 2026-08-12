@@ -927,11 +927,12 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     let sub = 0, taxT = 0;
     visibleProducts.forEach(p => {
       const o = p.selectedOptions || {}, qty = p.quantity || 1;
+      const isGroupParent = p.isParent === true;
       const msrp = parseFloat(o.msrp) || 0;
       const markupPct = parseFloat(o.markupPercent) || 0;
-      const sell = msrp * (1 + markupPct / 100);
-      const line = sell * qty;
-      const tax = parseFloat(o.salesTaxRate) || 0;
+      const sell = isGroupParent ? (parseFloat(p.finalPrice) || 0) : msrp * (1 + markupPct / 100);
+      const line = isGroupParent ? sell : sell * qty;
+      const tax = isGroupParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
       sub += line;
       taxT += tax > 0 ? line * (tax / 100) : 0;
     });
@@ -1012,7 +1013,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
         if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
         if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
-        const taxRate = parseFloat(o.salesTaxRate) || 0;
+        const taxRate = p.isParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
         const COL1 = 88, COL3 = 148;
         const midW = CONTENT_W - COL1 - COL3;
         // Measure middle column
