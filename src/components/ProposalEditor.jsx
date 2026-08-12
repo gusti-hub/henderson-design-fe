@@ -151,13 +151,17 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
   const isGroupParent = product.isParent === true;
   const msrp = parseFloat(o.msrp) || 0;
   const markupPct = parseFloat(o.markupPercent) || 0;
-  const sell = isGroupParent ? (parseFloat(product.finalPrice) || 0) : msrp * (1 + markupPct / 100);
-  const sub = isGroupParent ? sell : sell * qty;
   const taxRate = isGroupParent
     ? (product._avgChildTaxRate || 0)
     : (parseFloat(o.salesTaxRate) || 0);
+  // For group parents, finalPrice already includes tax — back-calculate pre-tax subtotal
+  const groupFinalPrice = parseFloat(product.finalPrice) || 0;
+  const sell = isGroupParent
+    ? (taxRate > 0 ? groupFinalPrice / (1 + taxRate / 100) : groupFinalPrice)
+    : msrp * (1 + markupPct / 100);
+  const sub = isGroupParent ? sell : sell * qty;
   const tax = taxRate > 0 ? sub * (taxRate / 100) : 0;
-  const total = sub + tax;
+  const total = isGroupParent ? groupFinalPrice : sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
   const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
 
@@ -243,13 +247,17 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
   const isGroupParent = product.isParent === true;
   const msrp = parseFloat(o.msrp) || 0;
   const markupPct = parseFloat(o.markupPercent) || 0;
-  const sell = isGroupParent ? (parseFloat(product.finalPrice) || 0) : msrp * (1 + markupPct / 100);
-  const sub = isGroupParent ? sell : sell * qty;
   const taxRate = isGroupParent
     ? (product._avgChildTaxRate || 0)
     : (parseFloat(o.salesTaxRate) || 0);
+  // For group parents, finalPrice already includes tax — back-calculate pre-tax subtotal
+  const groupFinalPrice = parseFloat(product.finalPrice) || 0;
+  const sell = isGroupParent
+    ? (taxRate > 0 ? groupFinalPrice / (1 + taxRate / 100) : groupFinalPrice)
+    : msrp * (1 + markupPct / 100);
+  const sub = isGroupParent ? sell : sell * qty;
   const tax = taxRate > 0 ? sub * (taxRate / 100) : 0;
-  const total = sub + tax;
+  const total = isGroupParent ? groupFinalPrice : sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
   const tdBase = { borderTop: bt, borderLeft: 'none', borderRight: 'none', borderBottom: 'none' };
 
@@ -928,13 +936,22 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     visibleProducts.forEach(p => {
       const o = p.selectedOptions || {}, qty = p.quantity || 1;
       const isGroupParent = p.isParent === true;
-      const msrp = parseFloat(o.msrp) || 0;
-      const markupPct = parseFloat(o.markupPercent) || 0;
-      const sell = isGroupParent ? (parseFloat(p.finalPrice) || 0) : msrp * (1 + markupPct / 100);
-      const line = isGroupParent ? sell : sell * qty;
-      const tax = isGroupParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
-      sub += line;
-      taxT += tax > 0 ? line * (tax / 100) : 0;
+      if (isGroupParent) {
+        // finalPrice already includes tax — back-calculate pre-tax portion
+        const finalPrice = parseFloat(p.finalPrice) || 0;
+        const taxRate = p._avgChildTaxRate || 0;
+        const preTax = taxRate > 0 ? finalPrice / (1 + taxRate / 100) : finalPrice;
+        sub += preTax;
+        taxT += finalPrice - preTax;
+      } else {
+        const msrp = parseFloat(o.msrp) || 0;
+        const markupPct = parseFloat(o.markupPercent) || 0;
+        const sell = msrp * (1 + markupPct / 100);
+        const line = sell * qty;
+        const taxRate = parseFloat(o.salesTaxRate) || 0;
+        sub += line;
+        taxT += taxRate > 0 ? line * (taxRate / 100) : 0;
+      }
     });
     const total = sub + taxT;
     return { subtotal: sub, salesTax: taxT, total, deposit: total * (depositPercent / 100) };
