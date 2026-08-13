@@ -2637,8 +2637,6 @@ const ProductCard = ({
   // Auto-backfill vendor/client fields from library product for existing order items
   // saved before these fields existed in selectedOptions.
   useEffect(() => {
-    const libId = product.libraryProductId;
-    if (!libId) return;
     const BACKFILL_KEYS = [
       'woodFinishVendor','woodFinishClient',
       'drawerFrontsVendor','drawerFrontsClient',
@@ -2647,10 +2645,23 @@ const ProductCard = ({
     ];
     const opts = product.selectedOptions || {};
     if (!BACKFILL_KEYS.some(k => !opts[k])) return; // all already populated
+
+    const libId = product.libraryProductId;
+    const sku   = product.product_id;
+    if (!libId && !sku) return;
+
     const token = localStorage.getItem('token');
-    fetch(`${backendServer}/api/products/${libId}`, { headers: { Authorization: `Bearer ${token}` } })
+    const url = libId
+      ? `${backendServer}/api/products/${libId}`
+      : `${backendServer}/api/products?search=${encodeURIComponent(sku)}&limit=10`;
+
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
-      .then(lib => {
+      .then(data => {
+        // By-id returns the product directly; search returns { products: [...] }
+        const lib = libId
+          ? data
+          : (data?.products || []).find(p => p.product_id === sku);
         if (!lib) return;
         const map = {
           woodFinishVendor:   lib.woodFinishVendor   || '',
@@ -2672,7 +2683,7 @@ const ProductCard = ({
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product.libraryProductId]);
+  }, [product.libraryProductId, product.product_id]);
 
   // Update a single key inside customAttributes
   const updCA = (key, value) => {
