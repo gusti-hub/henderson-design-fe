@@ -2644,7 +2644,9 @@ const ProductCard = ({
       'fabricVendor','fabricClient','productVendor',
     ];
     const opts = product.selectedOptions || {};
-    if (!BACKFILL_KEYS.some(k => !opts[k])) return; // all already populated
+    const needsFields  = BACKFILL_KEYS.some(k => !opts[k]);
+    const needsVendor  = !product.vendor;
+    if (!needsFields && !needsVendor) return;
 
     const libId = product.libraryProductId;
     const sku   = product.product_id;
@@ -2663,23 +2665,44 @@ const ProductCard = ({
           ? data
           : (data?.products || []).find(p => p.product_id === sku);
         if (!lib) return;
-        const map = {
-          woodFinishVendor:   lib.woodFinishVendor   || '',
-          woodFinishClient:   lib.woodFinishClient   || '',
-          drawerFrontsVendor: lib.drawerFrontsVendor || '',
-          drawerFrontsClient: lib.drawerFrontsClient || '',
-          wingPanelsVendor:   lib.wingPanelsVendor   || '',
-          wingPanelsClient:   lib.wingPanelsClient   || '',
-          fabricVendor:       lib.fabricVendor       || '',
-          fabricClient:       lib.fabricClient       || '',
-          productVendor:      lib.vendor             || '',
-        };
-        BACKFILL_KEYS.forEach(k => {
-          if (!opts[k] && map[k]) {
-            setLocal(k, map[k]);
-            upd(k, map[k]);
-          }
-        });
+
+        if (needsFields) {
+          const map = {
+            woodFinishVendor:   lib.woodFinishVendor   || '',
+            woodFinishClient:   lib.woodFinishClient   || '',
+            drawerFrontsVendor: lib.drawerFrontsVendor || '',
+            drawerFrontsClient: lib.drawerFrontsClient || '',
+            wingPanelsVendor:   lib.wingPanelsVendor   || '',
+            wingPanelsClient:   lib.wingPanelsClient   || '',
+            fabricVendor:       lib.fabricVendor       || '',
+            fabricClient:       lib.fabricClient       || '',
+            productVendor:      lib.vendor             || '',
+          };
+          BACKFILL_KEYS.forEach(k => {
+            if (!opts[k] && map[k]) {
+              setLocal(k, map[k]);
+              upd(k, map[k]);
+            }
+          });
+        }
+
+        // Auto-populate the top Vendor field (ObjectId ref) by matching the
+        // library product's vendor name against the Vendor Management table.
+        if (needsVendor && lib.vendor) {
+          fetch(
+            `${backendServer}/api/vendors?search=${encodeURIComponent(lib.vendor)}&limit=20`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+            .then(r => r.ok ? r.json() : null)
+            .then(vData => {
+              const vendorName = lib.vendor.toLowerCase();
+              const matched = (vData?.vendors || []).find(
+                v => v.name?.toLowerCase() === vendorName
+              );
+              if (matched) onUpdate(index, 'vendor', matched);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
