@@ -3399,25 +3399,38 @@ const ProductCard = ({
 
                 <div className={`space-y-3 pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
                   <h4 className="font-semibold text-gray-800 text-sm">Custom Attributes</h4>
-                  {Object.keys(customAttrs).length > 0 && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(customAttrs).map(([key, value]) => (
-                        <div key={key} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-500 mb-1">{caLabel(key)}</p>
-                            <input
-                              type="text"
-                              value={String(value)}
-                              onChange={e => updCA(key, e.target.value)}
-                              className={`${inputCls} text-sm`}
-                              disabled={locked}
-                            />
-                          </div>
-                          <button onClick={() => removeCustomAttribute(key)} className="mt-5 p-1.5 text-red-400 hover:bg-red-50 rounded-lg flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                  {/* Known fields — always shown */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(CA_LABELS).map(([key, label]) => (
+                      <div key={key} className="p-2 bg-gray-50 rounded-lg">
+                        <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+                        <input
+                          type="text"
+                          value={customAttrs[key] != null ? String(customAttrs[key]) : ''}
+                          onChange={e => updCA(key, e.target.value)}
+                          className={`${inputCls} text-sm`}
+                          disabled={locked}
+                          placeholder="—"
+                        />
+                      </div>
+                    ))}
+                    {/* Extra unknown keys */}
+                    {Object.keys(customAttrs).filter(k => !CA_LABELS[k]).map(key => (
+                      <div key={key} className="flex items-start gap-2 p-2 bg-purple-50 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-purple-500 mb-1">{caLabel(key)}</p>
+                          <input
+                            type="text"
+                            value={String(customAttrs[key])}
+                            onChange={e => updCA(key, e.target.value)}
+                            className={`${inputCls} text-sm`}
+                            disabled={locked}
+                          />
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <button onClick={() => removeCustomAttribute(key)} className="mt-5 p-1.5 text-red-400 hover:bg-red-50 rounded-lg flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
                   <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl">
                     <p className="text-sm font-medium text-gray-700 mb-3">Add Custom Attribute</p>
                     <div className="flex gap-3">
