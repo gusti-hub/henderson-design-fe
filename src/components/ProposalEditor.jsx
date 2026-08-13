@@ -146,6 +146,7 @@ const PageFooter = () => (
 // ─── Product Row ──────────────────────────────────────────────────────────────
 const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh }, ref) => {
   const o = product.selectedOptions || {};
+  const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
   const imgSrc = getImgSrc(product);
   const qty = product.quantity || 1;
   const isGroupParent = product.isParent === true;
@@ -199,10 +200,12 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
-        {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
-        {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
-        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
-        {o.size && <div><strong>Size:</strong> {o.size}</div>}
+        {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
+        {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
+        {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
+        {o.fabricClient       && <div><strong>Fabric:</strong> {o.fabricClient}</div>}
+        {o.size               && <div><strong>Dimensions:</strong> {o.size}</div>}
+        {ca.collection        && <div><strong>Collection:</strong> {ca.collection}</div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
@@ -284,21 +287,12 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
         {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
-        {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
-        {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
-        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
-        {o.size && <div><strong>Dimensions:</strong> {o.size}</div>}
-        {materials && <div><strong>Materials:</strong> {materials}</div>}
-        {/* Category-specific structured fields */}
-        {/* {catEntries.length > 0 && (
-          <div style={{ marginTop: '4px', borderTop: '1px dashed #e5e7eb', paddingTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
-            {catEntries.map(([k, v]) => (
-              <span key={k} style={{ fontSize: '11px', color: '#4b5563' }}>
-                <strong>{CA_LABELS[k]}:</strong> {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v}
-              </span>
-            ))}
-          </div>
-        )} */}
+        {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
+        {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
+        {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
+        {o.fabricClient       && <div><strong>Fabric:</strong> {o.fabricClient}</div>}
+        {o.size               && <div><strong>Dimensions:</strong> {o.size}</div>}
+        {ca.collection        && <div><strong>Collection:</strong> {ca.collection}</div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
@@ -1025,11 +1019,15 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       rps.forEach(({ sid, product: p }, i) => {
         const o = p.selectedOptions || {};
         const lines = [];
+        const pca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
         if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
         if (o.specifications) lines.push(renderRichTextHtml(o.specifications));
-        if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
-        if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
-        if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
+        if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
+        if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
+        if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');
+        if (o.fabricClient)       lines.push('<div><strong>Fabric:</strong> ' + o.fabricClient + '</div>');
+        if (o.size)               lines.push('<div><strong>Dimensions:</strong> ' + o.size + '</div>');
+        if (pca.collection)       lines.push('<div><strong>Collection:</strong> ' + pca.collection + '</div>');
         const taxRate = p.isParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
         const COL1 = 88, COL3 = 148;
         const midW = CONTENT_W - COL1 - COL3;

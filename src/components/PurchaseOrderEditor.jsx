@@ -648,7 +648,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
                 const netTotal = netCost * (product.quantity || 1);
                 const sidemark = product.selectedOptions?.sidemark || '';
-                const specs = product.selectedOptions?.vendorDescription || product.selectedOptions?.specifications || '';
+                const vendorDesc = product.selectedOptions?.vendorDescription || '';
+                const o = product.selectedOptions || {};
 
                 return (
                   <tr key={index}>
@@ -671,59 +672,24 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       <div className="desc-row">
                         <span className="desc-row-label">Quantity</span>
                         <span className="desc-row-value">
-                          {product.quantity || 1} {product.selectedOptions?.units || 'Each'}
+                          {product.quantity || 1} {o.units || 'Each'}
                         </span>
                       </div>
-                      {specs ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Specs</span>
-                          <span className="desc-row-value" style={{ lineHeight: '1.5', textAlign: 'left' }}>
-                            {renderRichText(specs)}
-                          </span>
-                        </div>
-                      ) : null}
                       {product.name ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Name</span>
-                          <span className="desc-row-value">{product.name}</span>
+                        <div style={{ fontWeight: '600', fontSize: '12px', margin: '3px 0 2px' }}>{product.name}</div>
+                      ) : null}
+                      {vendorDesc ? (
+                        <div style={{ lineHeight: '1.5', fontSize: '12px', marginBottom: '2px' }}>
+                          {renderRichText(vendorDesc)}
                         </div>
                       ) : null}
-                      {product.product_id ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">SKU</span>
-                          <span className="desc-row-value">{product.product_id}</span>
-                        </div>
-                      ) : null}
-                      {(product.selectedOptions?.dimension || product.selectedOptions?.size) ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Dimensions</span>
-                          <span className="desc-row-value">{product.selectedOptions?.dimension || product.selectedOptions?.size}</span>
-                        </div>
-                      ) : null}
-                      {product.selectedOptions?.fabric ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Fabric</span>
-                          <span className="desc-row-value">{product.selectedOptions.fabric}</span>
-                        </div>
-                      ) : null}
-                      {product.selectedOptions?.customAttributes?.materials ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Materials</span>
-                          <span className="desc-row-value">{product.selectedOptions.customAttributes.materials}</span>
-                        </div>
-                      ) : null}
-                      {product.selectedOptions?.finish ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Color</span>
-                          <span className="desc-row-value">{product.selectedOptions.finish}</span>
-                        </div>
-                      ) : null}
-                      {product.selectedOptions?.leadTime ? (
-                        <div className="desc-row">
-                          <span className="desc-row-label">Lead Time</span>
-                          <span className="desc-row-value">{product.selectedOptions.leadTime}</span>
-                        </div>
-                      ) : null}
+                      {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
+                      {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
+                      {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wing Panels</strong></span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
+                      {o.fabricVendor       && <div className="desc-row"><span className="desc-row-label"><strong>Fabric</strong></span><span className="desc-row-value">{o.fabricVendor}</span></div>}
+                      {(o.size || o.dimension) && <div className="desc-row"><span className="desc-row-label"><strong>Dimensions</strong></span><span className="desc-row-value">{o.size || o.dimension}</span></div>}
+                      {product.product_id   && <div className="desc-row"><span className="desc-row-label"><strong>SKU</strong></span><span className="desc-row-value">{product.product_id}</span></div>}
+                      {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div>}
                       {sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>
