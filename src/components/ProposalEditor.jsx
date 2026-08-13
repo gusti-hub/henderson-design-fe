@@ -15,6 +15,20 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
 
+// Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
+const htmlToLines = (html) => {
+  if (!html || typeof html !== 'string') return [];
+  const plain = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+  return plain.split('\n').map(l => l.trim()).filter(Boolean);
+};
+
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
@@ -199,7 +213,9 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-        {o.specifications && <div className="proposal-desc">{renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}</div>}
+        {o.specifications && htmlToLines(o.specifications).map((line, i) => (
+          <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{line}</div>
+        ))}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
         {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -286,7 +302,9 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-        {o.specifications && <div className="proposal-desc">{renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}</div>}
+        {o.specifications && htmlToLines(o.specifications).map((line, i) => (
+          <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{line}</div>
+        ))}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
         {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -1021,7 +1039,9 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const lines = [];
         const pca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
         if (p.name) lines.push('<div style="font-size:12px;margin-bottom:2px"><strong>Item Name:</strong> ' + p.name + '</div>');
-        if (o.specifications) lines.push('<div class="proposal-desc" style="font-size:12px">' + renderRichTextHtml(o.specifications) + '</div>');
+        if (o.specifications) htmlToLines(o.specifications).forEach(line => {
+          lines.push(`<div style="font-size:12px;line-height:1.5;margin:0 0 1px 0">${line}</div>`);
+        });
         if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
         if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
         if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');

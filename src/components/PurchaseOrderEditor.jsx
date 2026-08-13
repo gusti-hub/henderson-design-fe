@@ -4,6 +4,20 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText } from '../utils/richTextUtils';
 
+// Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
+const htmlToLines = (html) => {
+  if (!html || typeof html !== 'string') return [];
+  const plain = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+  return plain.split('\n').map(l => l.trim()).filter(Boolean);
+};
+
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
   const [dataUrl, setDataUrl] = useState(null);
@@ -690,12 +704,9 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           <span style={{ fontSize: '11px', color: '#222' }}>{product.name}</span>
                         </div>
                       ) : null}
-                      {vendorDesc ? (
-                        <div
-                          className="po-item-desc"
-                          dangerouslySetInnerHTML={{ __html: typeof vendorDesc === 'string' && /<[a-z]/i.test(vendorDesc) ? vendorDesc : vendorDesc.split('\n').map(l => `<p>${l || '<br>'}</p>`).join('') }}
-                        />
-                      ) : null}
+                      {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
+                        <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{line}</div>
+                      ))}
                       {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
                       {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
                       {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wing Panels</strong></span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
