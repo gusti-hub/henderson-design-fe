@@ -36,26 +36,32 @@ const parseSku = (sku) => {
   };
 };
 
-// ─── Known custom attribute keys with human-readable labels ───────────────
+// ─── CLIENT/VENDOR direct fields with labels ───────────────────────────────
+const VENDOR_FIELDS = [
+  { key: 'woodFinishVendor',   label: 'Wood Finish (Vendor)'   },
+  { key: 'drawerFrontsVendor', label: 'Drawer Fronts (Vendor)' },
+  { key: 'wingPanelsVendor',   label: 'Wing Panels (Vendor)'   },
+  { key: 'fabricVendor',       label: 'Fabric (Vendor)'        },
+];
+const CLIENT_FIELDS = [
+  { key: 'woodFinishClient',   label: 'Wood Finish (Client)'   },
+  { key: 'drawerFrontsClient', label: 'Drawer Fronts (Client)' },
+  { key: 'wingPanelsClient',   label: 'Wing Panels (Client)'   },
+  { key: 'fabricClient',       label: 'Fabric (Client)'        },
+];
+
+// ─── CUSTOM ATTRIBUTE keys (CUSTOM AT sub-header only) ────────────────────
 const CA_LABELS = {
-  woodFinishClient:     'Wood Finish (Client)',
-  woodFinishInfoClient: 'Wood Finish Info (Client)',
-  woodFinishInfoVendor: 'Wood Finish Info (Vendor)',
-  woodFinishInfo:       'Wood Finish Info',
-  frame:                'Frame',
-  drawerFronts:         'Drawer Fronts',
-  drawerFrontsVendor:   'Drawer Fronts (Vendor)',
-  drawerFrontsClient:   'Drawer Fronts (Client)',
-  doorFronts:           'Door Fronts',
-  wingPanels:           'Wing Panels',
-  wingPanelsVendor:     'Wing Panels (Vendor)',
-  wingPanelsClient:     'Wing Panels (Client)',
-  armStyle:             'Arm Style',
-  metalFinish:          'Metal Finish',
-  seat:                 'Seat',
-  size:                 'Size',
-  headboard:            'Headboard',
-  legsBase:             'Legs / Base',
+  armStyle:   'Arm Style',
+  drawerFronts:'Drawer Fronts',
+  wingPanels: 'Wing Panels',
+  metalFinish:'Metal Finish',
+  seat:       'Seat',
+  size:       'Size',
+  headboard:  'Headboard',
+  legsBase:   'Legs / Base',
+  doorFronts: 'Door Fronts',
+  frame:      'Frame',
 };
 
 // ─── Empty form ────────────────────────────────────────────────────────────
@@ -81,6 +87,16 @@ const emptyForm = () => ({
   imageUrl:            '',
   imageFile:           null,
   imagePreview:        '',
+  // CLIENT / VENDOR direct fields
+  woodFinishVendor:    '',
+  woodFinishClient:    '',
+  drawerFrontsVendor:  '',
+  drawerFrontsClient:  '',
+  wingPanelsVendor:    '',
+  wingPanelsClient:    '',
+  fabricVendor:        '',
+  fabricClient:        '',
+  // CUSTOM AT attributes
   customAttributes:    {},
 });
 
@@ -209,6 +225,16 @@ const ProductConfiguration = () => {
       imageUrl:          product.image?.url        || '',
       imageFile:         null,
       imagePreview:      product.image?.url        || '',
+      // CLIENT / VENDOR direct fields
+      woodFinishVendor:   product.woodFinishVendor   || '',
+      woodFinishClient:   product.woodFinishClient   || '',
+      drawerFrontsVendor: product.drawerFrontsVendor || '',
+      drawerFrontsClient: product.drawerFrontsClient || '',
+      wingPanelsVendor:   product.wingPanelsVendor   || '',
+      wingPanelsClient:   product.wingPanelsClient   || '',
+      fabricVendor:       product.fabricVendor       || '',
+      fabricClient:       product.fabricClient       || '',
+      // CUSTOM AT attributes
       customAttributes:  product.customAttributes
         ? (typeof product.customAttributes.toObject === 'function'
             ? product.customAttributes.toObject()
@@ -286,6 +312,14 @@ const ProductConfiguration = () => {
           ? formData.others.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
           : [];
       fd.append('others', JSON.stringify(othersArr));
+      fd.append('woodFinishVendor',   formData.woodFinishVendor   || '');
+      fd.append('woodFinishClient',   formData.woodFinishClient   || '');
+      fd.append('drawerFrontsVendor', formData.drawerFrontsVendor || '');
+      fd.append('drawerFrontsClient', formData.drawerFrontsClient || '');
+      fd.append('wingPanelsVendor',   formData.wingPanelsVendor   || '');
+      fd.append('wingPanelsClient',   formData.wingPanelsClient   || '');
+      fd.append('fabricVendor',       formData.fabricVendor       || '');
+      fd.append('fabricClient',       formData.fabricClient       || '');
       fd.append('customAttributes', JSON.stringify(formData.customAttributes || {}));
 
       if (formData.imageFile) {
@@ -734,42 +768,62 @@ const ProductConfiguration = () => {
                 </div>
               </div>
 
-              {/* ── Custom Attributes ── */}
-              <div className="border border-purple-200 rounded-xl p-4 space-y-4 bg-purple-50/30">
-                <h4 className="text-sm font-semibold text-purple-900">Custom Attributes</h4>
+              {/* ── Vendor Fields ── */}
+              <div className="border border-blue-200 rounded-xl p-4 space-y-3 bg-blue-50/20">
+                <h4 className="text-sm font-semibold text-blue-800">Vendor Info</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {VENDOR_FIELDS.map(({ key, label }) => (
+                    <div key={key}>
+                      <label className={labelCls}>{label}</label>
+                      <input type="text" value={formData[key] || ''}
+                        onChange={e => setFormData(f => ({ ...f, [key]: e.target.value }))}
+                        className={inputCls} placeholder={label} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Client Fields ── */}
+              <div className="border border-green-200 rounded-xl p-4 space-y-3 bg-green-50/20">
+                <h4 className="text-sm font-semibold text-green-800">Client Info</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {CLIENT_FIELDS.map(({ key, label }) => (
+                    <div key={key}>
+                      <label className={labelCls}>{label}</label>
+                      <input type="text" value={formData[key] || ''}
+                        onChange={e => setFormData(f => ({ ...f, [key]: e.target.value }))}
+                        className={inputCls} placeholder={label} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Custom Attributes (CUSTOM AT columns only) ── */}
+              <div className="border border-purple-200 rounded-xl p-4 space-y-3 bg-purple-50/20">
+                <h4 className="text-sm font-semibold text-purple-800">Custom Attributes</h4>
                 <div className="grid grid-cols-2 gap-3">
                   {Object.entries(CA_LABELS).map(([key, label]) => (
                     <div key={key}>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-                      <input
-                        type="text"
-                        value={formData.customAttributes?.[key] || ''}
+                      <label className={labelCls}>{label}</label>
+                      <input type="text" value={formData.customAttributes?.[key] || ''}
                         onChange={e => setFormData(f => ({
                           ...f,
                           customAttributes: { ...f.customAttributes, [key]: e.target.value },
                         }))}
-                        className={inputCls}
-                        placeholder={label}
-                      />
+                        className={inputCls} placeholder={label} />
                     </div>
                   ))}
-                  {/* Unknown keys from existing product data */}
-                  {Object.keys(formData.customAttributes || {})
-                    .filter(k => !CA_LABELS[k])
-                    .map(key => (
-                      <div key={key}>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{key}</label>
-                        <input
-                          type="text"
-                          value={formData.customAttributes[key] || ''}
-                          onChange={e => setFormData(f => ({
-                            ...f,
-                            customAttributes: { ...f.customAttributes, [key]: e.target.value },
-                          }))}
-                          className={inputCls}
-                        />
-                      </div>
-                    ))}
+                  {Object.keys(formData.customAttributes || {}).filter(k => !CA_LABELS[k]).map(key => (
+                    <div key={key}>
+                      <label className={labelCls}>{key}</label>
+                      <input type="text" value={formData.customAttributes[key] || ''}
+                        onChange={e => setFormData(f => ({
+                          ...f,
+                          customAttributes: { ...f.customAttributes, [key]: e.target.value },
+                        }))}
+                        className={inputCls} />
+                    </div>
+                  ))}
                 </div>
               </div>
 

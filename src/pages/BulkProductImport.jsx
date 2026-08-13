@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { backendServer } from '../utils/info';
-import { isHtml } from '../utils/richTextUtils';
+import { isHtml, plainToHtml } from '../utils/richTextUtils';
 
 // Fields where Excel rich text (bold/italic/etc.) should be preserved as HTML
 const RICH_TEXT_CANONICALS = new Set(['description', 'vendorDescription']);
@@ -102,25 +102,25 @@ const COLUMN_MAP = {
   client_description_client: 'description',      // Nalu: "Client Description" + CLIENT sub-header
   vendor_description_vendor: 'vendorDescription', // Nalu: "Vendor Description" + VENDOR sub-header
 
-  // Fabric — with sub-header
-  fabric_client:       'fabric',         // client code e.g. "Light"
-  fabric_vendor:       'colorFinish',    // vendor full name e.g. "HDG Light, Gusto Angora"
+  // Fabric — with sub-header (CLIENT/VENDOR → separate fields)
+  fabric_client:       'fabricClient',
+  fabric_vendor:       'fabricVendor',
   fabric:              'fabric',
   fabric_finish:       'fabric',
 
-  // Wood Finish — with sub-header
+  // Wood Finish — with sub-header (CLIENT/VENDOR → separate fields, base → woodFinish)
   woodfinish:          'woodFinish',
   wood_finish:         'woodFinish',
   wood:                'woodFinish',
-  woodfinish_vendor:   'woodFinish',
-  woodfinish_client:   'ca.woodFinishClient',
-  wood_finish_vendor:  'woodFinish',
-  wood_finish_client:  'ca.woodFinishClient',
+  woodfinish_vendor:   'woodFinishVendor',
+  woodfinish_client:   'woodFinishClient',
+  wood_finish_vendor:  'woodFinishVendor',
+  wood_finish_client:  'woodFinishClient',
 
-  // Wood Finish Info — Lani specific (full text descriptions → custom attributes)
-  wood_finish_info_client:  'ca.woodFinishInfoClient',
-  wood_finish_info_vendor:  'ca.woodFinishInfoVendor',
-  wood_finish_info:         'ca.woodFinishInfo',
+  // Wood Finish Info — Lani specific (CLIENT/VENDOR → separate fields)
+  wood_finish_info_client:  'woodFinishClient',
+  wood_finish_info_vendor:  'woodFinishVendor',
+  wood_finish_info:         'woodFinish',
 
   // Metal Finish — with custom attribute sub-header
   metal_finish_custom_attribute: 'ca.metalFinish',
@@ -150,13 +150,15 @@ const COLUMN_MAP = {
   other_finish:        'otherFinish_raw',
   otherfinish:         'otherFinish_raw',
 
-  // Custom Attributes — Lani
+  // Custom Attributes — Lani (CUSTOM AT sub-header only → ca.*)
   arm_style:                    'ca.armStyle',
   arm_style_custom_attribute:   'ca.armStyle',
-  drawer_fronts_vendor:         'ca.drawerFrontsVendor',
-  drawer_fronts_client:         'ca.drawerFrontsClient',
-  wing_panels_vendor:           'ca.wingPanelsVendor',
-  wing_panels_client:           'ca.wingPanelsClient',
+  // VENDOR/CLIENT Drawer Fronts → separate fields
+  drawer_fronts_vendor:         'drawerFrontsVendor',
+  drawer_fronts_client:         'drawerFrontsClient',
+  // VENDOR/CLIENT Wing Panels → separate fields
+  wing_panels_vendor:           'wingPanelsVendor',
+  wing_panels_client:           'wingPanelsClient',
   wing_panels_custom_attribute: 'ca.wingPanels',
   metal_finish_info_1:          'ca.metalFinish',
   metal_finish_info:            'ca.metalFinish',
@@ -242,7 +244,8 @@ const parseSheet = (ws) => {
           const htmlVal = (cell?.h || '').trim();
           const plainVal = row[colIdx] != null ? String(row[colIdx]).trim() : '';
           // Use HTML only when it actually contains markup (not just escaped text)
-          val = (htmlVal && isHtml(htmlVal)) ? htmlVal : plainVal;
+          // Use HTML if cell has markup; otherwise convert plain text (preserving \n as <p>)
+          val = (htmlVal && isHtml(htmlVal)) ? htmlVal : plainToHtml(plainVal);
         } else {
           val = row[colIdx] != null ? String(row[colIdx]).trim() : '';
         }

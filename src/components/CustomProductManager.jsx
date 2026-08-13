@@ -164,26 +164,32 @@ const AVAILABILITY_STATUS_OPTIONS = [
   'Active','Discontinued','Limited Stock','COM','Custom','Pending Approval','Archived',
 ];
 
-// Human-readable labels for product library customAttributes keys
+// CLIENT / VENDOR direct product fields
+const VENDOR_FIELDS_CPM = [
+  { key: 'woodFinishVendor',   label: 'Wood Finish (Vendor)'   },
+  { key: 'drawerFrontsVendor', label: 'Drawer Fronts (Vendor)' },
+  { key: 'wingPanelsVendor',   label: 'Wing Panels (Vendor)'   },
+  { key: 'fabricVendor',       label: 'Fabric (Vendor)'        },
+];
+const CLIENT_FIELDS_CPM = [
+  { key: 'woodFinishClient',   label: 'Wood Finish (Client)'   },
+  { key: 'drawerFrontsClient', label: 'Drawer Fronts (Client)' },
+  { key: 'wingPanelsClient',   label: 'Wing Panels (Client)'   },
+  { key: 'fabricClient',       label: 'Fabric (Client)'        },
+];
+
+// CUSTOM AT sub-header only → stored in customAttributes Map
 const CA_LABELS = {
-  woodFinishClient:     'Wood Finish (Client)',
-  woodFinishInfoClient: 'Wood Finish Info (Client)',
-  woodFinishInfoVendor: 'Wood Finish Info (Vendor)',
-  woodFinishInfo:       'Wood Finish Info',
-  frame:                'Frame',
-  drawerFronts:         'Drawer Fronts',
-  drawerFrontsVendor:   'Drawer Fronts (Vendor)',
-  drawerFrontsClient:   'Drawer Fronts (Client)',
-  doorFronts:           'Door Fronts',
-  wingPanels:           'Wing Panels',
-  wingPanelsVendor:     'Wing Panels (Vendor)',
-  wingPanelsClient:     'Wing Panels (Client)',
-  armStyle:             'Arm Style',
-  metalFinish:          'Metal Finish',
-  seat:                 'Seat',
-  size:                 'Size',
-  headboard:            'Headboard',
-  legsBase:             'Legs / Base',
+  armStyle:    'Arm Style',
+  drawerFronts:'Drawer Fronts',
+  wingPanels:  'Wing Panels',
+  metalFinish: 'Metal Finish',
+  seat:        'Seat',
+  size:        'Size',
+  headboard:   'Headboard',
+  legsBase:    'Legs / Base',
+  doorFronts:  'Door Fronts',
+  frame:       'Frame',
 };
 const caLabel = (key) => CA_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 
@@ -634,6 +640,14 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           specifications:        product.description  || '',
           vendorDescription:     product.vendorDescription || '',
           customAttributes:      product.customAttributes || {},
+          woodFinishVendor:      product.woodFinishVendor   || '',
+          woodFinishClient:      product.woodFinishClient   || '',
+          drawerFrontsVendor:    product.drawerFrontsVendor || '',
+          drawerFrontsClient:    product.drawerFrontsClient || '',
+          wingPanelsVendor:      product.wingPanelsVendor   || '',
+          wingPanelsClient:      product.wingPanelsClient   || '',
+          fabricVendor:          product.fabricVendor       || '',
+          fabricClient:          product.fabricClient       || '',
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
           leadTime:              product.leadTime     || '',  // ✅ PATCH 10
@@ -2538,15 +2552,15 @@ const ProductCard = ({
 
   const opts = product.selectedOptions || {};
 
-  // ✅ PATCH 7+9+10: localFields includes leadTime
+  // ✅ PATCH 7+9+10: localFields includes leadTime + vendor/client fields
   const [localFields, setLocalFields] = useState({
     name:              product.name              || '',
     product_id:        product.product_id        || '',
     category:          product.category          || '',
     specifications:    opts.specifications       || '',
     vendorDescription: opts.vendorDescription    || '',
-    notes:             opts.notes                || '',       // ← Status tab notes (keep existing data)
-    itemNotes:         opts.itemNotes            || '',       // ← Item Details notes (separate field)
+    notes:             opts.notes                || '',
+    itemNotes:         opts.itemNotes            || '',
     finish:            opts.finish               || '',
     fabric:            opts.fabric               || '',
     size:              opts.size                 || '',
@@ -2558,7 +2572,15 @@ const ProductCard = ({
     tags:              Array.isArray(opts.tags) ? opts.tags.join(', ') : (opts.tags || ''),
     itemClass:         opts.itemClass            || '',
     installerNotes:    opts.installerNotes       || '',
-    leadTime:          opts.leadTime             || '',  // ✅ PATCH 10
+    leadTime:          opts.leadTime             || '',
+    woodFinishVendor:  opts.woodFinishVendor     || '',
+    woodFinishClient:  opts.woodFinishClient     || '',
+    drawerFrontsVendor:opts.drawerFrontsVendor   || '',
+    drawerFrontsClient:opts.drawerFrontsClient   || '',
+    wingPanelsVendor:  opts.wingPanelsVendor     || '',
+    wingPanelsClient:  opts.wingPanelsClient     || '',
+    fabricVendor:      opts.fabricVendor         || '',
+    fabricClient:      opts.fabricClient         || '',
   });
 
   useEffect(() => {
@@ -2569,8 +2591,8 @@ const ProductCard = ({
       category:          product.category          || '',
       specifications:    o.specifications          || '',
       vendorDescription: o.vendorDescription       || '',
-      notes:             o.notes                   || '',       // ← Status tab notes
-      itemNotes:         o.itemNotes               || '',       // ← Item Details notes (separate)
+      notes:             o.notes                   || '',
+      itemNotes:         o.itemNotes               || '',
       finish:            o.finish                  || '',
       fabric:            o.fabric                  || '',
       size:              o.size                    || '',
@@ -2583,6 +2605,14 @@ const ProductCard = ({
       itemClass:         o.itemClass               || '',
       installerNotes:    o.installerNotes          || '',
       leadTime:          o.leadTime                || '',
+      woodFinishVendor:  o.woodFinishVendor        || '',
+      woodFinishClient:  o.woodFinishClient        || '',
+      drawerFrontsVendor:o.drawerFrontsVendor      || '',
+      drawerFrontsClient:o.drawerFrontsClient      || '',
+      wingPanelsVendor:  o.wingPanelsVendor        || '',
+      wingPanelsClient:  o.wingPanelsClient        || '',
+      fabricVendor:      o.fabricVendor            || '',
+      fabricClient:      o.fabricClient            || '',
     });
     setCustomAttrs(o.customAttributes || {});
     // Depend on the product object identity (not _id/index): reorder keeps the same
@@ -3397,35 +3427,55 @@ const ProductCard = ({
                   />
                 </div>
 
+                {/* ── Vendor Fields ── */}
+                <div className={`pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
+                  <h4 className="font-semibold text-blue-700 text-sm mb-2">Vendor Info</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {VENDOR_FIELDS_CPM.map(({ key, label }) => (
+                      <div key={key} className="p-2 bg-blue-50/50 rounded-lg">
+                        <p className="text-xs font-medium text-blue-600 mb-1">{label}</p>
+                        <input type="text" value={localFields[key] || ''}
+                          onChange={e => { setLocal(key, e.target.value); upd(key, e.target.value); }}
+                          className={`${inputCls} text-sm`} disabled={locked} placeholder="—" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Client Fields ── */}
+                <div className={locked ? 'pointer-events-none opacity-60' : ''}>
+                  <h4 className="font-semibold text-green-700 text-sm mb-2">Client Info</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {CLIENT_FIELDS_CPM.map(({ key, label }) => (
+                      <div key={key} className="p-2 bg-green-50/50 rounded-lg">
+                        <p className="text-xs font-medium text-green-600 mb-1">{label}</p>
+                        <input type="text" value={localFields[key] || ''}
+                          onChange={e => { setLocal(key, e.target.value); upd(key, e.target.value); }}
+                          className={`${inputCls} text-sm`} disabled={locked} placeholder="—" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className={`space-y-3 pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
-                  <h4 className="font-semibold text-gray-800 text-sm">Custom Attributes</h4>
-                  {/* Known fields — always shown */}
+                  <h4 className="font-semibold text-purple-700 text-sm">Custom Attributes</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(CA_LABELS).map(([key, label]) => (
                       <div key={key} className="p-2 bg-gray-50 rounded-lg">
                         <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-                        <input
-                          type="text"
+                        <input type="text"
                           value={customAttrs[key] != null ? String(customAttrs[key]) : ''}
                           onChange={e => updCA(key, e.target.value)}
-                          className={`${inputCls} text-sm`}
-                          disabled={locked}
-                          placeholder="—"
-                        />
+                          className={`${inputCls} text-sm`} disabled={locked} placeholder="—" />
                       </div>
                     ))}
-                    {/* Extra unknown keys */}
                     {Object.keys(customAttrs).filter(k => !CA_LABELS[k]).map(key => (
                       <div key={key} className="flex items-start gap-2 p-2 bg-purple-50 rounded-lg">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-purple-500 mb-1">{caLabel(key)}</p>
-                          <input
-                            type="text"
-                            value={String(customAttrs[key])}
+                          <input type="text" value={String(customAttrs[key])}
                             onChange={e => updCA(key, e.target.value)}
-                            className={`${inputCls} text-sm`}
-                            disabled={locked}
-                          />
+                            className={`${inputCls} text-sm`} disabled={locked} />
                         </div>
                         <button onClick={() => removeCustomAttribute(key)} className="mt-5 p-1.5 text-red-400 hover:bg-red-50 rounded-lg flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
                       </div>
