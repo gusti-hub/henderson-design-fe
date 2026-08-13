@@ -48,8 +48,10 @@ const emptyForm = () => ({
   collection:          '',
   package:             '',
   dimension:           '',
-  buyPrice:            '',   // ✅ cost / vendor price
-  sellPrice:           '',   // ✅ client-facing price
+  buyPrice:            '',   // cost / vendor price
+  sellPrice2025:       '',   // 2025 pricing
+  sellPrice2026:       '',   // 2026 pricing (default)
+  sellPrice:           '',   // active / legacy sell price
   woodFinish:          '',
   fabric:              '',
   others:              '',   // free text
@@ -173,8 +175,10 @@ const ProductConfiguration = () => {
       package:           product.package           || '',
       dimension:         product.dimension         || '',
       // ✅ support both new fields and legacy `price`
-      buyPrice:          product.buyPrice  ?? '',
-      sellPrice:         product.sellPrice ?? product.price ?? '',
+      buyPrice:          product.buyPrice      ?? '',
+      sellPrice2025:     product.sellPrice2025 ?? '',
+      sellPrice2026:     product.sellPrice2026 ?? '',
+      sellPrice:         product.sellPrice     ?? product.price ?? '',
       woodFinish:        product.woodFinish        || '',
       fabric:            product.fabric            || '',
       others:            Array.isArray(product.others) ? product.others.join(', ') : (product.others || ''),
@@ -211,8 +215,11 @@ const ProductConfiguration = () => {
     const e = {};
     if (!formData.product_id.trim()) e.product_id = 'SKU is required';
     if (!formData.name.trim())       e.name       = 'Name is required';
-    if (!formData.sellPrice || isNaN(parseFloat(formData.sellPrice)))
-      e.sellPrice = 'Sell price is required';
+    const hasSellPrice = !isNaN(parseFloat(formData.sellPrice2026)) ||
+      !isNaN(parseFloat(formData.sellPrice2025)) ||
+      !isNaN(parseFloat(formData.sellPrice));
+    if (!hasSellPrice)
+      e.sellPrice = 'Sell price 2026 is required';
     setErrors(e);
     return !Object.keys(e).length;
   };
@@ -236,9 +243,11 @@ const ProductConfiguration = () => {
       fd.append('collection',        formData.collection  || 'General');
       fd.append('package',           formData.package     || '');
       fd.append('dimension',         formData.dimension);
-      fd.append('buyPrice',          formData.buyPrice  || 0);
-      fd.append('sellPrice',         formData.sellPrice);
-      fd.append('price',             formData.sellPrice);   // legacy compat
+      fd.append('buyPrice',          formData.buyPrice     || 0);
+      fd.append('sellPrice2025',     formData.sellPrice2025 || 0);
+      fd.append('sellPrice2026',     formData.sellPrice2026 || formData.sellPrice || 0);
+      fd.append('sellPrice',         formData.sellPrice2026 || formData.sellPrice || 0);
+      fd.append('price',             formData.sellPrice2026 || formData.sellPrice || 0);   // legacy compat
       fd.append('woodFinish',        formData.woodFinish);
       fd.append('fabric',            formData.fabric);
       // others: split comma-separated string back to array for the API
@@ -274,7 +283,7 @@ const ProductConfiguration = () => {
   // ─── Margin helper ────────────────────────────────────────────────────
   const calcMargin = () => {
     const buy  = parseFloat(formData.buyPrice);
-    const sell = parseFloat(formData.sellPrice);
+    const sell = parseFloat(formData.sellPrice2026 || formData.sellPrice);
     if (!buy || !sell || sell === 0) return null;
     const pct = ((sell - buy) / sell * 100).toFixed(1);
     return { amount: (sell - buy).toFixed(2), pct };
@@ -368,7 +377,7 @@ const ProductConfiguration = () => {
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              {['Image','Category','Package','SKU','Name','Dimensions','Buy Price','Sell Price','Finish','Actions'].map(h => (
+              {['Image','Category','Package','SKU','Name','Dimensions','Buy Price','2025','2026','Finish','Actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -402,9 +411,13 @@ const ProductConfiguration = () => {
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {p.buyPrice ? `$${Number(p.buyPrice).toFixed(2)}` : <span className="text-gray-300">—</span>}
                 </td>
-                {/* Sell Price */}
+                {/* Sell Price 2025 */}
+                <td className="px-4 py-3 text-sm text-sky-700">
+                  {p.sellPrice2025 ? `$${Number(p.sellPrice2025).toFixed(2)}` : <span className="text-gray-300">—</span>}
+                </td>
+                {/* Sell Price 2026 */}
                 <td className="px-4 py-3 text-sm font-semibold text-gray-900">
-                  ${Number(p.sellPrice ?? p.price ?? 0).toFixed(2)}
+                  ${Number(p.sellPrice2026 ?? p.sellPrice ?? p.price ?? 0).toFixed(2)}
                 </td>
                 <td className="px-4 py-3"><FinishBadges product={p} /></td>
                 <td className="px-4 py-3">
@@ -476,7 +489,7 @@ const ProductConfiguration = () => {
                 <div className="col-span-2">
                   <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-3">
                     <h4 className="text-sm font-semibold text-gray-800">💰 Pricing</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       {/* Buy Price */}
                       <div>
                         <label className={labelCls}>Buy Price / Cost ($)</label>
@@ -485,13 +498,22 @@ const ProductConfiguration = () => {
                           className={inputCls} placeholder="0.00" />
                         <p className="text-xs text-gray-400 mt-0.5">Vendor / cost price</p>
                       </div>
-                      {/* Sell Price */}
+                      {/* Sell Price 2025 */}
                       <div>
-                        <label className={labelCls}>Sell Price ($) *</label>
-                        <input type="number" step="0.01" min="0" value={formData.sellPrice}
-                          onChange={e => setFormData(f => ({ ...f, sellPrice: e.target.value }))}
+                        <label className={labelCls}>Sell Price 2025 ($)</label>
+                        <input type="number" step="0.01" min="0" value={formData.sellPrice2025 || ''}
+                          onChange={e => setFormData(f => ({ ...f, sellPrice2025: e.target.value }))}
+                          className={inputCls} placeholder="0.00" />
+                        <p className="text-xs text-gray-400 mt-0.5">2025 pricing</p>
+                      </div>
+                      {/* Sell Price 2026 */}
+                      <div>
+                        <label className={labelCls}>Sell Price 2026 ($) *</label>
+                        <input type="number" step="0.01" min="0" value={formData.sellPrice2026 || formData.sellPrice || ''}
+                          onChange={e => setFormData(f => ({ ...f, sellPrice2026: e.target.value, sellPrice: e.target.value }))}
                           className={`${inputCls} ${errors.sellPrice ? 'border-red-400' : ''}`}
-                          placeholder="852.00" />
+                          placeholder="0.00" />
+                        <p className="text-xs text-gray-400 mt-0.5">2026 pricing (default)</p>
                         {errors.sellPrice && <p className="text-red-500 text-xs mt-1">{errors.sellPrice}</p>}
                       </div>
                     </div>

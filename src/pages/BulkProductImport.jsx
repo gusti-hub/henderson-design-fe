@@ -1,17 +1,15 @@
 // src/pages/BulkProductImport.jsx
-// ✅ PATCHED: price split into buyPrice (buy/cost price) and sellPrice (sell price)
 
 import React, { useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { backendServer } from '../utils/info';
 
-// ─── Finish code constants ─────────────────────────────────────────────────
+// ─── SKU finish parser ─────────────────────────────────────────────────────
 const WOOD_CODES   = ['MD', 'DK'];
 const FABRIC_CODES = ['19','20','08','09','02','03','11','12','05','06','14','15','17','18','0B','0C','0E','0F','0I','0H','0L','0K','0O','0N','0U','0T'];
 const OTHER_CODES  = ['WV','SD','MD','DK','LT','FX','LR','SH'];
 
-// ─── SKU parser ────────────────────────────────────────────────────────────
 const parseSku = (sku) => {
   if (!sku) return { woodFinish: '', fabric: '', others: [] };
   const parts = sku.toUpperCase().split('-');
@@ -26,66 +24,223 @@ const parseSku = (sku) => {
 
 // ─── Header normalizer ─────────────────────────────────────────────────────
 const norm = (k) =>
-  k.toString()
+  String(k)
     .toLowerCase()
     .replace(/[\s\-\/]+/g, '_')
     .replace(/[^a-z0-9_]/g, '')
     .replace(/^_+|_+$/g, '')
     .replace(/_+/g, '_');
 
-// ─── Column map ────────────────────────────────────────────────────────────
+// ─── Sub-header labels that indicate CLIENT / VENDOR / CUSTOM ATTRIBUTE ────
+const SUB_LABELS = new Set(['client', 'vendor', 'custom_attribute', 'custom']);
+
+// ─── Column → canonical product field map ─────────────────────────────────
+// Keys are normalized composite: norm(headerName) or norm(headerName)_norm(subLabel)
+// Values starting with "ca." go into customAttributes map
 const COLUMN_MAP = {
   // Identity
-  category: 'category',
-  item: 'name', item_name: 'name', name: 'name', product_name: 'name',
-  sku: 'product_id', product_id: 'product_id', sku_id: 'product_id',
-  // ✅ Sell Price — primary / client-facing price
-  sell_price: 'sellPrice', sellprice: 'sellPrice',
-  price: 'sellPrice', base_price: 'sellPrice', variant_price: 'sellPrice',
-  final_pricing: 'sellPrice', final_price: 'sellPrice',
-  // ✅ Buy Price — cost / vendor price
-  buy_price: 'buyPrice', buyprice: 'buyPrice',
-  cost: 'buyPrice', cost_price: 'buyPrice',
+  sku:            'product_id',
+  product_id:     'product_id',
+  sku_id:         'product_id',
+
+  item_name:      'name',
+  item:           'name',
+  name:           'name',
+  product_name:   'name',
+
+  vendor:         'vendor',
+
+  category:       'category',
+  collection:     'collection',
+  package:        'package',
+
+  // Prices
+  manufacture_cost:    'buyPrice',
+  furniture_cost:      'buyPrice',
+  buy_price:           'buyPrice',
+  buyprice:            'buyPrice',
+  cost:                'buyPrice',
+
+  pricing_2025:        'sellPrice2025',
+  pricing2025:         'sellPrice2025',
+  selling_price_2025:  'sellPrice2025',
+  sellingprice2025:    'sellPrice2025',
+  price_2025:          'sellPrice2025',
+
+  pricing_2026:        'sellPrice2026',
+  pricing2026:         'sellPrice2026',
+  selling_price_2026:  'sellPrice2026',
+  sellingprice2026:    'sellPrice2026',
+  price_2026:          'sellPrice2026',
+
+  sell_price:          'sellPrice',
+  sellprice:           'sellPrice',
+  price:               'sellPrice',
+  final_pricing:       'sellPrice',
+  final_price:         'sellPrice',
+
   // Dimensions
-  dimensions: 'dimension', dimension: 'dimension', size: 'dimension',
-  // Finish
-  wood_finish: 'woodFinish', woodfinish: 'woodFinish', wood: 'woodFinish',
-  other_finish: 'otherFinish_raw', otherfinish: 'otherFinish_raw', other: 'otherFinish_raw',
-  fabric_finish: 'fabric', fabricfinish: 'fabric', fabric: 'fabric',
-  // Package
-  package: 'package',
-  // Descriptions
-  description: 'description', desc: 'description',
-  client_description: 'description', clientdescription: 'description',
-  vendor_description: 'vendorDescription', vendordescription: 'vendorDescription',
-  // Item URL
-  item_url: 'itemUrl', itemurl: 'itemUrl', product_url: 'itemUrl',
+  dimensions:          'dimension',
+  dimension:           'dimension',
+
+  // Descriptions — plain (no sub-header)
+  description:         'description',
+  desc:                'description',
+  vendor_description:  'vendorDescription',
+  vendordescription:   'vendorDescription',
+  deskripsi:           'vendorDescription',
+
+  // Descriptions — with sub-header
+  description_client:  'description',
+  description_vendor:  'vendorDescription',
+  deskripsi_vendor:    'vendorDescription',
+  deskripsi_client:    'description',
+
+  // Fabric — with sub-header
+  fabric_client:       'fabric',         // client code e.g. "Light"
+  fabric_vendor:       'colorFinish',    // vendor full name e.g. "HDG Light, Gusto Angora"
+  fabric:              'fabric',
+  fabric_finish:       'fabric',
+
+  // Wood Finish — with sub-header
+  woodfinish:          'woodFinish',
+  wood_finish:         'woodFinish',
+  wood:                'woodFinish',
+  woodfinish_vendor:   'woodFinish',
+  woodfinish_client:   'ca.woodFinishClient',
+  wood_finish_vendor:  'woodFinish',
+  wood_finish_client:  'ca.woodFinishClient',
+
+  // Wood Finish Info — Lani specific
+  wood_finish_info_client:  'ca.woodFinishClient',
+  wood_finish_info_vendor:  'woodFinish',
+  wood_finish_info:         'woodFinish',
+
+  // Metal Finish — with custom attribute sub-header
+  metal_finish_custom_attribute: 'ca.metalFinish',
+
+  // Fabric Info — Lani FABRIC column (after all the specific columns)
+  // Only used if no fabric_client found
+  fabric_vendor_2:     'colorFinish',
+
   // Color/Finish
-  color_finish: 'colorFinish', colorfinish: 'colorFinish',
-  color: 'colorFinish', finish: 'colorFinish',
-  // Item Class
-  item_class: 'itemClass', itemclass: 'itemClass', class: 'itemClass',
-  // Image
-  link_image: 'imageUrl', linkimage: 'imageUrl',
-  link_img: 'imageUrl', image: 'imageUrl', image_url: 'imageUrl',
+  color_finish:        'colorFinish',
+  colorfinish:         'colorFinish',
+  color:               'colorFinish',
+  finish:              'colorFinish',
+
+  // Other
+  item_url:            'itemUrl',
+  itemurl:             'itemUrl',
+  product_url:         'itemUrl',
+  item_class:          'itemClass',
+  itemclass:           'itemClass',
+  class:               'itemClass',
+  link_image:          'imageUrl',
+  linkimage:           'imageUrl',
+  image:               'imageUrl',
+  image_url:           'imageUrl',
+  link_img:            'imageUrl',
+  other_finish:        'otherFinish_raw',
+  otherfinish:         'otherFinish_raw',
+
+  // Custom Attributes — Lani
+  arm_style:                    'ca.armStyle',
+  arm_style_custom_attribute:   'ca.armStyle',
+  drawer_fronts_vendor:         'ca.drawerFrontsVendor',
+  drawer_fronts_client:         'ca.drawerFrontsClient',
+  wing_panels_vendor:           'ca.wingPanelsVendor',
+  wing_panels_client:           'ca.wingPanelsClient',
+  metal_finish_info_1:          'ca.metalFinish',
+  metal_finish_info:            'ca.metalFinish',
+
+  // Custom Attributes — Nalu
+  metal_finish:                 'ca.metalFinish',
+  metal_finish_custom_attribute:'ca.metalFinish',
+  seat:                         'ca.seat',
+  seat_custom_attribute:        'ca.seat',
+  size_custom_attribute:        'ca.size',
+  headboard:                    'ca.headboard',
+  headboard_custom_attribute:   'ca.headboard',
+  legsbase:                     'ca.legsBase',
+  legsbase_custom_attribute:    'ca.legsBase',
+  legs_base:                    'ca.legsBase',
+  legs_base_custom_attribute:   'ca.legsBase',
+  drawer_fronts:                'ca.drawerFronts',
+  drawer_fronts_custom_attribute:'ca.drawerFronts',
+  door_fronts:                  'ca.doorFronts',
+  door_fronts_custom_attribute: 'ca.doorFronts',
 };
 
-const SELL_PRICE_PREFIXES = ['final_pricing', 'finalprice', 'pricing'];
+// ─── Smart sheet parser: reads sub-header row + header row ────────────────
+const parseSheet = (ws) => {
+  // Get as raw 2D array
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  if (!raw.length) return [];
 
-const resolveColumn = (rawKey) => {
-  const n = norm(rawKey);
-  if (COLUMN_MAP[n]) return COLUMN_MAP[n];
-  if (SELL_PRICE_PREFIXES.some(prefix => n.startsWith(prefix))) return 'sellPrice';
-  return null;
-};
+  // Find header row: contains "SKU" (case-insensitive)
+  const headerRowIdx = raw.findIndex(row =>
+    row.some(cell => String(cell).trim().toUpperCase() === 'SKU')
+  );
+  if (headerRowIdx === -1) throw new Error('Header row with "SKU" not found');
 
-const parseRow = (rawRow) => {
-  const out = {};
-  Object.entries(rawRow).forEach(([rawKey, value]) => {
-    const canonical = resolveColumn(rawKey);
-    if (canonical) out[canonical] = value != null ? value.toString().trim() : '';
+  const headerRow = raw[headerRowIdx];
+
+  // Sub-header row = row immediately above header, only if it contains CLIENT/VENDOR labels
+  const potentialSub = headerRowIdx > 0 ? raw[headerRowIdx - 1] : [];
+  const isSubHeader = potentialSub.some(cell => {
+    const n = norm(String(cell));
+    return SUB_LABELS.has(n);
   });
-  return out;
+  const subHeaderRow = isSubHeader ? potentialSub : [];
+
+  // Build column definitions with composite keys
+  const colDefs = headerRow.map((colName, colIdx) => {
+    const mainLabel = String(colName || '').trim();
+    const subLabel  = String(subHeaderRow[colIdx] || '').trim();
+    const subNorm   = norm(subLabel);
+
+    if (!mainLabel) return null;
+
+    // Build composite key: "description_client", "fabric_vendor", etc.
+    let compositeKey;
+    if (subLabel && SUB_LABELS.has(subNorm)) {
+      compositeKey = norm(mainLabel) + '_' + subNorm;
+    } else {
+      compositeKey = norm(mainLabel);
+    }
+
+    const canonical = COLUMN_MAP[compositeKey];
+
+    return { colIdx, mainLabel, subLabel, compositeKey, canonical };
+  }).filter(Boolean);
+
+  // Parse data rows (everything after the header row, skip empty rows)
+  const dataRows = raw
+    .slice(headerRowIdx + 1)
+    .filter(row => row.some(cell => cell !== '' && cell != null))
+    .map(row => {
+      const obj = {};
+      colDefs.forEach(({ colIdx, compositeKey, canonical }) => {
+        if (!canonical) return;
+        const raw = row[colIdx];
+        const val = raw != null ? String(raw).trim() : '';
+        if (!val) return;
+
+        if (canonical.startsWith('ca.')) {
+          if (!obj.__ca) obj.__ca = {};
+          const key = canonical.slice(3); // strip "ca."
+          // Don't overwrite if already set (first wins)
+          if (!obj.__ca[key]) obj.__ca[key] = val;
+        } else {
+          // Don't overwrite more-specific sub-header match with generic fallback
+          if (!obj[canonical]) obj[canonical] = val;
+        }
+      });
+      return obj;
+    });
+
+  return { colDefs, dataRows };
 };
 
 // ─── Validation ────────────────────────────────────────────────────────────
@@ -95,69 +250,36 @@ const validateRow = (row, rowNum) => {
   const errors = [];
   if (!row.product_id) errors.push(`Row ${rowNum}: SKU is required`);
   if (!row.name)       errors.push(`Row ${rowNum}: Item name is required`);
-  if (!row.sellPrice || isNaN(parseFloat(row.sellPrice)))
-    errors.push(`Row ${rowNum}: Sell price is required`);
+  const hasSellPrice = !isNaN(parseFloat(row.sellPrice)) ||
+    !isNaN(parseFloat(row.sellPrice2025)) ||
+    !isNaN(parseFloat(row.sellPrice2026));
+  if (!hasSellPrice)
+    errors.push(`Row ${rowNum}: Sell price is required (Pricing 2025 or Pricing 2026)`);
   if (row.imageUrl && !isValidUrl(row.imageUrl))
     errors.push(`Row ${rowNum}: Invalid image URL`);
-  if (row.itemUrl && !isValidUrl(row.itemUrl))
-    errors.push(`Row ${rowNum}: Invalid item URL`);
   return errors;
 };
 
 // ─── Download template ─────────────────────────────────────────────────────
 const downloadTemplate = () => {
-  const headers = [
-    'Category', 'ITEM', 'SKU',
-    'Buy Price',        // ✅ cost / vendor price
-    'Sell Price',       // ✅ client-facing price (required)
-    'DIMENSIONS',
-    'WOOD FINISH', 'OTHER FINISH', 'Fabric FINISH',
-    'Description',
-    'Vendor Description',
-    'Color/Finish',
-    'Item Class',
-    'Item URL',
-    'Link Image',
-    'Package',
-  ];
+  const subHeaders  = ['','','','','','','','CLIENT','VENDOR','CLIENT','VENDOR','','VENDOR','CLIENT'];
+  const headers     = ['SKU','ITEM NAME','VENDOR','Buy Price','Pricing 2025','Pricing 2026','DIMENSIONS','Description','Deskripsi','FABRIC','FABRIC','','Wood/Finish','Wood/Finish'];
   const rows = [
-    [
-      'Bench', 'Bench Style A', 'ST-11-N-0A-00-MD-19-00-00-00',
-      600, 852,
-      '48"W x 16"D x 17"H', 'MD', '', '19',
-      'Solid teak bench, medium finish.',
-      'Order ref: style A, medium',
-      'Medium Walnut', 'Furniture',
-      'https://vendor.com/bench-a',
-      'https://example.com/img.jpg',
-      'Lani',
-    ],
-    [
-      'Bench', 'Bench Style A', 'ST-11-N-0A-00-DK-20-00-00-00',
-      600, 852,
-      '48"W x 16"D x 17"H', 'DK', '', '20',
-      'Solid teak bench, dark finish.',
-      '', 'Dark Ebony', 'Furniture',
-      '', '', 'Lani',
-    ],
-    [
-      'Counter Stools', 'Counter Stool Style A', 'ST-05-N-0A-00-MD-08-00-00-00',
-      400, 572,
-      '18"W x 20"D x 35"H', 'MD', '', '08',
-      '', '', '', 'Case Goods',
-      '', '', 'Nalu',
-    ],
+    ['ST-11-N-0A-00-MD-04-00-00-00','Bench Style A','Modulo',335,971.5,1072,'48"W x 16"D x 17"H','Seat: Upholstered\nBase: Teak','Seat: Upholstered\nAdditional: HDG Glides','Light','HDG "Light", Peppin Linen','','Medium Teak','Medium'],
+    ['ST-01-L-1A-00-LT-0A-00-LA-00','Modular Sofa Piece 1A','Modulo',612,3178.6,3452.8,'34"W x 36"D x 30"H','Frame: Upholstered\nArm: Rounded','Seat: Upholstered Waterfall\nArm: Rounded','Light','HDG "Light", Gusto Angora','','Light Oak','Light'],
   ];
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws['!cols'] = [
-    {wch:16},{wch:22},{wch:32},{wch:12},{wch:12},{wch:22},
-    {wch:12},{wch:12},{wch:12},{wch:36},{wch:30},
-    {wch:16},{wch:20},{wch:36},{wch:40},{wch:10},
-  ];
+  const ws = XLSX.utils.aoa_to_sheet([subHeaders, headers, ...rows]);
+  ws['!cols'] = Array(headers.length).fill({ wch: 22 });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Products');
   XLSX.writeFile(wb, 'product_import_template.xlsx');
+};
+
+// ─── Batch helper ──────────────────────────────────────────────────────────
+const batchArray = (arr, size) => {
+  const batches = [];
+  for (let i = 0; i < arr.length; i += size) batches.push(arr.slice(i, i + size));
+  return batches;
 };
 
 // ==================== COMPONENT ====================
@@ -167,7 +289,8 @@ const BulkProductImport = ({ onComplete }) => {
   const [error, setError]               = useState(null);
   const [success, setSuccess]           = useState(null);
   const [preview, setPreview]           = useState(null);
-  const [detectedCols, setDetectedCols] = useState(null);
+  const [colDefs, setColDefs]           = useState(null);
+  const [progress, setProgress]         = useState(null);
 
   const processExcel = async (file) => {
     try {
@@ -175,91 +298,104 @@ const BulkProductImport = ({ onComplete }) => {
       setError(null);
       setSuccess(null);
       setPreview(null);
-      setDetectedCols(null);
+      setColDefs(null);
+      setProgress(null);
 
       const data = await file.arrayBuffer();
-      const wb   = XLSX.read(data, { cellDates: true, cellNF: true, cellText: true });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const wb = XLSX.read(data, { cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
 
-      if (!rawRows.length) { setError('File is empty'); return; }
+      const { colDefs: detectedCols, dataRows } = parseSheet(ws);
+      if (!dataRows.length) { setError('No data rows found'); return; }
 
-      setDetectedCols(Object.keys(rawRows[0]));
+      setColDefs(detectedCols);
 
-      const parsedRows = rawRows.map(parseRow);
-      setPreview(parsedRows.slice(0, 5));
+      // Build product objects from parsed rows
+      const products = dataRows.map(row => {
+        const skuParsed  = parseSku(row.product_id || '');
+        const woodFinish = (row.woodFinish || '').toUpperCase() || skuParsed.woodFinish || '';
+        const fabric     = (row.fabric     || '').toUpperCase() || skuParsed.fabric     || '';
 
-      const valErrors = [];
-      parsedRows.forEach((row, i) => valErrors.push(...validateRow(row, i + 2)));
-      if (valErrors.length) { setError(valErrors.join('\n')); return; }
-
-      const products = parsedRows.map(row => {
-        const skuParsed = parseSku(row.product_id);
-
-        // Finish: accept free text from column, fall back to SKU-parsed value
-        const woodFinish = row.woodFinish?.toUpperCase() || skuParsed.woodFinish || '';
-        const fabric     = row.fabric?.toUpperCase()     || skuParsed.fabric     || '';
-
-        // Others: accept any comma-separated text; fall back to SKU-parsed
-        let others = skuParsed.others; // array from SKU parser
+        let others = skuParsed.others;
         if (row.otherFinish_raw) {
           const codes = row.otherFinish_raw.toUpperCase().split(/[\s,]+/).filter(Boolean);
           if (codes.length) others = codes;
         }
 
-        const sellPrice = parseFloat(row.sellPrice) || 0;
-        const buyPrice  = parseFloat(row.buyPrice)  || 0;
+        const sellPrice2025 = parseFloat(row.sellPrice2025) || 0;
+        const sellPrice2026 = parseFloat(row.sellPrice2026) || 0;
+        const sellPrice     = parseFloat(row.sellPrice) || sellPrice2026 || sellPrice2025 || 0;
+        const buyPrice      = parseFloat(row.buyPrice)  || 0;
 
         return {
-          product_id:        row.product_id,
-          name:              row.name,
+          product_id:        row.product_id        || '',
+          name:              row.name              || '',
+          vendor:            row.vendor            || '',
           description:       row.description       || '',
           vendorDescription: row.vendorDescription || '',
           colorFinish:       row.colorFinish       || '',
           itemClass:         row.itemClass         || '',
           itemUrl:           row.itemUrl           || '',
           category:          row.category          || 'General',
-          dimension:         row.dimension         || '',
+          collection:        row.collection        || '',
           package:           (['Lani','Nalu','Mainland'].includes(row.package) ? row.package : ''),
+          dimension:         row.dimension         || '',
           sellPrice,
+          sellPrice2025,
+          sellPrice2026,
           buyPrice,
-          price: sellPrice,   // legacy compat
+          price: sellPrice,
           woodFinish,
           fabric,
           others,
-          imageUrl: row.imageUrl || '',
+          imageUrl:          row.imageUrl          || '',
+          customAttributes:  row.__ca              || {},
         };
       });
 
-      // Upload to API
+      // Show preview (first 5)
+      setPreview(products.slice(0, 5));
+
+      // Validate
+      const valErrors = [];
+      products.forEach((p, i) => valErrors.push(...validateRow(p, i + 2)));
+      if (valErrors.length) { setError(valErrors.join('\n')); return; }
+
+      // Upload in batches of 20
       const token = localStorage.getItem('token');
       let successCount = 0;
       const importErrors = [];
+      const batches = batchArray(products, 20);
 
-      await Promise.allSettled(
-        products.map(async (p) => {
-          const body = new FormData();
-          Object.entries(p).forEach(([k, v]) => {
-            body.append(k, Array.isArray(v) ? JSON.stringify(v) : v);
-          });
+      for (let bi = 0; bi < batches.length; bi++) {
+        setProgress(`Importing batch ${bi + 1} / ${batches.length} (${successCount} done)…`);
+        await Promise.allSettled(
+          batches[bi].map(async (p) => {
+            const body = new FormData();
+            Object.entries(p).forEach(([k, v]) => {
+              if (k === 'customAttributes') {
+                body.append(k, JSON.stringify(v));
+              } else {
+                body.append(k, Array.isArray(v) ? JSON.stringify(v) : v);
+              }
+            });
+            const res = await fetch(`${backendServer}/api/products`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body,
+            });
+            if (res.ok) {
+              successCount++;
+            } else {
+              const err = await res.json().catch(() => ({}));
+              importErrors.push(`${p.product_id}: ${err.message || 'Failed'}`);
+            }
+          })
+        );
+      }
 
-          const res = await fetch(`${backendServer}/api/products`, {
-            method:  'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body,
-          });
-
-          if (res.ok) {
-            successCount++;
-          } else {
-            const err = await res.json().catch(() => ({}));
-            importErrors.push(`${p.product_id}: ${err.message || 'Failed'}`);
-          }
-        })
-      );
-
-      if (importErrors.length)
-        setError(`Some rows failed:\n${importErrors.join('\n')}`);
+      setProgress(null);
+      if (importErrors.length) setError(`Some rows failed:\n${importErrors.join('\n')}`);
       if (successCount > 0) {
         setSuccess(`Successfully imported ${successCount} of ${products.length} products.`);
         onComplete?.();
@@ -268,12 +404,22 @@ const BulkProductImport = ({ onComplete }) => {
       setError(err.message);
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
-  const HIDDEN_PREVIEW = new Set(['otherFinish_raw']);
-  const previewCols = preview?.[0]
-    ? Object.keys(preview[0]).filter(k => !HIDDEN_PREVIEW.has(k))
+  // Column color by canonical field
+  const colColor = (canonical) => {
+    if (!canonical) return 'bg-white text-gray-400 border-gray-200';
+    if (canonical === 'sellPrice2026') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    if (canonical === 'sellPrice2025') return 'bg-sky-50 text-sky-800 border-sky-200';
+    if (canonical === 'buyPrice')      return 'bg-amber-50 text-amber-800 border-amber-200';
+    if (canonical.startsWith('ca.'))   return 'bg-purple-50 text-purple-800 border-purple-200';
+    return 'bg-green-50 text-green-800 border-green-200';
+  };
+
+  const previewFields = preview?.[0]
+    ? Object.keys(preview[0]).filter(k => k !== 'others' && k !== 'price' && k !== '__ca')
     : [];
 
   return (
@@ -281,26 +427,26 @@ const BulkProductImport = ({ onComplete }) => {
 
       {/* Info banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-        <p className="text-sm font-semibold text-blue-900">Expected columns (order doesn't matter, case-insensitive):</p>
-        <div className="flex flex-wrap gap-2 text-xs">
+        <p className="text-sm font-semibold text-blue-900">How it works:</p>
+        <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+          <li>Upload your Excel/CSV — the importer auto-detects the header row by finding "SKU"</li>
+          <li>Reads the <strong>sub-header row</strong> above headers (CLIENT / VENDOR labels) to disambiguate duplicate columns</li>
+          <li>Custom attribute columns (Arm Style, Drawer Fronts, Metal Finish, Seat, etc.) are stored automatically</li>
+          <li>Imports in batches of 20 — safe for large catalogs (10k+ rows)</li>
+        </ul>
+        <div className="flex flex-wrap gap-1.5 pt-1 text-xs">
           {[
-            'Category','ITEM','SKU',
-            'Buy Price','Sell Price',
-            'DIMENSIONS','WOOD FINISH','OTHER FINISH','Fabric FINISH',
-            'Description','Vendor Description','Color/Finish','Item Class','Item URL',
-            'Link Image','Package',
-          ].map(c => (
-            <span key={c} className={`px-2 py-0.5 rounded font-mono ${
-              c === 'Sell Price' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-              : c === 'Buy Price' ? 'bg-amber-100 text-amber-800 border border-amber-200'
-              : 'bg-blue-100 text-blue-800'
-            }`}>{c}{c === 'Sell Price' ? ' *' : ''}</span>
+            ['SKU','product_id'],['ITEM NAME','name'],['VENDOR','vendor'],
+            ['Buy Price','buyPrice'],['Pricing 2025','sellPrice2025'],['Pricing 2026 *','sellPrice2026'],
+            ['DIMENSIONS','dimension'],['Collection','collection'],['Package','package'],
+            ['Description (CLIENT)','description'],['Deskripsi (VENDOR)','vendorDescription'],
+            ['FABRIC (CLIENT)','fabric'],['FABRIC (VENDOR)','colorFinish'],
+            ['Wood/Finish (VENDOR)','woodFinish'],
+            ['Arm Style / Drawer Fronts / Metal Finish / Seat / etc.','ca.*'],
+          ].map(([label, field]) => (
+            <span key={label} className={`px-2 py-0.5 rounded font-mono border ${colColor(field)}`}>{label}</span>
           ))}
         </div>
-        <p className="text-xs text-blue-700">
-          <strong>Sell Price</strong> is required. <strong>Buy Price</strong> is optional (cost / vendor price).
-          Wood Finish &amp; Fabric are auto-parsed from the SKU if those columns are empty.
-        </p>
         <button onClick={downloadTemplate}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
           <Download className="w-3.5 h-3.5" /> Download Template
@@ -309,34 +455,39 @@ const BulkProductImport = ({ onComplete }) => {
 
       {/* Upload zone */}
       <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
-        <input type="file" id="excel-upload" className="hidden" accept=".xlsx,.xls"
+        <input type="file" id="excel-upload" className="hidden" accept=".xlsx,.xls,.csv"
           onChange={e => { const f = e.target.files?.[0]; if (f) processExcel(f); e.target.value = ''; }} />
         <label htmlFor="excel-upload" className="flex flex-col items-center gap-3 cursor-pointer">
           <Upload className="w-10 h-10 text-gray-400" />
-          <span className="text-base font-medium text-gray-700">Drop Excel file or click to upload</span>
-          <span className="text-xs text-gray-500">.xlsx / .xls — column headers matched automatically</span>
+          <span className="text-base font-medium text-gray-700">Drop Excel / CSV file or click to upload</span>
+          <span className="text-xs text-gray-500">.xlsx / .xls / .csv — sub-header rows (CLIENT/VENDOR) are auto-detected</span>
         </label>
       </div>
 
-      {/* Detected headers */}
-      {detectedCols && (
+      {/* Detected column mapping */}
+      {colDefs && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <p className="text-xs font-medium text-gray-500 mb-1.5">Detected columns in your file:</p>
+          <p className="text-xs font-medium text-gray-600 mb-2">Detected column mapping:</p>
           <div className="flex flex-wrap gap-1.5">
-            {detectedCols.map(h => (
-              <span key={h} className={`px-2 py-0.5 rounded text-xs font-mono border ${
-                resolveColumn(h) ? 'bg-green-50 text-green-800 border-green-200' : 'bg-white text-gray-500 border-gray-300'
-              }`}>{h}</span>
+            {colDefs.map((col, i) => (
+              <div key={i} className={`flex flex-col px-2 py-1 rounded border text-xs font-mono ${colColor(col.canonical)}`}>
+                <span className="font-semibold">{col.mainLabel}{col.subLabel ? ` (${col.subLabel})` : ''}</span>
+                <span className="opacity-70">→ {col.canonical || '—'}</span>
+              </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-1">Green = recognised, gray = ignored</p>
+          <div className="flex gap-3 mt-2 text-xs text-gray-500">
+            <span><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1"/>standard field</span>
+            <span><span className="inline-block w-2 h-2 rounded-full bg-purple-400 mr-1"/>custom attribute</span>
+            <span><span className="inline-block w-2 h-2 rounded-full bg-gray-300 mr-1"/>ignored</span>
+          </div>
         </div>
       )}
 
-      {loading && (
+      {(loading || progress) && (
         <div className="flex items-center justify-center gap-2 py-3">
           <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-          <span className="text-sm text-gray-600">Importing products...</span>
+          <span className="text-sm text-gray-600">{progress || 'Processing…'}</span>
         </div>
       )}
 
@@ -359,26 +510,29 @@ const BulkProductImport = ({ onComplete }) => {
       {/* Preview */}
       {preview?.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-gray-600 mb-2">Preview — first 5 rows (after column mapping)</p>
+          <p className="text-xs font-semibold text-gray-600 mb-2">Preview — first 5 rows</p>
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full text-xs">
               <thead className="bg-gray-50">
                 <tr>
-                  {previewCols.map(h => (
-                    <th key={h} className={`px-3 py-2 text-left font-medium uppercase whitespace-nowrap ${
-                      h === 'sellPrice' ? 'text-emerald-600'
-                      : h === 'buyPrice' ? 'text-amber-600'
-                      : 'text-gray-500'
-                    }`}>{h}</th>
+                  {previewFields.map(h => (
+                    <th key={h} className="px-3 py-2 text-left font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
                   ))}
+                  <th className="px-3 py-2 text-left font-medium text-purple-600 uppercase whitespace-nowrap">customAttributes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {preview.map((row, i) => (
                   <tr key={i} className="hover:bg-gray-50">
-                    {previewCols.map((k, j) => (
-                      <td key={j} className="px-3 py-2 text-gray-700 max-w-[160px] truncate">{row[k]?.toString()}</td>
+                    {previewFields.map((k, j) => (
+                      <td key={j} className="px-3 py-2 text-gray-700 max-w-[160px] truncate">{String(row[k] ?? '')}</td>
                     ))}
+                    <td className="px-3 py-2 text-purple-700 max-w-[200px] truncate text-xs">
+                      {row.customAttributes && Object.keys(row.customAttributes).length
+                        ? Object.entries(row.customAttributes).map(([k,v]) => `${k}: ${v}`).join(', ')
+                        : <span className="text-gray-300">—</span>
+                      }
+                    </td>
                   </tr>
                 ))}
               </tbody>

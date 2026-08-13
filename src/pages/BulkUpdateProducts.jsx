@@ -14,7 +14,7 @@ const token = () => localStorage.getItem('token');
 const UPDATABLE_COLUMNS = [
   'product_id','name','description','vendorDescription',
   'category','collection','package','dimension',
-  'buyPrice','sellPrice',          // ✅ split price
+  'buyPrice','sellPrice2025','sellPrice2026','sellPrice',
   'colorFinish','itemUrl','itemClass','woodFinish','fabric','others',
   'imageUrl',
 ];
@@ -29,7 +29,9 @@ const FIELD_LABELS = {
   package:           'Package',
   dimension:         'Dimensions',
   buyPrice:          'Buy Price / Cost ($)',
-  sellPrice:         'Sell Price ($)',
+  sellPrice2025:     'Sell Price 2025 ($)',
+  sellPrice2026:     'Sell Price 2026 ($)',
+  sellPrice:         'Sell Price ($) (legacy)',
   colorFinish:       'Color / Finish',
   itemUrl:           'Item URL',
   itemClass:         'Item Class',
@@ -87,8 +89,10 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
       const rows = products.map(p => headers.map(col => {
         if (col === 'others')    return (p.others || []).join(',');
         if (col === 'imageUrl')  return p.image?.url || '';
-        if (col === 'sellPrice') return p.sellPrice ?? p.price ?? '';  // ✅ fallback legacy
-        if (col === 'buyPrice')  return p.buyPrice ?? '';               // ✅
+        if (col === 'sellPrice2025') return p.sellPrice2025 ?? '';
+        if (col === 'sellPrice2026') return p.sellPrice2026 ?? '';
+        if (col === 'sellPrice') return p.sellPrice ?? p.price ?? '';
+        if (col === 'buyPrice')  return p.buyPrice ?? '';
         return p[col] ?? '';
       }));
 
@@ -503,7 +507,9 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
           <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 pl-4">
             {Object.entries(FIELD_LABELS).map(([k, v]) => (
               <div key={k} className={
-                k === 'sellPrice' ? 'text-emerald-700'
+                k === 'sellPrice2026' ? 'text-emerald-700'
+                : k === 'sellPrice2025' ? 'text-sky-700'
+                : k === 'sellPrice' ? 'text-emerald-600'
                 : k === 'buyPrice' ? 'text-amber-600'
                 : ''
               }>

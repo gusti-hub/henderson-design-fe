@@ -577,8 +577,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         product.images?.[0]?.url ||
         null;
 
-      const buyPrice  = parseFloat(product.buyPrice)  || 0;
-      const sellPrice = parseFloat(product.sellPrice ?? product.price) || 0;
+      const buyPrice    = parseFloat(product.buyPrice)  || 0;
+      const pricingYear = order?.user?.pricingYear || 2026;
+      const sellPrice   = pricingYear === 2025
+        ? (parseFloat(product.sellPrice2025) || parseFloat(product.sellPrice ?? product.price) || 0)
+        : (parseFloat(product.sellPrice2026) || parseFloat(product.sellPrice ?? product.price) || 0);
 
       return {
         _id:        `temp_lib_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,

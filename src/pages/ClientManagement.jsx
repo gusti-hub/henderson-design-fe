@@ -565,6 +565,7 @@ const ClientManagement = () => {
     collection: '',
     bedroomCount: '',
     packageType: 'investor',
+    pricingYear: 2026,
     calculatedAmount: 0,
     designer: '',
     projectManager: '',
@@ -837,6 +838,7 @@ const ClientManagement = () => {
       collection: '',
       bedroomCount: '',
       packageType: 'investor',
+      pricingYear: 2026,
       calculatedAmount: 0,
       designer: '',
       projectManager: '',
@@ -880,6 +882,7 @@ const ClientManagement = () => {
         collection: client.collection || '',
         bedroomCount: client.bedroomCount ? String(client.bedroomCount) : '',
         packageType: client.packageType || 'investor',
+        pricingYear: client.pricingYear || 2026,
         calculatedAmount: client.paymentInfo?.totalAmount || 0,
         designer: client.teamAssignment?.designer || '',
         projectManager: client.teamAssignment?.projectManager || '',
@@ -1012,6 +1015,7 @@ const ClientManagement = () => {
         floorPlan5: formData.floorPlan5 || '',
         propertyType: formData.propertyType,
         packageType: formData.packageType,
+        pricingYear: formData.pricingYear || 2026,
         floorPlan: CUSTOM_COLLECTIONS.includes(formData.collection)
           ? 'Custom Project'
           : formData.floorPlan,
@@ -2147,6 +2151,32 @@ const FormModal = React.memo(
                     )}
                   </div>
                 )}
+
+                {/* Pricing Year Toggle */}
+                <div className="mt-4 p-3 bg-white rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Pricing Year</span>
+                      <p className="text-xs text-gray-400 mt-0.5">Determines which product prices are used</p>
+                    </div>
+                    <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                      {[2025, 2026].map(yr => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, pricingYear: yr }))}
+                          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                            formData.pricingYear === yr
+                              ? 'bg-[#005670] text-white'
+                              : 'bg-white text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {yr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
