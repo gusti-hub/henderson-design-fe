@@ -164,6 +164,29 @@ const AVAILABILITY_STATUS_OPTIONS = [
   'Active','Discontinued','Limited Stock','COM','Custom','Pending Approval','Archived',
 ];
 
+// Human-readable labels for product library customAttributes keys
+const CA_LABELS = {
+  woodFinishClient:     'Wood Finish (Client)',
+  woodFinishInfoClient: 'Wood Finish Info (Client)',
+  woodFinishInfoVendor: 'Wood Finish Info (Vendor)',
+  woodFinishInfo:       'Wood Finish Info',
+  frame:                'Frame',
+  drawerFronts:         'Drawer Fronts',
+  drawerFrontsVendor:   'Drawer Fronts (Vendor)',
+  drawerFrontsClient:   'Drawer Fronts (Client)',
+  doorFronts:           'Door Fronts',
+  wingPanels:           'Wing Panels',
+  wingPanelsVendor:     'Wing Panels (Vendor)',
+  wingPanelsClient:     'Wing Panels (Client)',
+  armStyle:             'Arm Style',
+  metalFinish:          'Metal Finish',
+  seat:                 'Seat',
+  size:                 'Size',
+  headboard:            'Headboard',
+  legsBase:             'Legs / Base',
+};
+const caLabel = (key) => CA_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+
 // category key → array of { k: camelCase key, l: label, bool?, num?, sel?: [] }
 const CATEGORY_SPECIFIC_FIELDS = {
   'Fabric':                  [{ k:'width', l:'Width' }, { k:'repeat', l:'Repeat' }, { k:'railroaded', l:'Railroaded', bool:true }, { k:'doubleRubs', l:'Double Rubs', num:true }],
@@ -3377,14 +3400,20 @@ const ProductCard = ({
                 <div className={`space-y-3 pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
                   <h4 className="font-semibold text-gray-800 text-sm">Custom Attributes</h4>
                   {Object.keys(customAttrs).length > 0 && (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {Object.entries(customAttrs).map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="flex-1 grid grid-cols-2 gap-3">
-                            <div><p className="text-xs font-medium text-gray-500">Attribute</p><p className="text-sm font-semibold text-gray-900">{key}</p></div>
-                            <div><p className="text-xs font-medium text-gray-500">Value</p><p className="text-sm text-gray-900">{String(value)}</p></div>
+                        <div key={key} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-500 mb-1">{caLabel(key)}</p>
+                            <input
+                              type="text"
+                              value={String(value)}
+                              onChange={e => updCA(key, e.target.value)}
+                              className={`${inputCls} text-sm`}
+                              disabled={locked}
+                            />
                           </div>
-                          <button onClick={() => removeCustomAttribute(key)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><X className="w-4 h-4" /></button>
+                          <button onClick={() => removeCustomAttribute(key)} className="mt-5 p-1.5 text-red-400 hover:bg-red-50 rounded-lg flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
                         </div>
                       ))}
                     </div>
