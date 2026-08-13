@@ -2702,16 +2702,23 @@ const ProductCard = ({
         // Auto-populate the top Vendor field (ObjectId ref) by matching the
         // library product's vendor name against the Vendor Management table.
         if (needsVendor && lib.vendor) {
+          // Search with first significant word for broader results
+          const searchTerm = lib.vendor.split(/[\s(]/)[0];
           fetch(
-            `${backendServer}/api/vendors?search=${encodeURIComponent(lib.vendor)}&limit=20`,
+            `${backendServer}/api/vendors?search=${encodeURIComponent(searchTerm)}&limit=50`,
             { headers: { Authorization: `Bearer ${token}` } }
           )
             .then(r => r.ok ? r.json() : null)
             .then(vData => {
-              const vendorName = lib.vendor.toLowerCase();
-              const matched = (vData?.vendors || []).find(
-                v => v.name?.toLowerCase() === vendorName
-              );
+              const raw = lib.vendor.toLowerCase().trim();
+              // Strip anything in parentheses as a fallback search key
+              const base = raw.replace(/\s*\([^)]*\)\s*/g, '').trim();
+              const vendors = vData?.vendors || [];
+              const matched = vendors.find(v => {
+                const n = v.name?.toLowerCase().trim() || '';
+                // 1. exact match, 2. match without parens, 3. vendor name inside lib string, 4. lib string inside vendor name
+                return n === raw || n === base || raw.includes(n) || n.includes(raw);
+              });
               if (matched) onUpdate(index, 'vendor', matched);
             })
             .catch(() => {});
