@@ -2634,6 +2634,46 @@ const ProductCard = ({
 
   const upd = (field, value) => onUpdate(index, `selectedOptions.${field}`, value);
 
+  // Auto-backfill vendor/client fields from library product for existing order items
+  // saved before these fields existed in selectedOptions.
+  useEffect(() => {
+    const libId = product.libraryProductId;
+    if (!libId) return;
+    const BACKFILL_KEYS = [
+      'woodFinishVendor','woodFinishClient',
+      'drawerFrontsVendor','drawerFrontsClient',
+      'wingPanelsVendor','wingPanelsClient',
+      'fabricVendor','fabricClient','productVendor',
+    ];
+    const opts = product.selectedOptions || {};
+    if (!BACKFILL_KEYS.some(k => !opts[k])) return; // all already populated
+    const token = localStorage.getItem('token');
+    fetch(`${backendServer}/api/products/${libId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(lib => {
+        if (!lib) return;
+        const map = {
+          woodFinishVendor:   lib.woodFinishVendor   || '',
+          woodFinishClient:   lib.woodFinishClient   || '',
+          drawerFrontsVendor: lib.drawerFrontsVendor || '',
+          drawerFrontsClient: lib.drawerFrontsClient || '',
+          wingPanelsVendor:   lib.wingPanelsVendor   || '',
+          wingPanelsClient:   lib.wingPanelsClient   || '',
+          fabricVendor:       lib.fabricVendor       || '',
+          fabricClient:       lib.fabricClient       || '',
+          productVendor:      lib.vendor             || '',
+        };
+        BACKFILL_KEYS.forEach(k => {
+          if (!opts[k] && map[k]) {
+            setLocal(k, map[k]);
+            upd(k, map[k]);
+          }
+        });
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.libraryProductId]);
+
   // Update a single key inside customAttributes
   const updCA = (key, value) => {
     const updated = { ...customAttrs, [key]: value };
