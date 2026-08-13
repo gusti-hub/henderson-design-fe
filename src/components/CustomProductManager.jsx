@@ -2716,7 +2716,16 @@ const ProductCard = ({
       trackingInfo:          src.selectedOptions?.trackingInfo          || '',
       deliveryStatus:        src.selectedOptions?.deliveryStatus        || '',
       installerNotes:        src.selectedOptions?.installerNotes        || '',
-      leadTime:              src.selectedOptions?.leadTime              || '',  // ✅ PATCH 10
+      leadTime:              src.selectedOptions?.leadTime              || '',
+      woodFinishVendor:      src.selectedOptions?.woodFinishVendor      || '',
+      woodFinishClient:      src.selectedOptions?.woodFinishClient      || '',
+      drawerFrontsVendor:    src.selectedOptions?.drawerFrontsVendor    || '',
+      drawerFrontsClient:    src.selectedOptions?.drawerFrontsClient    || '',
+      wingPanelsVendor:      src.selectedOptions?.wingPanelsVendor      || '',
+      wingPanelsClient:      src.selectedOptions?.wingPanelsClient      || '',
+      fabricVendor:          src.selectedOptions?.fabricVendor          || '',
+      fabricClient:          src.selectedOptions?.fabricClient          || '',
+      productVendor:         src.selectedOptions?.productVendor         || '',
       room:                  src.selectedOptions?.room                  || '',
       statusCategory:        src.selectedOptions?.statusCategory        || '',
       proposalNumber:        src.selectedOptions?.proposalNumber        || '',
@@ -2795,7 +2804,16 @@ const ProductCard = ({
         tags:              localFields.tags.split(',').map(t => t.trim()).filter(Boolean),
         itemClass:         localFields.itemClass,
         installerNotes:    localFields.installerNotes,
-        leadTime:          localFields.leadTime,  // ✅ PATCH 10
+        leadTime:          localFields.leadTime,
+        woodFinishVendor:  localFields.woodFinishVendor,
+        woodFinishClient:  localFields.woodFinishClient,
+        drawerFrontsVendor:localFields.drawerFrontsVendor,
+        drawerFrontsClient:localFields.drawerFrontsClient,
+        wingPanelsVendor:  localFields.wingPanelsVendor,
+        wingPanelsClient:  localFields.wingPanelsClient,
+        fabricVendor:      localFields.fabricVendor,
+        fabricClient:      localFields.fabricClient,
+        productVendor:     localFields.productVendor,
         customAttributes:  customAttrs,           // always use current state — ensures cleaned attrs on type change
         links: localFields.links0
           ? [localFields.links0, ...(productRef.current.selectedOptions?.links?.slice(1) || [])]
