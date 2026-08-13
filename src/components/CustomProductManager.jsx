@@ -608,7 +608,8 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         null;
 
       const buyPrice    = parseFloat(product.buyPrice)  || 0;
-      const pricingYear = order?.user?.pricingYear || 2026;
+      // Use liveOrder (freshly fetched, has user.pricingYear populated) with fallback to prop
+      const pricingYear = liveOrder?.user?.pricingYear || order?.user?.pricingYear || 2026;
       const sellPrice   = pricingYear === 2025
         ? (parseFloat(product.sellPrice2025) || parseFloat(product.sellPrice ?? product.price) || 0)
         : (parseFloat(product.sellPrice2026) || parseFloat(product.sellPrice ?? product.price) || 0);
@@ -640,7 +641,11 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           size:                  product.dimension    || '',
           specifications:        product.description  || '',
           vendorDescription:     product.vendorDescription || '',
-          customAttributes:      product.customAttributes || {},
+          customAttributes:      {
+            // Seed collection from library product's top-level field
+            ...(product.collection ? { collection: product.collection } : {}),
+            ...(product.customAttributes || {}),
+          },
           woodFinishVendor:      product.woodFinishVendor   || '',
           woodFinishClient:      product.woodFinishClient   || '',
           drawerFrontsVendor:    product.drawerFrontsVendor || '',
@@ -2644,9 +2649,10 @@ const ProductCard = ({
       'fabricVendor','fabricClient','productVendor',
     ];
     const opts = product.selectedOptions || {};
-    const needsFields  = BACKFILL_KEYS.some(k => !opts[k]);
-    const needsVendor  = !product.vendor;
-    if (!needsFields && !needsVendor) return;
+    const needsFields      = BACKFILL_KEYS.some(k => !opts[k]);
+    const needsVendor      = !product.vendor;
+    const needsCollection  = !(opts.customAttributes?.collection);
+    if (!needsFields && !needsVendor && !needsCollection) return;
 
     const libId = product.libraryProductId;
     const sku   = product.product_id;
@@ -2684,6 +2690,13 @@ const ProductCard = ({
               upd(k, map[k]);
             }
           });
+        }
+
+        // Backfill collection (stored in customAttributes) from library product
+        if (needsCollection && lib.collection) {
+          const updatedCA = { ...((opts.customAttributes) || {}), collection: lib.collection };
+          setCustomAttrs(updatedCA);
+          upd('customAttributes', updatedCA);
         }
 
         // Auto-populate the top Vendor field (ObjectId ref) by matching the
