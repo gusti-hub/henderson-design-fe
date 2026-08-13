@@ -4,6 +4,10 @@ import React, { useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { backendServer } from '../utils/info';
+import { isHtml } from '../utils/richTextUtils';
+
+// Fields where Excel rich text (bold/italic/etc.) should be preserved as HTML
+const RICH_TEXT_CANONICALS = new Set(['description', 'vendorDescription']);
 
 // ─── SKU finish parser ─────────────────────────────────────────────────────
 const WOOD_CODES   = ['MD', 'DK'];
@@ -219,21 +223,32 @@ const parseSheet = (ws) => {
   const dataRows = raw
     .slice(headerRowIdx + 1)
     .filter(row => row.some(cell => cell !== '' && cell != null))
-    .map(row => {
+    .map((row, localIdx) => {
+      const absRowIdx = headerRowIdx + 1 + localIdx;
       const obj = {};
       colDefs.forEach(({ colIdx, compositeKey, canonical }) => {
         if (!canonical) return;
-        const raw = row[colIdx];
-        const val = raw != null ? String(raw).trim() : '';
+
+        let val;
+        if (RICH_TEXT_CANONICALS.has(canonical)) {
+          // Use the cell's HTML value when available (preserves bold/italic/etc.)
+          const cellAddr = XLSX.utils.encode_cell({ r: absRowIdx, c: colIdx });
+          const cell = ws[cellAddr];
+          const htmlVal = (cell?.h || '').trim();
+          const plainVal = row[colIdx] != null ? String(row[colIdx]).trim() : '';
+          // Use HTML only when it actually contains markup (not just escaped text)
+          val = (htmlVal && isHtml(htmlVal)) ? htmlVal : plainVal;
+        } else {
+          val = row[colIdx] != null ? String(row[colIdx]).trim() : '';
+        }
+
         if (!val) return;
 
         if (canonical.startsWith('ca.')) {
           if (!obj.__ca) obj.__ca = {};
-          const key = canonical.slice(3); // strip "ca."
-          // Don't overwrite if already set (first wins)
+          const key = canonical.slice(3);
           if (!obj.__ca[key]) obj.__ca[key] = val;
         } else {
-          // Don't overwrite more-specific sub-header match with generic fallback
           if (!obj[canonical]) obj[canonical] = val;
         }
       });
@@ -302,7 +317,7 @@ const BulkProductImport = ({ onComplete }) => {
       setProgress(null);
 
       const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { cellDates: true });
+      const wb = XLSX.read(data, { cellDates: true, cellHTML: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
 
       const { colDefs: detectedCols, dataRows } = parseSheet(ws);

@@ -9,6 +9,7 @@ import { toJsDelivrUrl } from '../utils/imageUrl';
 import BulkProductImport from '../pages/BulkProductImport';
 import BulkDeleteProducts from './BulkDeleteProduct';
 import BulkUpdateProducts from './BulkUpdateProducts';
+import RichTextEditor from '../components/RichTextEditor';
 
 // ─── SKU finish parser (display only) ─────────────────────────────────────
 const WOOD_CODES   = ['MD', 'DK'];
@@ -598,9 +599,12 @@ const ProductConfiguration = () => {
                 <h4 className="text-sm font-semibold text-gray-800">📝 Descriptions</h4>
                 <div>
                   <label className={labelCls}>Client Description</label>
-                  <textarea value={formData.description} rows={3}
-                    onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                    className={`${inputCls} resize-none`} placeholder="Visible to client — material, style, specs..." />
+                  <RichTextEditor
+                    value={formData.description}
+                    onChange={val => setFormData(f => ({ ...f, description: val }))}
+                    placeholder="Visible to client — material, style, specs..."
+                    minRows={3}
+                  />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -613,9 +617,12 @@ const ProductConfiguration = () => {
                       </button>
                     )}
                   </div>
-                  <textarea value={formData.vendorDescription} rows={3}
-                    onChange={e => setFormData(f => ({ ...f, vendorDescription: e.target.value }))}
-                    className={`${inputCls} resize-none`} placeholder="Internal / vendor-facing notes..." />
+                  <RichTextEditor
+                    value={formData.vendorDescription}
+                    onChange={val => setFormData(f => ({ ...f, vendorDescription: val }))}
+                    placeholder="Internal / vendor-facing notes..."
+                    minRows={3}
+                  />
                 </div>
               </div>
 
