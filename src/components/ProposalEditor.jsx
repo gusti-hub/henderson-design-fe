@@ -29,6 +29,19 @@ const htmlToLines = (html) => {
   return plain.split('\n').map(l => l.trim()).filter(Boolean);
 };
 
+// Bold the text before the first colon in a plain-text line (JSX version)
+const fmtLine = (line) => {
+  const ci = line.indexOf(':');
+  if (ci > 0) return <><strong>{line.slice(0, ci)}</strong>{line.slice(ci)}</>;
+  return line;
+};
+// HTML string version for PDF generation
+const fmtLineHtml = (line) => {
+  const ci = line.indexOf(':');
+  if (ci > 0) return `<strong>${line.slice(0, ci)}</strong>${line.slice(ci)}`;
+  return line;
+};
+
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
@@ -214,7 +227,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
         {o.specifications && htmlToLines(o.specifications).map((line, i) => (
-          <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{line}</div>
+          <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{fmtLine(line)}</div>
         ))}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
@@ -303,7 +316,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
         {o.specifications && htmlToLines(o.specifications).map((line, i) => (
-          <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{line}</div>
+          <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{fmtLine(line)}</div>
         ))}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
@@ -1040,7 +1053,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const pca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
         if (p.name) lines.push('<div style="font-size:12px;margin-bottom:2px"><strong>Item Name:</strong> ' + p.name + '</div>');
         if (o.specifications) htmlToLines(o.specifications).forEach(line => {
-          lines.push(`<div style="font-size:12px;line-height:1.5;margin:0 0 1px 0">${line}</div>`);
+          lines.push(`<div style="font-size:12px;line-height:1.5;margin:0 0 1px 0">${fmtLineHtml(line)}</div>`);
         });
         if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
         if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');

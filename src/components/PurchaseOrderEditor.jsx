@@ -18,6 +18,13 @@ const htmlToLines = (html) => {
   return plain.split('\n').map(l => l.trim()).filter(Boolean);
 };
 
+// Bold the text before the first colon in a plain-text line
+const fmtLine = (line) => {
+  const ci = line.indexOf(':');
+  if (ci > 0) return <><strong>{line.slice(0, ci)}</strong>{line.slice(ci)}</>;
+  return line;
+};
+
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
   const [dataUrl, setDataUrl] = useState(null);
@@ -705,7 +712,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         </div>
                       ) : null}
                       {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
-                        <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{line}</div>
+                        <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{fmtLine(line)}</div>
                       ))}
                       {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
                       {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
