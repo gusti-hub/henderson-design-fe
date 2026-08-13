@@ -676,11 +676,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         </span>
                       </div>
                       {product.name ? (
-                        <div style={{ fontWeight: '600', fontSize: '12px', margin: '3px 0 2px' }}>{product.name}</div>
+                        <div style={{ fontSize: '12px', margin: '3px 0 2px' }}><strong>Item Name:</strong> {product.name}</div>
                       ) : null}
                       {vendorDesc ? (
                         <div style={{ lineHeight: '1.5', fontSize: '12px', marginBottom: '2px' }}>
-                          {renderRichText(vendorDesc)}
+                          {renderRichText(vendorDesc, { fontSize: '12px' })}
                         </div>
                       ) : null}
                       {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}

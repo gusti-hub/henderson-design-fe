@@ -198,8 +198,8 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
         )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
-        <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+        <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
+        {o.specifications && renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
         {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -285,8 +285,8 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
-        <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-        {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+        <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
+        {o.specifications && renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
         {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -1020,8 +1020,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const o = p.selectedOptions || {};
         const lines = [];
         const pca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
-        if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
-        if (o.specifications) lines.push(renderRichTextHtml(o.specifications));
+        if (p.name) lines.push('<div style="font-size:12px;margin-bottom:2px"><strong>Item Name:</strong> ' + p.name + '</div>');
+        if (o.specifications) lines.push('<div style="font-size:12px">' + renderRichTextHtml(o.specifications) + '</div>');
         if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
         if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
         if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');
