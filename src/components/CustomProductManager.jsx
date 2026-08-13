@@ -225,6 +225,7 @@ const defaultSelectedOptions = () => ({
   estimatedDeliveryDate: '', shippingCarrier: '', orderStatus: '', nextStep: '',
   nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '',
   leadTime: '',   // ✅ PATCH 10
+  productVendor: '',   // vendor name from product library
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
   noNetPurchaseCost: false, discountTaken: '', shippingCost: 0, otherCost: 0,
   markupPercent: 50, shippingMarkupPercent: 50, otherMarkupPercent: 50,
@@ -648,6 +649,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           wingPanelsClient:      product.wingPanelsClient   || '',
           fabricVendor:          product.fabricVendor       || '',
           fabricClient:          product.fabricClient       || '',
+          productVendor:         product.vendor             || '',
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
           leadTime:              product.leadTime     || '',  // ✅ PATCH 10
@@ -2581,6 +2583,7 @@ const ProductCard = ({
     wingPanelsClient:  opts.wingPanelsClient     || '',
     fabricVendor:      opts.fabricVendor         || '',
     fabricClient:      opts.fabricClient         || '',
+    productVendor:     opts.productVendor        || '',
   });
 
   useEffect(() => {
@@ -2613,6 +2616,7 @@ const ProductCard = ({
       wingPanelsClient:  o.wingPanelsClient        || '',
       fabricVendor:      o.fabricVendor            || '',
       fabricClient:      o.fabricClient            || '',
+      productVendor:     o.productVendor           || '',
     });
     setCustomAttrs(o.customAttributes || {});
     // Depend on the product object identity (not _id/index): reorder keeps the same
@@ -3426,6 +3430,14 @@ const ProductCard = ({
                     disabled={locked}
                   />
                 </div>
+
+                {/* ── Product Vendor (from library) ── */}
+                {localFields.productVendor && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <span className="text-xs font-medium text-amber-700">Vendor:</span>
+                    <span className="text-sm font-semibold text-amber-900">{localFields.productVendor}</span>
+                  </div>
+                )}
 
                 {/* ── Vendor Fields ── */}
                 <div className={`pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>

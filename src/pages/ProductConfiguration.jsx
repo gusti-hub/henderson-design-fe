@@ -68,6 +68,7 @@ const CA_LABELS = {
 const emptyForm = () => ({
   product_id:          '',
   name:                '',
+  vendor:              '',   // vendor name (linked to Vendor Management)
   description:         '',
   vendorDescription:   '',
   itemUrl:             '',
@@ -142,6 +143,7 @@ const ProductConfiguration = () => {
   const [itemsPerPage]                    = useState(10);
   const [searchTerm, setSearchTerm]       = useState('');
   const [formData, setFormData]           = useState(emptyForm());
+  const [vendorNames, setVendorNames]     = useState([]);
   const [errors, setErrors]               = useState({});
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -153,6 +155,14 @@ const ProductConfiguration = () => {
     const t = setTimeout(() => { setCurrentPage(1); fetchProducts(); }, 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    fetch(`${backendServer}/api/vendors?limit=200&status=active`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setVendorNames((d.vendors || []).map(v => v.name).filter(Boolean).sort()))
+      .catch(() => {});
+  }, []);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -205,6 +215,7 @@ const ProductConfiguration = () => {
     setFormData({
       product_id:        product.product_id        || '',
       name:              product.name              || '',
+      vendor:            product.vendor            || '',
       description:       product.description       || '',
       vendorDescription: product.vendorDescription || '',
       itemUrl:           product.itemUrl           || '',
@@ -312,6 +323,7 @@ const ProductConfiguration = () => {
           ? formData.others.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
           : [];
       fd.append('others', JSON.stringify(othersArr));
+      fd.append('vendor',             formData.vendor             || '');
       fd.append('woodFinishVendor',   formData.woodFinishVendor   || '');
       fd.append('woodFinishClient',   formData.woodFinishClient   || '');
       fd.append('drawerFrontsVendor', formData.drawerFrontsVendor || '');
@@ -548,6 +560,23 @@ const ProductConfiguration = () => {
                     onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
                     className={inputCls} placeholder="e.g. Bench Style A" />
                   {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                </div>
+                <div>
+                  <label className={labelCls}>Vendor</label>
+                  <input
+                    type="text"
+                    list="prod-vendor-options"
+                    value={formData.vendor}
+                    onChange={e => setFormData(f => ({ ...f, vendor: e.target.value }))}
+                    className={inputCls}
+                    placeholder="Select or type vendor name..."
+                  />
+                  <datalist id="prod-vendor-options">
+                    {vendorNames.map(n => <option key={n} value={n} />)}
+                  </datalist>
+                  {formData.vendor && !vendorNames.includes(formData.vendor) && (
+                    <p className="text-xs text-amber-600 mt-1">⚠ Not in vendor list — will be saved as-is</p>
+                  )}
                 </div>
 
                 {/* ✅ PRICE SECTION — split into buy & sell */}

@@ -373,6 +373,15 @@ const BulkProductImport = ({ onComplete }) => {
           others,
           imageUrl:          row.imageUrl          || '',
           customAttributes:  row.__ca              || {},
+          // VENDOR / CLIENT direct fields
+          woodFinishVendor:   row.woodFinishVendor   || '',
+          woodFinishClient:   row.woodFinishClient   || '',
+          drawerFrontsVendor: row.drawerFrontsVendor || '',
+          drawerFrontsClient: row.drawerFrontsClient || '',
+          wingPanelsVendor:   row.wingPanelsVendor   || '',
+          wingPanelsClient:   row.wingPanelsClient   || '',
+          fabricVendor:       row.fabricVendor       || '',
+          fabricClient:       row.fabricClient       || '',
         };
       });
 
