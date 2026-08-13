@@ -199,7 +199,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-        {o.specifications && renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}
+        {o.specifications && <div className="proposal-desc">{renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}</div>}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
         {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -286,7 +286,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
         <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-        {o.specifications && renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}
+        {o.specifications && <div className="proposal-desc">{renderRichText(o.specifications, { color: '#000000', fontSize: '12px', marginBottom: '1px' })}</div>}
         {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
         {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
         {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -1021,7 +1021,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const lines = [];
         const pca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
         if (p.name) lines.push('<div style="font-size:12px;margin-bottom:2px"><strong>Item Name:</strong> ' + p.name + '</div>');
-        if (o.specifications) lines.push('<div style="font-size:12px">' + renderRichTextHtml(o.specifications) + '</div>');
+        if (o.specifications) lines.push('<div class="proposal-desc" style="font-size:12px">' + renderRichTextHtml(o.specifications) + '</div>');
         if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
         if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
         if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');
@@ -1148,6 +1148,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         .lp-slot { overflow: visible; }
         .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
         .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
+        .proposal-desc p { font-size: 12px !important; margin: 0 0 1px 0 !important; line-height: 1.5; }
+        .proposal-desc strong { font-size: 12px !important; }
       `}</style>
 
       {/* ── Toolbar ── */}

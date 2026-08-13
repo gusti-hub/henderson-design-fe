@@ -447,6 +447,15 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           display: block; margin-top: 5px; padding-top: 5px;
           border-top: 1px dashed #ccc; font-size: 10px; text-align: left;
         }
+        .po-item-desc {
+          font-size: 11px; line-height: 1.5; text-align: left;
+          color: #222; margin-bottom: 2px;
+        }
+        .po-item-desc p {
+          font-size: 11px !important; margin: 0 0 1px 0 !important;
+          text-align: left !important; line-height: 1.5;
+        }
+        .po-item-desc strong { font-size: 11px !important; }
       `}</style>
 
       {/* ====== TOOLBAR ====== */}
@@ -676,12 +685,16 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                         </span>
                       </div>
                       {product.name ? (
-                        <div style={{ fontSize: '12px', margin: '3px 0 2px' }}><strong>Item Name:</strong> {product.name}</div>
+                        <div className="desc-row" style={{ borderBottom: 'none', padding: '2px 0' }}>
+                          <span style={{ fontWeight: 700, fontSize: '11px' }}>Item Name:</span>{' '}
+                          <span style={{ fontSize: '11px', color: '#222' }}>{product.name}</span>
+                        </div>
                       ) : null}
                       {vendorDesc ? (
-                        <div style={{ lineHeight: '1.5', fontSize: '12px', marginBottom: '2px' }}>
-                          {renderRichText(vendorDesc, { fontSize: '12px' })}
-                        </div>
+                        <div
+                          className="po-item-desc"
+                          dangerouslySetInnerHTML={{ __html: typeof vendorDesc === 'string' && /<[a-z]/i.test(vendorDesc) ? vendorDesc : vendorDesc.split('\n').map(l => `<p>${l || '<br>'}</p>`).join('') }}
+                        />
                       ) : null}
                       {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
                       {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
