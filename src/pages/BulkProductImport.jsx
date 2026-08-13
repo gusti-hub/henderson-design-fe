@@ -95,10 +95,12 @@ const COLUMN_MAP = {
   deskripsi:           'vendorDescription',
 
   // Descriptions — with sub-header
-  description_client:  'description',
-  description_vendor:  'vendorDescription',
-  deskripsi_vendor:    'vendorDescription',
-  deskripsi_client:    'description',
+  description_client:        'description',
+  description_vendor:        'vendorDescription',
+  deskripsi_vendor:          'vendorDescription',
+  deskripsi_client:          'description',
+  client_description_client: 'description',      // Nalu: "Client Description" + CLIENT sub-header
+  vendor_description_vendor: 'vendorDescription', // Nalu: "Vendor Description" + VENDOR sub-header
 
   // Fabric — with sub-header
   fabric_client:       'fabric',         // client code e.g. "Light"
@@ -115,10 +117,10 @@ const COLUMN_MAP = {
   wood_finish_vendor:  'woodFinish',
   wood_finish_client:  'ca.woodFinishClient',
 
-  // Wood Finish Info — Lani specific
-  wood_finish_info_client:  'ca.woodFinishClient',
-  wood_finish_info_vendor:  'woodFinish',
-  wood_finish_info:         'woodFinish',
+  // Wood Finish Info — Lani specific (full text descriptions → custom attributes)
+  wood_finish_info_client:  'ca.woodFinishInfoClient',
+  wood_finish_info_vendor:  'ca.woodFinishInfoVendor',
+  wood_finish_info:         'ca.woodFinishInfo',
 
   // Metal Finish — with custom attribute sub-header
   metal_finish_custom_attribute: 'ca.metalFinish',
@@ -155,8 +157,11 @@ const COLUMN_MAP = {
   drawer_fronts_client:         'ca.drawerFrontsClient',
   wing_panels_vendor:           'ca.wingPanelsVendor',
   wing_panels_client:           'ca.wingPanelsClient',
+  wing_panels_custom_attribute: 'ca.wingPanels',
   metal_finish_info_1:          'ca.metalFinish',
   metal_finish_info:            'ca.metalFinish',
+  frame:                        'ca.frame',
+  dimensions_software:          'dimension',
 
   // Custom Attributes — Nalu
   metal_finish:                 'ca.metalFinish',

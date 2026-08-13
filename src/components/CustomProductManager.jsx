@@ -610,6 +610,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           size:                  product.dimension    || '',
           specifications:        product.description  || '',
           vendorDescription:     product.vendorDescription || '',
+          customAttributes:      product.customAttributes || {},
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
           leadTime:              product.leadTime     || '',  // ✅ PATCH 10
