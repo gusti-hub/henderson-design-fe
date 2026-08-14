@@ -6,15 +6,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Check, X } from 'lucide-react';
 
 const STATUS_CATEGORIES = [
-  // Original
-  'Items to be delivered during the week of installation',
-  'Items shipping to Resort',
-  'Items currently in transit',
-  'Deliveries to Freight Forwarder',
   'Items Delivered',
   'Pending Delivery',
   'Uncategorized',
-  // ✅ SARA: 10 new
   'Unapproved',
   'Order sent to the vendor',
   'Order acknowledged by the vendor',
@@ -25,6 +19,9 @@ const STATUS_CATEGORIES = [
   'At site',
   'Completed',
   'Order returned/damaged',
+  'Installed',
+  'Rejected by client',
+  'On Hold',
 ];
 
 const SHIPPING_CARRIERS = [
