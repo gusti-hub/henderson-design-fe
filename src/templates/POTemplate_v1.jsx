@@ -4,27 +4,6 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText } from '../utils/richTextUtils';
 
-// Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
-const htmlToLines = (html) => {
-  if (!html || typeof html !== 'string') return [];
-  const plain = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
-  return plain.split('\n').map(l => l.trim()).filter(Boolean);
-};
-
-// Bold the text before the first colon in a plain-text line
-const fmtLine = (line) => {
-  const ci = line.indexOf(':');
-  if (ci > 0) return <><strong>{line.slice(0, ci)}</strong>{line.slice(ci)}</>;
-  return line;
-};
-
 // ─── Image with print-safe base64 conversion ──────────────────────────────────
 const PrintSafeImage = ({ src, alt, style, fallback }) => {
   const [dataUrl, setDataUrl] = useState(null);
@@ -101,12 +80,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   });
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [docTemplate, setDocTemplate] = useState(() => localStorage.getItem('henderson_po_template') || 'modern');
-  const isClassic = docTemplate === 'classic';
-  const handleTemplateToggle = (tpl) => {
-    setDocTemplate(tpl);
-    localStorage.setItem('henderson_po_template', tpl);
-  };
   const [originalTitle] = useState(document.title);
   const [poStatus, setPoStatus] = useState('draft');
   const [savingStatus, setSavingStatus] = useState(false);
@@ -474,15 +447,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           display: block; margin-top: 5px; padding-top: 5px;
           border-top: 1px dashed #ccc; font-size: 10px; text-align: left;
         }
-        .po-item-desc {
-          font-size: 11px; line-height: 1.5; text-align: left;
-          color: #222; margin-bottom: 2px;
-        }
-        .po-item-desc p {
-          font-size: 11px !important; margin: 0 0 1px 0 !important;
-          text-align: left !important; line-height: 1.5;
-        }
-        .po-item-desc strong { font-size: 11px !important; }
       `}</style>
 
       {/* ====== TOOLBAR ====== */}
@@ -549,17 +513,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
           </button>
-          {/* Template toggle */}
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-            <button
-              onClick={() => handleTemplateToggle('classic')}
-              className={`px-3 py-2 transition-colors ${isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Classic</button>
-            <button
-              onClick={() => handleTemplateToggle('modern')}
-              className={`px-3 py-2 transition-colors ${!isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Modern</button>
-          </div>
           <button
             onClick={() => setShowPrintInstructions(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"
@@ -695,8 +648,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   : parseFloat(product.selectedOptions?.msrp || product.msrp || product.unitPrice || 0);
                 const netTotal = netCost * (product.quantity || 1);
                 const sidemark = product.selectedOptions?.sidemark || '';
-                const vendorDesc = product.selectedOptions?.vendorDescription || '';
-                const o = product.selectedOptions || {};
+                const specs = product.selectedOptions?.vendorDescription || product.selectedOptions?.specifications || '';
 
                 return (
                   <tr key={index}>
@@ -719,47 +671,59 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                       <div className="desc-row">
                         <span className="desc-row-label">Quantity</span>
                         <span className="desc-row-value">
-                          {product.quantity || 1} {o.units || 'Each'}
+                          {product.quantity || 1} {product.selectedOptions?.units || 'Each'}
                         </span>
                       </div>
-                      {isClassic ? (
-                        <>
-                          {(vendorDesc || o.specifications) ? (
-                            <div className="desc-row">
-                              <span className="desc-row-label">Specs</span>
-                              <span className="desc-row-value" style={{ lineHeight: '1.5', textAlign: 'left' }}>
-                                {renderRichText(vendorDesc || o.specifications)}
-                              </span>
-                            </div>
-                          ) : null}
-                          {product.name ? <div className="desc-row"><span className="desc-row-label">Name</span><span className="desc-row-value">{product.name}</span></div> : null}
-                          {product.product_id ? <div className="desc-row"><span className="desc-row-label">SKU</span><span className="desc-row-value">{product.product_id}</span></div> : null}
-                          {(o.size || o.dimension) ? <div className="desc-row"><span className="desc-row-label">Dimensions</span><span className="desc-row-value">{o.size || o.dimension}</span></div> : null}
-                          {o.fabric ? <div className="desc-row"><span className="desc-row-label">Fabric</span><span className="desc-row-value">{o.fabric}</span></div> : null}
-                          {o.customAttributes?.materials ? <div className="desc-row"><span className="desc-row-label">Materials</span><span className="desc-row-value">{o.customAttributes.materials}</span></div> : null}
-                          {o.finish ? <div className="desc-row"><span className="desc-row-label">Color</span><span className="desc-row-value">{o.finish}</span></div> : null}
-                          {o.leadTime ? <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div> : null}
-                        </>
-                      ) : (
-                        <>
-                          {product.name ? (
-                            <div className="desc-row" style={{ borderBottom: 'none', padding: '2px 0' }}>
-                              <span style={{ fontWeight: 700, fontSize: '11px' }}>Item Name:</span>{' '}
-                              <span style={{ fontSize: '11px', color: '#222' }}>{product.name}</span>
-                            </div>
-                          ) : null}
-                          {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
-                            <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{fmtLine(line)}</div>
-                          ))}
-                          {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
-                          {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
-                          {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wing Panels</strong></span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
-                          {o.fabricVendor       && <div className="desc-row"><span className="desc-row-label"><strong>Fabric</strong></span><span className="desc-row-value">{o.fabricVendor}</span></div>}
-                          {(o.size || o.dimension) && <div className="desc-row"><span className="desc-row-label"><strong>Dimensions</strong></span><span className="desc-row-value">{o.size || o.dimension}</span></div>}
-                          {product.product_id   && <div className="desc-row"><span className="desc-row-label"><strong>SKU</strong></span><span className="desc-row-value">{product.product_id}</span></div>}
-                          {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div>}
-                        </>
-                      )}
+                      {specs ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Specs</span>
+                          <span className="desc-row-value" style={{ lineHeight: '1.5', textAlign: 'left' }}>
+                            {renderRichText(specs)}
+                          </span>
+                        </div>
+                      ) : null}
+                      {product.name ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Name</span>
+                          <span className="desc-row-value">{product.name}</span>
+                        </div>
+                      ) : null}
+                      {product.product_id ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">SKU</span>
+                          <span className="desc-row-value">{product.product_id}</span>
+                        </div>
+                      ) : null}
+                      {(product.selectedOptions?.dimension || product.selectedOptions?.size) ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Dimensions</span>
+                          <span className="desc-row-value">{product.selectedOptions?.dimension || product.selectedOptions?.size}</span>
+                        </div>
+                      ) : null}
+                      {product.selectedOptions?.fabric ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Fabric</span>
+                          <span className="desc-row-value">{product.selectedOptions.fabric}</span>
+                        </div>
+                      ) : null}
+                      {product.selectedOptions?.customAttributes?.materials ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Materials</span>
+                          <span className="desc-row-value">{product.selectedOptions.customAttributes.materials}</span>
+                        </div>
+                      ) : null}
+                      {product.selectedOptions?.finish ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Color</span>
+                          <span className="desc-row-value">{product.selectedOptions.finish}</span>
+                        </div>
+                      ) : null}
+                      {product.selectedOptions?.leadTime ? (
+                        <div className="desc-row">
+                          <span className="desc-row-label">Lead Time</span>
+                          <span className="desc-row-value">{product.selectedOptions.leadTime}</span>
+                        </div>
+                      ) : null}
                       {sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>

@@ -101,12 +101,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   });
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [docTemplate, setDocTemplate] = useState(() => localStorage.getItem('henderson_po_template') || 'modern');
-  const isClassic = docTemplate === 'classic';
-  const handleTemplateToggle = (tpl) => {
-    setDocTemplate(tpl);
-    localStorage.setItem('henderson_po_template', tpl);
-  };
   const [originalTitle] = useState(document.title);
   const [poStatus, setPoStatus] = useState('draft');
   const [savingStatus, setSavingStatus] = useState(false);
@@ -549,17 +543,6 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
           </button>
-          {/* Template toggle */}
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-            <button
-              onClick={() => handleTemplateToggle('classic')}
-              className={`px-3 py-2 transition-colors ${isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Classic</button>
-            <button
-              onClick={() => handleTemplateToggle('modern')}
-              className={`px-3 py-2 transition-colors ${!isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Modern</button>
-          </div>
           <button
             onClick={() => setShowPrintInstructions(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium"
@@ -722,44 +705,22 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           {product.quantity || 1} {o.units || 'Each'}
                         </span>
                       </div>
-                      {isClassic ? (
-                        <>
-                          {(vendorDesc || o.specifications) ? (
-                            <div className="desc-row">
-                              <span className="desc-row-label">Specs</span>
-                              <span className="desc-row-value" style={{ lineHeight: '1.5', textAlign: 'left' }}>
-                                {renderRichText(vendorDesc || o.specifications)}
-                              </span>
-                            </div>
-                          ) : null}
-                          {product.name ? <div className="desc-row"><span className="desc-row-label">Name</span><span className="desc-row-value">{product.name}</span></div> : null}
-                          {product.product_id ? <div className="desc-row"><span className="desc-row-label">SKU</span><span className="desc-row-value">{product.product_id}</span></div> : null}
-                          {(o.size || o.dimension) ? <div className="desc-row"><span className="desc-row-label">Dimensions</span><span className="desc-row-value">{o.size || o.dimension}</span></div> : null}
-                          {o.fabric ? <div className="desc-row"><span className="desc-row-label">Fabric</span><span className="desc-row-value">{o.fabric}</span></div> : null}
-                          {o.customAttributes?.materials ? <div className="desc-row"><span className="desc-row-label">Materials</span><span className="desc-row-value">{o.customAttributes.materials}</span></div> : null}
-                          {o.finish ? <div className="desc-row"><span className="desc-row-label">Color</span><span className="desc-row-value">{o.finish}</span></div> : null}
-                          {o.leadTime ? <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div> : null}
-                        </>
-                      ) : (
-                        <>
-                          {product.name ? (
-                            <div className="desc-row" style={{ borderBottom: 'none', padding: '2px 0' }}>
-                              <span style={{ fontWeight: 700, fontSize: '11px' }}>Item Name:</span>{' '}
-                              <span style={{ fontSize: '11px', color: '#222' }}>{product.name}</span>
-                            </div>
-                          ) : null}
-                          {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
-                            <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{fmtLine(line)}</div>
-                          ))}
-                          {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
-                          {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
-                          {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wing Panels</strong></span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
-                          {o.fabricVendor       && <div className="desc-row"><span className="desc-row-label"><strong>Fabric</strong></span><span className="desc-row-value">{o.fabricVendor}</span></div>}
-                          {(o.size || o.dimension) && <div className="desc-row"><span className="desc-row-label"><strong>Dimensions</strong></span><span className="desc-row-value">{o.size || o.dimension}</span></div>}
-                          {product.product_id   && <div className="desc-row"><span className="desc-row-label"><strong>SKU</strong></span><span className="desc-row-value">{product.product_id}</span></div>}
-                          {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div>}
-                        </>
-                      )}
+                      {product.name ? (
+                        <div className="desc-row" style={{ borderBottom: 'none', padding: '2px 0' }}>
+                          <span style={{ fontWeight: 700, fontSize: '11px' }}>Item Name:</span>{' '}
+                          <span style={{ fontSize: '11px', color: '#222' }}>{product.name}</span>
+                        </div>
+                      ) : null}
+                      {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
+                        <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{fmtLine(line)}</div>
+                      ))}
+                      {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood Finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
+                      {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer Fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
+                      {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wing Panels</strong></span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
+                      {o.fabricVendor       && <div className="desc-row"><span className="desc-row-label"><strong>Fabric</strong></span><span className="desc-row-value">{o.fabricVendor}</span></div>}
+                      {(o.size || o.dimension) && <div className="desc-row"><span className="desc-row-label"><strong>Dimensions</strong></span><span className="desc-row-value">{o.size || o.dimension}</span></div>}
+                      {product.product_id   && <div className="desc-row"><span className="desc-row-label"><strong>SKU</strong></span><span className="desc-row-value">{product.product_id}</span></div>}
+                      {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div>}
                       {sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>

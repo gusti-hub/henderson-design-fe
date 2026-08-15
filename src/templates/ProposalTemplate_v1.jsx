@@ -15,33 +15,6 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
 
-// Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
-const htmlToLines = (html) => {
-  if (!html || typeof html !== 'string') return [];
-  const plain = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
-  return plain.split('\n').map(l => l.trim()).filter(Boolean);
-};
-
-// Bold the text before the first colon in a plain-text line (JSX version)
-const fmtLine = (line) => {
-  const ci = line.indexOf(':');
-  if (ci > 0) return <><strong>{line.slice(0, ci)}</strong>{line.slice(ci)}</>;
-  return line;
-};
-// HTML string version for PDF generation
-const fmtLineHtml = (line) => {
-  const ci = line.indexOf(':');
-  if (ci > 0) return `<strong>${line.slice(0, ci)}</strong>${line.slice(ci)}`;
-  return line;
-};
-
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
 const FINISH_LABELS = { LT:'Light Oak', MD:'Medium Teak', DK:'Dark Teak', WH:'White', BK:'Black', GY:'Grey', NL:'Natural', WN:'Walnut' };
@@ -171,9 +144,8 @@ const PageFooter = () => (
 );
 
 // ─── Product Row ──────────────────────────────────────────────────────────────
-const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh, classic = false }, ref) => {
+const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh }, ref) => {
   const o = product.selectedOptions || {};
-  const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
   const imgSrc = getImgSrc(product);
   const qty = product.quantity || 1;
   const isGroupParent = product.isParent === true;
@@ -225,29 +197,12 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
         )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
-        {classic ? (
-          <>
-            <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-            {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
-            {o.finish    && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
-            {o.leadTime  && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
-            {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
-            {o.size      && <div><strong>Size:</strong> {o.size}</div>}
-          </>
-        ) : (
-          <>
-            <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-            {o.specifications && htmlToLines(o.specifications).map((line, i) => (
-              <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{fmtLine(line)}</div>
-            ))}
-            {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
-            {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
-            {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
-            {o.fabricClient       && <div><strong>Fabric:</strong> {o.fabricClient}</div>}
-            {o.size               && <div><strong>Dimensions:</strong> {o.size}</div>}
-            {ca.collection        && <div><strong>Collection:</strong> {ca.collection}</div>}
-          </>
-        )}
+        <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
+        {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+        {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
+        {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
+        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
+        {o.size && <div><strong>Size:</strong> {o.size}</div>}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
@@ -284,7 +239,7 @@ const CA_LABELS = {
 const SKIP_CA_KEYS = new Set(['availabilityStatus','collection','materials']);
 
 // ─── Product Row V2 (extended: item type, materials, category specs) ──────────
-const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh, classic = false }, ref) => {
+const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh }, ref) => {
   const o = product.selectedOptions || {};
   const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
   const imgSrc = getImgSrc(product);
@@ -327,30 +282,23 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         )}
       </td>
       <td style={{ ...tdBase, padding: '7px 9px', fontSize: '12px', lineHeight: '1.55', textAlign: 'left', verticalAlign: 'top' }}>
-        {classic ? (
-          <>
-            <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-            {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
-            {o.finish    && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
-            {o.leadTime  && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
-            {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
-            {o.size      && <div><strong>Size:</strong> {o.size}</div>}
-            {materials   && <div><strong>Materials:</strong> {materials}</div>}
-          </>
-        ) : (
-          <>
-            <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-            {o.specifications && htmlToLines(o.specifications).map((line, i) => (
-              <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{fmtLine(line)}</div>
+        <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
+        {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+        {o.finish && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
+        {o.leadTime && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
+        {o.fabric && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
+        {o.size && <div><strong>Dimensions:</strong> {o.size}</div>}
+        {materials && <div><strong>Materials:</strong> {materials}</div>}
+        {/* Category-specific structured fields */}
+        {/* {catEntries.length > 0 && (
+          <div style={{ marginTop: '4px', borderTop: '1px dashed #e5e7eb', paddingTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+            {catEntries.map(([k, v]) => (
+              <span key={k} style={{ fontSize: '11px', color: '#4b5563' }}>
+                <strong>{CA_LABELS[k]}:</strong> {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v}
+              </span>
             ))}
-            {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
-            {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
-            {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
-            {o.fabricClient       && <div><strong>Fabric:</strong> {o.fabricClient}</div>}
-            {o.size               && <div><strong>Dimensions:</strong> {o.size}</div>}
-            {ca.collection        && <div><strong>Collection:</strong> {ca.collection}</div>}
-          </>
-        )}
+          </div>
+        )} */}
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
@@ -618,17 +566,6 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [excludedProducts, setExcludedProducts] = useState([]);
 
   const [hiddenIds, setHiddenIds]           = useState(new Set());
-  const [docTemplate, setDocTemplate] = useState(() => localStorage.getItem('henderson_proposal_template') || 'modern');
-  const isClassic = docTemplate === 'classic';
-  const ActiveRow   = React.useMemo(() => isClassic ? (p) => <ProductRow   {...p} classic /> : ProductRow,   [isClassic]);
-  const ActiveRowV2 = React.useMemo(() => isClassic ? (p) => <ProductRowV2 {...p} classic /> : ProductRowV2, [isClassic]);
-  const handleTemplateToggle = (tpl) => {
-    setDocTemplate(tpl);
-    localStorage.setItem('henderson_proposal_template', tpl);
-    didPaginate.current = false;
-    setPages(null);
-    setReady(false);
-  };
   const [showExcludedPanel, setShowExcludedPanel] = useState(false);
   const [showTogglePanel, setShowTogglePanel]     = useState(false);
   const [savingHidden, setSavingHidden]     = useState(false);
@@ -1088,26 +1025,11 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       rps.forEach(({ sid, product: p }, i) => {
         const o = p.selectedOptions || {};
         const lines = [];
-        const pca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
-        if (isClassic) {
-          if (p.name) lines.push('<div style="font-weight:600;margin-bottom:3px;font-size:13px">' + p.name + '</div>');
-          if (o.specifications) lines.push('<div>' + o.specifications.replace(/<[^>]+>/g, '') + '</div>');
-          if (o.finish)   lines.push('<div><strong>Color / Finish:</strong> ' + o.finish + '</div>');
-          if (o.leadTime) lines.push('<div><strong>Lead Time:</strong> ' + o.leadTime + '</div>');
-          if (o.fabric)   lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
-          if (o.size)     lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
-        } else {
-          if (p.name) lines.push('<div style="font-size:12px;margin-bottom:2px"><strong>Item Name:</strong> ' + p.name + '</div>');
-          if (o.specifications) htmlToLines(o.specifications).forEach(line => {
-            lines.push(`<div style="font-size:12px;line-height:1.5;margin:0 0 1px 0">${fmtLineHtml(line)}</div>`);
-          });
-          if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
-          if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
-          if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');
-          if (o.fabricClient)       lines.push('<div><strong>Fabric:</strong> ' + o.fabricClient + '</div>');
-          if (o.size)               lines.push('<div><strong>Dimensions:</strong> ' + o.size + '</div>');
-          if (pca.collection)       lines.push('<div><strong>Collection:</strong> ' + pca.collection + '</div>');
-        }
+        if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
+        if (o.specifications) lines.push(renderRichTextHtml(o.specifications));
+        if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
+        if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
+        if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
         const taxRate = p.isParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
         const COL1 = 88, COL3 = 148;
         const midW = CONTENT_W - COL1 - COL3;
@@ -1137,7 +1059,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     document.body.removeChild(sandbox);
     setPages(packItems(items, headerH, contHeaderH));
     setReady(true);
-  }, [buildRoomGroups, isClassic]);
+  }, [buildRoomGroups]);
 
   useEffect(() => {
     if (pages !== null || visibleProducts.length === 0) return;
@@ -1228,8 +1150,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         .lp-slot { overflow: visible; }
         .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
         .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
-        .proposal-desc p { font-size: 12px !important; margin: 0 0 1px 0 !important; line-height: 1.5; }
-        .proposal-desc strong { font-size: 12px !important; }
       `}</style>
 
       {/* ── Toolbar ── */}
@@ -1304,18 +1224,6 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
             </div>
           </div>
 
-          {/* Template toggle */}
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-            <button
-              onClick={() => handleTemplateToggle('classic')}
-              className={`px-3 py-2 transition-colors ${isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Classic</button>
-            <button
-              onClick={() => handleTemplateToggle('modern')}
-              className={`px-3 py-2 transition-colors ${!isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Modern</button>
-          </div>
-
           {/* Print */}
           <button onClick={() => setShowPrintInstructions(true)} className="flex items-center gap-2 px-4 py-2 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-sm font-medium">
             <Printer className="w-4 h-4" /> Print / Save PDF
@@ -1355,7 +1263,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               </tr>
               {rps.map(({ sid, product: p }, i) => {
                 const key = room + '__' + i;
-                return <ActiveRowV2 key={key} product={p} isFirst={i === 0} ref={el => { if (el) rowRefs.current[key] = el; }} />;
+                const MeasureRow = ProductRowV2;
+                return <MeasureRow key={key} product={p} isFirst={i === 0} ref={el => { if (el) rowRefs.current[key] = el; }} />;
               })}
             </tbody>
           </table>
@@ -1377,7 +1286,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                   <div className="lp">
                     <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
-                      {renderItems(items, undefined, undefined, productsMap, ActiveRowV2)}
+                      {renderItems(items, undefined, undefined, productsMap, ProductRowV2)}
                       {pi === (pages || []).length - 1 && (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
