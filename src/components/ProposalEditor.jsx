@@ -15,6 +15,12 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
 
+// Strip inline font-size from TipTap HTML so it inherits the parent cell's 12px
+const stripFontSize = (html) => {
+  if (!html || typeof html !== 'string') return html;
+  return html.replace(/font-size\s*:\s*[^;}"']+;?/gi, '');
+};
+
 // Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
 const htmlToLines = (html) => {
   if (!html || typeof html !== 'string') return [];
@@ -228,7 +234,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
         {classic ? (
           <>
             <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-            {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+            {o.specifications && renderRichText(stripFontSize(o.specifications), { color: '#000000', marginBottom: '1px', fontSize: '12px' })}
             {o.finish    && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
             {o.leadTime  && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
             {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
@@ -330,7 +336,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         {classic ? (
           <>
             <div style={{ fontWeight: '600', marginBottom: '3px', fontSize: '13px' }}>{product.name || 'Untitled'}</div>
-            {o.specifications && renderRichText(o.specifications, { color: '#000000', marginBottom: '1px' })}
+            {o.specifications && renderRichText(stripFontSize(o.specifications), { color: '#000000', marginBottom: '1px', fontSize: '12px' })}
             {o.finish    && <div><strong>Color / Finish:</strong> {resolveFinish(o.finish)}</div>}
             {o.leadTime  && <div><strong>Lead Time:</strong> {o.leadTime}</div>}
             {o.fabric    && <div><strong>Fabric:</strong> {resolveFabric(o.fabric)}</div>}
