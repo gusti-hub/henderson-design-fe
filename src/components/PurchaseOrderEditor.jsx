@@ -554,11 +554,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
             <button
               onClick={() => handleTemplateToggle('classic')}
               className={`px-3 py-2 transition-colors ${isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Classic</button>
+            >Version 1</button>
             <button
               onClick={() => handleTemplateToggle('modern')}
               className={`px-3 py-2 transition-colors ${!isClassic ? 'bg-[#005670] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >Modern</button>
+            >Version 2</button>
           </div>
           <button
             onClick={() => setShowPrintInstructions(true)}
