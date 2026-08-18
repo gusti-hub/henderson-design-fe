@@ -760,7 +760,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead Time</span><span className="desc-row-value">{o.leadTime}</span></div>}
                         </>
                       )}
-                      {sidemark ? (
+                      {isClassic && sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>
                           <span style={{ color: '#333', wordBreak: 'break-word' }}>{sidemark}</span>
