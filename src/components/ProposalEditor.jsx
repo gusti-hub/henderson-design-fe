@@ -249,7 +249,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
             {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
             {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
             {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
-            {o.fabricClient       && <div><strong>Fabric:</strong> {o.fabricClient}</div>}
+            {(o.fabricClient || o.fabric) && <div><strong>Fabric:</strong> {o.fabricClient || o.fabric}</div>}
             {o.size               && <div><strong>Dimensions:</strong> {o.size}</div>}
             {ca.collection        && <div><strong>Collection:</strong> {ca.collection}</div>}
           </>
@@ -352,7 +352,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
             {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
             {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
             {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
-            {o.fabricClient       && <div><strong>Fabric:</strong> {o.fabricClient}</div>}
+            {(o.fabricClient || o.fabric) && <div><strong>Fabric:</strong> {o.fabricClient || o.fabric}</div>}
             {o.size               && <div><strong>Dimensions:</strong> {o.size}</div>}
             {ca.collection        && <div><strong>Collection:</strong> {ca.collection}</div>}
           </>
@@ -1110,7 +1110,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
           if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
           if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');
-          if (o.fabricClient)       lines.push('<div><strong>Fabric:</strong> ' + o.fabricClient + '</div>');
+          if (o.fabricClient || o.fabric) lines.push('<div><strong>Fabric:</strong> ' + (o.fabricClient || o.fabric) + '</div>');
           if (o.size)               lines.push('<div><strong>Dimensions:</strong> ' + o.size + '</div>');
           if (pca.collection)       lines.push('<div><strong>Collection:</strong> ' + pca.collection + '</div>');
         }
