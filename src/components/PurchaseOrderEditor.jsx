@@ -15,7 +15,7 @@ const htmlToLines = (html) => {
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
-  return plain.split('\n').map(l => l.trim()).filter(Boolean);
+  return plain.split('\n').map(l => l.trim().replace(/\*\*/g, '')).filter(Boolean);
 };
 
 // Bold the text before the first colon in a plain-text line
