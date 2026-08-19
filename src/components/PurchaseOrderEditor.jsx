@@ -469,6 +469,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           text-transform: uppercase; letter-spacing: 0.3px; margin-right: 4px;
         }
         .desc-row-label::after { content: ':'; }
+        .v2-labels .desc-row-label { text-transform: none; letter-spacing: normal; }
         .desc-row-value { text-align: left; color: #222; font-size: 11px; word-break: break-word; }
         .sidemark-strip {
           display: block; margin-top: 5px; padding-top: 5px;
@@ -715,7 +716,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                     </td>
 
                     {/* Description cell */}
-                    <td className="desc-cell">
+                    <td className={`desc-cell${!isClassic ? ' v2-labels' : ''}`}>
                       <div className="desc-row">
                         <span className="desc-row-label">Quantity</span>
                         <span className="desc-row-value">
