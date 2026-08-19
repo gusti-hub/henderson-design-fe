@@ -754,12 +754,12 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
                             <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{fmtLine(line)}</div>
                           ))}
-                          {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wood finish</strong></span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
-                          {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label"><strong>Drawer fronts</strong></span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
-                          {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label"><strong>Wing panels</strong></span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
-                          {(o.fabricVendor || o.fabric) && <div className="desc-row"><span className="desc-row-label"><strong>Fabric</strong></span><span className="desc-row-value">{o.fabricVendor || o.fabric}</span></div>}
-                          {(o.size || o.dimension) && <div className="desc-row"><span className="desc-row-label"><strong>Dimensions</strong></span><span className="desc-row-value">{o.size || o.dimension}</span></div>}
-                          {product.product_id   && <div className="desc-row"><span className="desc-row-label"><strong>SKU</strong></span><span className="desc-row-value">{product.product_id}</span></div>}
+                          {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label">Wood finish</span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
+                          {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label">Drawer fronts</span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
+                          {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label">Wing panels</span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
+                          {(o.fabricVendor || o.fabric) && <div className="desc-row"><span className="desc-row-label">Fabric</span><span className="desc-row-value">{o.fabricVendor || o.fabric}</span></div>}
+                          {(o.size || o.dimension) && <div className="desc-row"><span className="desc-row-label">Dimensions</span><span className="desc-row-value">{o.size || o.dimension}</span></div>}
+                          {product.product_id   && <div className="desc-row"><span className="desc-row-label">SKU</span><span className="desc-row-value">{product.product_id}</span></div>}
                           {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead time</span><span className="desc-row-value">{o.leadTime}</span></div>}
                         </>
                       )}
