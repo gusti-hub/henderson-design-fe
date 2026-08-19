@@ -4,6 +4,11 @@ import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText } from '../utils/richTextUtils';
 
+const stripFontSize = (html) => {
+  if (!html || typeof html !== 'string') return html;
+  return html.replace(/font-size\s*:\s*[^;}"']+;?/gi, '');
+};
+
 // Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
 const htmlToLines = (html) => {
   if (!html || typeof html !== 'string') return [];
@@ -751,9 +756,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                               <span style={{ fontSize: '11px', color: '#222' }}>{product.name}</span>
                             </div>
                           ) : null}
-                          {vendorDesc && htmlToLines(vendorDesc).map((line, i) => (
-                            <div key={i} style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', textAlign: 'left', color: '#222' }}>{fmtLine(line)}</div>
-                          ))}
+                          {vendorDesc && renderRichText(stripFontSize(vendorDesc), { fontSize: '11px', lineHeight: '1.5', marginBottom: '1px', color: '#222' })}
                           {o.woodFinishVendor   && <div className="desc-row"><span className="desc-row-label">Wood finish</span><span className="desc-row-value">{o.woodFinishVendor}</span></div>}
                           {o.drawerFrontsVendor && <div className="desc-row"><span className="desc-row-label">Drawer fronts</span><span className="desc-row-value">{o.drawerFrontsVendor}</span></div>}
                           {o.wingPanelsVendor   && <div className="desc-row"><span className="desc-row-label">Wing panels</span><span className="desc-row-value">{o.wingPanelsVendor}</span></div>}
@@ -763,7 +766,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                           {o.leadTime && <div className="desc-row"><span className="desc-row-label">Lead time</span><span className="desc-row-value">{o.leadTime}</span></div>}
                         </>
                       )}
-                      {isClassic && sidemark ? (
+                      {sidemark ? (
                         <div className="sidemark-strip">
                           <span className="desc-row-label">Sidemark</span>
                           <span style={{ color: '#333', wordBreak: 'break-word' }}>{sidemark}</span>

@@ -243,9 +243,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
         ) : (
           <>
             <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-            {o.specifications && htmlToLines(o.specifications).map((line, i) => (
-              <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{fmtLine(line)}</div>
-            ))}
+            {o.specifications && renderRichText(stripFontSize(o.specifications), { fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' })}
             {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
             {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
             {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -346,9 +344,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
         ) : (
           <>
             <div style={{ marginBottom: '2px' }}><strong>Item Name:</strong> {product.name || 'Untitled'}</div>
-            {o.specifications && htmlToLines(o.specifications).map((line, i) => (
-              <div key={i} style={{ fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' }}>{fmtLine(line)}</div>
-            ))}
+            {o.specifications && renderRichText(stripFontSize(o.specifications), { fontSize: '12px', lineHeight: '1.5', marginBottom: '1px' })}
             {o.woodFinishClient   && <div><strong>Wood Finish:</strong> {o.woodFinishClient}</div>}
             {o.drawerFrontsClient && <div><strong>Drawer Fronts:</strong> {o.drawerFrontsClient}</div>}
             {o.wingPanelsClient   && <div><strong>Wing Panels:</strong> {o.wingPanelsClient}</div>}
@@ -1104,9 +1100,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           if (o.size)     lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
         } else {
           if (p.name) lines.push('<div style="font-size:12px;margin-bottom:2px"><strong>Item Name:</strong> ' + p.name + '</div>');
-          if (o.specifications) htmlToLines(o.specifications).forEach(line => {
-            lines.push(`<div style="font-size:12px;line-height:1.5;margin:0 0 1px 0">${fmtLineHtml(line)}</div>`);
-          });
+          if (o.specifications) lines.push(stripFontSize(o.specifications));
           if (o.woodFinishClient)   lines.push('<div><strong>Wood Finish:</strong> ' + o.woodFinishClient + '</div>');
           if (o.drawerFrontsClient) lines.push('<div><strong>Drawer Fronts:</strong> ' + o.drawerFrontsClient + '</div>');
           if (o.wingPanelsClient)   lines.push('<div><strong>Wing Panels:</strong> ' + o.wingPanelsClient + '</div>');
