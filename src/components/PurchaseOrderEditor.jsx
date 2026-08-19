@@ -469,7 +469,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
           text-transform: uppercase; letter-spacing: 0.3px; margin-right: 4px;
         }
         .desc-row-label::after { content: ':'; }
-        .v2-labels .desc-row-label { text-transform: none; letter-spacing: normal; font-size: 11px; }
+        .v2-labels .desc-row-label { text-transform: none; letter-spacing: normal; font-size: 11px; color: #222; }
         .v2-labels .desc-row { border-bottom: none; padding: 1px 0; }
         .v2-labels .desc-row-value { font-size: 11px; }
         .desc-row-value { text-align: left; color: #222; font-size: 11px; word-break: break-word; }
