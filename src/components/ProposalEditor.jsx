@@ -18,7 +18,9 @@ import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
 // Strip inline font-size from TipTap HTML so it inherits the parent cell's 12px
 const stripFontSize = (html) => {
   if (!html || typeof html !== 'string') return html;
-  return html.replace(/font-size\s*:\s*[^;}"']+;?/gi, '');
+  return html
+    .replace(/font-size\s*:\s*[^;}"']+;?/gi, '')
+    .replace(/text-align\s*:\s*[^;}"']+;?/gi, '');
 };
 
 // Strip HTML tags and return plain-text lines — guarantees no CSS can inflate font size
