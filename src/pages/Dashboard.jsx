@@ -14,7 +14,6 @@ import {
   CheckCircle, DollarSign, Download, Eye, Circle 
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
-import FinancialReviewSection from '../components/FinancialReviewSection';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -330,9 +329,6 @@ const Dashboard = () => {
           </table>
         </div>
       </div>
-
-      {/* Restricted Financial Review Section — only rendered for the one account allowed to see it */}
-      <FinancialReviewSection />
     </div>
   );
 };

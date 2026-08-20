@@ -136,15 +136,16 @@ const FinancialReviewSection = () => {
   const kpis = extractKpis(execSheet);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#005670] to-[#007a9a] rounded-xl flex items-center justify-center shadow-lg">
             <Lock className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-900">HDG Weekly Financial Review</h3>
-            <p className="text-xs text-gray-500">Visible only to you · report date {formatDate(current?.reportDate)}</p>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Financial Review</h1>
+            <p className="text-sm text-gray-600 mt-1">Visible only to you · report date {formatDate(current?.reportDate)}</p>
           </div>
         </div>
 
@@ -164,7 +165,7 @@ const FinancialReviewSection = () => {
           {current?.file?.url && (
             <a
               href={`${backendServer}/api/financial-review/${current._id}/download`}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 bg-white"
             >
               <Download className="w-4 h-4" /> Download
             </a>
@@ -181,27 +182,27 @@ const FinancialReviewSection = () => {
       </div>
 
       {error && (
-        <div className="mx-6 mt-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+        <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-[#005670]" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 animate-spin text-[#005670]" />
         </div>
       ) : !current ? (
-        <div className="text-center py-16">
-          <FileSpreadsheet className="w-14 h-14 text-gray-300 mx-auto mb-3" />
+        <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
+          <FileSpreadsheet className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 font-medium">No weekly report uploaded yet</p>
           <p className="text-sm text-gray-400 mt-1">Upload the HDG Weekly Financial Review Package to get started.</p>
         </div>
       ) : (
-        <div className="p-6 space-y-6">
+        <>
           {kpis.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {kpis.map((kpi) => (
-                <div key={kpi.label} className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                <div key={kpi.label} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                   <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
                   <p className="text-xl font-bold text-gray-900 mt-1">{formatCellValue(kpi.value)}</p>
                 </div>
@@ -218,7 +219,7 @@ const FinancialReviewSection = () => {
               const isOpen = !!expanded[group.title];
 
               return (
-                <div key={group.title} className="border border-gray-200 rounded-xl overflow-hidden">
+                <div key={group.title} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                   <button
                     onClick={() => toggleGroup(group.title)}
                     className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
@@ -237,7 +238,7 @@ const FinancialReviewSection = () => {
               );
             })}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

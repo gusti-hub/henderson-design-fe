@@ -1,9 +1,9 @@
 // AdminPanel.jsx — ✅ PATCHED: added Expense Manager menu item
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Home, MapPin, Store, UserCog, BarChart2, Calculator, Users,
   AlertCircle, RefreshCcw, Tags, User, HelpCircle, LogOut,
-  FileText, ChevronRight, Menu, X, Sparkles, Receipt,
+  FileText, ChevronRight, Menu, X, Sparkles, Receipt, Lock,
 } from 'lucide-react';
 import UserManagement from './UserManagement';
 import Profile from './Profile';
@@ -17,7 +17,10 @@ import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
 import VendorManagement from './VendorManagement';
 import ExpenseManager from './ExpenseManager'; // ✅ NEW
+import FinancialReviewSection from '../components/FinancialReviewSection';
 import { useAuth } from '../hooks/useAuth';
+
+const FINANCIAL_REVIEW_EMAIL = 'agustianggaraputra@gmail.com';
 
 const AdminPanel = () => {
   const { user, logout } = useAuth();
@@ -28,6 +31,7 @@ const AdminPanel = () => {
 
   const adminName = user?.name || 'Admin';
   const handleLogout = () => logout();
+  const canSeeFinancialReview = localStorage.getItem('email') === FINANCIAL_REVIEW_EMAIL;
 
   const menuItems = [
     { icon: Home,      label: 'Dashboard',          path: '/dashboard',        description: 'Overview & Analytics'      },
@@ -38,6 +42,9 @@ const AdminPanel = () => {
     { icon: Users,     label: 'Client Management',   path: '/client-management',description: 'Client accounts & journey' },
     { icon: Store,     label: 'Product Config',      path: '/product',          description: 'Product settings'          },
     { icon: MapPin,    label: 'Product Mapping',     path: '/product-mapping',  description: 'Location mapping'          },
+    ...(canSeeFinancialReview
+      ? [{ icon: Lock, label: 'Financial Review', path: '/financial-review', description: 'Weekly financial package' }]
+      : []),
   ];
 
   const bottomMenuItems = [
@@ -70,6 +77,7 @@ const AdminPanel = () => {
       case '/product':           return <ProductConfiguration />;
       case '/product-mapping':   return <ProductMapping />;
       case '/vendor-management': return <VendorManagement />;
+      case '/financial-review':  return canSeeFinancialReview ? <FinancialReviewSection /> : <Dashboard />;
       default:                   return <Dashboard />;
     }
   };
