@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Loader2, Upload, Download, ChevronDown, ChevronRight,
-  FileSpreadsheet, Lock
+  Loader2, Upload, Download, FileSpreadsheet, Lock
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 
@@ -66,7 +65,7 @@ const FinancialReviewSection = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [expanded, setExpanded] = useState({});
+  const [activeReport, setActiveReport] = useState(REPORT_GROUPS[0].title);
 
   const loadList = useCallback(async () => {
     const res = await fetch(`${backendServer}/api/financial-review`, { headers: authHeaders() });
@@ -130,10 +129,16 @@ const FinancialReviewSection = () => {
     }
   };
 
-  const toggleGroup = (title) => setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
-
   const execSheet = current?.sheets?.find((s) => s.name === 'Executive Dashboard');
   const kpis = extractKpis(execSheet);
+
+  const availableGroups = current
+    ? REPORT_GROUPS.map((group) => ({
+        ...group,
+        sheets: group.sheets.map((name) => current.sheets.find((s) => s.name === name)).filter(Boolean),
+      })).filter((group) => group.sheets.length > 0)
+    : [];
+  const activeGroup = availableGroups.find((g) => g.title === activeReport) || availableGroups[0];
 
   return (
     <div className="space-y-6">
@@ -210,33 +215,30 @@ const FinancialReviewSection = () => {
             </div>
           )}
 
-          <div className="space-y-3">
-            {REPORT_GROUPS.map((group) => {
-              const groupSheets = group.sheets
-                .map((name) => current.sheets.find((s) => s.name === name))
-                .filter(Boolean);
-              if (groupSheets.length === 0) return null;
-              const isOpen = !!expanded[group.title];
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="flex overflow-x-auto border-b border-gray-200 bg-gray-50">
+              {availableGroups.map((group) => (
+                <button
+                  key={group.title}
+                  onClick={() => setActiveReport(group.title)}
+                  className={`shrink-0 px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                    activeGroup?.title === group.title
+                      ? 'border-[#005670] text-[#005670] bg-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                  }`}
+                >
+                  {group.title}
+                </button>
+              ))}
+            </div>
 
-              return (
-                <div key={group.title} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                  <button
-                    onClick={() => toggleGroup(group.title)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
-                  >
-                    <span className="font-semibold text-gray-800 text-sm">{group.title}</span>
-                    {isOpen ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
-                  </button>
-                  {isOpen && (
-                    <div className="p-4 space-y-6">
-                      {groupSheets.map((sheet) => (
-                        <SheetTable key={sheet.name} sheet={sheet} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {activeGroup && (
+              <div className="p-4 space-y-6">
+                {activeGroup.sheets.map((sheet) => (
+                  <SheetTable key={sheet.name} sheet={sheet} />
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
