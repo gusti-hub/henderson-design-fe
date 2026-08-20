@@ -247,6 +247,7 @@ const Login = () => {
         localStorage.setItem('userId', data._id);
         localStorage.setItem('name', data.name);
         localStorage.setItem('role', data.role);
+        if (data.email) localStorage.setItem('email', data.email);
         console.log('User data stored successfully');
       } catch (storageError) {
         console.error('Failed to store user data:', storageError);
