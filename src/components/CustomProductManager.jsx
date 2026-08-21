@@ -657,7 +657,6 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           productVendor:         product.vendor             || '',
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
-          shipToName:            product.shipTo       || '',
           leadTime:              product.leadTime     || '',  // ✅ PATCH 10
           msrp:          sellPrice,
           markupPercent: 0,
@@ -2654,7 +2653,7 @@ const ProductCard = ({
     const needsFields      = BACKFILL_KEYS.some(k => !opts[k]);
     const needsVendor      = !product.vendor;
     const needsCollection  = !(opts.customAttributes?.collection);
-    const needsShipTo      = !opts.shipToName;
+    const needsShipTo      = !opts.shipToVendorId;
     if (!needsFields && !needsVendor && !needsCollection && !needsShipTo) return;
 
     const libId = product.libraryProductId;
@@ -2695,9 +2694,30 @@ const ProductCard = ({
           });
         }
 
-        // Backfill shipToName from library product's shipTo field
+        // Backfill Ship To: search vendor by name, then auto-select so address also populates
         if (needsShipTo && lib.shipTo) {
-          upd('shipToName', lib.shipTo);
+          fetch(`${backendServer}/api/vendors?search=${encodeURIComponent(lib.shipTo)}&limit=5&status=active`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(vendorData => {
+              const list = vendorData?.vendors || [];
+              const match = list.find(v =>
+                v.name?.toLowerCase().trim() === lib.shipTo.toLowerCase().trim()
+              ) || list[0];
+              if (match) {
+                handleShipToSelect({
+                  vendorId:   match._id,
+                  shipToName: match.name || '',
+                  street:     match.address?.street  || '',
+                  city:       match.address?.city    || '',
+                  state:      match.address?.state   || '',
+                  postalCode: match.address?.zip     || '',
+                  country:    match.address?.country || '',
+                });
+              }
+            })
+            .catch(() => {});
         }
 
         // Backfill collection (stored in customAttributes) from library product
@@ -3290,7 +3310,6 @@ const ProductCard = ({
                       onChange={(e) => { setLocal('leadTime', e.target.value); upd('leadTime', e.target.value); }}
                       className={inputCls}
                       placeholder="e.g. 8–10 weeks, 3 months…"
-                      disabled={isFromLibrary}
                     />
                   </div>
                 </div>
