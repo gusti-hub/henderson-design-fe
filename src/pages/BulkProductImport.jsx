@@ -135,6 +135,11 @@ const COLUMN_MAP = {
   color:               'colorFinish',
   finish:              'colorFinish',
 
+  // Ship To
+  ship_to:             'shipTo',
+  shipto:              'shipTo',
+  ship_to_address:     'shipTo',
+
   // Other
   item_url:            'itemUrl',
   itemurl:             'itemUrl',

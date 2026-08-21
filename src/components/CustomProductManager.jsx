@@ -657,6 +657,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           productVendor:         product.vendor             || '',
           links:                 product.itemUrl ? [product.itemUrl] : [],
           itemClass:             product.itemClass    || '',
+          shipToName:            product.shipTo       || '',
           leadTime:              product.leadTime     || '',  // ✅ PATCH 10
           msrp:          sellPrice,
           markupPercent: 0,
@@ -2558,6 +2559,7 @@ const ProductCard = ({
   };
 
   const opts = product.selectedOptions || {};
+  const isFromLibrary = product.sourceType === 'library';
 
   // ✅ PATCH 7+9+10: localFields includes leadTime + vendor/client fields
   const [localFields, setLocalFields] = useState({
@@ -3182,6 +3184,12 @@ const ProductCard = ({
               <span className="text-xs text-red-700 font-medium">Read-only — proposal is approved</span>
             </div>
           )}
+          {isFromLibrary && (
+            <div className="px-6 py-2 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+              <span className="text-xs text-purple-700 font-medium">Fields from catalog are read-only. Notes, sidemark, status, and shipping details can still be edited.</span>
+            </div>
+          )}
 
           {/* Tab Bar — always interactive (outside fieldset) */}
           <div className="flex border-b border-gray-200 px-6 pt-4 gap-1 overflow-x-auto">
@@ -3215,6 +3223,7 @@ const ProductCard = ({
                     onChange={(e) => { setLocal('name', e.target.value); onUpdate(index, 'name', e.target.value); }}
                     className={inputCls}
                     placeholder="e.g. Living Room - Sofa Pillow"
+                    disabled={isFromLibrary}
                   />
                 </div>
 
@@ -3408,7 +3417,7 @@ const ProductCard = ({
                       value={localFields.product_id}
                       onChange={(e) => { setLocal('product_id', e.target.value); onUpdate(index, 'product_id', e.target.value); }}
                       className={inputCls}
-                      disabled={locked}
+                      disabled={locked || isFromLibrary}
                     />
                   </div>
                   <div>
@@ -3421,7 +3430,7 @@ const ProductCard = ({
                     />
                   </div>
                 </div>
-                <div className={`grid grid-cols-2 gap-4${locked ? ' pointer-events-none opacity-60' : ''}`}>
+                <div className={`grid grid-cols-2 gap-4${(locked || isFromLibrary) ? ' pointer-events-none opacity-60' : ''}`}>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
                     <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
@@ -3436,10 +3445,10 @@ const ProductCard = ({
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-sm font-medium text-gray-700">Vendor Description</label>
-                      <button type="button" onClick={() => {
+                      {!isFromLibrary && <button type="button" onClick={() => {
                         setLocal('vendorDescription', localFields.specifications);
                         upd('vendorDescription', localFields.specifications);
-                      }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>
+                      }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>}
                     </div>
                     <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
                       <RichTextEditor
@@ -3459,7 +3468,7 @@ const ProductCard = ({
                       value={localFields.finish}
                       onChange={(e) => { setLocal('finish', e.target.value); upd('finish', e.target.value); }}
                       className={inputCls}
-                      disabled={locked}
+                      disabled={locked || isFromLibrary}
                     />
                   </div>
                   <div>
@@ -3470,7 +3479,7 @@ const ProductCard = ({
                       onChange={(e) => { setLocal('size', e.target.value); upd('size', e.target.value); }}
                       className={inputCls}
                       placeholder="e.g. 48&quot; × 24&quot; × 36&quot;"
-                      disabled={locked}
+                      disabled={locked || isFromLibrary}
                     />
                   </div>
                   <div>
@@ -3484,7 +3493,7 @@ const ProductCard = ({
                         upd('links', e.target.value ? [e.target.value, ...rest] : rest);
                       }}
                       className={inputCls}
-                      disabled={locked}
+                      disabled={locked || isFromLibrary}
                     />
                   </div>
                 </div>
@@ -3499,7 +3508,7 @@ const ProductCard = ({
                       onChange={(e) => updCA('materials', e.target.value)}
                       className={inputCls}
                       placeholder="e.g. Solid oak, velvet upholstery"
-                      disabled={locked}
+                      disabled={locked || isFromLibrary}
                     />
                   </div>
                   <div>
@@ -3533,7 +3542,7 @@ const ProductCard = ({
                       value={localFields.fabric}
                       onChange={(e) => { setLocal('fabric', e.target.value); upd('fabric', e.target.value); }}
                       className={inputCls}
-                      disabled={locked}
+                      disabled={locked || isFromLibrary}
                     />
                   </div>
                 </div>
@@ -3544,12 +3553,12 @@ const ProductCard = ({
                     value={localFields.category}
                     onChange={(e) => { setLocal('category', e.target.value); onUpdate(index, 'category', e.target.value); }}
                     className={inputCls}
-                    disabled={locked}
+                    disabled={locked || isFromLibrary}
                   />
                 </div>
 
                 {/* ── Vendor Fields ── */}
-                <div className={`pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
+                <div className={`pt-3 border-t border-gray-100${(locked || isFromLibrary) ? ' pointer-events-none opacity-60' : ''}`}>
                   <h4 className="font-semibold text-blue-700 text-sm mb-2">Vendor Info</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {VENDOR_FIELDS_CPM.map(({ key, label }) => (
@@ -3557,14 +3566,14 @@ const ProductCard = ({
                         <p className="text-xs font-medium text-blue-600 mb-1">{label}</p>
                         <input type="text" value={localFields[key] || ''}
                           onChange={e => { setLocal(key, e.target.value); upd(key, e.target.value); }}
-                          className={`${inputCls} text-sm`} disabled={locked} placeholder="—" />
+                          className={`${inputCls} text-sm`} disabled={locked || isFromLibrary} placeholder="—" />
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* ── Client Fields ── */}
-                <div className={locked ? 'pointer-events-none opacity-60' : ''}>
+                <div className={(locked || isFromLibrary) ? 'pointer-events-none opacity-60' : ''}>
                   <h4 className="font-semibold text-green-700 text-sm mb-2">Client Info</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {CLIENT_FIELDS_CPM.map(({ key, label }) => (
@@ -3572,13 +3581,13 @@ const ProductCard = ({
                         <p className="text-xs font-medium text-green-600 mb-1">{label}</p>
                         <input type="text" value={localFields[key] || ''}
                           onChange={e => { setLocal(key, e.target.value); upd(key, e.target.value); }}
-                          className={`${inputCls} text-sm`} disabled={locked} placeholder="—" />
+                          className={`${inputCls} text-sm`} disabled={locked || isFromLibrary} placeholder="—" />
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className={`space-y-3 pt-3 border-t border-gray-100${locked ? ' pointer-events-none opacity-60' : ''}`}>
+                <div className={`space-y-3 pt-3 border-t border-gray-100${(locked || isFromLibrary) ? ' pointer-events-none opacity-60' : ''}`}>
                   <h4 className="font-semibold text-purple-700 text-sm">Custom Attributes</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(CA_LABELS).map(([key, label]) => (
@@ -3587,7 +3596,7 @@ const ProductCard = ({
                         <input type="text"
                           value={customAttrs[key] != null ? String(customAttrs[key]) : ''}
                           onChange={e => updCA(key, e.target.value)}
-                          className={`${inputCls} text-sm`} disabled={locked} placeholder="—" />
+                          className={`${inputCls} text-sm`} disabled={locked || isFromLibrary} placeholder="—" />
                       </div>
                     ))}
                     {Object.keys(customAttrs).filter(k => !CA_LABELS[k]).map(key => (
@@ -3634,7 +3643,7 @@ const ProductCard = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ship To Name</label>
-                    <input type="text" value={opts.shipToName || ''} onChange={(e) => upd('shipToName', e.target.value)} className={inputCls} />
+                    <input type="text" value={opts.shipToName || ''} onChange={(e) => upd('shipToName', e.target.value)} className={inputCls} disabled={isFromLibrary} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
