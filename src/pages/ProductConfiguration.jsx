@@ -78,6 +78,7 @@ const emptyForm = () => ({
   collection:          '',
   package:             '',
   dimension:           '',
+  shipTo:              '',
   buyPrice:            '',   // cost / vendor price
   sellPrice2025:       '',   // 2025 pricing
   sellPrice2026:       '',   // 2026 pricing (default)
@@ -225,6 +226,7 @@ const ProductConfiguration = () => {
       collection:        product.collection        || '',
       package:           product.package           || '',
       dimension:         product.dimension         || '',
+      shipTo:            product.shipTo            || '',
       // ✅ support both new fields and legacy `price`
       buyPrice:          product.buyPrice      ?? '',
       sellPrice2025:     product.sellPrice2025 ?? '',
@@ -309,6 +311,7 @@ const ProductConfiguration = () => {
       fd.append('collection',        formData.collection  || 'General');
       fd.append('package',           formData.package     || '');
       fd.append('dimension',         formData.dimension);
+      fd.append('shipTo',            formData.shipTo            || '');
       fd.append('buyPrice',          formData.buyPrice     || 0);
       fd.append('sellPrice2025',     formData.sellPrice2025 || 0);
       fd.append('sellPrice2026',     formData.sellPrice2026 || formData.sellPrice || 0);
@@ -633,6 +636,12 @@ const ProductConfiguration = () => {
                   <input type="text" value={formData.dimension}
                     onChange={e => setFormData(f => ({ ...f, dimension: e.target.value }))}
                     className={inputCls} placeholder='48"W x 16"D x 17"H' />
+                </div>
+                <div>
+                  <label className={labelCls}>Ship To</label>
+                  <input type="text" value={formData.shipTo}
+                    onChange={e => setFormData(f => ({ ...f, shipTo: e.target.value }))}
+                    className={inputCls} placeholder="e.g. Nohie Furnishings LLC C/O Logistics Plus" />
                 </div>
                 <div>
                   <label className={labelCls}>Collection</label>

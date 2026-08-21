@@ -368,6 +368,7 @@ const BulkProductImport = ({ onComplete }) => {
           collection:        row.collection        || '',
           package:           (['Lani','Nalu','Mainland'].includes(row.package) ? row.package : ''),
           dimension:         row.dimension         || '',
+          shipTo:            row.shipTo            || '',
           sellPrice,
           sellPrice2025,
           sellPrice2026,
