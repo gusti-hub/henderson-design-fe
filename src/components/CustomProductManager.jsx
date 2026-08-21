@@ -2654,7 +2654,8 @@ const ProductCard = ({
     const needsFields      = BACKFILL_KEYS.some(k => !opts[k]);
     const needsVendor      = !product.vendor;
     const needsCollection  = !(opts.customAttributes?.collection);
-    if (!needsFields && !needsVendor && !needsCollection) return;
+    const needsShipTo      = !opts.shipToName;
+    if (!needsFields && !needsVendor && !needsCollection && !needsShipTo) return;
 
     const libId = product.libraryProductId;
     const sku   = product.product_id;
@@ -2692,6 +2693,11 @@ const ProductCard = ({
               upd(k, map[k]);
             }
           });
+        }
+
+        // Backfill shipToName from library product's shipTo field
+        if (needsShipTo && lib.shipTo) {
+          upd('shipToName', lib.shipTo);
         }
 
         // Backfill collection (stored in customAttributes) from library product
