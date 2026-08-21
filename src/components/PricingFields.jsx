@@ -49,7 +49,7 @@ const DecimalInput = ({ value, onChange, disabled, placeholder = '0.00', classNa
 };
 
 // ── Main component ─────────────────────────────────────────────────────────
-const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
+const PricingFields = ({ product, index, onUpdate, disabled = false, taxEditable = false }) => {
   const opts = product.selectedOptions || {};
 
   const num = (v) => parseFloat(v) || 0;
@@ -162,7 +162,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
         type="checkbox"
         checked={checked}
         onChange={(e) => handleChange(e.target.checked)}
-        disabled={disabled}
+        disabled={disabled && !taxEditable}
         className="w-4 h-4 rounded border-gray-300 text-[#005670] focus:ring-[#005670] disabled:cursor-not-allowed"
       />
       <span className="text-sm text-gray-700">{label}</span>
@@ -232,7 +232,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false }) => {
             <DecimalInput
               value={opts.salesTaxRate ?? 4.712}
               onChange={(v) => upd('salesTaxRate', v)}
-              disabled={disabled}
+              disabled={disabled && !taxEditable}
               placeholder="4.712"
               className={inp}
             />

@@ -3270,6 +3270,7 @@ const ProductCard = ({
                       onChange={(e) => updCA('collection', e.target.value)}
                       className={inputCls}
                       placeholder="e.g. Lani Collection"
+                      disabled={isFromLibrary}
                     />
                   </div>
                   <div>
@@ -3283,6 +3284,7 @@ const ProductCard = ({
                       onChange={(e) => { setLocal('leadTime', e.target.value); upd('leadTime', e.target.value); }}
                       className={inputCls}
                       placeholder="e.g. 8–10 weeks, 3 months…"
+                      disabled={isFromLibrary}
                     />
                   </div>
                 </div>
@@ -3638,7 +3640,7 @@ const ProductCard = ({
                       selectedVendorId={opts.shipToVendorId || null}
                       onSelect={handleShipToSelect}
                       onClear={handleShipToClear}
-                      disabled={false}
+                      disabled={isFromLibrary}
                     />
                   </div>
                   <div>
@@ -3677,7 +3679,7 @@ const ProductCard = ({
             {activeTab === 'pricing' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 className="text-base font-bold text-gray-900 mb-5">Item Pricing</h3>
-                <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={false} />
+                <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={isFromLibrary} taxEditable={true} />
               </div>
             )}
 

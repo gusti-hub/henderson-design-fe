@@ -416,7 +416,7 @@ const BulkProductImport = ({ onComplete }) => {
                 body.append(k, Array.isArray(v) ? JSON.stringify(v) : v);
               }
             });
-            const res = await fetch(`${backendServer}/api/products`, {
+            const res = await fetch(`${backendServer}/api/products?upsert=true`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}` },
               body,
