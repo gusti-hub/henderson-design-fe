@@ -3676,25 +3676,25 @@ const ProductCard = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping Street</label>
-                    <input type="text" value={opts.shippingStreet || ''} onChange={(e) => upd('shippingStreet', e.target.value)} className={inputCls} />
+                    <input type="text" value={opts.shippingStreet || ''} onChange={(e) => upd('shippingStreet', e.target.value)} className={inputCls} disabled={isFromLibrary} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping City</label>
-                    <input type="text" value={opts.shippingCity || ''} onChange={(e) => upd('shippingCity', e.target.value)} className={inputCls} />
+                    <input type="text" value={opts.shippingCity || ''} onChange={(e) => upd('shippingCity', e.target.value)} className={inputCls} disabled={isFromLibrary} />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">State</label>
-                    <input type="text" value={opts.shippingState || ''} onChange={(e) => upd('shippingState', e.target.value)} className={inputCls} />
+                    <input type="text" value={opts.shippingState || ''} onChange={(e) => upd('shippingState', e.target.value)} className={inputCls} disabled={isFromLibrary} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Postal Code</label>
-                    <input type="text" value={opts.shippingPostalCode || ''} onChange={(e) => upd('shippingPostalCode', e.target.value)} className={inputCls} />
+                    <input type="text" value={opts.shippingPostalCode || ''} onChange={(e) => upd('shippingPostalCode', e.target.value)} className={inputCls} disabled={isFromLibrary} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                    <input type="text" value={opts.shipToPhone || ''} onChange={(e) => upd('shipToPhone', e.target.value)} className={inputCls} />
+                    <input type="text" value={opts.shipToPhone || ''} onChange={(e) => upd('shipToPhone', e.target.value)} className={inputCls} disabled={isFromLibrary} />
                   </div>
                 </div>
               </div>
