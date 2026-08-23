@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   Home, MapPin, Store, Users, User, LogOut,
-  FileText, Menu, X, Receipt, Lock, ShieldCheck,
+  FileText, Menu, X, Receipt, Lock, ShieldCheck, ChevronRight,
 } from 'lucide-react';
 import UserManagement from './UserManagement';
 import Profile from './Profile';
