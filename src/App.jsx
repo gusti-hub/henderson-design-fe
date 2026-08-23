@@ -39,7 +39,7 @@ function App() {
       } />
 
       <Route path="/admin-panel" element={
-        <ProtectedRoute element={<AdminPanel />} allowedRoles={['admin', 'designer']} />
+        <ProtectedRoute element={<AdminPanel />} requireEmployee={true} />
       } />
 
       <Route path="/invoice/:clientId/:invoiceNumber" element={<InvoiceHTML />} />

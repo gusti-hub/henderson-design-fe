@@ -21,7 +21,7 @@ const clearAuth = () => {
   );
 };
 
-const ProtectedRoute = ({ element, allowedRoles }) => {
+const ProtectedRoute = ({ element, allowedRoles, requireEmployee }) => {
   const token    = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
 
@@ -30,8 +30,17 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
     return <Navigate to="/portal-login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(userRole)) {
-    return <Navigate to={userRole === 'user' ? '/client-portal' : '/admin-panel'} replace />;
+  // requireEmployee = any non-client role (all employee roles)
+  if (requireEmployee && userRole === 'user') {
+    return <Navigate to="/client-portal" replace />;
+  }
+
+  // Legacy allowedRoles check (kept for explicit role lists)
+  if (allowedRoles && !allowedRoles.includes(userRole) && !allowedRoles.includes('employee')) {
+    const isEmployee = userRole && userRole !== 'user';
+    if (allowedRoles.includes('employee') ? !isEmployee : !allowedRoles.includes(userRole)) {
+      return <Navigate to={userRole === 'user' ? '/client-portal' : '/admin-panel'} replace />;
+    }
   }
 
   return element;

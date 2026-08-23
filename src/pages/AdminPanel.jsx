@@ -1,9 +1,8 @@
-// AdminPanel.jsx — ✅ PATCHED: added Expense Manager menu item
-import React, { useState, useEffect } from 'react';
+// AdminPanel.jsx
+import React, { useState } from 'react';
 import {
-  Home, MapPin, Store, UserCog, BarChart2, Calculator, Users,
-  AlertCircle, RefreshCcw, Tags, User, HelpCircle, LogOut,
-  FileText, ChevronRight, Menu, X, Sparkles, Receipt, Lock,
+  Home, MapPin, Store, Users, User, LogOut,
+  FileText, Menu, X, Receipt, Lock, ShieldCheck,
 } from 'lucide-react';
 import UserManagement from './UserManagement';
 import Profile from './Profile';
@@ -13,43 +12,43 @@ import ClientManagement from './ClientManagement';
 import ProductConfiguration from './ProductConfiguration';
 import ProductMapping from './ProductMapping';
 import Dashboard from './Dashboard';
-import { useNavigate } from 'react-router-dom';
-import { backendServer } from '../utils/info';
 import VendorManagement from './VendorManagement';
-import ExpenseManager from './ExpenseManager'; // ✅ NEW
+import ExpenseManager from './ExpenseManager';
 import FinancialReviewSection from '../components/FinancialReviewSection';
+import RoleManagement from './RoleManagement';
 import { useAuth } from '../hooks/useAuth';
-
-const FINANCIAL_REVIEW_EMAIL = 'agustianggaraputra@gmail.com';
+import { hasPermission } from '../utils/auth';
+import { ACTIONS } from '../utils/actions';
 
 const AdminPanel = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState('/dashboard');
-  const [showHelp, setShowHelp] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const adminName = user?.name || 'Admin';
-  const handleLogout = () => logout();
-  const canSeeFinancialReview = localStorage.getItem('email') === FINANCIAL_REVIEW_EMAIL;
+  const userRole  = localStorage.getItem('role');
+  const isAdmin   = userRole === 'admin';
 
-  const menuItems = [
-    { icon: Home,      label: 'Dashboard',          path: '/dashboard',        description: 'Overview & Analytics'      },
-    { icon: FileText,  label: 'Orders',              path: '/orders',           description: 'Manage client orders'      },
-    { icon: Receipt,   label: 'Expense Manager',     path: '/expenses',         description: 'Time & expense invoicing'  }, // ✅ NEW
-    { icon: Store,     label: 'Vendor Management',   path: '/vendor-management',description: 'Manage vendors'            },
-    { icon: Users,     label: 'User Management',     path: '/user-management',  description: 'Admin users & roles'       },
-    { icon: Users,     label: 'Client Management',   path: '/client-management',description: 'Client accounts & journey' },
-    { icon: Store,     label: 'Product Config',      path: '/product',          description: 'Product settings'          },
-    { icon: MapPin,    label: 'Product Mapping',     path: '/product-mapping',  description: 'Location mapping'          },
-    ...(canSeeFinancialReview
-      ? [{ icon: Lock, label: 'Financial Review', path: '/financial-review', description: 'Weekly financial package' }]
-      : []),
+  const can = (action) => isAdmin || hasPermission(action);
+
+  const ALL_MENU_ITEMS = [
+    { icon: Home,         label: 'Dashboard',        path: '/dashboard',         action: ACTIONS.VIEW_DASHBOARD  },
+    { icon: FileText,     label: 'Orders',            path: '/orders',            action: ACTIONS.VIEW_ORDERS     },
+    { icon: Receipt,      label: 'Expense Manager',   path: '/expenses',          action: ACTIONS.VIEW_EXPENSES   },
+    { icon: Store,        label: 'Vendor Management', path: '/vendor-management', action: ACTIONS.VIEW_VENDORS    },
+    { icon: Users,        label: 'User Management',   path: '/user-management',   action: ACTIONS.VIEW_USERS      },
+    { icon: Users,        label: 'Client Management', path: '/client-management', action: ACTIONS.VIEW_CLIENTS    },
+    { icon: Store,        label: 'Product Config',    path: '/product',           action: ACTIONS.VIEW_PRODUCTS   },
+    { icon: MapPin,       label: 'Product Mapping',   path: '/product-mapping',   action: ACTIONS.VIEW_PRODUCT_MAP},
+    { icon: Lock,         label: 'Financial Review',  path: '/financial-review',  action: ACTIONS.VIEW_FINANCIAL  },
+    { icon: ShieldCheck,  label: 'Role Management',   path: '/role-management',   action: ACTIONS.VIEW_ROLE_MGMT  },
   ];
 
+  const menuItems = ALL_MENU_ITEMS.filter(item => can(item.action));
+
   const bottomMenuItems = [
-    { icon: User,   label: 'Profile', path: '/profile', description: 'Your account' },
-    { icon: LogOut, label: 'Logout',  path: '/logout',  onClick: handleLogout, description: 'Sign out' },
+    { icon: User,   label: 'Profile', path: '/profile' },
+    { icon: LogOut, label: 'Logout',  path: '/logout',  onClick: () => logout() },
   ];
 
   const handleMenuClick = (path, onClick) => {
@@ -58,8 +57,7 @@ const AdminPanel = () => {
 
   const getPageTitle = () => {
     if (activeMenu.startsWith('/orders/')) return 'Order Details';
-    const item = [...menuItems, ...bottomMenuItems].find(item => item.path === activeMenu);
-    return item?.label || 'Dashboard';
+    return [...ALL_MENU_ITEMS, ...bottomMenuItems].find(i => i.path === activeMenu)?.label || 'Dashboard';
   };
 
   const renderContent = () => {
@@ -71,13 +69,14 @@ const AdminPanel = () => {
       case '/dashboard':         return <Dashboard />;
       case '/user-management':   return <UserManagement />;
       case '/client-management': return <ClientManagement />;
-      case '/orders':            return <AdminOrderList onOrderClick={(orderId) => setActiveMenu(`/orders/${orderId}`)} />;
-      case '/expenses':          return <ExpenseManager />; // ✅ NEW
+      case '/orders':            return <AdminOrderList onOrderClick={(id) => setActiveMenu(`/orders/${id}`)} />;
+      case '/expenses':          return <ExpenseManager />;
       case '/profile':           return <Profile />;
       case '/product':           return <ProductConfiguration />;
       case '/product-mapping':   return <ProductMapping />;
       case '/vendor-management': return <VendorManagement />;
-      case '/financial-review':  return canSeeFinancialReview ? <FinancialReviewSection /> : <Dashboard />;
+      case '/financial-review':  return <FinancialReviewSection />;
+      case '/role-management':   return <RoleManagement />;
       default:                   return <Dashboard />;
     }
   };

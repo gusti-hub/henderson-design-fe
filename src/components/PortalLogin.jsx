@@ -220,6 +220,7 @@ const PortalLogin = () => {
       localStorage.setItem('userId', data._id);
       localStorage.setItem('name', data.name);
       localStorage.setItem('role', data.role);
+      localStorage.setItem('permissions', JSON.stringify(data.permissions || []));
       if (data.email) localStorage.setItem('email', data.email);
 
       if (data.role === 'admin' || data.role === 'designer') {

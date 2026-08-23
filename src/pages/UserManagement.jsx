@@ -4,12 +4,13 @@ import { backendServer } from '../utils/info';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'admin' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'admin_temporary' });
   const [errors, setErrors] = useState({});
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -17,7 +18,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const itemsPerPage = 10;
 
-  useEffect(() => { fetchUsers(); }, [currentPage]);
+  useEffect(() => { fetchUsers(); fetchRoles(); }, [currentPage]);
   useEffect(() => {
     const timer = setTimeout(() => { setCurrentPage(1); fetchUsers(); }, 500);
     return () => clearTimeout(timer);
@@ -39,6 +40,17 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/roles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setRoles(Array.isArray(data) ? data : []);
+    } catch { setRoles([]); }
   };
 
   const validateForm = () => {
@@ -97,7 +109,7 @@ const UserManagement = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedUser(null);
-    setFormData({ name: '', email: '', password: '', role: 'admin' });
+    setFormData({ name: '', email: '', password: '', role: 'admin_temporary' });
     setErrors({});
     setShowPasswordField(false);
   };
@@ -166,7 +178,7 @@ const UserManagement = () => {
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
                       <ShieldCheck className="w-3 h-3" />
-                      Admin
+                      {user.role || 'admin'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -174,7 +186,7 @@ const UserManagement = () => {
                       <button
                         onClick={() => {
                           setSelectedUser(user);
-                          setFormData({ name: user.name, email: user.email, role: 'admin', password: '' });
+                          setFormData({ name: user.name, email: user.email, role: user.role || 'admin_temporary', password: '' });
                           setModalMode('edit');
                           setIsModalOpen(true);
                         }}
@@ -256,6 +268,20 @@ const UserManagement = () => {
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
                 />
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role <span className="text-red-500">*</span></label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670] bg-white"
+                >
+                  <option value="admin">admin (Super Admin)</option>
+                  {roles.map(r => (
+                    <option key={r._id} value={r.name}>{r.name}{r.isSystem ? ' ★' : ''}</option>
+                  ))}
+                </select>
               </div>
 
               {modalMode === 'create' ? (

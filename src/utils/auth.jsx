@@ -59,6 +59,34 @@ export const getTokenExpiresIn = () => {
 };
 
 /**
+ * Ambil permissions dari localStorage
+ */
+export const getPermissions = () => {
+  try {
+    return JSON.parse(localStorage.getItem('permissions') || '[]');
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Cek apakah user punya permission tertentu
+ */
+export const hasPermission = (action) => {
+  const role = localStorage.getItem('role');
+  if (role === 'admin') return true;
+  return getPermissions().includes(action);
+};
+
+/**
+ * Cek apakah user adalah employee (bukan client)
+ */
+export const isEmployee = () => {
+  const role = localStorage.getItem('role');
+  return role && role !== 'user';
+};
+
+/**
  * Clear semua auth data
  */
 export const clearAuth = () => {
@@ -66,5 +94,6 @@ export const clearAuth = () => {
   localStorage.removeItem('userId');
   localStorage.removeItem('name');
   localStorage.removeItem('role');
+  localStorage.removeItem('permissions');
   localStorage.removeItem('currentStep');
 };

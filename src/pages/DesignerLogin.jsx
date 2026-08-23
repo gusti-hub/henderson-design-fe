@@ -95,6 +95,7 @@ const DesignerLogin = () => {
       localStorage.setItem('userId', data._id);
       localStorage.setItem('name', data.name);
       localStorage.setItem('role', data.role);
+      localStorage.setItem('permissions', JSON.stringify(data.permissions || []));
 
       navigate('/admin-panel');
       
