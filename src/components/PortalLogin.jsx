@@ -223,7 +223,7 @@ const PortalLogin = () => {
       localStorage.setItem('permissions', JSON.stringify(data.permissions || []));
       if (data.email) localStorage.setItem('email', data.email);
 
-      if (data.role === 'admin' || data.role === 'designer') {
+      if (data.role !== 'user') {
         navigate('/admin-panel');
       } else if (data.role === 'user') {
         try {
@@ -248,8 +248,6 @@ const PortalLogin = () => {
         } catch (verifyError) {
           throw new Error(verifyError.message || 'Unable to verify payment status');
         }
-      } else {
-        throw new Error('Unauthorized access');
       }
       
     } catch (error) {
