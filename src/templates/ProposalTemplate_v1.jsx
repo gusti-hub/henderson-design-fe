@@ -1044,12 +1044,16 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       items.push({ type: 'room-header', room, height: measureRoomHeader(room) });
       rps.forEach(({ sid, product: p }, i) => {
         const o = p.selectedOptions || {};
+        const ca = (typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes)) ? o.customAttributes : {};
+        const materials = ca.materials || '';
         const lines = [];
         if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
         if (o.specifications) lines.push(renderRichTextHtml(o.specifications));
-        if (o.finish) lines.push('<div><strong>Finish:</strong> ' + o.finish + '</div>');
+        if (o.finish) lines.push('<div><strong>Color / Finish:</strong> ' + o.finish + '</div>');
+        if (o.leadTime) lines.push('<div><strong>Lead Time:</strong> ' + o.leadTime + '</div>');
         if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
-        if (o.size) lines.push('<div><strong>Size:</strong> ' + o.size + '</div>');
+        if (o.size) lines.push('<div><strong>Dimensions:</strong> ' + o.size + '</div>');
+        if (materials) lines.push('<div><strong>Materials:</strong> ' + materials + '</div>');
         const taxRate = p.isParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
         const priceCellHtml = '<td style="width:' + COL3 + 'px;padding:7px 5px;font-size:12px;line-height:1.55;text-align:right;vertical-align:top">'
           + '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>1 Each</span></div>'
@@ -1061,7 +1065,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const imgCellHtml = '<td style="width:' + COL1 + 'px;padding:8px 4px;text-align:center;vertical-align:middle"><div style="width:76px;height:76px;background:#f3f4f6;margin:0 auto"></div></td>';
         const textCellHtml = '<td style="padding:7px 9px;font-size:12px;line-height:1.55;vertical-align:top">' + lines.join('') + '</td>';
         const rowH = measureRow(imgCellHtml + textCellHtml + priceCellHtml);
-        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: rowH + 6 });
+        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.ceil(rowH * 1.15) + 6 });
       });
     });
     // Measure ContHeader (the "Products (continued)" mini-header on page 2+)
