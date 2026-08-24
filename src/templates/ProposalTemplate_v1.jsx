@@ -1146,8 +1146,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         @page { size: 8.5in 11in; margin: 0; }
         .pw { background: #b8b8b8; padding: 20px 0 40px; }
         .pgl { display: block; width: 8.5in; margin: 0 auto; background: #005670; color: white; font-size: 10px; font-weight: 600; padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box; letter-spacing: 0.03em; }
-        .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: visible; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
-        .lp-slot { overflow: visible; }
+        .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
+        .lp-slot { overflow: hidden; }
         .pgap { width: 8.5in; height: 16px; background: #b8b8b8; margin: 0 auto; }
         .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
       `}</style>
