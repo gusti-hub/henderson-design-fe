@@ -49,7 +49,7 @@ const DecimalInput = ({ value, onChange, disabled, placeholder = '0.00', classNa
 };
 
 // ── Main component ─────────────────────────────────────────────────────────
-const PricingFields = ({ product, index, onUpdate, disabled = false, taxEditable = false }) => {
+const PricingFields = ({ product, index, onUpdate, disabled = false, taxEditable = false, qtyEditable = false }) => {
   const opts = product.selectedOptions || {};
 
   const num = (v) => parseFloat(v) || 0;
@@ -217,7 +217,7 @@ const PricingFields = ({ product, index, onUpdate, disabled = false, taxEditable
               min="1"
               value={product.quantity || 1}
               onChange={(e) => onUpdate(index, 'quantity', parseInt(e.target.value) || 1)}
-              disabled={disabled}
+              disabled={disabled && !qtyEditable}
               className={inp}
             />
           </div>

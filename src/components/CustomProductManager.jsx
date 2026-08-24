@@ -3704,7 +3704,7 @@ const ProductCard = ({
             {activeTab === 'pricing' && (
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 className="text-base font-bold text-gray-900 mb-5">Item Pricing</h3>
-                <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={isFromLibrary} taxEditable={true} />
+                <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={isFromLibrary} taxEditable={true} qtyEditable={true} />
               </div>
             )}
 
