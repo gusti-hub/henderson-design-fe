@@ -52,7 +52,7 @@ const parseBoldHtml = (text) => {
   return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 };
 
-const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 60, PX = 96;
+const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 160, PX = 96;
 const CONTENT_H = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
 const getImgSrc = p => {
@@ -269,13 +269,13 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
 
   return (
     <tr ref={ref}>
-      <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+      <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle', position: 'relative' }}>
         {imgSrc
           ? <img src={imgSrc} alt={product.name} style={{ width: '76px', height: '76px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
           : <div style={{ width: '76px', height: '76px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#9ca3af', margin: '0 auto' }}>No Image</div>
         }
         {(onRefresh || onDelete) && (
-          <div className="no-print" style={{ display: 'flex', gap: '3px', justifyContent: 'center', marginTop: '5px' }}>
+          <div className="no-print" style={{ position: 'absolute', bottom: '4px', left: 0, right: 0, display: 'flex', gap: '3px', justifyContent: 'center' }}>
             {onRefresh && <button onClick={onRefresh} style={{ padding: '3px 6px', fontSize: '10px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}>↻ Sync</button>}
             {onDelete && <button onClick={onDelete} style={{ padding: '3px 6px', fontSize: '10px', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', lineHeight: 1, fontWeight: 600 }}>✕</button>}
           </div>
@@ -1127,7 +1127,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     </div>
   );
 
-  const slotStyle = { position: 'absolute', top: PAD_IN + 'in', left: PAD_IN + 'in', right: PAD_IN + 'in', bottom: FOOT_IN + 'in' };
+  const slotStyle = { position: 'absolute', top: PAD_IN + 'in', left: PAD_IN + 'in', right: PAD_IN + 'in', bottom: FOOT_IN + 'in', overflow: 'hidden' };
 
   return (
     <>
