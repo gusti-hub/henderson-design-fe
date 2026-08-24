@@ -52,7 +52,7 @@ const parseBoldHtml = (text) => {
   return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 };
 
-const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 160, PX = 96;
+const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 250, PX = 96;
 const CONTENT_H = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
 const getImgSrc = p => {
@@ -1048,7 +1048,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const materials = ca.materials || '';
         const lines = [];
         if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
-        if (o.specifications) lines.push(renderRichTextHtml(o.specifications));
+        if (o.specifications) lines.push('<div class="rich-text-output" style="line-height:1.5;margin-bottom:1px">' + renderRichTextHtml(o.specifications) + '</div>');
         if (o.finish) lines.push('<div><strong>Color / Finish:</strong> ' + o.finish + '</div>');
         if (o.leadTime) lines.push('<div><strong>Lead Time:</strong> ' + o.leadTime + '</div>');
         if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
@@ -1065,7 +1065,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         const imgCellHtml = '<td style="width:' + COL1 + 'px;padding:8px 4px;text-align:center;vertical-align:middle"><div style="width:76px;height:76px;background:#f3f4f6;margin:0 auto"></div></td>';
         const textCellHtml = '<td style="padding:7px 9px;font-size:12px;line-height:1.55;vertical-align:top">' + lines.join('') + '</td>';
         const rowH = measureRow(imgCellHtml + textCellHtml + priceCellHtml);
-        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.ceil(rowH * 1.15) + 6 });
+        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.ceil(rowH * 1.25) + 6 });
       });
     });
     // Measure ContHeader (the "Products (continued)" mini-header on page 2+)
