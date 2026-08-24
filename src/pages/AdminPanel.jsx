@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   Home, MapPin, Store, Users, User, LogOut,
-  FileText, Menu, X, Receipt, Lock, ShieldCheck, ChevronRight,
+  FileText, Menu, X, Receipt, Lock, ShieldCheck, ChevronRight, Truck,
 } from 'lucide-react';
 import UserManagement from './UserManagement';
 import Profile from './Profile';
@@ -16,6 +16,7 @@ import VendorManagement from './VendorManagement';
 import ExpenseManager from './ExpenseManager';
 import FinancialReviewSection from '../components/FinancialReviewSection';
 import RoleManagement from './RoleManagement';
+import LogisticOrderTracker from './LogisticOrderTracker';
 import { useAuth } from '../hooks/useAuth';
 import { hasPermission } from '../utils/auth';
 import { ACTIONS } from '../utils/actions';
@@ -41,6 +42,7 @@ const AdminPanel = () => {
     { icon: Store,        label: 'Product Config',    path: '/product',           action: ACTIONS.VIEW_PRODUCTS   },
     { icon: MapPin,       label: 'Product Mapping',   path: '/product-mapping',   action: ACTIONS.VIEW_PRODUCT_MAP},
     { icon: Lock,         label: 'Financial Review',  path: '/financial-review',  action: ACTIONS.VIEW_FINANCIAL  },
+    { icon: Truck,        label: 'Logistic Tracker',  path: '/logistic-tracker',  action: ACTIONS.VIEW_LOGISTIC   },
     { icon: ShieldCheck,  label: 'Role Management',   path: '/role-management',   action: ACTIONS.VIEW_ROLE_MGMT  },
   ];
 
@@ -76,6 +78,7 @@ const AdminPanel = () => {
       case '/product-mapping':   return <ProductMapping />;
       case '/vendor-management': return <VendorManagement />;
       case '/financial-review':  return <FinancialReviewSection />;
+      case '/logistic-tracker':  return <LogisticOrderTracker />;
       case '/role-management':   return <RoleManagement />;
       default:                   return <Dashboard />;
     }

@@ -13,7 +13,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save, Plus } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
-import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
+import { renderRichText } from '../utils/richTextUtils';
 
 // Constants
 const LOGO_FILTER = 'brightness(0) saturate(100%) invert(21%) sepia(98%) saturate(1160%) hue-rotate(160deg) brightness(92%) contrast(90%)';
@@ -52,7 +52,7 @@ const parseBoldHtml = (text) => {
   return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 };
 
-const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 250, PX = 96;
+const PAGE_W_IN = 8.5, PAGE_H_IN = 11, PAD_IN = 0.5, FOOT_IN = 0.85, SAFE_PX = 60, PX = 96;
 const CONTENT_H = (PAGE_H_IN - PAD_IN - FOOT_IN) * PX - SAFE_PX;
 
 const getImgSrc = p => {
@@ -1007,73 +1007,27 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     if (didPaginate.current) return;
     didPaginate.current = true;
     const rg = buildRoomGroups();
-    const CONTENT_W = (PAGE_W_IN - PAD_IN * 2) * PX;
-    const sandbox = document.createElement('div');
-    sandbox.style.cssText = 'position:fixed;top:0;left:-9999px;width:' + CONTENT_W + 'px;background:white;z-index:-9999;font-size:12px;line-height:1.55;font-family:Arial,sans-serif;visibility:visible;opacity:0;pointer-events:none';
-    document.body.appendChild(sandbox);
-    const measureEl = (html) => {
-      const w = document.createElement('div');
-      w.innerHTML = html; sandbox.appendChild(w);
-      const h = w.getBoundingClientRect().height; sandbox.removeChild(w);
-      return Math.ceil(h) + 8;
-    };
+    // Use actual DOM heights from the mbox measuring container (ProductRowV2 refs).
+    // This is far more accurate than re-measuring raw HTML in a sandbox, because
+    // it captures the exact same React output including resolveFinish/resolveFabric
+    // text expansion and rich-text line wrapping.
     const headerH = headerRef.current ? Math.ceil(headerRef.current.getBoundingClientRect().height) + 8 : 220;
-    const COL1 = 88, COL3 = 148;
-    const colgroup = '<colgroup><col style="width:' + COL1 + 'px"><col><col style="width:' + COL3 + 'px"></colgroup>';
-    const tblBase = 'width:' + CONTENT_W + 'px;border-collapse:collapse;table-layout:fixed;font-size:12px;line-height:1.55;font-family:Arial,sans-serif';
-    const measureRow = (cellsHtml) => {
-      const t = document.createElement('table');
-      t.style.cssText = tblBase;
-      t.innerHTML = colgroup + '<tbody><tr>' + cellsHtml + '</tr></tbody>';
-      sandbox.appendChild(t);
-      const h = Math.ceil(t.querySelector('tr').getBoundingClientRect().height);
-      sandbox.removeChild(t);
-      return h;
-    };
-    const measureRoomHeader = (room) => {
-      const t = document.createElement('table');
-      t.style.cssText = tblBase + ';border-top:1px solid #000;border-bottom:1px solid #000';
-      t.innerHTML = colgroup + '<thead><tr><th colspan="3" style="background:#f0f0f0;padding:6px 8px;text-align:center;font-weight:600;font-size:13px;border-bottom:1px solid #ccc">' + room + '</th></tr></thead>';
-      sandbox.appendChild(t);
-      const h = Math.ceil(t.getBoundingClientRect().height);
-      sandbox.removeChild(t);
-      return h + 12; // +12 for marginBottom:10px on wrapper div + 2px rounding
-    };
     const items = [];
     rg.forEach(([room, rps]) => {
-      items.push({ type: 'room-header', room, height: measureRoomHeader(room) });
+      // Room header: get height from mbox-rendered row + overhead for table borders + wrapper margin
+      const roomHdEl = roomHdRefs.current[room];
+      const roomHdH = roomHdEl ? Math.ceil(roomHdEl.getBoundingClientRect().height) + 14 : 50;
+      // +14: 1px border-top + 1px border-bottom on RoomTable + 10px marginBottom on wrapper + 2px rounding
+      items.push({ type: 'room-header', room, height: roomHdH });
       rps.forEach(({ sid, product: p }, i) => {
-        const o = p.selectedOptions || {};
-        const ca = (typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes)) ? o.customAttributes : {};
-        const materials = ca.materials || '';
-        const lines = [];
-        if (p.name) lines.push('<div style="font-weight:600;font-size:13px;margin-bottom:3px">' + p.name + '</div>');
-        if (o.specifications) lines.push('<div class="rich-text-output" style="line-height:1.5;margin-bottom:1px">' + renderRichTextHtml(o.specifications) + '</div>');
-        if (o.finish) lines.push('<div><strong>Color / Finish:</strong> ' + o.finish + '</div>');
-        if (o.leadTime) lines.push('<div><strong>Lead Time:</strong> ' + o.leadTime + '</div>');
-        if (o.fabric) lines.push('<div><strong>Fabric:</strong> ' + o.fabric + '</div>');
-        if (o.size) lines.push('<div><strong>Dimensions:</strong> ' + o.size + '</div>');
-        if (materials) lines.push('<div><strong>Materials:</strong> ' + materials + '</div>');
-        const taxRate = p.isParent ? (p._avgChildTaxRate || 0) : (parseFloat(o.salesTaxRate) || 0);
-        const priceCellHtml = '<td style="width:' + COL3 + 'px;padding:7px 5px;font-size:12px;line-height:1.55;text-align:right;vertical-align:top">'
-          + '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>1 Each</span></div>'
-          + '<div style="display:flex;justify-content:space-between"><span>Unit:</span><span>$0.00</span></div>'
-          + '<div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>$0.00</span></div>'
-          + (taxRate > 0 ? '<div style="display:flex;justify-content:space-between"><span>Tax (x%):</span><span>$0.00</span></div>' : '')
-          + '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #d1d5db;padding-top:2px;margin-top:2px"><span>Total:</span><span>$0.00</span></div>'
-          + '</td>';
-        const imgCellHtml = '<td style="width:' + COL1 + 'px;padding:8px 4px;text-align:center;vertical-align:middle"><div style="width:76px;height:76px;background:#f3f4f6;margin:0 auto"></div></td>';
-        const textCellHtml = '<td style="padding:7px 9px;font-size:12px;line-height:1.55;vertical-align:top">' + lines.join('') + '</td>';
-        const rowH = measureRow(imgCellHtml + textCellHtml + priceCellHtml);
-        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: Math.ceil(rowH * 1.25) + 6 });
+        const key = room + '__' + i;
+        const rowEl = rowRefs.current[key];
+        const rowH = rowEl ? Math.ceil(rowEl.getBoundingClientRect().height) : 100;
+        // +10: small safety buffer for border rounding and any sub-pixel differences
+        items.push({ type: 'product', room, product: p, sid, isFirst: i === 0, height: rowH + 10 });
       });
     });
-    // Measure ContHeader (the "Products (continued)" mini-header on page 2+)
-    const contHeaderH = measureEl(
-      '<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px">' +
-      '<span>Client — Products (continued)</span><span>Proposal #: ---</span></div>'
-    );
-    document.body.removeChild(sandbox);
+    const contHeaderH = 35; // "Products (continued)" is a single line of small text
     setPages(packItems(items, headerH, contHeaderH));
     setReady(true);
   }, [buildRoomGroups]);

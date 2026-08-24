@@ -179,6 +179,8 @@ const StatusReportFields = ({
     if (readOnlyFields.includes(field)) return;
     onUpdate(index, `selectedOptions.${field}`, value);
   };
+  // Returns true when a field is managed by Logistic Tracker (read-only in CPM)
+  const isRO = (field) => disabled || readOnlyFields.includes(field);
 
   const inputCls = `w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
     focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]
@@ -205,16 +207,22 @@ const StatusReportFields = ({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Expected Ship Date</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Expected Ship Date
+            {isRO('expectedShipDate') && <span className="ml-1.5 text-[10px] font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">Logistic Tracker</span>}
+          </label>
           <input type="date" value={opts.expectedShipDate || ''}
             onChange={(e) => upd('expectedShipDate', e.target.value)}
-            disabled={disabled} className={inputCls} />
+            disabled={isRO('expectedShipDate')} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Expected Arrival Date</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Expected Arrival Date
+            {isRO('expectedArrivalDate') && <span className="ml-1.5 text-[10px] font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">Logistic Tracker</span>}
+          </label>
           <input type="date" value={opts.expectedArrivalDate || ''}
             onChange={(e) => upd('expectedArrivalDate', e.target.value)}
-            disabled={disabled} className={inputCls} />
+            disabled={isRO('expectedArrivalDate')} className={inputCls} />
         </div>
       </div>
 
@@ -226,10 +234,13 @@ const StatusReportFields = ({
             disabled={disabled} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Date Inspected</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Date Inspected
+            {isRO('dateInspected') && <span className="ml-1.5 text-[10px] font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">Logistic Tracker</span>}
+          </label>
           <input type="date" value={opts.dateInspected || ''}
             onChange={(e) => upd('dateInspected', e.target.value)}
-            disabled={disabled} className={inputCls} />
+            disabled={isRO('dateInspected')} className={inputCls} />
         </div>
       </div>
 
@@ -273,10 +284,13 @@ const StatusReportFields = ({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Notes
+            {isRO('notes') && <span className="ml-1.5 text-[10px] font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">Logistic Tracker</span>}
+          </label>
           <textarea value={opts.notes || ''}
             onChange={(e) => upd('notes', e.target.value)}
-            disabled={disabled} className={`${inputCls} resize-y`}
+            disabled={isRO('notes')} className={`${inputCls} resize-y`}
             rows={9} placeholder="Enter Notes" />
         </div>
       </div>
@@ -289,11 +303,14 @@ const StatusReportFields = ({
 
           {/* ✅ SARA: Autocomplete status category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Status Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Status Category
+              {isRO('statusCategory') && <span className="ml-1.5 text-[10px] font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">Logistic Tracker</span>}
+            </label>
             <StatusCategoryField
               value={opts.statusCategory || ''}
               onChange={(v) => upd('statusCategory', v)}
-              disabled={disabled}
+              disabled={isRO('statusCategory')}
               inputCls={inputCls}
             />
           </div>
