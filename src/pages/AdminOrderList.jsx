@@ -565,8 +565,29 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [clientPrintIds, setClientPrintIds] = useState(new Set());
   // Client-level view: { userId, clientInfo }
   const [selectedClient, setSelectedClient] = useState(null);
+  const [editingLabelId, setEditingLabelId] = useState(null);
+  const [labelDraft, setLabelDraft] = useState('');
 
   const showSuccess = (msg) => { setSuccessMessage(msg); setTimeout(() => setSuccessMessage(null), 4000); };
+
+  const handleSaveLabel = async (orderId) => {
+    const value = labelDraft.trim() || null;
+    setClientOrdersView(prev => prev ? {
+      ...prev,
+      orders: prev.orders.map(o => o._id === orderId ? { ...o, orderLabel: value } : o),
+    } : null);
+    setEditingLabelId(null);
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${backendServer}/api/orders/${orderId}/label`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderLabel: value }),
+      });
+    } catch {
+      /* silent */
+    }
+  };
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -1136,6 +1157,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                     />
                   </th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Products</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Modified</th>
@@ -1145,10 +1167,9 @@ const AdminOrderList = ({ onOrderClick }) => {
               <tbody className="divide-y divide-gray-50">
                 {clientOrders.map((order) => {
                   const rawLabel = order.orderLabel?.trim();
-                  const phaseMatch = rawLabel?.match(/^phase\s*(\d+)$/i);
-                  const displayName = phaseMatch
-                    ? `Order ${phaseMatch[1]}`
-                    : rawLabel || (order.orderNumber ? `Order ${order.orderNumber}` : 'Order');
+                  const isDefaultLabel = !rawLabel || rawLabel.toLowerCase() === `order ${order.orderNumber}`.toLowerCase();
+                  const customDesc = isDefaultLabel ? '' : rawLabel;
+                  const isEditingLabel = editingLabelId === order._id;
                   return (
                     <tr key={order._id} className={`hover:bg-gray-50/50 transition-colors ${clientPrintIds.has(order._id) ? 'bg-amber-50/40' : ''}`}>
                       <td className="px-3 py-3.5 w-10">
@@ -1162,7 +1183,48 @@ const AdminOrderList = ({ onOrderClick }) => {
                         />
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="font-medium text-gray-800 text-sm">{displayName}</span>
+                        <span className="font-semibold text-gray-800 text-sm">
+                          {order.orderNumber ? `Order ${order.orderNumber}` : 'Order'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {isEditingLabel ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={labelDraft}
+                              onChange={e => setLabelDraft(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveLabel(order._id);
+                                if (e.key === 'Escape') setEditingLabelId(null);
+                              }}
+                              placeholder="e.g. Living Room…"
+                              className="text-xs border border-[#005670]/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#005670]/40 w-36 text-gray-700 bg-white"
+                            />
+                            <button onClick={() => handleSaveLabel(order._id)} className="p-1 text-[#005670] hover:bg-[#005670]/10 rounded" title="Save">
+                              <Check className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => setEditingLabelId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded" title="Cancel">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setLabelDraft(customDesc); setEditingLabelId(order._id); }}
+                            className="group flex items-center gap-1"
+                            title="Click to edit description"
+                          >
+                            {customDesc ? (
+                              <>
+                                <span className="text-sm text-gray-600 truncate max-w-[180px] group-hover:text-[#005670] transition-colors">{customDesc}</span>
+                                <Edit2 className="w-3 h-3 text-gray-300 group-hover:text-[#005670] flex-shrink-0 transition-colors" />
+                              </>
+                            ) : (
+                              <span className="text-xs text-gray-300 italic group-hover:text-[#005670]/60 transition-colors">+ add description</span>
+                            )}
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="text-sm text-gray-500">{order.selectedProducts?.length || 0} items</span>
@@ -1589,7 +1651,6 @@ const AdminOrderList = ({ onOrderClick }) => {
                             <p className="font-medium text-gray-800 text-sm leading-tight">{order.clientInfo?.name || 'Unknown Client'}</p>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               {order.clientInfo?.unitNumber && <span className="text-xs text-gray-400">Unit {order.clientInfo.unitNumber}</span>}
-                              {order.orderLabel && <span className="text-xs text-gray-500 font-medium">{order.orderLabel}</span>}
                             </div>
                           </div>
                         </div>

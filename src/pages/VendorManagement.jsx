@@ -78,8 +78,7 @@ const VendorManagement = () => {
     const newErrors = {};
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.phone) newErrors.phone = 'Required';
-    if (!formData.email) newErrors.email = 'Required';
-    if (!formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
+    if (formData.email && !formData.email.match(/^\S+@\S+\.\S+$/)) newErrors.email = 'Invalid email';
     
     // Validasi untuk percentage fields - convert to number first
     const markup = parseFloat(formData.defaultMarkup);
@@ -536,7 +535,7 @@ const VendorManagement = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email <span className="text-red-500">*</span>
+                        Email
                       </label>
                       <input type="email" value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
