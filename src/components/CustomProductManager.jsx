@@ -3832,7 +3832,7 @@ const ProductCard = ({
                     onUpdate(idx, field, value);
                   }}
                   disabled={false}
-                  readOnlyFields={['proposalNumber', 'expectedShipDate', 'expectedArrivalDate', 'dateInspected', 'statusCategory', 'notes']}
+                  readOnlyFields={['proposalNumber']}
                   orderProposalNumber={order?.proposalNumber || null}
                 />
               </div>
