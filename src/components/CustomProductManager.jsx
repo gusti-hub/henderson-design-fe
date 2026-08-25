@@ -749,9 +749,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   // ─── Add manual ──────────────────────────────────────────────────────────
   const addManualProduct = () => {
     const createDraft = () => {
+      const ts = Date.now();
       const newDraft = {
-        _id:        `temp_${Date.now()}`,
-        product_id: `CUSTOM-${Date.now().toString().slice(-6)}`,
+        _id:        `temp_${ts}`,
+        product_id: `CUSTOM-${ts.toString(36)}`,
         name:       '',
         category:   '',
         package:    '',
@@ -808,9 +809,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   // ─── Add custom child product to a group ─────────────────────────────────
   const addCustomChild = (parentProductId) => {
     const createDraft = () => {
+      const ts = Date.now();
       setDraftProduct({
-        _id:        `temp_${Date.now()}`,
-        product_id: `CUSTOM-${Date.now().toString().slice(-6)}`,
+        _id:        `temp_${ts}`,
+        product_id: `CUSTOM-${ts.toString(36)}`,
         name:       '',
         category:   '',
         package:    '',
@@ -867,9 +869,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   // ─── Add Group Product ────────────────────────────────────────────────────
   const addGroupProduct = () => {
     const create = () => {
+      const ts = Date.now();
       setDraftGroup({
-        _id:        `temp_group_${Date.now()}`,
-        product_id: `GROUP-${Date.now().toString().slice(-6)}`,
+        _id:        `temp_group_${ts}`,
+        product_id: `GROUP-${ts.toString(36)}`,
         name:       '',
         category:   'Group',
         spotName:   'Group',
@@ -1531,20 +1534,16 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               </span>
             </div>
 
-            {/* ── Draft product ── */}
-            {draftProduct && (
+            {/* ── Draft product (standalone only — group children render inside their GroupProductCard) ── */}
+            {draftProduct && !draftProduct.parentId && (
               <div className="space-y-2">
                 <div className="flex items-center gap-3 px-1">
                   <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
                     <svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    <span className="text-sm font-semibold text-amber-800">
-                      {draftProduct?.parentId ? 'New Group Item' : 'New Product'}
-                    </span>
-                    <span className="text-xs text-amber-600">
-                      {draftProduct?.parentId ? '(unsaved — will be added to group on Save)' : '(unsaved — fill in and click Save)'}
-                    </span>
+                    <span className="text-sm font-semibold text-amber-800">New Product</span>
+                    <span className="text-xs text-amber-600">(unsaved — fill in and click Save)</span>
                   </div>
                   <div className="flex-1 h-px bg-amber-100" />
                 </div>
@@ -1598,7 +1597,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   parentIndex={savedProducts.length}
                   order={liveOrder}
                   allProducts={[...savedProducts, draftGroup]}
-                  expanded={expandedProduct === 'draftGroup'}
+                  expanded={expandedProduct === 'draftGroup' || (draftProduct?.parentId === draftGroup.product_id && expandedProduct === 'draft')}
                   onToggleExpand={() => setExpandedProduct(expandedProduct === 'draftGroup' ? null : 'draftGroup')}
                   onUpdateParent={(_idx, field, value) => setDraftGroup(prev => applyFieldUpdate(prev, field, value))}
                   onUpdateChild={updateProduct}
@@ -1618,6 +1617,35 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   onAddChildFromLibrary={() => { setGroupLibraryTarget(draftGroup.product_id); setShowLibraryModal(true); }}
                   onAddCustomChild={() => addCustomChild(draftGroup.product_id)}
                   locked={isOrderLocked}
+                  draftChild={draftProduct?.parentId === draftGroup.product_id ? (
+                    <ProductCard
+                      product={draftProduct}
+                      index="draft"
+                      order={liveOrder}
+                      allProducts={savedProducts}
+                      expanded={expandedProduct === 'draft'}
+                      onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
+                      onUpdate={updateProduct}
+                      locked={isOrderLocked}
+                      onRemove={removeProduct}
+                      onSaved={async (newSavedProducts) => {
+                        setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                        setDraftProduct(null);
+                        setExpandedProduct(null);
+                        if (onSave) onSave(newSavedProducts);
+                        try {
+                          const token = localStorage.getItem('token');
+                          const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (res.ok) setLiveOrder(await res.json());
+                        } catch (_) {}
+                      }}
+                      onToast={addToast}
+                      draggable={false}
+                      onOpenHistory={(focus) => { setAuditFocusProduct(focus); setAuditDrawerOpen(true); }}
+                    />
+                  ) : null}
                 />
               </div>
             )}
@@ -1650,7 +1678,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                           parentIndex={originalIndex}
                           order={liveOrder}
                           allProducts={savedProducts}
-                          expanded={expandedProduct === originalIndex}
+                          expanded={expandedProduct === originalIndex || (draftProduct?.parentId === product.product_id && expandedProduct === 'draft')}
                           onToggleExpand={() => setExpandedProduct(expandedProduct === originalIndex ? null : originalIndex)}
                           onUpdateParent={updateProduct}
                           onUpdateChild={updateProduct}
@@ -1668,6 +1696,35 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                           onAddChildFromLibrary={() => { setGroupLibraryTarget(product.product_id); setShowLibraryModal(true); }}
                           onAddCustomChild={() => addCustomChild(product.product_id)}
                           locked={isOrderLocked}
+                          draftChild={draftProduct?.parentId === product.product_id ? (
+                            <ProductCard
+                              product={draftProduct}
+                              index="draft"
+                              order={liveOrder}
+                              allProducts={savedProducts}
+                              expanded={expandedProduct === 'draft'}
+                              onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
+                              onUpdate={updateProduct}
+                              locked={isOrderLocked}
+                              onRemove={removeProduct}
+                              onSaved={async (newSavedProducts) => {
+                                setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                                setDraftProduct(null);
+                                setExpandedProduct(null);
+                                if (onSave) onSave(newSavedProducts);
+                                try {
+                                  const token = localStorage.getItem('token');
+                                  const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  if (res.ok) setLiveOrder(await res.json());
+                                } catch (_) {}
+                              }}
+                              onToast={addToast}
+                              draggable={false}
+                              onOpenHistory={(focus) => { setAuditFocusProduct(focus); setAuditDrawerOpen(true); }}
+                            />
+                          ) : null}
                         />
                       );
                     }
@@ -2235,6 +2292,7 @@ const GroupProductCard = ({
   onUpdateParent, onUpdateChild, onRemoveGroup, onSavedGroup, onSavedChild, onRemoveChild, onToast,
   onAddChildFromLibrary, onAddCustomChild,
   locked = false,
+  draftChild = null,
 }) => {
   const [name, setName]   = useState(parent.name || '');
   const [room, setRoom]   = useState(parent.selectedOptions?.room || '');
@@ -2419,7 +2477,7 @@ const GroupProductCard = ({
                 </div>
               )}
             </div>
-            {children.length === 0 ? (
+            {children.length === 0 && !draftChild ? (
               <p className="text-sm text-gray-400 text-center py-4">No items yet — add from library or create custom</p>
             ) : (
               <div className="space-y-2">
@@ -2446,6 +2504,15 @@ const GroupProductCard = ({
                     />
                   );
                 })}
+                {draftChild && (
+                  <div className="border-t border-amber-100 pt-2 mt-2">
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className="text-xs font-semibold text-amber-700">New Item</span>
+                      <span className="text-xs text-amber-500">(unsaved — fill in and click Save)</span>
+                    </div>
+                    {draftChild}
+                  </div>
+                )}
               </div>
             )}
           </div>
