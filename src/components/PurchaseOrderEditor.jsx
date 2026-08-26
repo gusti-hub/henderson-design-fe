@@ -98,7 +98,11 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     accountNumber: ''
   });
   const [shipTo, setShipTo] = useState({
-    name: '', address: '', city: '', attention: '', phone: ''
+    name: 'Nohie Furnishings LLC',
+    address: 'C/O Logistics Plus / 2280 Alahao PL',
+    city: 'Honolulu, HI 96819',
+    attention: '',
+    phone: ''
   });
   const [clientInfo, setClientInfo] = useState({});
   const [headerFields, setHeaderFields] = useState({
