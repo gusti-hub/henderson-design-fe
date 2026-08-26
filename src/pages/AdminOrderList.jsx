@@ -954,16 +954,34 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
-  const handleManageProducts = (order) => {
-    setEditingOrder({
-      ...order,
-      packageType: order.packageType || 'investor',
-      selectedPlan: {
-        ...order.selectedPlan,
-        id: order.selectedPlan?.id || 'investor-a',
-        image: order.selectedPlan?.image || `/floorplans/${order.selectedPlan?.id}.png`,
-      },
-    });
+  const handleManageProducts = async (order) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const fresh = res.ok ? await res.json() : order;
+      const base = res.ok ? fresh : order;
+      setEditingOrder({
+        ...base,
+        packageType: base.packageType || 'investor',
+        selectedPlan: {
+          ...base.selectedPlan,
+          id: base.selectedPlan?.id || 'investor-a',
+          image: base.selectedPlan?.image || `/floorplans/${base.selectedPlan?.id}.png`,
+        },
+      });
+    } catch {
+      setEditingOrder({
+        ...order,
+        packageType: order.packageType || 'investor',
+        selectedPlan: {
+          ...order.selectedPlan,
+          id: order.selectedPlan?.id || 'investor-a',
+          image: order.selectedPlan?.image || `/floorplans/${order.selectedPlan?.id}.png`,
+        },
+      });
+    }
   };
 
   const handleNewOrderFromTable = async () => {

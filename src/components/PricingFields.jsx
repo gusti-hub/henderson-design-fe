@@ -213,10 +213,18 @@ const PricingFields = ({ product, index, onUpdate, disabled = false, taxEditable
           <div className="w-24">
             <label className="block text-xs font-medium text-gray-500 mb-1">Quantity</label>
             <input
-              type="number"
-              min="1"
-              value={product.quantity || 1}
-              onChange={(e) => onUpdate(index, 'quantity', parseInt(e.target.value) || 1)}
+              type="text"
+              inputMode="decimal"
+              value={product.quantity ?? 1}
+              onChange={(e) => {
+                const raw = e.target.value.replace(',', '.');
+                if (/^[0-9]*\.?[0-9]{0,2}$/.test(raw)) {
+                  onUpdate(index, 'quantity', raw);
+                }
+              }}
+              onBlur={(e) => {
+                onUpdate(index, 'quantity', parseFloat(e.target.value) || 1);
+              }}
               disabled={disabled && !qtyEditable}
               className={inp}
             />
