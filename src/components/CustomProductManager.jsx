@@ -1845,6 +1845,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
         onClose={() => setShowLibraryModal(false)}
         onSelectProducts={handleAddFromLibrary}
         alreadySelected={[]}
+        pricingYear={liveOrder?.user?.pricingYear || order?.user?.pricingYear || 2026}
       />
  
       {/* ── Audit Log Drawer ── */}

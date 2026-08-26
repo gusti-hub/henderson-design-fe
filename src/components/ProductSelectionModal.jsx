@@ -77,13 +77,15 @@ const DetailRow = ({ label, value, mono = false }) => {
 
 // ==================== DETAIL MODAL ====================
 
-const ProductDetailModal = ({ product, onClose, onAdd }) => {
+const ProductDetailModal = ({ product, onClose, onAdd, pricingYear = 2026 }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imgFailed, setImgFailed]       = useState(false);
   const imageUrl = getProductImage(product);
 
   const buyPrice  = parseFloat(product.buyPrice)  || 0;
-  const sellPrice = parseFloat(product.sellPrice ?? product.price) || 0;
+  const sellPrice = pricingYear === 2025
+    ? (parseFloat(product.sellPrice2025) || parseFloat(product.sellPrice ?? product.price) || 0)
+    : (parseFloat(product.sellPrice2026) || parseFloat(product.sellPrice ?? product.price) || 0);
 
   const others = Array.isArray(product.others)
     ? product.others
@@ -264,9 +266,8 @@ const ProductDetailModal = ({ product, onClose, onAdd }) => {
           {product.description && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Client Description</p>
-              <div className="p-4 bg-gray-50 rounded-xl max-h-32 overflow-y-auto">
-                <p className="text-sm text-gray-700 leading-relaxed">{product.description}</p>
-              </div>
+              <div className="p-4 bg-gray-50 rounded-xl max-h-32 overflow-y-auto text-sm text-gray-700 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: product.description }} />
             </div>
           )}
 
@@ -274,9 +275,8 @@ const ProductDetailModal = ({ product, onClose, onAdd }) => {
           {product.vendorDescription && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Vendor Description</p>
-              <div className="p-4 bg-gray-50 rounded-xl max-h-32 overflow-y-auto">
-                <p className="text-sm text-gray-700 leading-relaxed">{product.vendorDescription}</p>
-              </div>
+              <div className="p-4 bg-gray-50 rounded-xl max-h-32 overflow-y-auto text-sm text-gray-700 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: product.vendorDescription }} />
             </div>
           )}
 
@@ -300,7 +300,7 @@ const ProductDetailModal = ({ product, onClose, onAdd }) => {
 
 // ==================== MAIN COMPONENT ====================
 
-const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelected = [] }) => {
+const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelected = [], pricingYear = 2026 }) => {
   const [products, setProducts]             = useState([]);
   const [loading, setLoading]               = useState(false);
   const [searchTerm, setSearchTerm]         = useState('');
@@ -501,7 +501,9 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
                 const imageUrl   = getProductImage(product);
                 const isSelected = !!selectedProducts.find(p => p._id === product._id);
                 const buyPrice   = parseFloat(product.buyPrice)  || 0;
-                const sellPrice  = parseFloat(product.sellPrice ?? product.price) || 0;
+                const sellPrice  = pricingYear === 2025
+                  ? (parseFloat(product.sellPrice2025) || parseFloat(product.sellPrice ?? product.price) || 0)
+                  : (parseFloat(product.sellPrice2026) || parseFloat(product.sellPrice ?? product.price) || 0);
                 const others     = Array.isArray(product.others)
                   ? product.others
                   : (product.others || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -663,6 +665,7 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
           product={detailProduct}
           onClose={() => setDetailProduct(null)}
           onAdd={handleAddProduct}
+          pricingYear={pricingYear}
         />
       )}
     </div>
