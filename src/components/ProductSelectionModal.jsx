@@ -266,7 +266,7 @@ const ProductDetailModal = ({ product, onClose, onAdd, pricingYear = 2026 }) => 
           {product.description && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Client Description</p>
-              <div className="p-4 bg-gray-50 rounded-xl max-h-32 overflow-y-auto text-sm text-gray-700 leading-relaxed"
+              <div className="p-3 bg-gray-50 rounded-xl max-h-28 overflow-y-auto text-xs text-gray-700 leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: product.description }} />
             </div>
           )}
@@ -590,8 +590,9 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
 
                       {/* Description snippet */}
                       {product.description && (
-                        <p className="text-[10px] text-gray-400 mb-2 line-clamp-2 leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: product.description }} />
+                        <p className="text-[10px] text-gray-400 mb-2 line-clamp-2 leading-relaxed">
+                          {product.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}
+                        </p>
                       )}
 
                       {/* Action */}
