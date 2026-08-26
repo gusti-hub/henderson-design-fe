@@ -590,9 +590,8 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
 
                       {/* Description snippet */}
                       {product.description && (
-                        <p className="text-[10px] text-gray-400 mb-2 line-clamp-2 leading-relaxed">
-                          {product.description}
-                        </p>
+                        <p className="text-[10px] text-gray-400 mb-2 line-clamp-2 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: product.description }} />
                       )}
 
                       {/* Action */}
