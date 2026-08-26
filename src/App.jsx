@@ -20,7 +20,7 @@ import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute'; // â†
 const ProposalEditorWrapper = () => {
   const { orderId, version } = useParams();
   return (
-    <ProtectedRoute allowedRoles={['admin', 'designer']} element={
+    <ProtectedRoute requireEmployee={true} element={
       <ProposalEditor orderId={orderId} version={version} onClose={() => window.close()} />
     } />
   );
