@@ -541,6 +541,10 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           } catch (_) {}
         }
 
+        // Preserve pricingYear from prop if fresh fetch doesn't include it
+        if (fresh.user && !fresh.user.pricingYear && order?.user?.pricingYear) {
+          fresh.user.pricingYear = order.user.pricingYear;
+        }
         setLiveOrder(fresh);
       } catch (err) {
         console.error('Failed to fetch live order:', err);

@@ -960,8 +960,11 @@ const AdminOrderList = ({ onOrderClick }) => {
       const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const fresh = res.ok ? await res.json() : order;
-      const base = res.ok ? fresh : order;
+      const base = res.ok ? await res.json() : order;
+      // Preserve pricingYear from clientOrdersView data if fresh fetch doesn't include it
+      if (base.user && !base.user.pricingYear && order.user?.pricingYear) {
+        base.user.pricingYear = order.user.pricingYear;
+      }
       setEditingOrder({
         ...base,
         packageType: base.packageType || 'investor',
