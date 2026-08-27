@@ -27,7 +27,7 @@ const AdminPanel = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const adminName = user?.name || 'Admin';
-  const userRole  = localStorage.getItem('role');
+  const userRole  = user?.role || localStorage.getItem('role');
   const isAdmin   = userRole === 'admin';
 
   const can = (action) => isAdmin || hasPermission(action);

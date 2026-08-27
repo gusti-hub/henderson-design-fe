@@ -1,6 +1,7 @@
 // src/hooks/useAuth.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { isTokenValid, getAuthUser, getTokenExpiresIn, clearAuth } from '../utils/auth';
+import { backendServer } from '../utils/info';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -28,6 +29,29 @@ export const useAuth = () => {
     }, logoutInMs);
   }, [logout]);
 
+  // Fetch latest role & permissions from server and sync to localStorage + state
+  const syncRoleFromServer = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !isTokenValid()) return;
+    try {
+      const res = await fetch(`${backendServer}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const currentRole = localStorage.getItem('role');
+      const currentPerms = localStorage.getItem('permissions');
+      const newPerms = JSON.stringify(data.permissions || []);
+      if (data.role !== currentRole || currentPerms !== newPerms) {
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('permissions', newPerms);
+        setUser(prev => prev ? { ...prev, role: data.role } : prev);
+      }
+    } catch {
+      // Silent fail — don't interrupt the session
+    }
+  }, []);
+
   useEffect(() => {
     // Validasi saat pertama load
     if (isTokenValid()) {
@@ -37,6 +61,9 @@ export const useAuth = () => {
       // Schedule auto-logout sesuai expiry token
       const expiresIn = getTokenExpiresIn();
       scheduleAutoLogout(expiresIn);
+
+      // Sync role/permissions dari server saat mount
+      syncRoleFromServer();
     } else {
       // Token tidak ada atau expired
       clearAuth();
@@ -48,7 +75,20 @@ export const useAuth = () => {
     return () => {
       if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
     };
-  }, [scheduleAutoLogout]);
+  }, [scheduleAutoLogout, syncRoleFromServer]);
+
+  // Sync saat user kembali ke tab/window
+  useEffect(() => {
+    const handleFocus = () => syncRoleFromServer();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [syncRoleFromServer]);
+
+  // Periodic sync setiap 5 menit
+  useEffect(() => {
+    const interval = setInterval(syncRoleFromServer, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [syncRoleFromServer]);
 
   return { user, isChecking, logout };
 };
