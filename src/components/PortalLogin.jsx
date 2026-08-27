@@ -224,7 +224,7 @@ const PortalLogin = () => {
       if (data.email) localStorage.setItem('email', data.email);
 
       if (data.role !== 'user') {
-        navigate('/admin-panel');
+        window.location.href = '/admin-panel';
       } else if (data.role === 'user') {
         try {
           const clientResponse = await fetch(`${backendServer}/api/clients/${data._id}`, {
@@ -238,7 +238,7 @@ const PortalLogin = () => {
             console.log(clientData.data.paymentInfo.downPaymentStatus)
             
             if (clientData.data.paymentInfo) {
-              navigate('/client-portal');
+              window.location.href = '/client-portal';
             } else {
               throw new Error('Access denied. Your account is pending payment confirmation. Please contact us for assistance.');
             }

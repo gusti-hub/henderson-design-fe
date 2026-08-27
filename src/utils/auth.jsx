@@ -94,6 +94,7 @@ export const clearAuth = () => {
   localStorage.removeItem('userId');
   localStorage.removeItem('name');
   localStorage.removeItem('role');
+  localStorage.removeItem('email');
   localStorage.removeItem('permissions');
   localStorage.removeItem('currentStep');
 };
