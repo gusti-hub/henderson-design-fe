@@ -554,10 +554,11 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
-  const [vendorModal, setVendorModal] = useState(false);
-  const [vendorList, setVendorList] = useState([]);
-  const [loadingVendors, setLoadingVendors] = useState(false);
-  const [selectedVendorId, setSelectedVendorId] = useState('');
+  // Shared multi-select vendor picker (Excel + PDF)
+  const [vendorPickerModal, setVendorPickerModal] = useState({ open: false, mode: 'excel' });
+  const [vendorPickerList, setVendorPickerList] = useState([]);
+  const [loadingPickerVendors, setLoadingPickerVendors] = useState(false);
+  const [selectedVendorIds, setSelectedVendorIds] = useState(new Set());
   const [proposalSelectModal, setProposalSelectModal] = useState(false);
   const [proposalVersionsData, setProposalVersionsData] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
@@ -707,16 +708,61 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
-  // ── Bulk Excel export ─────────────────────────────────────────────────────
-  const handleBulkExcel = async () => {
+  // ── Shared vendor picker — open ───────────────────────────────────────────
+  const openVendorPicker = async (mode) => {
     if (selectedOrderIds.size === 0) return;
-    setDownloading(true);
+    setVendorPickerModal({ open: true, mode });
+    setVendorPickerList([]);
+    setSelectedVendorIds(new Set());
+    setLoadingPickerVendors(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${backendServer}/api/orders/bulk-export`, {
+      const endpoint = mode === 'excel'
+        ? `${backendServer}/api/orders/bulk-export-vendors`
+        : `${backendServer}/api/orders/bulk-po-vendors`;
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderIds: Array.from(selectedOrderIds) }),
+      });
+      const data = await res.json();
+      const list = data.vendors || [];
+      setVendorPickerList(list);
+      // Default: select all
+      setSelectedVendorIds(new Set(list.map(v => v.vendorId)));
+    } catch { setVendorPickerModal({ open: false, mode }); alert('Failed to load vendors.'); }
+    finally { setLoadingPickerVendors(false); }
+  };
+
+  const togglePickerVendor = (vid) => {
+    setSelectedVendorIds(prev => {
+      const next = new Set(prev);
+      next.has(vid) ? next.delete(vid) : next.add(vid);
+      return next;
+    });
+  };
+
+  const toggleAllPickerVendors = () => {
+    setSelectedVendorIds(prev =>
+      prev.size === vendorPickerList.length
+        ? new Set()
+        : new Set(vendorPickerList.map(v => v.vendorId))
+    );
+  };
+
+  // ── Bulk Excel export ─────────────────────────────────────────────────────
+  const handleBulkExcel = () => openVendorPicker('excel');
+
+  const doExcelDownload = async () => {
+    setVendorPickerModal({ open: false, mode: 'excel' });
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const vendorIds = selectedVendorIds.size > 0 ? Array.from(selectedVendorIds) : null;
+      const res = await fetch(`${backendServer}/api/orders/bulk-export`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds), vendorIds }),
       });
       if (!res.ok) throw new Error();
       const blob = await res.blob();
@@ -730,42 +776,24 @@ const AdminOrderList = ({ onOrderClick }) => {
     finally { setDownloading(false); }
   };
 
-  // ── Bulk PDF — open vendor picker first ──────────────────────────────────
-  const handleBulkPdfOpen = async () => {
-    if (selectedOrderIds.size === 0) return;
-    setLoadingVendors(true);
-    setVendorModal(true);
-    setSelectedVendorId('');
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${backendServer}/api/orders/bulk-po-vendors`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds) }),
-      });
-      const data = await res.json();
-      setVendorList(data.vendors || []);
-    } catch { setVendorModal(false); alert('Failed to load vendors.'); }
-    finally { setLoadingVendors(false); }
-  };
+  // ── Bulk PDF — open vendor picker ─────────────────────────────────────────
+  const handleBulkPdfOpen = () => openVendorPicker('pdf');
 
   const handleBulkPdfGenerate = async () => {
-    if (!selectedVendorId) return;
-    setVendorModal(false);
+    if (selectedVendorIds.size === 0) return;
+    setVendorPickerModal({ open: false, mode: 'pdf' });
     setDownloading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${backendServer}/api/orders/bulk-po`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds), vendorId: selectedVendorId }),
+        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds), vendorIds: Array.from(selectedVendorIds) }),
       });
       if (!res.ok) throw new Error();
       const html = await res.text();
       const win = window.open('', '_blank');
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
+      win.document.open(); win.document.write(html); win.document.close();
     } catch { alert('Failed to generate PDF. Please try again.'); }
     finally { setDownloading(false); }
   };
@@ -1460,50 +1488,70 @@ const AdminOrderList = ({ onOrderClick }) => {
       {downloading && <LoadingOverlay />}
       {successMessage && <SuccessToast message={successMessage} onClose={() => setSuccessMessage(null)} />}
 
-      {/* Vendor picker modal for bulk PDF */}
-      {vendorModal && (
+      {/* Multi-select vendor picker modal (Excel + PDF) */}
+      {vendorPickerModal.open && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
             <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
-              <h3 className="font-semibold text-base">Select Vendor for PDF</h3>
-              <button onClick={() => setVendorModal(false)} className="hover:bg-white/20 rounded p-1">
+              <h3 className="font-semibold text-base">
+                {vendorPickerModal.mode === 'excel' ? 'Select Vendors for Excel' : 'Select Vendors for PDF'}
+              </h3>
+              <button onClick={() => setVendorPickerModal({ open: false, mode: vendorPickerModal.mode })} className="hover:bg-white/20 rounded p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5">
-              {loadingVendors ? (
+              {loadingPickerVendors ? (
                 <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
                   <Loader2 className="w-5 h-5 animate-spin" /> Loading vendors…
                 </div>
-              ) : vendorList.length === 0 ? (
+              ) : vendorPickerList.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-6">No POs found for the selected units.</p>
               ) : (
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {vendorList.map(v => (
-                    <button
-                      key={v.vendorId}
-                      onClick={() => setSelectedVendorId(v.vendorId)}
-                      className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                        selectedVendorId === v.vendorId
-                          ? 'border-[#005670] bg-[#005670]/5 text-[#005670]'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                      }`}
-                    >
-                      {v.vendorName}
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-gray-500">{selectedVendorIds.size} of {vendorPickerList.length} selected</span>
+                    <button onClick={toggleAllPickerVendors} className="text-xs text-[#005670] font-medium hover:underline">
+                      {selectedVendorIds.size === vendorPickerList.length ? 'Deselect All' : 'Select All'}
                     </button>
-                  ))}
-                </div>
+                  </div>
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                    {vendorPickerList.map(v => (
+                      <label
+                        key={v.vendorId}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
+                          selectedVendorIds.has(v.vendorId)
+                            ? 'border-[#005670] bg-[#005670]/5'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedVendorIds.has(v.vendorId)}
+                          onChange={() => togglePickerVendor(v.vendorId)}
+                          className="accent-[#005670] w-4 h-4 shrink-0"
+                        />
+                        <span className={`text-sm font-medium ${selectedVendorIds.has(v.vendorId) ? 'text-[#005670]' : 'text-gray-700'}`}>
+                          {v.vendorName}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
               )}
               <div className="flex gap-2 mt-4">
-                <button onClick={() => setVendorModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                <button
+                  onClick={() => setVendorPickerModal({ open: false, mode: vendorPickerModal.mode })}
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                >
                   Cancel
                 </button>
                 <button
-                  onClick={handleBulkPdfGenerate}
-                  disabled={!selectedVendorId || loadingVendors}
+                  onClick={vendorPickerModal.mode === 'excel' ? doExcelDownload : handleBulkPdfGenerate}
+                  disabled={selectedVendorIds.size === 0 || loadingPickerVendors}
                   className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
                 >
-                  Generate PDF
+                  {vendorPickerModal.mode === 'excel' ? 'Download Excel' : 'Generate PDF'}
                 </button>
               </div>
             </div>

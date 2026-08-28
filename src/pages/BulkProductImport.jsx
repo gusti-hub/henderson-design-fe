@@ -399,8 +399,20 @@ const BulkProductImport = ({ onComplete }) => {
       products.forEach((p, i) => valErrors.push(...validateRow(p, i + 2)));
       if (valErrors.length) { setError(valErrors.join('\n')); return; }
 
-      // Upload in batches of 20
+      // Delete existing products by SKU before re-importing
       const token = localStorage.getItem('token');
+      const skus = products.map(p => p.product_id).filter(Boolean);
+      if (skus.length) {
+        setProgress('Removing existing products by SKU…');
+        const clearRes = await fetch(`${backendServer}/api/products/bulk-delete`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_ids: skus }),
+        });
+        if (!clearRes.ok) throw new Error('Failed to remove existing products');
+      }
+
+      // Upload in batches of 20
       let successCount = 0;
       const importErrors = [];
       const batches = batchArray(products, 20);
@@ -467,7 +479,8 @@ const BulkProductImport = ({ onComplete }) => {
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
         <p className="text-sm font-semibold text-blue-900">How it works:</p>
         <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-          <li>Upload your Excel/CSV — the importer auto-detects the header row by finding "SKU"</li>
+          <li><strong>Replaces by SKU</strong> — existing products matching the imported SKUs are deleted first, then re-imported from the file</li>
+          <li>Auto-detects the header row by finding "SKU"</li>
           <li>Reads the <strong>sub-header row</strong> above headers (CLIENT / VENDOR labels) to disambiguate duplicate columns</li>
           <li>Custom attribute columns (Arm Style, Drawer Fronts, Metal Finish, Seat, etc.) are stored automatically</li>
           <li>Imports in batches of 20 — safe for large catalogs (10k+ rows)</li>
