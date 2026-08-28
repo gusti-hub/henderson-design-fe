@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   Home, MapPin, Store, Users, User, LogOut,
-  FileText, Menu, X, Receipt, Lock, ShieldCheck, ChevronRight, Truck,
+  FileText, Menu, X, Receipt, Lock, ShieldCheck, ChevronRight, Truck, Images,
 } from 'lucide-react';
 import UserManagement from './UserManagement';
 import Profile from './Profile';
@@ -17,6 +17,7 @@ import ExpenseManager from './ExpenseManager';
 import FinancialReviewSection from '../components/FinancialReviewSection';
 import RoleManagement from './RoleManagement';
 import LogisticOrderTracker from './LogisticOrderTracker';
+import ImageLibrary from './ImageLibrary';
 import { useAuth } from '../hooks/useAuth';
 import { hasPermission } from '../utils/auth';
 import { ACTIONS } from '../utils/actions';
@@ -44,6 +45,7 @@ const AdminPanel = () => {
     { icon: Lock,         label: 'Financial Review',  path: '/financial-review',  action: ACTIONS.VIEW_FINANCIAL  },
     { icon: Truck,        label: 'Logistic Tracker',  path: '/logistic-tracker',  action: ACTIONS.VIEW_LOGISTIC   },
     { icon: ShieldCheck,  label: 'Role Management',   path: '/role-management',   action: ACTIONS.VIEW_ROLE_MGMT  },
+    { icon: Images,       label: 'Image Library',     path: '/image-library',     action: ACTIONS.VIEW_IMAGE_LIBRARY },
   ];
 
   const menuItems = ALL_MENU_ITEMS.filter(item => can(item.action));
@@ -80,6 +82,7 @@ const AdminPanel = () => {
       case '/financial-review':  return <FinancialReviewSection />;
       case '/logistic-tracker':  return <LogisticOrderTracker />;
       case '/role-management':   return <RoleManagement />;
+      case '/image-library':     return <ImageLibrary />;
       default:                   return <Dashboard />;
     }
   };

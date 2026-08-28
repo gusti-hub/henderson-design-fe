@@ -10,6 +10,7 @@ export const ACTIONS = {
   VIEW_FINANCIAL:      'view_financial_review',
   VIEW_ROLE_MGMT:      'view_role_management',
   VIEW_LOGISTIC:       'view_logistic_tracker',
+  VIEW_IMAGE_LIBRARY:  'view_image_library',
 };
 
 export const ACTION_LABELS = {
@@ -24,4 +25,5 @@ export const ACTION_LABELS = {
   view_financial_review:  'Financial Review',
   view_role_management:   'Role Management',
   view_logistic_tracker:  'Logistic Order Tracker',
+  view_image_library:     'Image Library',
 };
