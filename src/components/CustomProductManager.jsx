@@ -1308,6 +1308,13 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
   const isImageFile = (floorPlanFile?.type || existingFloorPlan?.contentType || '').startsWith('image/');
   const totalCount = savedProducts.length + (draftProduct ? 1 : 0);
 
+  // ── View mode: 'card' (default, tabbed detail) | 'table' (compact overview) ──
+  const [viewMode, setViewMode] = useState('card');
+  // Product opened in the modal when in table view
+  const [tableModalProduct, setTableModalProduct] = useState(null); // { product, index }
+  // Draft group modal when in table view
+  const [tableGroupModalOpen, setTableGroupModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
 
@@ -1394,6 +1401,26 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold">
                 <Lock className="w-3.5 h-3.5" /> Locked — Proposal Approved
               </span>
+            )}
+
+            {/* View mode toggle */}
+            {savedProducts.length > 0 && (
+              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden ml-2">
+                <button
+                  onClick={() => setViewMode('card')}
+                  title="Detailed card view"
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${viewMode === 'card' ? 'bg-[#005670] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" /> Detailed
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  title="Simple table view"
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-[#005670] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <ClipboardList className="w-3.5 h-3.5" /> Simple
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -1504,7 +1531,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
       {/* ── Products List ── */}
       <div className="space-y-4">
         {totalCount === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center">
+          <div className="bg-white rounded-xl p-12 text-center" data-cpm-empty>
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Products Added</h3>
             <p className="text-gray-600 mb-6">Select from library or create manual products</p>
@@ -1522,7 +1549,108 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
               </div>
             )}
           </div>
+        ) : viewMode === 'table' ? (
+          /* ── SIMPLE TABLE VIEW ── */
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <h3 className="font-semibold text-gray-800 text-sm">
+                Products ({savedProducts.length})
+                {draftProduct && <span className="ml-2 text-amber-600 font-normal">(+1 unsaved)</span>}
+              </h3>
+              <span className="text-xs text-gray-400">Click row to edit • Simple view</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {['#', 'Product', 'SKU', 'Qty', 'Room', 'Vendor', 'Unit Price', 'Status', ''].map((h, i) => (
+                      <th key={i} className="px-3 py-2.5 text-left text-xs font-bold text-gray-600 whitespace-nowrap bg-gray-50">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {savedProducts.map((product, idx) => {
+                    const opts = product.selectedOptions || {};
+                    const imageUrl = (() => {
+                      if (product.image?.url) return product.image.url;
+                      if (Array.isArray(opts.uploadedImages) && opts.uploadedImages.length > 0) {
+                        const p = opts.uploadedImages.find(i => i.isPrimary) || opts.uploadedImages[0];
+                        return p?.url || null;
+                      }
+                      if (typeof opts.image === 'string' && opts.image) return opts.image;
+                      if (opts.image?.url) return opts.image.url;
+                      return null;
+                    })();
+                    const unitPrice = parseFloat(product.finalPrice || product.unitPrice || opts.msrp) || 0;
+                    return (
+                      <tr
+                        key={product._uid || product._id || idx}
+                        onClick={() => setTableModalProduct({ product, index: idx })}
+                        className="border-b border-gray-50 hover:bg-[#005670]/5 cursor-pointer transition-colors"
+                      >
+                        <td className="px-3 py-2 text-xs text-gray-400 font-mono">{idx + 1}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-200">
+                              {imageUrl
+                                ? <img src={imageUrl} alt="" className="w-full h-full object-cover" onError={e => { e.target.style.display='none'; }} />
+                                : <div className="w-full h-full flex items-center justify-center"><Package className="w-4 h-4 text-gray-300" /></div>}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 text-xs max-w-[180px] truncate">{product.name || 'Untitled'}</p>
+                              {product.isParent && <span className="text-[10px] text-amber-600 font-semibold">GROUP</span>}
+                              {product.sourceType === 'library' && <span className="text-[10px] text-purple-600"> • Library</span>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-gray-500 whitespace-nowrap">{product.product_id || '—'}</td>
+                        <td className="px-3 py-2 text-xs text-center font-semibold text-gray-700">{product.quantity || 1}</td>
+                        <td className="px-3 py-2 text-xs text-teal-700 whitespace-nowrap">{opts.room || '—'}</td>
+                        <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate">{product.vendor?.name || opts.productVendor || '—'}</td>
+                        <td className="px-3 py-2 text-xs font-semibold text-[#005670] whitespace-nowrap">{unitPrice > 0 ? `$${unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                        <td className="px-3 py-2">
+                          {opts.statusCategory
+                            ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs whitespace-nowrap">{opts.statusCategory}</span>
+                            : <span className="text-gray-300 text-xs">—</span>}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            onClick={e => { e.stopPropagation(); removeProduct(idx); }}
+                            className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Remove product"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {draftGroup && (
+                    <tr
+                      className="border-b border-amber-200 bg-amber-50 hover:bg-amber-100 cursor-pointer transition-colors"
+                      onClick={() => setTableGroupModalOpen(true)}
+                    >
+                      <td colSpan={9} className="px-3 py-2 text-xs text-amber-700 font-medium">
+                        ✏ New group (unsaved) — click here to fill in details
+                      </td>
+                    </tr>
+                  )}
+                  {draftProduct && !draftProduct.parentId && (
+                    <tr
+                      className="border-b border-amber-100 bg-amber-50/60 hover:bg-amber-100/80 cursor-pointer transition-colors"
+                      onClick={() => setTableModalProduct({ product: draftProduct, index: 'draft' })}
+                    >
+                      <td colSpan={9} className="px-3 py-2 text-xs text-amber-700 font-medium">
+                        ✏ New product (unsaved) — click here to fill in details
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
+          /* ── DETAILED CARD VIEW (existing) ── */
           <>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center justify-between">
               <div>
@@ -1764,6 +1892,107 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
           </>
         )}
       </div>
+
+      {/* ── Table-view product edit modal ── */}
+      {tableModalProduct && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto relative">
+            <button
+              onClick={() => setTableModalProduct(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <ProductCard
+              product={tableModalProduct.product}
+              index={tableModalProduct.index}
+              order={liveOrder}
+              allProducts={savedProducts}
+              expanded={true}
+              simpleMode={true}
+              onToggleExpand={() => {}}
+              onUpdate={updateProduct}
+              locked={isOrderLocked}
+              onRemove={(idx) => { removeProduct(idx); setTableModalProduct(null); }}
+              onSaved={async (newSavedProducts) => {
+                setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                if (tableModalProduct.index === 'draft') setDraftProduct(null);
+                setTableModalProduct(null);
+                if (onSave) onSave(newSavedProducts);
+              }}
+              onToast={addToast}
+              draggable={false}
+              onOpenHistory={(focus) => { setAuditFocusProduct(focus); setAuditDrawerOpen(true); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Table-view group edit modal ── */}
+      {tableGroupModalOpen && draftGroup && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto relative">
+            <button
+              onClick={() => setTableGroupModalOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="p-4 pt-12">
+              <GroupProductCard
+                parent={draftGroup}
+                children={savedProducts.filter(c => c.parentId === draftGroup.product_id)}
+                parentIndex={savedProducts.length}
+                order={liveOrder}
+                allProducts={[...savedProducts, draftGroup]}
+                expanded={true}
+                onToggleExpand={() => {}}
+                onUpdateParent={(_idx, field, value) => setDraftGroup(prev => applyFieldUpdate(prev, field, value))}
+                onUpdateChild={updateProduct}
+                onRemoveGroup={() => { setDraftGroup(null); setExpandedProduct(null); setTableGroupModalOpen(false); }}
+                onSavedGroup={(newProducts) => {
+                  setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                  setDraftGroup(null);
+                  setExpandedProduct(null);
+                  setTableGroupModalOpen(false);
+                  if (onSave) onSave(newProducts);
+                }}
+                onSavedChild={(newProducts) => {
+                  setSavedProducts(newProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                  if (onSave) onSave(newProducts);
+                }}
+                onRemoveChild={removeProduct}
+                onToast={addToast}
+                onAddChildFromLibrary={() => { setGroupLibraryTarget(draftGroup.product_id); setShowLibraryModal(true); }}
+                onAddCustomChild={() => addCustomChild(draftGroup.product_id)}
+                locked={isOrderLocked}
+                draftChild={draftProduct?.parentId === draftGroup.product_id ? (
+                  <ProductCard
+                    product={draftProduct}
+                    index="draft"
+                    order={liveOrder}
+                    allProducts={savedProducts}
+                    expanded={expandedProduct === 'draft'}
+                    onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
+                    onUpdate={updateProduct}
+                    locked={isOrderLocked}
+                    onRemove={removeProduct}
+                    onSaved={async (newSavedProducts) => {
+                      setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
+                      setDraftProduct(null);
+                      setExpandedProduct(null);
+                      if (onSave) onSave(newSavedProducts);
+                    }}
+                    onToast={addToast}
+                    draggable={false}
+                    onOpenHistory={(focus) => { setAuditFocusProduct(focus); setAuditDrawerOpen(true); }}
+                  />
+                ) : null}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Summary ── */}
       {totalCount > 0 && (
@@ -2540,6 +2769,7 @@ const ProductCard = ({
   product, index, order, allProducts, expanded,
   onToggleExpand, onUpdate, onRemove, onSaved, onToast,
   locked = false,
+  simpleMode = false, // flat single-page form, no tabs
   // ✅ PATCH 11: drag props
   draggable = false,
   isDragOver = false,
@@ -3289,28 +3519,30 @@ const ProductCard = ({
             </div>
           )}
 
-          {/* Tab Bar — always interactive (outside fieldset) */}
-          <div className="flex border-b border-gray-200 px-6 pt-4 gap-1 overflow-x-auto">
-            {PRODUCT_TABS.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all border-b-2 -mb-px whitespace-nowrap ${
-                    activeTab === tab.id ? 'border-[#005670] text-[#005670] bg-[#005670]/5' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}>
-                  <Icon className="w-4 h-4" />{tab.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Tab bar — normal mode only; simpleMode shows all sections flat */}
+          {!simpleMode && (
+            <div className="flex border-b border-gray-200 px-6 pt-4 gap-1 overflow-x-auto">
+              {PRODUCT_TABS.map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all border-b-2 -mb-px whitespace-nowrap ${
+                      activeTab === tab.id ? 'border-[#005670] text-[#005670] bg-[#005670]/5' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}>
+                    <Icon className="w-4 h-4" />{tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-          <fieldset disabled={locked && !['status', 'shipping', 'installbinder', 'details'].includes(activeTab)} className="disabled:opacity-60">
-          <div className="p-6 space-y-5">
+          <fieldset disabled={!simpleMode && locked && !['status', 'shipping', 'installbinder', 'details'].includes(activeTab)} className="disabled:opacity-60">
+          <div className={simpleMode ? 'px-5 py-3 space-y-3' : 'p-6 space-y-5'}>
 
             {/* ════ TAB: GENERAL INFO ════ */}
-            {activeTab === 'general' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h3 className="text-base font-bold text-gray-900">General Information</h3>
+            {(simpleMode || activeTab === 'general') && (
+              <div className={simpleMode ? 'space-y-3' : 'bg-white rounded-xl border border-gray-200 p-5 space-y-4'}>
+                <h3 className={simpleMode ? 'text-sm font-semibold text-gray-700 uppercase tracking-wide' : 'text-base font-bold text-gray-900'}>General Information</h3>
 
                 {/* Item Name */}
                 <div>
@@ -3492,9 +3724,9 @@ const ProductCard = ({
             )}
 
             {/* ════ TAB: ITEM DETAILS ════ */}
-            {activeTab === 'details' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h3 className="text-base font-bold text-gray-900">Item Details</h3>
+            {(simpleMode || activeTab === 'details') && (
+              <div className={simpleMode ? 'space-y-3 pt-3 border-t border-gray-100' : 'bg-white rounded-xl border border-gray-200 p-5 space-y-4'}>
+                <h3 className={simpleMode ? 'text-sm font-semibold text-gray-700 uppercase tracking-wide' : 'text-base font-bold text-gray-900'}>Item Details</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Vendor</label>
@@ -3532,14 +3764,24 @@ const ProductCard = ({
                 <div className={`grid grid-cols-2 gap-4${(locked || isFromLibrary) ? ' pointer-events-none opacity-60' : ''}`}>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Client Description</label>
-                    <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
-                      <RichTextEditor
-                        value={localFields.specifications}
-                        onChange={(html) => { setLocal('specifications', html); upd('specifications', html); }}
+                    {simpleMode ? (
+                      <textarea
+                        value={localFields.specifications?.replace(/<[^>]+>/g, '') || ''}
+                        onChange={(e) => { setLocal('specifications', e.target.value); upd('specifications', e.target.value); }}
                         placeholder="Describe the product for the client…"
-                        minRows={5}
+                        rows={3}
+                        className={`${inputCls} resize-none`}
                       />
-                    </Suspense>
+                    ) : (
+                      <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
+                        <RichTextEditor
+                          value={localFields.specifications}
+                          onChange={(html) => { setLocal('specifications', html); upd('specifications', html); }}
+                          placeholder="Describe the product for the client…"
+                          minRows={5}
+                        />
+                      </Suspense>
+                    )}
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -3549,14 +3791,24 @@ const ProductCard = ({
                         upd('vendorDescription', localFields.specifications);
                       }} className="text-xs text-blue-600 hover:underline font-normal">Copy from Client</button>}
                     </div>
-                    <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
-                      <RichTextEditor
-                        value={localFields.vendorDescription}
-                        onChange={(html) => { setLocal('vendorDescription', html); upd('vendorDescription', html); }}
+                    {simpleMode ? (
+                      <textarea
+                        value={localFields.vendorDescription?.replace(/<[^>]+>/g, '') || ''}
+                        onChange={(e) => { setLocal('vendorDescription', e.target.value); upd('vendorDescription', e.target.value); }}
                         placeholder="Vendor-facing description…"
-                        minRows={5}
+                        rows={3}
+                        className={`${inputCls} resize-none`}
                       />
-                    </Suspense>
+                    ) : (
+                      <Suspense fallback={<div className="h-24 border border-gray-200 rounded-lg bg-gray-50" />}>
+                        <RichTextEditor
+                          value={localFields.vendorDescription}
+                          onChange={(html) => { setLocal('vendorDescription', html); upd('vendorDescription', html); }}
+                          placeholder="Vendor-facing description…"
+                          minRows={5}
+                        />
+                      </Suspense>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -3727,9 +3979,9 @@ const ProductCard = ({
             )}
 
             {/* ════ TAB: SHIPPING ════ */}
-            {activeTab === 'shipping' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <h3 className="text-base font-bold text-gray-900">Shipping</h3>
+            {(simpleMode || activeTab === 'shipping') && (
+              <div className={simpleMode ? 'space-y-3 pt-3 border-t border-gray-100' : 'bg-white rounded-xl border border-gray-200 p-5 space-y-4'}>
+                <h3 className={simpleMode ? 'text-sm font-semibold text-gray-700 uppercase tracking-wide' : 'text-base font-bold text-gray-900'}>Shipping</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ship To</label>
@@ -3773,22 +4025,26 @@ const ProductCard = ({
             )}
 
             {/* ════ TAB: PRICING ════ */}
-            {activeTab === 'pricing' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-base font-bold text-gray-900 mb-5">Item Pricing</h3>
+            {(simpleMode || activeTab === 'pricing') && (
+              <div className={simpleMode ? 'pt-3 border-t border-gray-100' : 'bg-white rounded-xl border border-gray-200 p-5'}>
+                <h3 className={simpleMode ? 'text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3' : 'text-base font-bold text-gray-900 mb-5'}>Item Pricing</h3>
                 <PricingFields product={product} index={index} onUpdate={onUpdate} disabled={isFromLibrary} taxEditable={true} qtyEditable={true} />
               </div>
             )}
 
             {/* ════ TAB: INSTALL BINDER ════ */}
-            {activeTab === 'installbinder' && (
-              <div className="space-y-5">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-800">
-                    Tracking info, proposal number, and delivery/order status are managed in the <strong>Status</strong> tab.
-                    Vendor order number is in the <strong>Item Details</strong> tab. All data is shared — no need to enter twice.
-                  </p>
-                </div>
+            {(simpleMode || activeTab === 'installbinder') && (
+              <div className={simpleMode ? 'space-y-3 pt-3 border-t border-gray-100' : 'space-y-5'}>
+                {simpleMode ? (
+                  <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Install Binder</h3>
+                ) : (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      Tracking info, proposal number, and delivery/order status are managed in the <strong>Status</strong> tab.
+                      Vendor order number is in the <strong>Item Details</strong> tab. All data is shared — no need to enter twice.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -3823,9 +4079,9 @@ const ProductCard = ({
             )}
 
             {/* ════ TAB: STATUS ════ */}
-            {activeTab === 'status' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-base font-bold text-gray-900 mb-5">Status</h3>
+            {(simpleMode || activeTab === 'status') && (
+              <div className={simpleMode ? 'pt-3 border-t border-gray-100' : 'bg-white rounded-xl border border-gray-200 p-5'}>
+                <h3 className={simpleMode ? 'text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3' : 'text-base font-bold text-gray-900 mb-5'}>Status</h3>
                 <StatusReportFields
                   product={product}
                   index={index}
@@ -3843,8 +4099,8 @@ const ProductCard = ({
               </div>
             )}
 
-            {/* ── Save Button — visible on unlocked tabs ── */}
-            {(!locked || ['status', 'shipping', 'installbinder', 'details'].includes(activeTab)) && (
+            {/* ── Save Button — always visible ── */}
+            {(simpleMode || !locked || ['status', 'shipping', 'installbinder', 'details', 'general', 'pricing'].includes(activeTab)) && (
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button onClick={handleSaveProduct} disabled={saving}
                   className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-all font-semibold shadow-sm hover:shadow-md">
