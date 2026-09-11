@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Store, Search, Globe, Phone, Mail, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Store, Search, Globe, Phone, Mail, DollarSign, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { hasPermission } from '../utils/auth';
 
@@ -207,6 +207,11 @@ const VendorManagement = () => {
     setIsModalOpen(true);
   };
 
+  const handleView = (vendor) => {
+    handleEdit(vendor);
+    setModalMode('view');
+  };
+
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -387,6 +392,10 @@ const VendorManagement = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handleView(vendor)}
+                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all" title="View">
+                          <Eye className="w-4 h-4" />
+                        </button>
                         {canManage && (
                           <>
                             <button onClick={() => handleEdit(vendor)}
@@ -415,7 +424,7 @@ const VendorManagement = () => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
             <div className="sticky top-0 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white p-6 flex justify-between items-center">
-              <h3 className="text-2xl font-bold">{modalMode === 'create' ? 'Add New Vendor' : 'Edit Vendor'}</h3>
+              <h3 className="text-2xl font-bold">{modalMode === 'create' ? 'Add New Vendor' : modalMode === 'view' ? 'Vendor Details' : 'Edit Vendor'}</h3>
               <button onClick={handleCloseModal} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
                 <X className="w-6 h-6" />
               </button>
@@ -451,7 +460,7 @@ const VendorManagement = () => {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto" style={modalMode === 'view' ? { pointerEvents: 'none', opacity: 0.85 } : {}}>
               <div className="p-6 space-y-6">
                 {errors.form && (
                   <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-xl text-sm">
@@ -694,9 +703,9 @@ const VendorManagement = () => {
               <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex justify-end gap-3">
                 <button type="button" onClick={handleCloseModal} disabled={saveLoading}
                   className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-medium transition-colors">
-                  Cancel
+                  {modalMode === 'view' ? 'Close' : 'Cancel'}
                 </button>
-                <button type="submit" disabled={saveLoading}
+                {modalMode !== 'view' && <button type="submit" disabled={saveLoading}
                   className="px-6 py-3 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg font-bold flex items-center gap-2 transition-all">
                   {saveLoading ? (
                     <>
@@ -709,7 +718,7 @@ const VendorManagement = () => {
                       {modalMode === 'create' ? 'Create Vendor' : 'Save Changes'}
                     </>
                   )}
-                </button>
+                </button>}
               </div>
             </form>
           </div>
