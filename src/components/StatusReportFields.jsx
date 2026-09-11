@@ -288,10 +288,33 @@ const StatusReportFields = ({
             Notes
             {isRO('notes') && <span className="ml-1.5 text-[10px] font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">Logistic Tracker</span>}
           </label>
+          {/* Auto-generated stage status — read-only, from logistic tracker values */}
+          {(() => {
+            const STAGE_PCTS = { 0:'0%', 1:'20%', 2:'40%', 3:'60%', 4:'80%', 5:'100%' };
+            const stages = [
+              { key: 'logDrawing',    label: 'DRAWING'     },
+              { key: 'logMachining',  label: 'MACHINING'   },
+              { key: 'logAssembly',   label: 'ASSEMBLY'    },
+              { key: 'logFinishing',  label: 'FINISHING'   },
+              { key: 'logQcChecking', label: 'QC CHECKING' },
+              { key: 'logPacking',    label: 'PACKING'     },
+            ];
+            const hasAny = stages.some(s => (opts[s.key] ?? 0) > 0);
+            return (
+              <div className="mb-2 p-2 bg-gray-50 border border-gray-200 rounded text-[11px] font-mono text-gray-500 leading-relaxed select-none">
+                {stages.map(s => (
+                  <div key={s.key} className={`${(opts[s.key] ?? 0) > 0 ? 'text-[#005670] font-semibold' : ''}`}>
+                    {s.label} — {STAGE_PCTS[opts[s.key] ?? 0] || '0%'}
+                  </div>
+                ))}
+                {!hasAny && <div className="text-gray-300 italic">No logistic progress recorded yet</div>}
+              </div>
+            );
+          })()}
           <textarea value={opts.notes || ''}
             onChange={(e) => upd('notes', e.target.value)}
             disabled={isRO('notes')} className={`${inputCls} resize-y`}
-            rows={9} placeholder="Enter Notes" />
+            rows={6} placeholder="Enter Notes" />
         </div>
       </div>
 

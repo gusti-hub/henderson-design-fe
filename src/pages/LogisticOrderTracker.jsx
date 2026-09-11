@@ -1,7 +1,7 @@
 // pages/LogisticOrderTracker.jsx
 // Logistic Order Tracker — all editable fields as columns, inline cell editing
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, RefreshCw, Filter, X, Download, Loader2, Save, Pencil, ChevronsUpDown, ChevronUp, ChevronDown, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Search, RefreshCw, Filter, X, Download, Loader2, Pencil, ChevronsUpDown, ChevronUp, ChevronDown, Lock, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { backendServer } from '../utils/info';
 
@@ -96,6 +96,10 @@ const LogisticOrderTracker = () => {
   const [editForm, setEditForm]     = useState({});
   const [savingRow, setSavingRow]   = useState(false);
   const [rowError, setRowError]     = useState('');
+  const [isDirty, setIsDirty]       = useState(false);
+  const [toast, setToast]           = useState(null); // { type: 'success'|'error', msg }
+  const editRowRef                  = useRef(null);
+  const autoSaveRef                 = useRef(null); // always points to latest handleSave
 
   // Sort — default by PO number ascending
   const [sortCol, setSortCol] = useState('poNumber');
@@ -107,6 +111,7 @@ const LogisticOrderTracker = () => {
   const [filterStatusCategory, setFilterStatusCategory] = useState('');
   const [filterPoStatus,       setFilterPoStatus]       = useState('');
   const [filterArrivalDate,    setFilterArrivalDate]    = useState('');
+  const [filterItemName,       setFilterItemName]       = useState('');
   const [search,               setSearch]               = useState('');
   const [searchInput,          setSearchInput]          = useState('');
 
@@ -133,7 +138,7 @@ const LogisticOrderTracker = () => {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  useEffect(() => { setPage(1); setDisplayPage(1); }, [search, filterProjectCode, filterVendor, filterStatusCategory, filterPoStatus, filterArrivalDate]);
+  useEffect(() => { setPage(1); setDisplayPage(1); }, [search, filterProjectCode, filterVendor, filterStatusCategory, filterPoStatus, filterArrivalDate, filterItemName]);
 
   const fetchRows = useCallback(async () => {
     setLoading(true); setError('');
@@ -158,13 +163,28 @@ const LogisticOrderTracker = () => {
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
   useEffect(() => { fetchRows(); },  [fetchRows]);
-  useEffect(() => { setEditingKey(null); setEditForm({}); }, [displayPage]);
+  useEffect(() => { setEditingKey(null); setEditForm({}); setIsDirty(false); }, [displayPage]);
+
+  // Auto-save on click outside editing row
+  useEffect(() => {
+    if (!editingKey) return;
+    const handler = (e) => {
+      if (savingRow) return;
+      if (editRowRef.current && !editRowRef.current.contains(e.target)) {
+        autoSaveRef.current?.();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingKey]); // re-subscribe only when editing row changes
 
   const clearFilters = () => {
     setFilterProjectCode(''); setFilterVendor(''); setFilterStatusCategory('');
-    setFilterPoStatus(''); setFilterArrivalDate(''); setSearchInput(''); setSearch(''); setPage(1);
+    setFilterPoStatus(''); setFilterArrivalDate(''); setFilterItemName('');
+    setSearchInput(''); setSearch(''); setPage(1);
   };
-  const hasFilters = filterProjectCode || filterVendor || filterStatusCategory || filterPoStatus || filterArrivalDate || search;
+  const hasFilters = filterProjectCode || filterVendor || filterStatusCategory || filterPoStatus || filterArrivalDate || search || filterItemName;
 
   // ─── Sort ────────────────────────────────────────────────────────────────
   const handleSort = (col) => {
@@ -173,9 +193,15 @@ const LogisticOrderTracker = () => {
     else { setSortCol(col); setSortDir('asc'); }
   };
 
+  const filteredRows = useMemo(() => {
+    if (!filterItemName) return rows;
+    const q = filterItemName.toLowerCase();
+    return rows.filter(r => r.itemName?.toLowerCase().includes(q));
+  }, [rows, filterItemName]);
+
   const sortedRows = useMemo(() => {
-    if (!sortCol) return rows;
-    return [...rows].sort((a, b) => {
+    if (!sortCol) return filteredRows;
+    return [...filteredRows].sort((a, b) => {
       let av = a[sortCol] ?? '';
       let bv = b[sortCol] ?? '';
       if (NUMERIC_COLS.has(sortCol)) {
@@ -187,7 +213,20 @@ const LogisticOrderTracker = () => {
       bv = String(bv).toLowerCase();
       return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     });
-  }, [rows, sortCol, sortDir]);
+  }, [filteredRows, sortCol, sortDir]);
+
+  // ─── Stage auto-note (computed, not stored) ────────────────────────────
+  const STAGE_PCTS = ['0%', '20%', '40%', '60%', '80%', '100%'];
+  const STAGE_NOTE_LABELS = {
+    logDrawing:    'DRAWING',
+    logMachining:  'MACHINING',
+    logAssembly:   'ASSEMBLY',
+    logFinishing:  'FINISHING',
+    logQcChecking: 'QC CHECKING',
+    logPacking:    'PACKING',
+  };
+  const stageAutoNote = (row) =>
+    STAGE_COLS.map(s => `${STAGE_NOTE_LABELS[s.key]} - ${STAGE_PCTS[row[s.key]] || '0%'}`).join('\n');
 
   const displayTotalPages = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
   const paginatedRows = useMemo(
@@ -199,20 +238,43 @@ const LogisticOrderTracker = () => {
   const getKey = (row, idx) => `${row.orderId}_${row.productId}_${idx}`;
 
   const openEdit = (row, key) => {
+    if (savingRow) return; // don't open new row while current save is in-flight
     setEditingKey(key);
-    setEditForm({ ...row });
+    setEditForm({ ...row, packingListQty: 0 }); // always start packing batch at 0
     setRowError('');
+    setIsDirty(false);
   };
 
   const cancelEdit = (e) => {
     e?.stopPropagation();
-    setEditingKey(null); setEditForm({}); setRowError('');
+    setEditingKey(null); setEditForm({}); setRowError(''); setIsDirty(false);
   };
 
-  const setF = (key) => (val) => setEditForm(f => ({ ...f, [key]: val }));
+  const setF = (key) => (val) => {
+    setEditForm(f => ({ ...f, [key]: val }));
+    setIsDirty(true);
+  };
+
+  const showError = (msg) => { setRowError(msg); if (msg) setToast({ type: 'error', msg }); };
 
   const handleSave = async (e) => {
-    e?.stopPropagation();
+    e?.stopPropagation?.();
+    if (!isDirty) { setEditingKey(null); setEditForm({}); setRowError(''); return; }
+    const batchQty    = Number(editForm.packingListQty ?? 0);
+    const balance     = editForm.balanceQuantity ?? 0;
+    const newPoQty    = Number(editForm.poQuantity ?? 0);
+    const alreadyShipped = editForm.shippedQuantity ?? 0;
+
+    // Validate: PO QTY must not be less than already-shipped qty
+    if (newPoQty < alreadyShipped) {
+      showError(`PO QTY (${newPoQty}) cannot be less than already shipped (${alreadyShipped})`);
+      return;
+    }
+    // Validate: packing batch must not exceed current balance
+    if (batchQty > balance) {
+      showError(`Packing qty (${batchQty}) exceeds available balance (${balance})`);
+      return;
+    }
     setSavingRow(true); setRowError('');
     try {
       const url = `${backendServer}/api/logistic/${editForm.orderId}/${editForm.productId}`;
@@ -221,6 +283,7 @@ const LogisticOrderTracker = () => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           projectCode:         editForm.projectCode,
+          poQuantity:          newPoQty,
           cargoReadyDate:      editForm.cargoReadyDate,
           shipmentDate:        editForm.shipmentDate,
           logDrawing:          editForm.logDrawing,
@@ -229,7 +292,7 @@ const LogisticOrderTracker = () => {
           logFinishing:        editForm.logFinishing,
           logQcChecking:       editForm.logQcChecking,
           logPacking:          editForm.logPacking,
-          packingList:         editForm.packingList,
+          packingList:         batchQty,
           containerNumber:     editForm.containerNumber,
           statusCategory:      editForm.statusCategory,
           expectedShipDate:    editForm.expectedShipDate,
@@ -237,17 +300,39 @@ const LogisticOrderTracker = () => {
           remark:              editForm.remark,
         }),
       });
-      if (!r.ok) throw new Error((await r.json()).message || 'Save failed');
-      // Update the row in place — no full re-fetch, no table glitch
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || 'Save failed');
+      // Always use backend-returned quantities — never fall back to stale editForm/row values
+      const updatedPoQty      = data.poQuantity      ?? editForm.poQuantity;
+      const updatedShipped    = data.shippedQuantity ?? 0;
+      const updatedBalance    = data.balanceQuantity ?? Math.max(0, updatedPoQty - updatedShipped);
       setRows(prev => prev.map(row =>
         row.orderId === editForm.orderId && row.productId === editForm.productId
-          ? { ...row, ...editForm }
+          ? {
+              ...row,
+              ...editForm,
+              poQuantity:      updatedPoQty,
+              shippedQuantity: updatedShipped,
+              balanceQuantity: updatedBalance,
+              ...(batchQty > 0 ? { packingList: batchQty } : {}),
+              ...(data.dateInspected ? { dateInspected: data.dateInspected } : {}),
+            }
           : row
       ));
+      setIsDirty(false);
       setEditingKey(null); setEditForm({});
-    } catch (err) { setRowError(err.message); }
+      setToast({ type: 'success', msg: 'Saved' });
+      setTimeout(() => setToast(null), 2000);
+    } catch (err) {
+      // Keep edit open so user can retry or cancel
+      showError(err.message);
+      showError(`Save failed: ${err.message}`);
+    }
     finally { setSavingRow(false); }
   };
+
+  // Keep autoSaveRef pointing to latest handleSave (after definition to avoid TDZ)
+  autoSaveRef.current = handleSave;
 
   // ─── Sort header helper ───────────────────────────────────────────────────
   const thCls = (active) =>
@@ -325,12 +410,26 @@ const LogisticOrderTracker = () => {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-4">
+      {/* ── Toast notification ── */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all
+          ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+          {toast.type === 'success'
+            ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+            : <AlertCircle className="w-4 h-4 shrink-0" />}
+          <span>{toast.msg}</span>
+          <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Logistic Order Tracker</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {loading ? 'Loading…' : `${sortedRows.length} entries · Click a row to edit`}
+            {loading ? 'Loading…' : `${sortedRows.length} entries · Click a row to edit, click outside to save`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -353,12 +452,14 @@ const LogisticOrderTracker = () => {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input type="text" placeholder="Search item, PO#, vendor…" value={searchInput} onChange={e => setSearchInput(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
           </div>
+          <input type="text" placeholder="Item Name" value={filterItemName} onChange={e => setFilterItemName(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
           <input type="text" placeholder="Project Code" value={filterProjectCode} onChange={e => setFilterProjectCode(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
           <input type="text" placeholder="Vendor" value={filterVendor} onChange={e => setFilterVendor(e.target.value)}
@@ -403,6 +504,7 @@ const LogisticOrderTracker = () => {
                   <th onClick={() => handleSort('poStatus')}     className={thCls(sortCol==='poStatus')     + ' text-gray-600'}>PO Status <SortIcon col="poStatus" /></th>
                   <th onClick={() => handleSort('unitNumber')}   className={thCls(sortCol==='unitNumber')   + ' text-gray-600'}>Unit # <SortIcon col="unitNumber" /></th>
                   <th onClick={() => handleSort('itemName')}     className={thCls(sortCol==='itemName')     + ' text-gray-600'}>Item Name <SortIcon col="itemName" /></th>
+                  <th onClick={() => handleSort('skuNo')}        className={thCls(sortCol==='skuNo')        + ' text-gray-600'}>SKU <SortIcon col="skuNo" /></th>
                   <th onClick={() => handleSort('vendor')}       className={thCls(sortCol==='vendor')       + ' text-gray-600'}>Vendor <SortIcon col="vendor" /></th>
                   <th onClick={() => handleSort('poQuantity')}   className={thCls(sortCol==='poQuantity')   + ' text-gray-600'}>PO Qty <SortIcon col="poQuantity" /></th>
                   <th onClick={() => handleSort('shippedQuantity')} className={thCls(sortCol==='shippedQuantity') + ' text-gray-600'}>Shipped <SortIcon col="shippedQuantity" /></th>
@@ -430,7 +532,7 @@ const LogisticOrderTracker = () => {
                 </tr>
                 {/* Stage legend row */}
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  <td colSpan={9} />
+                  <td colSpan={10} />
                   <td className="px-2 pb-1.5 text-[10px] text-[#005670]/60 italic">editable ↓</td>
                   <td colSpan={6} className="pb-1.5">
                     <div className="flex gap-1 justify-center flex-wrap">
@@ -451,6 +553,7 @@ const LogisticOrderTracker = () => {
                   return (
                     <tr
                       key={key}
+                      ref={isEditing ? editRowRef : undefined}
                       onClick={!isEditing && !readOnly ? () => openEdit(row, key) : undefined}
                       className={`border-b transition-colors ${
                         isEditing
@@ -466,12 +569,24 @@ const LogisticOrderTracker = () => {
                         {row.poStatus ? <PoStatusBadge status={row.poStatus} /> : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{row.unitNumber || '—'}</td>
-                      <td className="px-2 py-2 max-w-[160px]">
-                        <div className="font-medium text-gray-800 truncate">{row.itemName || '—'}</div>
-                        {row.skuNo && <div className="text-gray-400 font-mono truncate">{row.skuNo}</div>}
+                      <td className="px-2 py-2 max-w-[220px]">
+                        <div className="font-medium text-gray-800 truncate" title={row.itemName || ''}>{row.itemName || '—'}</div>
+                      </td>
+                      <td className="px-2 py-2 max-w-[100px]">
+                        <div className="text-gray-500 font-mono text-xs truncate">{row.skuNo || '—'}</div>
                       </td>
                       <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{row.vendor || '—'}</td>
-                      <td className="px-2 py-2 text-center font-medium text-gray-700">{row.poQuantity}</td>
+                      <td className="px-2 py-2 text-center font-medium text-gray-700">
+                        {isEditing
+                          ? <input type="number" min="0" value={editForm.poQuantity || ''}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                setF('poQuantity')(raw === '' ? '' : parseInt(raw, 10) || 0);
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              className={inputCls + ' w-[70px] text-center'} />
+                          : row.poQuantity}
+                      </td>
                       <td className="px-2 py-2 text-center text-green-700 font-medium">{row.shippedQuantity}</td>
                       <td className="px-2 py-2 text-center text-orange-600 font-medium">{row.balanceQuantity}</td>
 
@@ -560,42 +675,62 @@ const LogisticOrderTracker = () => {
                       {/* ── Packing List ── */}
                       <td className="px-2 py-2 whitespace-nowrap">
                         {isEditing
-                          ? <input type="text" value={editForm.packingList ?? ''} placeholder="Packing list ref"
-                              onChange={e => setF('packingList')(e.target.value)} onClick={e => e.stopPropagation()}
-                              className={inputCls + ' min-w-[110px]'} />
-                          : <span className="text-gray-600">{row.packingList || '—'}</span>}
+                          ? <div onClick={e => e.stopPropagation()}>
+                              <input type="number" min="0" max={editForm.balanceQuantity ?? undefined}
+                                value={editForm.packingListQty || ''}
+                                placeholder="0"
+                                onChange={e => {
+                                  const raw = e.target.value;
+                                  const v = raw === '' ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+                                  setF('packingListQty')(v);
+                                  if (v > (editForm.balanceQuantity ?? Infinity)) {
+                                    showError(`Packing qty exceeds balance (${editForm.balanceQuantity ?? 0})`);
+                                  } else {
+                                    setRowError('');
+                                  }
+                                }}
+                                className={inputCls + ' w-[80px] text-center'} />
+                              <div className="text-xs text-gray-400 mt-0.5 text-center">of {editForm.balanceQuantity ?? 0}</div>
+                            </div>
+                          : <span className="text-gray-600">{row.packingList > 0 ? row.packingList : '—'}</span>}
                       </td>
 
                       {/* ── Remark ── */}
                       <td className="px-2 py-2">
                         {isEditing
-                          ? <input type="text" value={editForm.remark ?? ''} placeholder="Remark"
+                          ? <input type="text" value={editForm.remark ?? ''} placeholder="Additional notes..."
                               onChange={e => setF('remark')(e.target.value)} onClick={e => e.stopPropagation()}
                               className={inputCls + ' min-w-[150px]'} />
-                          : <span className="text-gray-500 max-w-[150px] block truncate">{row.remark || '—'}</span>}
+                          : <div className="max-w-[220px]">
+                              <div
+                                className="text-[9px] text-[#005670]/70 font-mono leading-tight truncate"
+                                title={stageAutoNote(row)}
+                              >
+                                {STAGE_COLS.map(s => `${STAGE_NOTE_LABELS[s.key].replace('QC CHECKING','QC').split(' ')[0]}: ${STAGE_PCTS[row[s.key]??0]}`).join(' | ')}
+                              </div>
+                              {row.remark && <span className="text-gray-500 block text-xs mt-0.5 truncate">{row.remark}</span>}
+                            </div>}
                       </td>
 
                       {/* ── Actions ── */}
                       <td className="px-2 py-2 text-center whitespace-nowrap">
                         {isEditing ? (
                           <div className="flex flex-col items-center gap-1">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
+                              {savingRow
+                                ? <Loader2 className="w-4 h-4 animate-spin text-[#005670]" title="Saving..." />
+                                : isDirty
+                                  ? <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" title="Unsaved changes" />
+                                  : null}
                               <button
                                 onClick={cancelEdit}
-                                className="px-2 py-0.5 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                                disabled={savingRow}
+                                className="px-2 py-0.5 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
                               >
                                 Cancel
                               </button>
-                              <button
-                                onClick={handleSave}
-                                disabled={savingRow}
-                                className="flex items-center gap-1 px-2 py-0.5 bg-[#005670] text-white rounded text-xs hover:bg-[#004558] transition-colors disabled:opacity-60"
-                              >
-                                {savingRow ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                Save
-                              </button>
                             </div>
-                            {rowError && <p className="text-[10px] text-red-500 max-w-[120px] text-center leading-tight">{rowError}</p>}
+                            <p className="text-[9px] text-gray-300 leading-tight">click outside to save</p>
                           </div>
                         ) : readOnly ? (
                           <Lock className="w-3 h-3 text-gray-300 mx-auto" title="Linked to PO — no matching CPM product" />
