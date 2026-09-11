@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, Store, Search, Globe, Phone, Mail, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { backendServer } from '../utils/info';
+import { hasPermission } from '../utils/auth';
 
 const VendorManagement = () => {
+  const canManage = hasPermission('manage_vendors');
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -284,11 +286,13 @@ const VendorManagement = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Vendor Management</h1>
-        <button onClick={() => { setModalMode('create'); setIsModalOpen(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all">
-          <Plus className="w-5 h-5" />
-          <span className="font-semibold">Add Vendor</span>
-        </button>
+        {canManage && (
+          <button onClick={() => { setModalMode('create'); setIsModalOpen(true); }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#005670] to-[#007a9a] text-white rounded-xl hover:shadow-lg transition-all">
+            <Plus className="w-5 h-5" />
+            <span className="font-semibold">Add Vendor</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
@@ -383,14 +387,18 @@ const VendorManagement = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handleEdit(vendor)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(vendor._id)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canManage && (
+                          <>
+                            <button onClick={() => handleEdit(vendor)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDelete(vendor._id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
