@@ -109,6 +109,7 @@ const ShipToVendorDropdown = ({
       state:      vendor.address?.state || '',
       postalCode: vendor.address?.zip || '',
       country:    vendor.address?.country || '',
+      phone:      vendor.contactInfo?.phone || '',
     });
   };
 

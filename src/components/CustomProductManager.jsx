@@ -3322,7 +3322,7 @@ const ProductCard = ({
     }
   };
 
-  const handleShipToSelect = ({ vendorId, shipToName, street, city, state, postalCode, country }) => {
+  const handleShipToSelect = ({ vendorId, shipToName, street, city, state, postalCode, country, phone }) => {
     upd('shipToVendorId', vendorId);
     upd('shipToName', shipToName);
     upd('shippingStreet', street);
@@ -3330,6 +3330,7 @@ const ProductCard = ({
     upd('shippingState', state);
     upd('shippingPostalCode', postalCode);
     upd('shippingCountry', country || '');
+    upd('shipToPhone', phone || '');
   };
 
   const handleShipToClear = () => {
@@ -3340,6 +3341,7 @@ const ProductCard = ({
     upd('shippingState', '');
     upd('shippingPostalCode', '');
     upd('shippingCountry', '');
+    upd('shipToPhone', '');
   };
 
   const displayNumber = index === 'draft' ? 'New' : `#${index + 1}`;
