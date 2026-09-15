@@ -293,6 +293,7 @@ const LogisticOrderTracker = () => {
           logQcChecking:       editForm.logQcChecking,
           logPacking:          editForm.logPacking,
           packingList:         batchQty,
+          location:            editForm.location,
           containerNumber:     editForm.containerNumber,
           statusCategory:      editForm.statusCategory,
           expectedShipDate:    editForm.expectedShipDate,
@@ -599,9 +600,13 @@ const LogisticOrderTracker = () => {
                           : <span className="text-gray-700">{row.projectCode || '—'}</span>}
                       </td>
 
-                      {/* ── Location — always read-only ── */}
+                      {/* ── Location ── */}
                       <td className="px-2 py-2 whitespace-nowrap">
-                        <span className="text-gray-600">{row.location || '—'}</span>
+                        {isEditing
+                          ? <input type="text" value={editForm.location ?? ''} placeholder="Location"
+                              onChange={e => setF('location')(e.target.value)} onClick={e => e.stopPropagation()}
+                              className={inputCls + ' min-w-[90px]'} />
+                          : <span className="text-gray-600">{row.location || '—'}</span>}
                       </td>
 
                       {/* ── Stage cells ── */}
