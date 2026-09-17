@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Store, Search, Globe, Phone, Mail, DollarSign, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Store, Search, Globe, Phone, Mail, DollarSign, ChevronLeft, ChevronRight, Eye, ChevronUp, ChevronDown } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { hasPermission } from '../utils/auth';
 
@@ -45,24 +45,43 @@ const VendorManagement = () => {
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
   const itemsPerPage = 10;
 
   const countries = ['USA', 'Canada', 'Mexico', 'UK', 'Australia', 'Other'];
   const orderMethods = ['Online', 'Email', 'Phone'];
   const paymentMethods = ['Credit Card', 'Check', 'ACH/Wire', 'Net 30 - CC', 'Net 30 - Check'];
 
-  useEffect(() => { fetchVendors(); }, [currentPage, statusFilter]);
+  useEffect(() => { fetchVendors(); }, [currentPage, statusFilter, sortBy, sortOrder]);
   useEffect(() => {
     const timer = setTimeout(() => { setCurrentPage(1); fetchVendors(); }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <ChevronUp className="w-3 h-3 text-gray-300 ml-1 inline" />;
+    return sortOrder === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-[#005670] ml-1 inline" />
+      : <ChevronDown className="w-3 h-3 text-[#005670] ml-1 inline" />;
+  };
 
   const fetchVendors = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${backendServer}/api/vendors?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}&status=${statusFilter}`,
+        `${backendServer}/api/vendors?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}&status=${statusFilter}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = await response.json();
@@ -332,11 +351,18 @@ const VendorManagement = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Code</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Vendor Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Markup</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                  {[
+                    { label: 'Code',        col: 'vendorCode' },
+                    { label: 'Vendor Name', col: 'name' },
+                    { label: 'Contact',     col: 'email' },
+                    { label: 'Markup',      col: 'defaultMarkup' },
+                    { label: 'Status',      col: 'status' },
+                  ].map(({ label, col }) => (
+                    <th key={col} onClick={() => handleSort(col)}
+                      className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 transition-colors">
+                      {label}<SortIcon column={col} />
+                    </th>
+                  ))}
                   <th className="text-right px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
