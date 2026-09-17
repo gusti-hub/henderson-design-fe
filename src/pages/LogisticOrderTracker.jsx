@@ -309,6 +309,7 @@ const LogisticOrderTracker = () => {
       const updatedBalance    = data.balanceQuantity ?? Math.max(0, updatedPoQty - updatedShipped);
       setRows(prev => prev.map(row =>
         row.orderId === editForm.orderId && row.productId === editForm.productId
+          && row.poProductId === editForm.poProductId
           ? {
               ...row,
               ...editForm,
