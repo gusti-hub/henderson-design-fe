@@ -2720,10 +2720,9 @@ const GroupProductCard = ({
             ) : (
               <div className="space-y-2">
                 {children.map((child, ci) => {
-                  const childIndex = allProducts.findIndex(p =>
-                    (child._id && !String(child._id).startsWith('temp_') && String(p._id) === String(child._id)) ||
-                    p.product_id === child.product_id
-                  );
+                  const childIndex = (child._id && !String(child._id).startsWith('temp_'))
+                    ? allProducts.findIndex(p => String(p._id) === String(child._id))
+                    : allProducts.findIndex(p => p.product_id === child.product_id);
                   return (
                     <ProductCard
                       key={child._id || ci}
