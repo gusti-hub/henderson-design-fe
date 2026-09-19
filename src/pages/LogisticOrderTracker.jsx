@@ -79,6 +79,26 @@ const NUMERIC_COLS = new Set([
 const inputCls = 'w-full px-1.5 py-0.5 border border-[#005670]/40 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#005670]/40 bg-white';
 const PAGE_SIZE = 100;
 
+// Parse pasted date text → YYYY-MM-DD (handles ISO, US, and browser locale formats)
+const parsePastedDate = (text) => {
+  const t = (text || '').trim();
+  if (!t) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t; // already ISO
+  const d = new Date(t);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return null;
+};
+const makeDatePasteHandler = (setter) => (e) => {
+  e.preventDefault();
+  const parsed = parsePastedDate(e.clipboardData.getData('text'));
+  if (parsed) setter(parsed);
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 const LogisticOrderTracker = () => {
   const [rows, setRows]             = useState([]);
@@ -556,7 +576,11 @@ const LogisticOrderTracker = () => {
                     <tr
                       key={key}
                       ref={isEditing ? editRowRef : undefined}
-                      onClick={!isEditing && !readOnly ? () => openEdit(row, key) : undefined}
+                      onClick={!isEditing && !readOnly ? (e) => {
+                        // Don't open edit mode if user is selecting text
+                        if (window.getSelection()?.type === 'Range') return;
+                        openEdit(row, key);
+                      } : undefined}
                       className={`border-b transition-colors ${
                         isEditing
                           ? 'bg-[#005670]/5 border-[#005670]/20'
@@ -637,7 +661,9 @@ const LogisticOrderTracker = () => {
                       <td className="px-2 py-2 whitespace-nowrap">
                         {isEditing
                           ? <input type="date" value={editForm.cargoReadyDate ?? ''}
-                              onChange={e => setF('cargoReadyDate')(e.target.value)} onClick={e => e.stopPropagation()}
+                              onChange={e => setF('cargoReadyDate')(e.target.value)}
+                              onPaste={makeDatePasteHandler(setF('cargoReadyDate'))}
+                              onClick={e => e.stopPropagation()}
                               className={inputCls + ' min-w-[130px]'} />
                           : <span className="text-gray-600">{row.cargoReadyDate || '—'}</span>}
                       </td>
@@ -646,7 +672,9 @@ const LogisticOrderTracker = () => {
                       <td className="px-2 py-2 whitespace-nowrap">
                         {isEditing
                           ? <input type="date" value={editForm.shipmentDate ?? ''}
-                              onChange={e => setF('shipmentDate')(e.target.value)} onClick={e => e.stopPropagation()}
+                              onChange={e => setF('shipmentDate')(e.target.value)}
+                              onPaste={makeDatePasteHandler(setF('shipmentDate'))}
+                              onClick={e => e.stopPropagation()}
                               className={inputCls + ' min-w-[130px]'} />
                           : <span className="text-gray-600">{row.shipmentDate || '—'}</span>}
                       </td>
@@ -655,7 +683,9 @@ const LogisticOrderTracker = () => {
                       <td className="px-2 py-2 whitespace-nowrap">
                         {isEditing
                           ? <input type="date" value={editForm.expectedShipDate ?? ''}
-                              onChange={e => setF('expectedShipDate')(e.target.value)} onClick={e => e.stopPropagation()}
+                              onChange={e => setF('expectedShipDate')(e.target.value)}
+                              onPaste={makeDatePasteHandler(setF('expectedShipDate'))}
+                              onClick={e => e.stopPropagation()}
                               className={inputCls + ' min-w-[130px]'} />
                           : <span className="text-gray-600">{row.expectedShipDate || '—'}</span>}
                       </td>
@@ -664,7 +694,9 @@ const LogisticOrderTracker = () => {
                       <td className="px-2 py-2 whitespace-nowrap">
                         {isEditing
                           ? <input type="date" value={editForm.expectedArrivalDate ?? ''}
-                              onChange={e => setF('expectedArrivalDate')(e.target.value)} onClick={e => e.stopPropagation()}
+                              onChange={e => setF('expectedArrivalDate')(e.target.value)}
+                              onPaste={makeDatePasteHandler(setF('expectedArrivalDate'))}
+                              onClick={e => e.stopPropagation()}
                               className={inputCls + ' min-w-[130px]'} />
                           : <span className="text-gray-600">{row.expectedArrivalDate || '—'}</span>}
                       </td>

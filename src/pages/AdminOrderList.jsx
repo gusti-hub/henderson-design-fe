@@ -12,10 +12,12 @@ import {
   ShoppingCart, TrendingUp, Eye, LayoutList, FolderOpen,
   Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus, ArrowRightLeft, BookMarked,
 } from 'lucide-react';
+import { Map as MapIcon } from 'lucide-react';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { backendServer } from '../utils/info';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
 import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor';
+import FloorPlanManager from '../components/FloorPlanManager';
 import CustomProductManager from '../components/CustomProductManager';
 import COGReportViewer from '../components/COGReportViewer';
 import ProjectSummaryEditorModal from '../components/ProjectSummaryEditorModal';
@@ -553,6 +555,7 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
+  const [floorPlanClient, setFloorPlanClient] = useState(null); // { clientId, clientName }
   const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
   // Shared multi-select vendor picker (Excel + PDF)
   const [vendorPickerModal, setVendorPickerModal] = useState({ open: false, mode: 'excel' });
@@ -1137,6 +1140,14 @@ const AdminOrderList = ({ onOrderClick }) => {
     );
   }
 
+  if (floorPlanClient) return (
+    <FloorPlanManager
+      clientUserId={floorPlanClient.clientId}
+      clientName={floorPlanClient.clientName}
+      onClose={() => setFloorPlanClient(null)}
+    />
+  );
+
   if (clientOrdersView && !editingOrder) {
     const { clientInfo, orders: clientOrders, loading: loadingClientOrders } = clientOrdersView;
     return (
@@ -1174,6 +1185,12 @@ const AdminOrderList = ({ onOrderClick }) => {
                   <ArrowRightLeft className="w-3.5 h-3.5" /> Move Items
                 </button>
               )}
+              <button
+                onClick={() => setFloorPlanClient({ clientId: clientOrdersView.clientId, clientName: clientInfo?.name || 'Client' })}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#005670] border border-[#005670]/30 text-xs font-semibold rounded-lg hover:bg-[#005670]/5 transition-colors"
+              >
+                <MapIcon className="w-3.5 h-3.5" /> Floor Plans
+              </button>
               <button
                 onClick={handleNewOrderFromTable}
                 disabled={addingNewOrder}
