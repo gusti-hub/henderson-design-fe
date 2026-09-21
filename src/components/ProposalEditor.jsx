@@ -1232,6 +1232,20 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         .mbox { position: fixed; top: -9999px; left: -9999px; width: ${(PAGE_W_IN - PAD_IN * 2)}in; background: white; visibility: hidden; pointer-events: none; z-index: -999; overflow: visible; font-family: Arial, sans-serif; }
         .proposal-desc p { font-size: 12px !important; margin: 0 0 1px 0 !important; line-height: 1.5; }
         .proposal-desc strong { font-size: 12px !important; }
+        .wm {
+          position: absolute; top: 50%; left: 50%;
+          transform: translate(-50%, -50%) rotate(-45deg);
+          font-size: 96px; font-weight: 900; letter-spacing: 0.08em;
+          pointer-events: none; user-select: none; white-space: nowrap;
+          z-index: 999;
+          opacity: 0.18;
+          font-family: Arial, sans-serif;
+        }
+        .wm-draft    { color: #333333; }
+        .wm-sent     { color: #1d4ed8; }
+        .wm-approved { color: #15803d; }
+        .wm-paid     { color: #7e22ce; }
+        .wm-rejected { color: #dc2626; }
       `}</style>
 
       {/* ── Toolbar ── */}
@@ -1377,6 +1391,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                 <React.Fragment key={pi}>
                   <span className="pgl no-print">Page {pi + 1}{(pages || []).length > 1 ? ' — Products (' + (pi + 1) + '/' + (pages || []).length + ')' : ' — Products'}</span>
                   <div className="lp">
+                    <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>
                     <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
                       {renderItems(items, undefined, undefined, productsMap, ActiveRowV2)}
@@ -1398,6 +1413,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Warranty page */}
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
+                <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>
                 <div className="lp-slot" style={slotStyle}>
                   <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
                   <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
@@ -1423,6 +1439,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Signature page */}
               <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
               <div className="lp last">
+                <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>
                 <div className="lp-slot" style={slotStyle}>
                   <div style={{ textAlign: 'center', marginBottom: '14px' }}>
                     <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
