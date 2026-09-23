@@ -3668,7 +3668,8 @@ const ProductCard = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
                       <span>Sidemark</span>
                       <button type="button" onClick={() => {
-                        const defaultSidemark = `Henderson Design Group / ${order?.clientInfo?.name || ''} / ${product.name || ''}`.replace(/\s*\/\s*\/\s*/g, ' / ').trim();
+                        const parts = ['Henderson Design Group', order?.clientInfo?.name, opts.room, product.name].filter(Boolean);
+                        const defaultSidemark = parts.join(' / ');
                         setLocal('sidemark', defaultSidemark);
                         upd('sidemark', defaultSidemark);
                       }} className="text-xs text-blue-600 hover:underline font-normal">Set Default</button>
