@@ -451,18 +451,19 @@ const ProductConfiguration = () => {
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              {['Image','Category','Package','SKU','Name','Dimensions','Buy Price','2025','2026','Finish','Actions'].map(h => (
+              {['Image','Category','Package','SKU','Name','Vendor','Dimensions','Buy Price','2025','2026','Finish','Actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan="10" className="py-10 text-center">
+              <tr><td colSpan="12" className="py-10 text-center">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
               </td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan="10" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
+              <tr><td colSpan="12" className="py-10 text-center text-sm text-gray-400">No products found</td></tr>
+
             ) : products.map(p => (
               <tr key={p._id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
@@ -480,16 +481,14 @@ const ProductConfiguration = () => {
                 </td>
                 <td className="px-4 py-3 text-xs font-mono text-gray-700">{p.product_id}</td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
+                <td className="px-4 py-3 text-xs text-gray-600 max-w-[140px] truncate" title={p.vendor}>{p.vendor || '—'}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{p.dimension || '—'}</td>
-                {/* Buy Price */}
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {p.buyPrice ? `$${Number(p.buyPrice).toFixed(2)}` : <span className="text-gray-300">—</span>}
                 </td>
-                {/* Sell Price 2025 */}
                 <td className="px-4 py-3 text-sm text-sky-700">
                   {p.sellPrice2025 ? `$${Number(p.sellPrice2025).toFixed(2)}` : <span className="text-gray-300">—</span>}
                 </td>
-                {/* Sell Price 2026 */}
                 <td className="px-4 py-3 text-sm font-semibold text-gray-900">
                   ${Number(p.sellPrice2026 ?? p.sellPrice ?? p.price ?? 0).toFixed(2)}
                 </td>

@@ -338,8 +338,8 @@ const BulkProductImport = ({ onComplete }) => {
 
       setColDefs(detectedCols);
 
-      // Build product objects from parsed rows
-      const products = dataRows.map(row => {
+      // Build product objects from parsed rows — each row = independent product
+      const rawProducts = dataRows.map(row => {
         const skuParsed  = parseSku(row.product_id || '');
         const woodFinish = (row.woodFinish || '').toUpperCase() || skuParsed.woodFinish || '';
         const fabric     = (row.fabric     || '').toUpperCase() || skuParsed.fabric     || '';
@@ -390,6 +390,8 @@ const BulkProductImport = ({ onComplete }) => {
           fabricClient:       row.fabricClient       || '',
         };
       });
+
+      const products = rawProducts.filter(p => p.product_id);
 
       // Show preview (first 5)
       setPreview(products.slice(0, 5));
@@ -484,6 +486,7 @@ const BulkProductImport = ({ onComplete }) => {
           <li>Reads the <strong>sub-header row</strong> above headers (CLIENT / VENDOR labels) to disambiguate duplicate columns</li>
           <li>Custom attribute columns (Arm Style, Drawer Fronts, Metal Finish, Seat, etc.) are stored automatically</li>
           <li>Imports in batches of 20 — safe for large catalogs (10k+ rows)</li>
+          <li><strong>Multi-vendor variants</strong>: repeat the same SKU on consecutive rows with a different VENDOR to add vendor price alternatives</li>
         </ul>
         <div className="flex flex-wrap gap-1.5 pt-1 text-xs">
           {[

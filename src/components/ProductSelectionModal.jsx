@@ -391,6 +391,42 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
     setSelectedProducts(prev => prev.filter(p => p._id !== productId));
   };
 
+  // Direct add without opening detail modal (used by list view and variant cards)
+  const handleToggleSelect = (product) => {
+    const alreadyIn = selectedProducts.find(p => p._id === product._id);
+    if (alreadyIn) { handleRemoveSelected(product._id); return; }
+    const buyPrice  = parseFloat(product.buyPrice) || 0;
+    const sellPrice = pricingYear === 2025
+      ? (parseFloat(product.sellPrice2025) || parseFloat(product.sellPrice ?? product.price) || 0)
+      : (parseFloat(product.sellPrice2026) || parseFloat(product.sellPrice ?? product.price) || 0);
+    const imageUrl  = getProductImage(product);
+    const others    = Array.isArray(product.others)
+      ? product.others
+      : (product.others || '').split(',').map(s => s.trim()).filter(Boolean);
+    handleAddProduct({
+      ...product,
+      quantity: 1, unitPrice: sellPrice, finalPrice: sellPrice,
+      selectedOptions: {
+        image: imageUrl || '', woodFinish: product.woodFinish || '',
+        fabric: product.fabric || '', others, size: product.dimension || '',
+        finish: product.colorFinish || product.woodFinish || '',
+        specifications: product.description || '',
+        vendorDescription: product.vendorDescription || '',
+        links: product.itemUrl ? [product.itemUrl] : [],
+        itemClass: product.itemClass || '',
+        msrp: sellPrice, markupPercent: 0,
+        netCostOverride: buyPrice > 0 ? buyPrice : null,
+        discountPercent: 0, noNetPurchaseCost: buyPrice === 0,
+        units: 'Each', shippingMarkupPercent: 50, otherMarkupPercent: 50,
+        shippingCost: 0, otherCost: 0, depositPercent: 90, vendorDepositPercent: 0,
+        salesTaxRate: 4.5, taxableCost: true, taxableMarkup: true,
+        taxableShippingCost: true, taxableShippingMarkup: true,
+        taxableOtherCost: true, taxableOtherMarkup: true,
+        discountTaken: '', installerNotes: '',
+      },
+    });
+  };
+
   const handleConfirm = () => {
     onSelectProducts(selectedProducts);
     setSelectedProducts([]);
@@ -521,7 +557,7 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    {['', 'Name', 'SKU', 'Category', 'Package', 'Buy Price', 'Sell Price', ''].map((h, i) => (
+                    {['', 'Name', 'SKU', 'Vendor', 'Category', 'Package', 'Buy Price', 'Sell Price', ''].map((h, i) => (
                       <th key={i} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -550,10 +586,11 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
                             <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-200">
                               <ProductImg url={imageUrl} name={product.name} className="w-full h-full object-cover" />
                             </div>
-                            <span className="font-medium text-gray-900 max-w-[200px] truncate">{product.name}</span>
+                            <span className="font-medium max-w-[200px] truncate text-gray-900">{product.name}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2 font-mono text-xs text-gray-500 whitespace-nowrap">{product.product_id || '—'}</td>
+                        <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate" title={product.vendor}>{product.vendor || '—'}</td>
                         <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">{product.category || product.itemClass || '—'}</td>
                         <td className="px-3 py-2">
                           {product.package && (
@@ -613,7 +650,12 @@ const ProductSelectionModal = ({ isOpen, onClose, onSelectProducts, alreadySelec
                     {/* Info */}
                     <div className="p-3 bg-white">
                       <p className="font-semibold text-sm text-gray-900 truncate">{product.name}</p>
-                      <p className="text-xs text-gray-400 font-mono truncate mb-1.5">{product.product_id}</p>
+                      <p className="text-xs text-gray-400 font-mono truncate mb-0.5">{product.product_id}</p>
+                      {product.vendor && (
+                        <p className="text-xs text-gray-500 truncate mb-1" title={product.vendor}>
+                          {product.vendor}
+                        </p>
+                      )}
 
                       {/* Category + package */}
                       <div className="flex items-center gap-1 flex-wrap mb-2">

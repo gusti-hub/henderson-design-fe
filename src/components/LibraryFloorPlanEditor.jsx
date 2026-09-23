@@ -9,6 +9,14 @@ import { customCConfig } from '../config/custom-c';
 import { investorAConfig } from '../config/investor-a';
 import { investorBConfig } from '../config/investor-b';
 
+const ROOM_CODES = {
+  'COURTYARD': 'COU', 'EXTERIOR ENTRY': 'EXT', 'FOYER': 'FOY', 'LIVING ROOM': 'LIV',
+  'DINING ROOM': 'DIN', 'KITCHEN': 'KIT', 'LAUNDRY': 'LAU', 'PRIMARY SUITE': 'PRI',
+  'PRIMARY BATH': 'PBA', 'BEDROOM 2': 'BR2', 'BATH 2': 'BA2', 'BEDROOM 3': 'BR3',
+  'BATH 3': 'BA3', 'GUEST SUITE': 'GUE',
+};
+const getRoomCode = (area) => ROOM_CODES[(area || '').trim().toUpperCase()] || '';
+
 // ✅ HELPER FUNCTIONS FROM floorPlanConfig.js
 const calculateCenter = (coordinates) => {
   if (Array.isArray(coordinates)) {
@@ -655,7 +663,7 @@ const LibraryFloorPlanEditor = ({ order, onSave, onBack }) => {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-mono font-bold text-gray-900 truncate">
-                    {item.id}
+                    {getRoomCode(item.area) ? `${getRoomCode(item.area)}-${item.id}` : item.id}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {item.area}
