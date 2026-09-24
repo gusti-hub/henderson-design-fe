@@ -319,6 +319,7 @@ const LogisticOrderTracker = () => {
           expectedShipDate:    editForm.expectedShipDate,
           expectedArrivalDate: editForm.expectedArrivalDate,
           remark:              editForm.remark,
+          orderDate:           editForm.orderDate,
         }),
       });
       const data = await r.json();
@@ -542,6 +543,7 @@ const LogisticOrderTracker = () => {
                     </th>
                   ))}
                   <th onClick={() => handleSort('statusCategory')}      className={thCls(sortCol==='statusCategory')      + ' text-[#005670]'}>Status <SortIcon col="statusCategory" /></th>
+                  <th onClick={() => handleSort('orderDate')}           className={thCls(sortCol==='orderDate')           + ' text-[#005670]'}>Order Date <SortIcon col="orderDate" /></th>
                   <th onClick={() => handleSort('cargoReadyDate')}      className={thCls(sortCol==='cargoReadyDate')      + ' text-[#005670]'}>Cargo Ready <SortIcon col="cargoReadyDate" /></th>
                   <th onClick={() => handleSort('shipmentDate')}        className={thCls(sortCol==='shipmentDate')        + ' text-[#005670]'}>Ship Date <SortIcon col="shipmentDate" /></th>
                   <th onClick={() => handleSort('expectedShipDate')}    className={thCls(sortCol==='expectedShipDate')    + ' text-[#005670]'}>Exp. Ship <SortIcon col="expectedShipDate" /></th>
@@ -655,6 +657,17 @@ const LogisticOrderTracker = () => {
                           : row.statusCategory
                             ? <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">{row.statusCategory}</span>
                             : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* ── Order Date ── */}
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        {isEditing
+                          ? <input type="date" value={editForm.orderDate ?? ''}
+                              onChange={e => setF('orderDate')(e.target.value)}
+                              onPaste={makeDatePasteHandler(setF('orderDate'))}
+                              onClick={e => e.stopPropagation()}
+                              className={inputCls + ' min-w-[130px]'} />
+                          : <span className="text-gray-600">{row.orderDate || '—'}</span>}
                       </td>
 
                       {/* ── Cargo Ready Date ── */}
