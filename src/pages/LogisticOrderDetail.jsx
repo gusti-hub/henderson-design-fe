@@ -142,6 +142,7 @@ const LogisticOrderDetail = ({ entry: initialEntry, statusCategories, onBack, on
           expectedShipDate:    form.expectedShipDate,
           expectedArrivalDate: form.expectedArrivalDate,
           remark:              form.remark,
+          orderDate:           form.orderDate,
         }),
       });
       if (!r.ok) throw new Error((await r.json()).message || 'Save failed');
@@ -263,6 +264,7 @@ const LogisticOrderDetail = ({ entry: initialEntry, statusCategories, onBack, on
 
       {/* ── Section 4: Shipment / Status ── */}
       <Section title="Shipment & Status">
+        {canEdit ? <EditField label="Order Date"            value={form.orderDate}           onChange={set('orderDate')}           type="date" /> : <ReadField label="Order Date"            value={form.orderDate} />}
         {canEdit ? <EditField label="Cargo Ready Date"      value={form.cargoReadyDate}      onChange={set('cargoReadyDate')}      type="date" /> : <ReadField label="Cargo Ready Date"      value={form.cargoReadyDate} />}
         {canEdit ? <EditField label="Shipment Date"         value={form.shipmentDate}        onChange={set('shipmentDate')}        type="date" /> : <ReadField label="Shipment Date"         value={form.shipmentDate} />}
         {canEdit ? <EditField label="Expected Ship Date"    value={form.expectedShipDate}    onChange={set('expectedShipDate')}    type="date" /> : <ReadField label="Expected Ship Date"    value={form.expectedShipDate} />}
