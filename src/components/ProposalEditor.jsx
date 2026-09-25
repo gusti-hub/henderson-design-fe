@@ -610,6 +610,7 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
   const [clientInfo, setClientInfo]     = useState({});
   const [proposalNumber, setProposalNumber] = useState(null);
   const [proposalStatus, setProposalStatus] = useState('draft');
+  const [showWatermark, setShowWatermark]   = useState(false);
   const [savingStatus, setSavingStatus]     = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [depositPercent, setDepositPercent] = useState(100);
@@ -1279,6 +1280,14 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           </div>
           <div className="h-5 w-px bg-gray-200" />
 
+          {/* Watermark toggle */}
+          <button
+            onClick={() => setShowWatermark(p => !p)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${showWatermark ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+          >
+            {showWatermark ? '🔖 Watermark On' : '🔖 Watermark Off'}
+          </button>
+
           {/* Show/Hide items toggle */}
           <button
             onClick={() => setShowTogglePanel(p => !p)}
@@ -1391,7 +1400,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                 <React.Fragment key={pi}>
                   <span className="pgl no-print">Page {pi + 1}{(pages || []).length > 1 ? ' — Products (' + (pi + 1) + '/' + (pages || []).length + ')' : ' — Products'}</span>
                   <div className="lp">
-                    <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>
+                    {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
                     <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
                       {renderItems(items, undefined, undefined, productsMap, ActiveRowV2)}
@@ -1413,7 +1422,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Warranty page */}
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
-                <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>
+                {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
                 <div className="lp-slot" style={slotStyle}>
                   <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
                   <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
@@ -1439,7 +1448,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Signature page */}
               <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
               <div className="lp last">
-                <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>
+                {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
                 <div className="lp-slot" style={slotStyle}>
                   <div style={{ textAlign: 'center', marginBottom: '14px' }}>
                     <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
