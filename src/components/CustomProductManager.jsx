@@ -463,7 +463,7 @@ const displayOrderName = (order) => {
 
 // ==================== MAIN COMPONENT ====================
 
-const CustomProductManager = ({ order, onSave, onBack }) => {
+const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false }) => {
   const [savedProducts, setSavedProducts] = useState([]);
   const [draftProduct, setDraftProduct] = useState(null);
   const [draftGroup, setDraftGroup] = useState(null);
@@ -1692,6 +1692,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
                   onUpdate={updateProduct}
                   locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                   onRemove={removeProduct}
                   onSaved={async (newSavedProducts) => {
                     setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -1753,6 +1754,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                   onAddChildFromLibrary={() => { setGroupLibraryTarget(draftGroup.product_id); setShowLibraryModal(true); }}
                   onAddCustomChild={() => addCustomChild(draftGroup.product_id)}
                   locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                   draftChild={draftProduct?.parentId === draftGroup.product_id ? (
                     <ProductCard
                       product={draftProduct}
@@ -1763,6 +1765,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                       onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
                       onUpdate={updateProduct}
                       locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                       onRemove={removeProduct}
                       onSaved={async (newSavedProducts) => {
                         setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -1832,6 +1835,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                           onAddChildFromLibrary={() => { setGroupLibraryTarget(product.product_id); setShowLibraryModal(true); }}
                           onAddCustomChild={() => addCustomChild(product.product_id)}
                           locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                           draftChild={draftProduct?.parentId === product.product_id ? (
                             <ProductCard
                               product={draftProduct}
@@ -1842,6 +1846,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                               onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
                               onUpdate={updateProduct}
                               locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                               onRemove={removeProduct}
                               onSaved={async (newSavedProducts) => {
                                 setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -1876,6 +1881,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                         onUpdate={updateProduct}
                         onRemove={removeProduct}
                         locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                         onSaved={(newSavedProducts) => {
                           setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
                           if (onSave) onSave(newSavedProducts);
@@ -1980,6 +1986,7 @@ const CustomProductManager = ({ order, onSave, onBack }) => {
                     onToggleExpand={() => setExpandedProduct(expandedProduct === 'draft' ? null : 'draft')}
                     onUpdate={updateProduct}
                     locked={isOrderLocked}
+                  allowLibraryEdit={allowLibraryEdit}
                     onRemove={removeProduct}
                     onSaved={async (newSavedProducts) => {
                       setSavedProducts(newSavedProducts.map(p => ({ ...p, isEditable: p.isEditable !== false })));
@@ -2772,6 +2779,7 @@ const ProductCard = ({
   product, index, order, allProducts, expanded,
   onToggleExpand, onUpdate, onRemove, onSaved, onToast,
   locked = false,
+  allowLibraryEdit = false,
   simpleMode = false, // flat single-page form, no tabs
   // ✅ PATCH 11: drag props
   draggable = false,
@@ -2863,7 +2871,7 @@ const ProductCard = ({
   };
 
   const opts = product.selectedOptions || {};
-  const isFromLibrary = product.sourceType === 'library';
+  const isFromLibrary = product.sourceType === 'library' && !allowLibraryEdit;
 
   // ✅ PATCH 7+9+10: localFields includes leadTime + vendor/client fields
   const [localFields, setLocalFields] = useState({

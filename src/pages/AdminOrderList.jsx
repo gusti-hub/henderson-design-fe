@@ -10,17 +10,19 @@ import {
   Loader2, Download, FileText, Edit2, ArrowLeft, X, Check,
   Search, ChevronDown, BarChart2, BookOpen,
   ShoppingCart, TrendingUp, Eye, LayoutList, FolderOpen,
-  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus, ArrowRightLeft, BookMarked,
+  Package, DollarSign, Filter, CheckSquare, Square, Printer, Plus, ArrowRightLeft, BookMarked, CreditCard,
 } from 'lucide-react';
 import { Map as MapIcon } from 'lucide-react';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { backendServer } from '../utils/info';
+import { hasPermission } from '../utils/auth';
 import AreaCustomization from '../components/design-flow/AreaCustomization';
 import LibraryFloorPlanEditor from '../components/LibraryFloorPlanEditor';
 import FloorPlanManager from '../components/FloorPlanManager';
 import CustomProductManager from '../components/CustomProductManager';
 import COGReportViewer from '../components/COGReportViewer';
 import ProjectSummaryEditorModal from '../components/ProjectSummaryEditorModal';
+import ClientPaymentModal from '../components/ClientPaymentModal';
 
 const LoadingOverlay = () => (
   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
@@ -128,7 +130,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary, onPaymentSettings }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -184,6 +186,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Item icon={BarChart2}    label="COG + Bill Comparison"         onClick={onCOGWithBill}           color="text-indigo-600" />
           <Sep />
           <Item icon={TrendingUp}   label="Project Summary"               onClick={onProjectSummary}        color="text-teal-600" />
+          <Item icon={CreditCard}   label="Payment Settings"              onClick={onPaymentSettings}       color="text-emerald-600" />
         </div>,
         document.body
       )}
@@ -555,6 +558,7 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [cogOrderId, setCogOrderId]         = useState(null);
   const [projectSummaryClientId, setProjectSummaryClientId] = useState(null);
+  const [paymentSettingsOrder, setPaymentSettingsOrder] = useState(null); // { orderId, clientName }
   const [floorPlanClient, setFloorPlanClient] = useState(null); // { clientId, clientName }
   const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
   // Shared multi-select vendor picker (Excel + PDF)
@@ -1128,6 +1132,7 @@ const AdminOrderList = ({ onOrderClick }) => {
             order={editingOrder}
             onSave={() => {}}
             onBack={handleBack}
+            allowLibraryEdit={hasPermission('edit_library_products')}
           />
         ) : isLibrary ? (
           <LibraryFloorPlanEditor order={editingOrder} onSave={() => fetchOrders()} onBack={handleBack} />
@@ -1773,6 +1778,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                             const cid = typeof order.user === 'object' ? order.user?._id : order.user;
                             setProjectSummaryClientId(cid || null);
                           }}
+                          onPaymentSettings={() => setPaymentSettingsOrder({ orderId: order._id, clientName: order.clientInfo?.name || 'Client' })}
                         />
                       </td>
                     </tr>
@@ -1797,6 +1803,14 @@ const AdminOrderList = ({ onOrderClick }) => {
             </div>
           )}
         </>
+      )}
+
+      {paymentSettingsOrder && (
+        <ClientPaymentModal
+          orderId={paymentSettingsOrder.orderId}
+          clientName={paymentSettingsOrder.clientName}
+          onClose={() => setPaymentSettingsOrder(null)}
+        />
       )}
 
       {projectSummaryClientId && (

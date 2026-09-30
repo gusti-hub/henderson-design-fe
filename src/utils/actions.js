@@ -1,17 +1,18 @@
 export const ACTIONS = {
-  VIEW_DASHBOARD:      'view_dashboard',
-  VIEW_ORDERS:         'view_orders',
-  VIEW_EXPENSES:       'view_expenses',
-  VIEW_VENDORS:        'view_vendors',
-  MANAGE_VENDORS:      'manage_vendors',
-  VIEW_USERS:          'view_users',
-  VIEW_CLIENTS:        'view_clients',
-  VIEW_PRODUCTS:       'view_products',
-  VIEW_PRODUCT_MAP:    'view_product_mapping',
-  VIEW_FINANCIAL:      'view_financial_review',
-  VIEW_ROLE_MGMT:      'view_role_management',
-  VIEW_LOGISTIC:       'view_logistic_tracker',
-  VIEW_IMAGE_LIBRARY:  'view_image_library',
+  VIEW_DASHBOARD:         'view_dashboard',
+  VIEW_ORDERS:            'view_orders',
+  VIEW_EXPENSES:          'view_expenses',
+  VIEW_VENDORS:           'view_vendors',
+  MANAGE_VENDORS:         'manage_vendors',
+  VIEW_USERS:             'view_users',
+  VIEW_CLIENTS:           'view_clients',
+  VIEW_PRODUCTS:          'view_products',
+  VIEW_PRODUCT_MAP:       'view_product_mapping',
+  VIEW_FINANCIAL:         'view_financial_review',
+  VIEW_ROLE_MGMT:         'view_role_management',
+  VIEW_LOGISTIC:          'view_logistic_tracker',
+  VIEW_IMAGE_LIBRARY:     'view_image_library',
+  EDIT_LIBRARY_PRODUCTS:  'edit_library_products',
 };
 
 export const ACTION_LABELS = {
@@ -28,4 +29,5 @@ export const ACTION_LABELS = {
   view_role_management:   'Role Management',
   view_logistic_tracker:  'Logistic Order Tracker',
   view_image_library:     'Image Library',
+  edit_library_products:  'Edit Library Product Details',
 };

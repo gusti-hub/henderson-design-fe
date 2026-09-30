@@ -24,7 +24,11 @@ import {
   Package,
   Truck,
   Home as HomeIcon,
-  // AlertTriangle, Building2, ShieldCheck — reserved for Payment Info tab (unreleased)
+  AlertTriangle,
+  Building2,
+  ShieldCheck,
+  DollarSign,
+  CheckCircle2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
@@ -185,7 +189,8 @@ const ClientPortal = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState(null);
-  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary' /* | 'payment' — unreleased */
+  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary' | 'payment'
+  const [paymentData, setPaymentData] = useState(null);
 
   // Show the Project Summary by default only when it's published for this client
   useEffect(() => {
@@ -355,6 +360,21 @@ const ClientPortal = () => {
         console.log('Journey data not available yet');
       }
 
+      // Fetch payment settings (tab only shows when enabled by admin)
+      try {
+        const payRes = await fetch(`${backendServer}/api/payments/my-settings`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (payRes.ok) {
+          const payJson = await payRes.json();
+          setPaymentData(payJson.data);
+        } else {
+          console.warn('[Payment] my-settings fetch failed:', payRes.status);
+        }
+      } catch (err) {
+        console.warn('[Payment] error loading payment data:', err);
+      }
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -446,6 +466,150 @@ const ClientPortal = () => {
       console.error('Error downloading document:', error);
       alert('Failed to download document');
     }
+  };
+
+  const BANK_FULL = {
+    schwab: {
+      name: 'Charles Schwab (via Citibank N.A.)',
+      fields: [
+        { label: 'Bank Name',          value: 'Citibank N.A., New York' },
+        { label: 'Bank Address',       value: '399 Park Avenue, New York, NY 10022' },
+        { label: 'Routing Number',     value: '021000089' },
+        { label: 'Account Name (FBO)', value: 'Charles Schwab & Co., Inc.' },
+        { label: 'Account Number',     value: '4055-3953' },
+      ],
+    },
+    boa: {
+      name: 'Bank of Hawaii',
+      fields: [
+        { label: 'Destination Bank',  value: 'Bank of Hawaii' },
+        { label: 'Bank Address',      value: 'Hawaii Island Commercial Banking Center\n74-5457 Makala Blvd., Kailua-Kona, HI 96740' },
+        { label: 'Branch',            value: 'Kona Banking Center' },
+        { label: 'ABA / Routing',     value: '121301028' },
+        { label: 'SWIFT ID',          value: 'BOHIUS77' },
+        { label: 'Account Name',      value: 'Eric Henderson Design Group, Inc.' },
+        { label: 'Account Number',    value: '0090-836617' },
+        { label: 'Account Address',   value: '4343 Royal Place, Honolulu, HI 96816-4809' },
+        { label: 'Memo / Reference',  value: "Sender's Name & Invoice Number" },
+      ],
+    },
+  };
+
+  const downloadPaymentPDF = async () => {
+    const bank = BANK_FULL[paymentData?.bankOption] || BANK_FULL.boa;
+    const instructions = paymentData?.clientInstructions || '';
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const { pdf } = await import('@react-pdf/renderer');
+    const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+
+    const C = { teal: '#005670', tealLight: '#e6f4f7', amber: '#92400e', amberBg: '#fffbeb', gray: '#6b7280', dark: '#111827', mid: '#374151', border: '#e5e7eb', green: '#166534', greenBg: '#f0fdf4' };
+
+    const s = StyleSheet.create({
+      page:        { fontFamily: 'Helvetica', fontSize: 10, color: C.dark, paddingHorizontal: 36, paddingVertical: 36, backgroundColor: '#fff' },
+      header:      { backgroundColor: C.teal, borderRadius: 8, padding: 20, marginBottom: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+      headerOrg:   { fontSize: 8, color: '#ffffffaa', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 5 },
+      headerTitle: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#fff', marginBottom: 3 },
+      headerSub:   { fontSize: 10, color: '#ffffffcc' },
+      headerRight: { alignItems: 'flex-end' },
+      hdg:         { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#fff', marginBottom: 4 },
+      date:        { fontSize: 9, color: '#ffffffaa' },
+      notice:      { flexDirection: 'row', backgroundColor: C.amberBg, borderWidth: 1, borderColor: '#fcd34d', borderRadius: 6, padding: 10, marginBottom: 14, gap: 8 },
+      noticeText:  { fontSize: 9.5, color: C.amber, lineHeight: 1.55, flex: 1 },
+      noticeBold:  { fontFamily: 'Helvetica-Bold' },
+      card:        { borderWidth: 1, borderColor: C.border, borderRadius: 8, marginBottom: 14, overflow: 'hidden' },
+      cardHead:    { backgroundColor: '#f8fafc', padding: 10, borderBottomWidth: 1, borderBottomColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 8 },
+      badge:       { backgroundColor: C.teal, color: '#fff', fontSize: 7.5, fontFamily: 'Helvetica-Bold', paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 10 },
+      cardTitle:   { fontSize: 11, fontFamily: 'Helvetica-Bold', color: C.dark },
+      step:        { flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', alignItems: 'flex-start' },
+      stepNum:     { width: 20, height: 20, backgroundColor: C.teal, borderRadius: 10, color: '#fff', fontSize: 10, fontFamily: 'Helvetica-Bold', textAlign: 'center', paddingTop: 4 },
+      stepText:    { fontSize: 10, color: C.mid, lineHeight: 1.6, flex: 1 },
+      row:         { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', alignItems: 'flex-start' },
+      rowLabel:    { width: '38%', fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: C.gray, textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 1 },
+      rowValue:    { flex: 1, fontSize: 10, fontFamily: 'Helvetica-Bold', color: C.dark },
+      footer:      { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 8, textAlign: 'center', fontSize: 8.5, color: '#9ca3af' },
+    });
+
+    const steps = [
+      'Log in to your bank\'s online platform or visit your bank branch.',
+      `Initiate an outgoing wire transfer to: ${bank.name}.`,
+      'Enter the bank account details exactly as shown in the Wire Transfer Details section below.',
+      'In the Memo / Reference field, include your full name and invoice number.',
+      instructions || 'After completing the transfer, notify your Project Manager (CEE) with your sender name and invoice number as reference.',
+      'Save your wire transfer confirmation receipt for your records.',
+    ];
+
+    const PaymentDoc = (
+      <Document title="Payment Instructions — Henderson Design Group">
+        <Page size="A4" style={s.page}>
+
+          {/* Header */}
+          <View style={s.header}>
+            <View>
+              <Text style={s.headerOrg}>Henderson Design Group · Ālia Collections</Text>
+              <Text style={s.headerTitle}>Payment Instructions</Text>
+              <Text style={s.headerSub}>Wire Transfer Guide & Bank Account Details</Text>
+            </View>
+            <View style={s.headerRight}>
+              <Text style={s.hdg}>HDG</Text>
+              <Text style={s.date}>{dateStr}</Text>
+            </View>
+          </View>
+
+          {/* Security notice */}
+          <View style={s.notice}>
+            <Text style={s.noticeText}>
+              <Text style={s.noticeBold}>Security notice: </Text>
+              Henderson Design Group will never ask you to change bank account details via email or phone. If you receive such a request, contact us directly before transferring any funds.
+            </Text>
+          </View>
+
+          {/* How-to guide */}
+          <View style={s.card}>
+            <View style={s.cardHead}>
+              <Text style={s.badge}>STEP BY STEP</Text>
+              <Text style={s.cardTitle}>How to Complete Your Wire Transfer</Text>
+            </View>
+            {steps.map((step, i) => (
+              <View key={i} style={[s.step, i === steps.length - 1 && { borderBottomWidth: 0 }]}>
+                <Text style={s.stepNum}>{i + 1}</Text>
+                <Text style={s.stepText}>{step}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Bank details */}
+          <View style={s.card}>
+            <View style={s.cardHead}>
+              <Text style={s.badge}>BANK DETAILS</Text>
+              <Text style={s.cardTitle}>Wire Transfer Account Details — {bank.name}</Text>
+            </View>
+            {bank.fields.map((f, i) => (
+              <View key={f.label} style={[s.row, i === bank.fields.length - 1 && { borderBottomWidth: 0 }]}>
+                <Text style={s.rowLabel}>{f.label}</Text>
+                <Text style={s.rowValue}>{f.value}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Footer */}
+          <View style={s.footer}>
+            <Text>For: {clientData?.name || 'Client'} · Generated {dateStr} · Henderson Design Group — Confidential</Text>
+          </View>
+
+        </Page>
+      </Document>
+    );
+
+    const blob = await pdf(PaymentDoc).toBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `HDG-Payment-Instructions-${bank.name.replace(/\s+/g, '-')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   const formatDateOnly = (dateString) => {
@@ -591,19 +755,19 @@ const ClientPortal = () => {
                     <Layers className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">My Journey</span>
                   </button>
-                  {/* Payment Info tab — unreleased, re-enable when ready
-                  <button
-                    onClick={() => setActiveView('payment')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      activeView === 'payment'
-                        ? 'bg-white text-[#005670] shadow-sm'
-                        : 'text-white/80 hover:text-white'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Payment Info</span>
-                  </button>
-                  */}
+                  {paymentData?.enabled && (
+                    <button
+                      onClick={() => setActiveView('payment')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeView === 'payment'
+                          ? 'bg-white text-[#005670] shadow-sm'
+                          : 'text-white/80 hover:text-white'
+                      }`}
+                    >
+                      <DollarSign className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Payment Info</span>
+                    </button>
+                  )}
                 </div>
 
                 {pendingActions.length > 0 && (
@@ -829,13 +993,161 @@ const ClientPortal = () => {
           </div>
         )}
 
-        {/* PAYMENT INFO VIEW — unreleased, re-enable when ready
-        {activeView === 'payment' && (
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            ...
+        {/* PAYMENT INFO VIEW */}
+        {activeView === 'payment' && paymentData?.enabled && (
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+            {/* Anti-phishing notice */}
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800">
+                <span className="font-semibold">Security notice:</span> Henderson Design Group will never ask you to change bank account details via email or phone. If you receive such a request, contact us directly before transferring any funds.
+              </p>
+            </div>
+
+            {/* Bank wire instructions */}
+            {(() => {
+              const BANKS = {
+                schwab: {
+                  name: 'Charles Schwab',
+                  subtitle: 'via Citibank N.A.',
+                  icon: Building2,
+                  color: 'blue',
+                  fields: [
+                    { label: 'Receiving Bank', value: 'Citibank N.A.' },
+                    { label: 'ABA / Routing', value: '021000089' },
+                    { label: 'Account Number', value: '4055-3953' },
+                    { label: 'Account Name', value: 'FBO Charles Schwab & Co. Inc.' },
+                  ]
+                },
+                boa: {
+                  name: 'Bank of Hawaii',
+                  subtitle: 'Eric Henderson Design Group Inc.',
+                  icon: Building2,
+                  color: 'teal',
+                  fields: [
+                    { label: 'Bank Name', value: 'Bank of Hawaii' },
+                    { label: 'ABA / Routing', value: '121301028' },
+                    { label: 'SWIFT Code', value: 'BOHIUS77' },
+                    { label: 'Account Number', value: '0090-836617' },
+                    { label: 'Account Name', value: 'Eric Henderson Design Group Inc.' },
+                  ]
+                }
+              };
+              const bank = BANKS[paymentData.bankOption] || BANKS.boa;
+              const BankIcon = bank.icon;
+              const accentBg = bank.color === 'blue' ? 'bg-blue-600' : 'bg-[#005670]';
+              const accentLight = bank.color === 'blue' ? 'bg-blue-50 border-blue-200' : 'bg-[#e6f4f7] border-[#b3d9e3]';
+              return (
+                <div className={`rounded-2xl border ${accentLight} overflow-hidden`}>
+                  <div className={`${accentBg} px-6 py-4 flex items-center gap-3`}>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                      <BankIcon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-base">{bank.name}</p>
+                      <p className="text-white/70 text-xs">{bank.subtitle}</p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-1.5 bg-white/20 rounded-lg px-3 py-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                      <span className="text-white text-xs font-semibold">Wire Transfer</span>
+                    </div>
+                  </div>
+                  <div className="p-6 grid gap-3">
+                    {bank.fields.map(f => (
+                      <div key={f.label} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100">
+                        <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">{f.label}</span>
+                        <span className="text-sm font-bold text-gray-900 font-mono">{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Instructions + download */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-[#005670]" />
+                  <p className="text-sm font-bold text-gray-900">Instructions</p>
+                </div>
+                <button
+                  onClick={downloadPaymentPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-xs font-semibold transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download PDF
+                </button>
+              </div>
+              {paymentData.clientInstructions && (
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{paymentData.clientInstructions}</p>
+              )}
+              <p className="text-xs text-gray-400 mt-3">PDF includes bank account details &amp; step-by-step wire transfer guide.</p>
+            </div>
+
+            {/* Payment schedule */}
+            {paymentData.payments?.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-[#005670]" />
+                    <p className="text-sm font-bold text-gray-900">Payment Schedule</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Total</p>
+                    <p className="text-base font-bold text-gray-900">
+                      ${paymentData.payments.reduce((s, p) => s + (p.amount || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {paymentData.payments.map((item) => {
+                    const STATUS = {
+                      pending:    { label: 'Pending',    bg: 'bg-gray-100',    text: 'text-gray-600',   dot: 'bg-gray-400' },
+                      received:   { label: 'Received',   bg: 'bg-blue-50',     text: 'text-blue-700',   dot: 'bg-blue-500' },
+                      processing: { label: 'Processing', bg: 'bg-amber-50',    text: 'text-amber-700',  dot: 'bg-amber-500' },
+                      confirmed:  { label: 'Confirmed',  bg: 'bg-emerald-50',  text: 'text-emerald-700',dot: 'bg-emerald-500' },
+                    };
+                    const s = STATUS[item.status] || STATUS.pending;
+                    return (
+                      <div key={item._id} className="px-6 py-4 flex items-center gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{item.description}</p>
+                          {item.dueDate && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                              <Calendar className="w-3 h-3" />
+                              Due: {item.dueDate}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">${(item.amount || 0).toLocaleString()}</p>
+                        </div>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${s.bg}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                          <span className={`text-xs font-semibold ${s.text}`}>{s.label}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {paymentData.payments.some(p => p.status === 'confirmed') && (
+                  <div className="px-6 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-emerald-700">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-xs font-semibold">Amount confirmed received</span>
+                    </div>
+                    <span className="text-sm font-bold text-emerald-700">
+                      ${paymentData.payments.filter(p => p.status === 'confirmed').reduce((s, p) => s + (p.amount || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
-        */}
 
         {/* MAIN CONTENT – JOURNEY */}
         <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${activeView !== 'journey' ? 'hidden' : ''}`}>
