@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  LogOut, 
+import {
+  LogOut,
   CheckCircle,
   Circle,
   Clock,
@@ -23,7 +23,8 @@ import {
   Palette,
   Package,
   Truck,
-  Home as HomeIcon
+  Home as HomeIcon,
+  // AlertTriangle, Building2, ShieldCheck — reserved for Payment Info tab (unreleased)
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { backendServer } from '../utils/info';
@@ -184,7 +185,7 @@ const ClientPortal = () => {
   const [pendingActions, setPendingActions] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState(null);
-  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary'
+  const [activeView, setActiveView] = useState('journey'); // 'journey' | 'summary' /* | 'payment' — unreleased */
 
   // Show the Project Summary by default only when it's published for this client
   useEffect(() => {
@@ -590,6 +591,19 @@ const ClientPortal = () => {
                     <Layers className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">My Journey</span>
                   </button>
+                  {/* Payment Info tab — unreleased, re-enable when ready
+                  <button
+                    onClick={() => setActiveView('payment')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      activeView === 'payment'
+                        ? 'bg-white text-[#005670] shadow-sm'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Payment Info</span>
+                  </button>
+                  */}
                 </div>
 
                 {pendingActions.length > 0 && (
@@ -741,7 +755,7 @@ const ClientPortal = () => {
                 <span className="text-4xl font-bold text-white">{Math.round(overallProgress)}%</span>
               </div>
               <div className="h-3 bg-white/20 rounded-full overflow-hidden shadow-inner">
-                <div 
+                <div
                   className="h-full bg-white rounded-full transition-all duration-500 shadow-sm"
                   style={{ width: `${overallProgress}%` }}
                 />
@@ -754,6 +768,7 @@ const ClientPortal = () => {
                  "Project complete! ✨"}
               </p>
             </div>
+
           </div>
         </div>
 
@@ -813,6 +828,14 @@ const ClientPortal = () => {
             />
           </div>
         )}
+
+        {/* PAYMENT INFO VIEW — unreleased, re-enable when ready
+        {activeView === 'payment' && (
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            ...
+          </div>
+        )}
+        */}
 
         {/* MAIN CONTENT – JOURNEY */}
         <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${activeView !== 'journey' ? 'hidden' : ''}`}>

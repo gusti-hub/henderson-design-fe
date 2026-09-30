@@ -749,7 +749,7 @@ const ExpenseManager = () => {
       const token = localStorage.getItem('token');
       const res  = await fetch(`${backendServer}/api/orders?limit=100&status=all`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setOrders((data.orders || []).filter(o => o.selectedPlan));
+      setOrders(data.orders || []);
     } catch {}
     finally { setLoading(false); }
   };
@@ -822,7 +822,12 @@ const ExpenseManager = () => {
       if (freshRes.ok) { const o = await freshRes.json(); setSelectedOrder(o); }
 
       const clientOrdersData = clientOrdersRes.ok ? await clientOrdersRes.json() : {};
-      const allOrders = clientOrdersData.orders?.length > 0 ? clientOrdersData.orders : [order];
+      const clientOrders = clientOrdersData.orders?.length > 0 ? clientOrdersData.orders : [];
+      // Always include the originally selected order in case getOrdersByClient
+      // returned a different set (e.g. auto-created a new order for the user)
+      const allOrdersMap = new Map();
+      [order, ...clientOrders].forEach(o => { if (o?._id) allOrdersMap.set(o._id.toString(), o); });
+      const allOrders = [...allOrdersMap.values()];
 
       // Load all data for all orders in parallel
       const allProposals = [], allPOs = [], allExpensesArr = [], allPoDetails = [], allBIMap = {};
@@ -860,6 +865,27 @@ const ExpenseManager = () => {
           (biData.data || []).forEach(bi => { allBIMap[bi.poVersionId?.toString()] = bi; });
         }
       }));
+
+      // Auto-create first proposal if order has products but no proposal yet
+      if (allProposals.length === 0 && allOrders.some(o => (o.selectedProducts || []).length > 0)) {
+        try {
+          const firstOrderWithProducts = allOrders.find(o => (o.selectedProducts || []).length > 0);
+          const oid = firstOrderWithProducts._id?.toString();
+          const label = getOrderLabel(firstOrderWithProducts);
+          const createRes = await fetch(`${backendServer}/api/proposals/${oid}/new-version`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: 'Initial version' }),
+          });
+          if (createRes.ok) {
+            const pvRes = await fetch(`${backendServer}/api/proposals/${oid}/versions/all`, { headers: { Authorization: `Bearer ${token}` } });
+            if (pvRes.ok) {
+              const pvData = await pvRes.json();
+              (pvData.data || []).forEach(pv => allProposals.push({ ...pv, _orderLabel: label, _orderId: oid }));
+            }
+          }
+        } catch (e) { console.warn('Auto-create proposal skipped:', e); }
+      }
 
       setProposalVersions(allProposals);
       setAllPOVersions(allPOs);
@@ -939,6 +965,36 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
       });
     };
  
+    // ── Auto-create first proposal draft from order products ───────────────
+    const createProposalDraft = async (orderId) => {
+      setSaving(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${backendServer}/api/proposals/${orderId}/new-version`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: 'Initial version' }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast('Proposal draft created');
+          // Reload proposals for this order
+          const pvRes = await fetch(`${backendServer}/api/proposals/${orderId}/versions/all`, { headers: { Authorization: `Bearer ${token}` } });
+          if (pvRes.ok) {
+            const pvData = await pvRes.json();
+            const label = getOrderLabel(selectedOrder);
+            setProposalVersions((pvData.data || []).map(pv => ({ ...pv, _orderLabel: label, _orderId: orderId })));
+          }
+        } else {
+          showToast(data.message || 'Failed to create proposal', 'error');
+        }
+      } catch (e) {
+        showToast('Failed: ' + e.message, 'error');
+      } finally {
+        setSaving(false);
+      }
+    };
+
     // ── Proposal QB ────────────────────────────────────────────────────────
     const doSyncProposalQB = async (pvId, orderId, isResync = false) => {
       setSyncing(pvId, true);
@@ -1183,13 +1239,22 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
               <h3 className="text-base font-semibold text-gray-800">📄 Proposals</h3>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">{proposalVersions.length} proposal{proposalVersions.length !== 1 ? 's' : ''}</span>
             </div>
-            <button onClick={() => window.open(`/admin/proposal/${proposalVersions[0]?._orderId || selectedOrder._id}`, '_blank')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#005670] border border-[#005670]/30 rounded-lg hover:bg-[#005670]/5 transition-colors">
-              <FileText className="w-3.5 h-3.5" />{proposalVersions.length === 0 ? 'Create Proposal' : 'Open Proposal Editor'}
-            </button>
+            {proposalVersions.length === 0 ? (
+              <button
+                onClick={() => createProposalDraft(selectedOrder._id)}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#005670] rounded-lg hover:bg-[#004a60] disabled:opacity-50 transition-colors">
+                <FileText className="w-3.5 h-3.5" />{saving ? 'Creating…' : 'Create Proposal'}
+              </button>
+            ) : (
+              <button onClick={() => window.open(`/admin/proposal/${proposalVersions[0]?._orderId || selectedOrder._id}`, '_blank')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#005670] border border-[#005670]/30 rounded-lg hover:bg-[#005670]/5 transition-colors">
+                <FileText className="w-3.5 h-3.5" />Open Proposal Editor
+              </button>
+            )}
           </div>
           {proposalVersions.length === 0 ? (
-            <div className="px-5 py-8 text-center"><FileText className="w-10 h-10 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">No proposals yet</p><p className="text-xs text-gray-300 mt-1">Open Proposal Editor to create the first proposal</p></div>
+            <div className="px-5 py-8 text-center"><FileText className="w-10 h-10 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">No proposals yet</p><p className="text-xs text-gray-300 mt-1">Click "Create Proposal" to auto-generate from order products</p></div>
           ) : (
             <>
               <table className="w-full">

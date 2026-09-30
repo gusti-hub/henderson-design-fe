@@ -1,6 +1,6 @@
 // App.jsx - CLEAN VERSION
 import React from 'react';
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 
 import BrochureLandingPage from './pages/BrochureLandingPage';
 import PortalLogin from './components/PortalLogin';
@@ -19,9 +19,13 @@ import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute'; // â†
 
 const ProposalEditorWrapper = () => {
   const { orderId, version } = useParams();
+  const navigate = useNavigate();
+  const handleClose = () => {
+    navigate('/admin-panel', { state: { tab: '/orders' } });
+  };
   return (
     <ProtectedRoute requireEmployee={true} element={
-      <ProposalEditor orderId={orderId} version={version} onClose={() => window.close()} />
+      <ProposalEditor orderId={orderId} version={version} onClose={handleClose} />
     } />
   );
 };

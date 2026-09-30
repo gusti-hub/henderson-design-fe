@@ -602,7 +602,7 @@ const AdminOrderList = ({ onOrderClick }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
-      setOrders((data.orders || []).filter(o => o && o.selectedPlan));
+      setOrders(data.orders || []);
       setTotalPages(data.totalPages || 1);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   }, [currentPage, filterStatus, searchTerm]);

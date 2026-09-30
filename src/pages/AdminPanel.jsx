@@ -1,5 +1,6 @@
 // AdminPanel.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Home, MapPin, Store, Users, User, LogOut,
   FileText, Menu, X, Receipt, Lock, ShieldCheck, ChevronRight, Truck, Images,
@@ -24,8 +25,13 @@ import { ACTIONS } from '../utils/actions';
 
 const AdminPanel = () => {
   const { user, logout } = useAuth();
-  const [activeMenu, setActiveMenu] = useState('/dashboard');
+  const location = useLocation();
+  const [activeMenu, setActiveMenu] = useState(location.state?.tab || '/dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (location.state?.tab) setActiveMenu(location.state.tab);
+  }, [location.state?.tab]);
 
   const adminName = user?.name || 'Admin';
   const userRole  = localStorage.getItem('role');
