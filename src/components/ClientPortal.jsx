@@ -468,6 +468,12 @@ const ClientPortal = () => {
     }
   };
 
+  const CEE_PHONES = {
+    'Savanna Gonzales':  '808.754.4935',
+    'Madeline Clifford': '808-895-1587',
+    'Daiki Matsumaru':   '+81.90.7014.7066',
+  };
+
   const BANK_FULL = {
     schwab: {
       name: 'Charles Schwab (via Citibank N.A.)',
@@ -497,7 +503,8 @@ const ClientPortal = () => {
 
   const downloadPaymentPDF = async () => {
     const bank = BANK_FULL[paymentData?.bankOption] || BANK_FULL.boa;
-    const instructions = paymentData?.clientInstructions || '';
+    const ceeName = clientData?.teamAssignment?.projectManager || '';
+    const ceePhone = CEE_PHONES[ceeName] || '';
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const { pdf } = await import('@react-pdf/renderer');
@@ -531,12 +538,12 @@ const ClientPortal = () => {
     });
 
     const steps = [
-      'Log in to your bank\'s online platform or visit your bank branch.',
-      `Initiate an outgoing wire transfer to: ${bank.name}.`,
-      'Enter the bank account details exactly as shown in the Wire Transfer Details section below.',
-      'In the Memo / Reference field, include your full name and invoice number.',
-      instructions || 'After completing the transfer, notify your Project Manager (CEE) with your sender name and invoice number as reference.',
-      'Save your wire transfer confirmation receipt for your records.',
+      'Review the banking information and payment amount shown in your Client Portal.',
+      `Contact your Henderson Design Group Client Experience Executive${ceeName ? ` (${ceeName})` : ''} at the designated telephone number below.`,
+      'Verbally confirm the bank name, beneficiary information, account information, and payment amount with your Client Experience Executive.',
+      'Do not initiate the wire until this verification has been completed.',
+      'After verification, proceed with the wire through your bank.',
+      'Notify your Client Experience Executive once the wire has been initiated.',
     ];
 
     const PaymentDoc = (
@@ -559,15 +566,20 @@ const ClientPortal = () => {
           {/* Security notice */}
           <View style={s.notice}>
             <Text style={s.noticeText}>
-              <Text style={s.noticeBold}>Security notice: </Text>
-              Henderson Design Group will never ask you to change bank account details via email or phone. If you receive such a request, contact us directly before transferring any funds.
+              <Text style={s.noticeBold}>Important Security Notice{'\n'}</Text>
+              {'Henderson Design Group will never change banking instructions solely by email.\n\n'}
+              {'If you receive any communication stating that our banking information has changed:\n'}
+              {'  •  Do not send funds.\n'}
+              {'  •  Do not use a phone number or link contained in that message.\n'}
+              {'  •  Contact your Client Experience Executive using the telephone number shown in your Client Portal or another Henderson Design Group number you already have on file.\n\n'}
+              {'Any change to Henderson Design Group banking information must be verbally verified before funds are transferred.'}
             </Text>
           </View>
 
           {/* How-to guide */}
           <View style={s.card}>
             <View style={s.cardHead}>
-              <Text style={s.badge}>STEP BY STEP</Text>
+              <Text style={s.badge}>WIRE TRANSFER VERIFICATION REQUIRED</Text>
               <Text style={s.cardTitle}>How to Complete Your Wire Transfer</Text>
             </View>
             {steps.map((step, i) => (
@@ -576,6 +588,13 @@ const ClientPortal = () => {
                 <Text style={s.stepText}>{step}</Text>
               </View>
             ))}
+            {(ceeName || ceePhone) && (
+              <View style={{ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f8fafc', borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Your Client Experience Executive</Text>
+                {ceeName ? <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 }}>{ceeName}</Text> : null}
+                {ceePhone ? <Text style={{ fontSize: 10, color: '#374151' }}>{ceePhone}</Text> : null}
+              </View>
+            )}
           </View>
 
           {/* Bank details */}
@@ -997,12 +1016,35 @@ const ClientPortal = () => {
         {activeView === 'payment' && paymentData?.enabled && (
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-            {/* Anti-phishing notice */}
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            {/* Security notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <p className="text-sm font-bold text-amber-900">Important Security Notice</p>
+              </div>
               <p className="text-sm text-amber-800">
-                <span className="font-semibold">Security notice:</span> Henderson Design Group will never ask you to change bank account details via email or phone. If you receive such a request, contact us directly before transferring any funds.
+                Henderson Design Group will never change banking instructions solely by email.
               </p>
+              <p className="text-sm text-amber-800 font-semibold">If you receive any communication stating that our banking information has changed:</p>
+              <ul className="space-y-1.5 pl-1">
+                {[
+                  'Do not send funds.',
+                  'Do not use a phone number or link contained in that message.',
+                  'Contact your Client Experience Executive using the telephone number shown in your Client Portal or another Henderson Design Group number you already have on file.',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-amber-800">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm text-amber-800">Any change to Henderson Design Group banking information must be verbally verified before funds are transferred.</p>
+            </div>
+
+            {/* Do not initiate bubble */}
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-3.5">
+              <ShieldCheck className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-sm font-semibold text-red-800">Do not initiate a wire until you have verbally verified these instructions with your Client Experience Executive.</p>
             </div>
 
             {/* Bank wire instructions */}
@@ -1065,26 +1107,53 @@ const ClientPortal = () => {
               );
             })()}
 
-            {/* Instructions + download */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4 text-[#005670]" />
-                  <p className="text-sm font-bold text-gray-900">Instructions</p>
+            {/* Verification steps card */}
+            {(() => {
+              const ceeName = clientData?.teamAssignment?.projectManager || '';
+              const ceePhone = CEE_PHONES[ceeName] || '';
+              const verifySteps = [
+                'Review the banking information and payment amount shown in your Client Portal.',
+                'Contact your Henderson Design Group Client Experience Executive at the designated telephone number below.',
+                'Verbally confirm the bank name, beneficiary information, account information, and payment amount with your Client Experience Executive.',
+                'Do not initiate the wire until this verification has been completed.',
+                'After verification, proceed with the wire through your bank.',
+                'Notify your Client Experience Executive once the wire has been initiated.',
+              ];
+              return (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Info className="w-4 h-4 text-[#005670]" />
+                      <p className="text-sm font-bold text-gray-900">Wire Transfer Verification Required</p>
+                    </div>
+                    <button
+                      onClick={downloadPaymentPDF}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-xs font-semibold transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download PDF
+                    </button>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {verifySteps.map((step, i) => (
+                      <div key={i} className="flex items-start gap-3 px-5 py-3.5">
+                        <div className="w-6 h-6 rounded-full bg-[#005670] flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-white text-[11px] font-bold">{i + 1}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {(ceeName || ceePhone) && (
+                    <div className="px-5 py-4 bg-[#f0f9fc] border-t border-[#b3d9e3]">
+                      <p className="text-xs font-bold text-[#005670] uppercase tracking-wide mb-2">Your Client Experience Executive</p>
+                      {ceeName && <p className="text-sm font-bold text-gray-900">{ceeName}</p>}
+                      {ceePhone && <p className="text-sm text-gray-600 mt-0.5">{ceePhone}</p>}
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={downloadPaymentPDF}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#005670] hover:bg-[#004558] text-white rounded-lg text-xs font-semibold transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download PDF
-                </button>
-              </div>
-              {paymentData.clientInstructions && (
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{paymentData.clientInstructions}</p>
-              )}
-              <p className="text-xs text-gray-400 mt-3">PDF includes bank account details &amp; step-by-step wire transfer guide.</p>
-            </div>
+              );
+            })()}
 
             {/* Payment schedule */}
             {paymentData.payments?.length > 0 && (
