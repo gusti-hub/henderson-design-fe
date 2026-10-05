@@ -179,7 +179,7 @@ const PageFooter = () => (
 );
 
 // ─── Product Row ──────────────────────────────────────────────────────────────
-const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh, classic = false }, ref) => {
+const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh, classic = false, compressedImages }, ref) => {
   const o = product.selectedOptions || {};
   const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
   const imgSrc = getImgSrc(product);
@@ -205,7 +205,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
     <tr ref={ref}>
       <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
         {imgSrc
-          ? <img src={imgSrc} alt={product.name} style={{ width: '76px', height: '76px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
+          ? <img src={(compressedImages && compressedImages.get(imgSrc)) || imgSrc} alt={product.name} style={{ width: '76px', height: '76px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
           : <div style={{ width: '76px', height: '76px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#9ca3af', margin: '0 auto' }}>No Image</div>
         }
         {/* Action buttons — hidden on print */}
@@ -290,7 +290,7 @@ const CA_LABELS = {
 const SKIP_CA_KEYS = new Set(['availabilityStatus','collection','materials']);
 
 // ─── Product Row V2 (extended: item type, materials, category specs) ──────────
-const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh, classic = false }, ref) => {
+const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onRefresh, classic = false, compressedImages }, ref) => {
   const o = product.selectedOptions || {};
   const ca = typeof o.customAttributes === 'object' && !Array.isArray(o.customAttributes) ? o.customAttributes : {};
   const imgSrc = getImgSrc(product);
@@ -322,7 +322,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
     <tr ref={ref}>
       <td style={{ ...tdBase, width: '88px', padding: '8px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
         {imgSrc
-          ? <img src={imgSrc} alt={product.name} style={{ width: '76px', height: '76px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
+          ? <img src={(compressedImages && compressedImages.get(imgSrc)) || imgSrc} alt={product.name} style={{ width: '76px', height: '76px', objectFit: 'contain', display: 'block', margin: '0 auto' }} onError={e => { e.target.style.display = 'none'; }} />
           : <div style={{ width: '76px', height: '76px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#9ca3af', margin: '0 auto' }}>No Image</div>
         }
         {(onRefresh || onDelete) && (
@@ -371,7 +371,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
 ProductRowV2.displayName = 'ProductRowV2';
 
 // ─── Room Table ───────────────────────────────────────────────────────────────
-const RoomTable = ({ room, rows, onDelete, onRefresh, RowComponent = ProductRow }) => (
+const RoomTable = ({ room, rows, onDelete, onRefresh, RowComponent = ProductRow, compressedImages }) => (
   <div style={{ marginBottom: '10px' }}>
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
       <colgroup>
@@ -392,6 +392,7 @@ const RoomTable = ({ room, rows, onDelete, onRefresh, RowComponent = ProductRow 
             isFirst={i === 0}
             onDelete={onDelete ? () => onDelete(sid) : undefined}
             onRefresh={onRefresh ? () => onRefresh(sid, product) : undefined}
+            compressedImages={compressedImages}
           />
         ))}
       </tbody>
@@ -400,7 +401,7 @@ const RoomTable = ({ room, rows, onDelete, onRefresh, RowComponent = ProductRow 
 );
 
 // ─── Render Items (paginated) ─────────────────────────────────────────────────
-const renderItems = (items, onDelete, onRefresh, productsMap, RowComponent = ProductRow) => {
+const renderItems = (items, onDelete, onRefresh, productsMap, RowComponent = ProductRow, compressedImages) => {
   const sections = []; let cur = null;
   items.forEach(item => {
     if (item.type === 'room-header') {
@@ -414,7 +415,7 @@ const renderItems = (items, onDelete, onRefresh, productsMap, RowComponent = Pro
   });
   if (cur) sections.push(cur);
   return sections.map(({ room, rows }) => (
-    <RoomTable key={room} room={room} rows={rows} onDelete={onDelete} onRefresh={onRefresh} RowComponent={RowComponent} />
+    <RoomTable key={room} room={room} rows={rows} onDelete={onDelete} onRefresh={onRefresh} RowComponent={RowComponent} compressedImages={compressedImages} />
   ));
 };
 
@@ -641,6 +642,8 @@ const ProposalEditor = ({ orderId, version, onClose }) => {
 
   const [pages, setPages] = useState(null);
   const [ready, setReady] = useState(false);
+  const [compressedImages, setCompressedImages] = useState(null);
+  const [printPending, setPrintPending] = useState(false);
 
   const measureRef  = useRef(null);
   const headerRef   = useRef(null);
@@ -1147,14 +1150,41 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     preloadImages(visibleProducts.map(getImgSrc).filter(Boolean)).then(() => { setTimeout(() => paginate(), 300); });
   }, [pages, visibleProducts, paginate]);
 
-  const doPrint = () => {
+  useEffect(() => {
+    if (!printPending) return;
+    setPrintPending(false);
+    window.print();
+  }, [printPending]);
+
+  const doPrint = async () => {
     setShowPrintInstructions(false);
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
       document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
     }
-    setTimeout(() => window.print(), 100);
+    const urls = visibleProducts.map(getImgSrc).filter(Boolean);
+    const entries = await Promise.all(urls.map(url => new Promise(resolve => {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const MAX = 150;
+          const ratio = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+          const w = Math.max(1, Math.round(img.naturalWidth * ratio));
+          const h = Math.max(1, Math.round(img.naturalHeight * ratio));
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve([url, canvas.toDataURL('image/jpeg', 0.62)]);
+        } catch { resolve([url, null]); }
+      };
+      img.onerror = () => resolve([url, null]);
+      img.src = url;
+    })));
+    const map = new Map(entries.filter(([, v]) => v));
+    setCompressedImages(map);
+    setPrintPending(true);
   };
 
   if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670]" /></div>;
@@ -1403,7 +1433,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                     {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
                     <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
-                      {renderItems(items, undefined, undefined, productsMap, ActiveRowV2)}
+                      {renderItems(items, undefined, undefined, productsMap, ActiveRowV2, compressedImages)}
                       {pi === (pages || []).length - 1 && (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>

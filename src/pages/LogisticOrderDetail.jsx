@@ -127,7 +127,7 @@ const LogisticOrderDetail = ({ entry: initialEntry, statusCategories, onBack, on
         },
         body: JSON.stringify({
           projectCode:         form.projectCode,
-          location:            form.location,
+
           cargoReadyDate:      form.cargoReadyDate,
           shipmentDate:        form.shipmentDate,
           logDrawing:          form.logDrawing,
@@ -225,9 +225,7 @@ const LogisticOrderDetail = ({ entry: initialEntry, statusCategories, onBack, on
           ? <EditField label="Project Code" value={form.projectCode} onChange={set('projectCode')} placeholder="e.g. PROJ-001" />
           : <ReadField label="Project Code" value={form.projectCode} />}
         <ReadField label="Unit Number"  value={form.unitNumber} />
-        {canEdit
-          ? <EditField label="Location (Room)" value={form.location} onChange={set('location')} placeholder="e.g. Living Room" />
-          : <ReadField label="Location (Room)" value={form.location} />}
+        <ReadField label="Location (Room)" value={form.location} />
         <ReadField label="Shipped Quantity (auto)" value={String(shippedQty)} />
         <ReadField label="Balance Quantity (auto)" value={String(balanceQty)} />
       </Section>

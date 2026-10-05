@@ -112,6 +112,8 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
   });
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [compressedImages, setCompressedImages] = useState(null);
+  const [printPending, setPrintPending] = useState(false);
   const [docTemplate, setDocTemplate] = useState(() => localStorage.getItem('henderson_po_template') || 'modern');
   const isClassic = docTemplate === 'classic';
   const handleTemplateToggle = (tpl) => {
@@ -137,6 +139,13 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     }
     return () => { document.title = originalTitle; };
   }, [poData, vendorInfo, clientInfo, originalTitle]);
+
+  useEffect(() => {
+    if (!printPending) return;
+    setPrintPending(false);
+    window.print();
+    setTimeout(() => setIsPrinting(false), 1000);
+  }, [printPending]);
 
   const loadPOData = async () => {
     try {
@@ -334,15 +343,41 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     if (poData && vendorInfo.name) {
       const vendor = vendorInfo.name?.replace(/\s+/g, '_') || 'Vendor';
       const client = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
-
       const date = new Date().toISOString().split('T')[0];
       document.title = `PO_${client}_${vendor}_${date}`;
     }
     setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setIsPrinting(false), 1000);
-    }, 150);
+
+    const urls = products
+      .map(p => toJsDelivrUrl(
+        p.selectedOptions?.uploadedImages?.[0]?.url ||
+        p.selectedOptions?.image ||
+        p.selectedOptions?.images?.[0] ||
+        p.imageUrl || null))
+      .filter(Boolean);
+
+    const entries = await Promise.all(urls.map(url => new Promise(resolve => {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const MAX = 150;
+          const ratio = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+          const w = Math.max(1, Math.round(img.naturalWidth * ratio));
+          const h = Math.max(1, Math.round(img.naturalHeight * ratio));
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve([url, canvas.toDataURL('image/jpeg', 0.62)]);
+        } catch { resolve([url, null]); }
+      };
+      img.onerror = () => resolve([url, null]);
+      img.src = url;
+    })));
+
+    const map = new Map(entries.filter(([, v]) => v));
+    setCompressedImages(map);
+    setPrintPending(true);
   };
 
   if (loading) {
@@ -717,11 +752,10 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                     {/* Image */}
                     <td className="img-cell">
                       {imgSrc ? (
-                        <PrintSafeImage
-                          src={imgSrc}
+                        <img
+                          src={(compressedImages && compressedImages.get(imgSrc)) || imgSrc}
                           alt={product.name || ''}
                           style={{ maxWidth: '110px', maxHeight: '110px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
-                          fallback={<div className="img-placeholder">No Image</div>}
                         />
                       ) : (
                         <div className="img-placeholder">No Image</div>

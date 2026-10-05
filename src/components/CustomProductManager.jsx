@@ -1074,7 +1074,13 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
         closeConfirm();
         try {
           const token = localStorage.getItem('token');
-          const updatedProducts = savedProducts.filter((_, i) => i !== index);
+          const removedProduct = savedProducts[index];
+          const updatedProducts = savedProducts.filter((p, i) => {
+            if (i === index) return false;
+            // If removing a group parent, also remove its children
+            if (removedProduct?.isParent && removedProduct?.product_id && p.parentId === removedProduct.product_id) return false;
+            return true;
+          });
           setSavedProducts(updatedProducts);
           if (expandedProduct === index) setExpandedProduct(null);
 
