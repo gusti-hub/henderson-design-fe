@@ -1,7 +1,7 @@
 // pages/LogisticOrderTracker.jsx
 // Logistic Order Tracker — all editable fields as columns, inline cell editing
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Search, RefreshCw, Filter, X, Download, Loader2, Pencil, ChevronsUpDown, ChevronUp, ChevronDown, Lock, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, Filter, X, Download, Loader2, Pencil, ChevronsUpDown, ChevronUp, ChevronDown, Lock, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, History, RotateCcw, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { backendServer } from '../utils/info';
 
@@ -99,6 +99,435 @@ const makeDatePasteHandler = (setter) => (e) => {
   if (parsed) setter(parsed);
 };
 
+// ─── Global Audit Panel (all products / all orders) ──────────────────────────
+const GlobalAuditPanel = ({ token, onClose, onRollbackDone }) => {
+  const [logs, setLogs]         = useState([]);
+  const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [expanded, setExpanded] = useState(new Set());
+  const [rolling, setRolling]   = useState(false);
+  const [msg, setMsg]           = useState('');
+
+  const [q, setQ]         = useState('');
+  const [user, setUser]   = useState('');
+  const [from, setFrom]   = useState('');
+  const [to, setTo]       = useState('');
+  const [qInput, setQInput] = useState('');
+
+  const LIMIT = 100;
+  const [skip, setSkip] = useState(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => setQ(qInput), 350);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  useEffect(() => { setSkip(0); }, [q, user, from, to]);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const p = new URLSearchParams({ limit: LIMIT, skip });
+      if (q)    p.set('q', q);
+      if (user) p.set('user', user);
+      if (from) p.set('from', from);
+      if (to)   p.set('to', to);
+      const r = await fetch(`${backendServer}/api/logistic/audit?${p}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.ok) { const d = await r.json(); setLogs(d.logs || []); setTotal(d.total || 0); }
+    } finally { setLoading(false); }
+  }, [token, q, user, from, to, skip]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  const toggleSelect = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleExpand = (id) => setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const rollback = async () => {
+    if (!selected.size) return;
+    setRolling(true); setMsg('');
+    try {
+      const r = await fetch(`${backendServer}/api/logistic/audit/rollback-global`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ logIds: [...selected] }),
+      });
+      if (!r.ok) throw new Error((await r.json()).message);
+      const d = await r.json();
+      setMsg(d.message);
+      setSelected(new Set());
+      await fetchLogs();
+      onRollbackDone();
+    } catch (e) {
+      setMsg(`Error: ${e.message}`);
+    } finally { setRolling(false); }
+  };
+
+  const rollbackable = logs.filter(l => l.action !== 'rollback');
+  const totalPages   = Math.ceil(total / LIMIT);
+  const currentPage  = Math.floor(skip / LIMIT) + 1;
+
+  return (
+    <div className="p-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={onClose} className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#005670] transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Tracker
+          </button>
+          <span className="text-gray-300">|</span>
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-[#005670]" />
+            <h1 className="text-xl font-bold text-gray-800">Audit Log</h1>
+          </div>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{total} entries</span>
+        </div>
+        {selected.size > 0 && (
+          <button
+            onClick={rollback}
+            disabled={rolling}
+            className="flex items-center gap-2 px-5 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-60 transition-colors font-medium"
+          >
+            {rolling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+            Rollback {selected.size} selected
+          </button>
+        )}
+      </div>
+
+      {msg && (
+        <div className={`px-4 py-3 rounded-lg text-sm ${msg.startsWith('Error') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+          {msg}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" placeholder="Search product, user, field…" value={qInput} onChange={e => setQInput(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
+          </div>
+          <input type="text" placeholder="Filter by user" value={user} onChange={e => setUser(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap">From</label>
+            <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap">To</label>
+            <input type="date" value={to} onChange={e => setTo(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
+          </div>
+        </div>
+        {(q || user || from || to) && (
+          <button onClick={() => { setQInput(''); setQ(''); setUser(''); setFrom(''); setTo(''); }}
+            className="mt-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+            <X className="w-3 h-3" /> Clear filters
+          </button>
+        )}
+      </div>
+
+      {/* Log table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* Select all bar */}
+        {rollbackable.length > 0 && (
+          <div className="px-4 py-2 border-b border-gray-100 bg-gray-50 flex items-center gap-4">
+            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+              <input type="checkbox"
+                checked={selected.size === rollbackable.length && rollbackable.length > 0}
+                onChange={e => setSelected(e.target.checked ? new Set(rollbackable.map(l => l._id)) : new Set())}
+                className="accent-[#005670]" />
+              Select all ({rollbackable.length})
+            </label>
+            {selected.size > 0 && (
+              <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+            )}
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-center justify-center py-16 text-gray-400 text-sm gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" /> Loading…
+          </div>
+        )}
+        {!loading && logs.length === 0 && (
+          <div className="flex items-center justify-center py-16 text-gray-400 text-sm">No audit entries found.</div>
+        )}
+
+        {!loading && logs.length > 0 && (
+          <div className="divide-y divide-gray-100">
+            {logs.map(log => {
+              const isRollback  = log.action === 'rollback';
+              const isSelected  = selected.has(log._id);
+              const isExpanded  = expanded.has(log._id);
+              const canRollback = !isRollback;
+              const when = new Date(log.createdAt).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+              });
+
+              return (
+                <div key={log._id} className={`px-4 py-3 flex items-start gap-3 ${isRollback ? 'bg-amber-50' : isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                  <div className="pt-0.5 shrink-0">
+                    {canRollback
+                      ? <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(log._id)} className="accent-[#005670]" />
+                      : <div className="w-4 h-4" />}
+                  </div>
+
+                  <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                    {/* Left: who + product */}
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-gray-800">{log.performedByName || 'Unknown'}</span>
+                        <span className="text-xs text-gray-400">{when}</span>
+                        {isRollback && <span className="text-xs px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded font-medium">rollback</span>}
+                      </div>
+                      {log.productName && (
+                        <div className="text-xs text-gray-500 mt-0.5 truncate">{log.productName}</div>
+                      )}
+                    </div>
+
+                    {/* Right: changes */}
+                    <div className="sm:text-right">
+                      <div className="space-y-0.5">
+                        {(log.changes || []).slice(0, isExpanded ? undefined : 2).map((c, i) => (
+                          <div key={i} className="text-xs text-gray-600 flex gap-1.5 flex-wrap sm:justify-end">
+                            <span className="font-medium text-gray-500">{c.label}:</span>
+                            <span className="line-through text-red-400">{fmtVal(c.oldValue)}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="text-green-600 font-medium">{fmtVal(c.newValue)}</span>
+                          </div>
+                        ))}
+                        {(log.changes || []).length > 2 && (
+                          <button onClick={() => toggleExpand(log._id)} className="text-xs text-[#005670] flex items-center gap-0.5 sm:ml-auto">
+                            {isExpanded ? <><ChevronUp className="w-3 h-3"/>less</> : <><ChevronDown className="w-3 h-3"/>+{log.changes.length - 2} more</>}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {canRollback && (
+                    <button
+                      onClick={async () => {
+                        setRolling(true); setMsg('');
+                        try {
+                          const r = await fetch(`${backendServer}/api/logistic/${log.orderId}/audit/${log._id}/rollback`, {
+                            method: 'POST', headers: { Authorization: `Bearer ${token}` },
+                          });
+                          if (!r.ok) throw new Error((await r.json()).message);
+                          setMsg('1 change rolled back.');
+                          await fetchLogs(); onRollbackDone();
+                        } catch (e) { setMsg(`Error: ${e.message}`); }
+                        finally { setRolling(false); }
+                      }}
+                      disabled={rolling}
+                      title="Rollback this change"
+                      className="shrink-0 p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors disabled:opacity-40"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs text-gray-400">Page {currentPage} of {totalPages} · {total} total</span>
+            <div className="flex gap-1">
+              <button onClick={() => setSkip(s => Math.max(0, s - LIMIT))} disabled={skip === 0}
+                className="px-3 py-1 border border-gray-200 rounded text-xs hover:bg-gray-50 disabled:opacity-40">← Prev</button>
+              <button onClick={() => setSkip(s => s + LIMIT)} disabled={skip + LIMIT >= total}
+                className="px-3 py-1 border border-gray-200 rounded text-xs hover:bg-gray-50 disabled:opacity-40">Next →</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Audit Trail Drawer ───────────────────────────────────────────────────────
+const fmtVal = (v) => {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'number' && v >= 0 && v <= 5 && Number.isInteger(v)) return `${v} (${STAGE_COLORS[v]?.label ?? v})`;
+  return String(v);
+};
+
+const AuditDrawer = ({ row, token, onClose, onRollbackDone }) => {
+  const [logs, setLogs]         = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [rolling, setRolling]   = useState(false);
+  const [expanded, setExpanded] = useState(new Set());
+  const [msg, setMsg]           = useState('');
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const url = `${backendServer}/api/logistic/${row.orderId}/audit?productId=${row.productId}`;
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (r.ok) setLogs(await r.json());
+    } finally { setLoading(false); }
+  }, [row.orderId, row.productId, token]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  const toggleSelect  = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleExpand  = (id) => setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const rollback = async (singleId) => {
+    const ids = singleId ? [singleId] : [...selected];
+    if (!ids.length) return;
+    setRolling(true); setMsg('');
+    try {
+      if (ids.length === 1) {
+        const r = await fetch(`${backendServer}/api/logistic/${row.orderId}/audit/${ids[0]}/rollback`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok) throw new Error((await r.json()).message);
+      } else {
+        const r = await fetch(`${backendServer}/api/logistic/${row.orderId}/audit/rollback-bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ logIds: ids }),
+        });
+        if (!r.ok) throw new Error((await r.json()).message);
+      }
+      setMsg(`${ids.length} change${ids.length > 1 ? 's' : ''} rolled back.`);
+      setSelected(new Set());
+      await fetchLogs();
+      onRollbackDone();
+    } catch (e) {
+      setMsg(`Error: ${e.message}`);
+    } finally { setRolling(false); }
+  };
+
+  const rollbackable = logs.filter(l => l.action !== 'rollback');
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div className="w-full max-w-sm bg-white shadow-2xl flex flex-col h-full border-l border-gray-200" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-[#005670]" />
+              <span className="font-semibold text-gray-800 text-sm">Audit Trail</span>
+              {logs.length > 0 && <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{logs.length}</span>}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[240px]" title={row.itemName}>{row.itemName || '—'} · {row.poNumber || '—'}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Bulk rollback toolbar */}
+        {selected.size > 0 && (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between shrink-0">
+            <span className="text-xs text-amber-700">{selected.size} selected</span>
+            <button
+              onClick={() => rollback(null)}
+              disabled={rolling}
+              className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 text-white rounded text-xs hover:bg-amber-600 disabled:opacity-60"
+            >
+              {rolling ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+              Rollback {selected.size}
+            </button>
+          </div>
+        )}
+
+        {msg && (
+          <div className={`px-4 py-2 text-xs shrink-0 ${msg.startsWith('Error') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            {msg}
+          </div>
+        )}
+
+        {/* Log list */}
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+          {loading && (
+            <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          )}
+          {!loading && logs.length === 0 && (
+            <div className="flex items-center justify-center py-12 text-gray-400 text-sm">No changes recorded yet.</div>
+          )}
+          {!loading && logs.map(log => {
+            const isRollback = log.action === 'rollback';
+            const isExpanded = expanded.has(log._id);
+            const isSelected = selected.has(log._id);
+            const canRollback = !isRollback;
+            const when = new Date(log.createdAt).toLocaleString('en-US', {
+              month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+            });
+
+            return (
+              <div key={log._id} className={`px-3 py-2.5 ${isRollback ? 'bg-amber-50' : isSelected ? 'bg-blue-50' : ''}`}>
+                <div className="flex items-start gap-2">
+                  {canRollback
+                    ? <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(log._id)} className="mt-0.5 accent-[#005670] shrink-0" />
+                    : <div className="w-4 shrink-0" />}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-semibold text-gray-700">{log.performedByName || 'Unknown'}</span>
+                      <span className="text-xs text-gray-400">{when}</span>
+                      {isRollback && <span className="text-[10px] px-1 py-0.5 bg-amber-200 text-amber-800 rounded font-medium">rollback</span>}
+                    </div>
+                    <div className="mt-1 space-y-0.5">
+                      {(log.changes || []).slice(0, isExpanded ? undefined : 3).map((c, i) => (
+                        <div key={i} className="text-xs text-gray-600 flex gap-1 flex-wrap">
+                          <span className="font-medium text-gray-500">{c.label}:</span>
+                          <span className="line-through text-red-400">{fmtVal(c.oldValue)}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-green-600 font-medium">{fmtVal(c.newValue)}</span>
+                        </div>
+                      ))}
+                      {(log.changes || []).length > 3 && (
+                        <button onClick={() => toggleExpand(log._id)} className="text-xs text-[#005670] flex items-center gap-0.5">
+                          {isExpanded ? <><ChevronUp className="w-3 h-3"/>less</> : <><ChevronDown className="w-3 h-3"/>+{log.changes.length - 3} more</>}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {canRollback && (
+                    <button
+                      onClick={() => rollback(log._id)}
+                      disabled={rolling}
+                      title="Rollback this change"
+                      className="shrink-0 p-1 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded disabled:opacity-40 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Select all footer */}
+        {rollbackable.length > 1 && (
+          <div className="px-4 py-2 border-t border-gray-100 flex items-center gap-3 shrink-0">
+            <button onClick={() => setSelected(new Set(rollbackable.map(l => l._id)))} className="text-xs text-[#005670] hover:underline">Select all</button>
+            {selected.size > 0 && <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:underline">Clear</button>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 const LogisticOrderTracker = () => {
   const [rows, setRows]             = useState([]);
@@ -118,6 +547,8 @@ const LogisticOrderTracker = () => {
   const [rowError, setRowError]     = useState('');
   const [isDirty, setIsDirty]       = useState(false);
   const [toast, setToast]           = useState(null); // { type: 'success'|'error', msg }
+  const [auditRow, setAuditRow]     = useState(null); // row whose audit drawer is open
+  const [showGlobalAudit, setShowGlobalAudit] = useState(false);
   const editRowRef                  = useRef(null);
   const autoSaveRef                 = useRef(null); // always points to latest handleSave
 
@@ -431,6 +862,16 @@ const LogisticOrderTracker = () => {
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
+  if (showGlobalAudit) {
+    return (
+      <GlobalAuditPanel
+        token={token}
+        onClose={() => setShowGlobalAudit(false)}
+        onRollbackDone={fetchRows}
+      />
+    );
+  }
+
   return (
     <div className="p-6 space-y-4">
       {/* ── Toast notification ── */}
@@ -456,6 +897,9 @@ const LogisticOrderTracker = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowGlobalAudit(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+            <History className="w-4 h-4" /> Audit Log
+          </button>
           <button onClick={openExportModal} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors">
             <Download className="w-4 h-4" /> Export Excel
           </button>
@@ -779,10 +1223,19 @@ const LogisticOrderTracker = () => {
                             </div>
                             <p className="text-[9px] text-gray-300 leading-tight">click outside to save</p>
                           </div>
-                        ) : readOnly ? (
-                          <Lock className="w-3 h-3 text-gray-300 mx-auto" title="Linked to PO — no matching CPM product" />
                         ) : (
-                          <Pencil className="w-3.5 h-3.5 text-gray-300 mx-auto" />
+                          <div className="flex items-center justify-center gap-1.5">
+                            {readOnly
+                              ? <Lock className="w-3 h-3 text-gray-300" title="Linked to PO — no matching CPM product" />
+                              : <Pencil className="w-3.5 h-3.5 text-gray-300" />}
+                            <button
+                              onClick={e => { e.stopPropagation(); setAuditRow(row); }}
+                              title="View audit trail"
+                              className="p-0.5 text-[#005670]/40 hover:text-[#005670] hover:bg-[#005670]/10 transition-colors rounded"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -842,6 +1295,16 @@ const LogisticOrderTracker = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Audit Trail Drawer ───────────────────────────────────────────────── */}
+      {auditRow && (
+        <AuditDrawer
+          row={auditRow}
+          token={token}
+          onClose={() => setAuditRow(null)}
+          onRollbackDone={fetchRows}
+        />
       )}
 
       {/* ── Export Modal ─────────────────────────────────────────────────────── */}
