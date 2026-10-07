@@ -563,9 +563,15 @@ const AdminOrderList = ({ onOrderClick }) => {
   const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
   // Shared multi-select vendor picker (Excel + PDF)
   const [vendorPickerModal, setVendorPickerModal] = useState({ open: false, mode: 'excel' });
-  const [vendorPickerList, setVendorPickerList] = useState([]);
+  const [vendorPickerList, setVendorPickerList]   = useState([]);
   const [loadingPickerVendors, setLoadingPickerVendors] = useState(false);
   const [selectedVendorIds, setSelectedVendorIds] = useState(new Set());
+  // Order picker step inside vendor picker modal
+  const [pickerStep, setPickerStep]                       = useState('orders'); // 'orders' | 'vendors'
+  const [pickerOrderIds, setPickerOrderIds]               = useState(new Set());
+  const [pickerClientKeys, setPickerClientKeys]           = useState(new Set()); // which clients to display
+  const [pickerExpandedClients, setPickerExpandedClients] = useState(new Set());
+  const [loadingPickerOrders, setLoadingPickerOrders]     = useState(false);
   const [proposalSelectModal, setProposalSelectModal] = useState(false);
   const [proposalVersionsData, setProposalVersionsData] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
@@ -611,16 +617,18 @@ const AdminOrderList = ({ onOrderClick }) => {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   }, [currentPage, filterStatus, searchTerm]);
 
-  // For all-products view: fetch all orders (no pagination)
+  // For all-products view: fetch all orders (no pagination). Returns the order list.
   const fetchAllOrders = useCallback(async () => {
-    if (allOrders.length > 0) return; // already loaded
+    if (allOrders.length > 0) return allOrders;
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${backendServer}/api/orders?page=1&limit=500&status=all&groupByClient=false`,
         { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setAllOrders((data.orders || []).filter(o => o && o.selectedProducts?.length > 0));
-    } catch (err) { console.error(err); }
+      const loaded = (data.orders || []).filter(o => o && o.selectedProducts?.length > 0);
+      setAllOrders(loaded);
+      return loaded;
+    } catch (err) { console.error(err); return []; }
   }, [allOrders.length]);
 
   useEffect(() => { fetchOrders(); }, [currentPage, filterStatus]);
@@ -715,29 +723,66 @@ const AdminOrderList = ({ onOrderClick }) => {
     }
   };
 
-  // ── Shared vendor picker — open ───────────────────────────────────────────
+  // ── Shared vendor picker — open at order-selection step ──────────────────
   const openVendorPicker = async (mode) => {
-    if (selectedOrderIds.size === 0) return;
+    const preSelected = new Set(selectedOrderIds);
     setVendorPickerModal({ open: true, mode });
+    setPickerStep('orders');
+    setPickerOrderIds(preSelected);
+    setPickerClientKeys(new Set());
+    setPickerExpandedClients(new Set());
+    setLoadingPickerOrders(true);
+    setVendorPickerList([]);
+    setSelectedVendorIds(new Set());
+    const loadedOrders = await fetchAllOrders();
+    if (preSelected.size > 0 && loadedOrders?.length) {
+      // Find which clients are represented in the pre-selected rows
+      const selectedClientKeys = new Set();
+      loadedOrders.forEach(o => {
+        if (preSelected.has(o._id)) {
+          const key = (typeof o.user === 'object' ? (o.user?._id || o.user?.id) : o.user) || o.clientInfo?.name || 'unknown';
+          selectedClientKeys.add(key);
+        }
+      });
+      // Pre-check ALL orders from those clients and auto-expand them
+      const allClientOrderIds = new Set();
+      const expandSet = new Set();
+      loadedOrders.forEach(o => {
+        const key = (typeof o.user === 'object' ? (o.user?._id || o.user?.id) : o.user) || o.clientInfo?.name || 'unknown';
+        if (selectedClientKeys.has(key)) {
+          allClientOrderIds.add(o._id);
+          expandSet.add(key);
+        }
+      });
+      setPickerOrderIds(allClientOrderIds);
+      setPickerClientKeys(selectedClientKeys);
+      setPickerExpandedClients(expandSet);
+    }
+    setLoadingPickerOrders(false);
+  };
+
+  // ── Step 2: fetch vendors for the chosen orders ───────────────────────────
+  const goToVendorStep = async () => {
+    if (pickerOrderIds.size === 0) return;
     setVendorPickerList([]);
     setSelectedVendorIds(new Set());
     setLoadingPickerVendors(true);
     try {
       const token = localStorage.getItem('token');
-      const endpoint = mode === 'excel'
+      const endpoint = vendorPickerModal.mode === 'excel'
         ? `${backendServer}/api/orders/bulk-export-vendors`
         : `${backendServer}/api/orders/bulk-po-vendors`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds) }),
+        body: JSON.stringify({ orderIds: Array.from(pickerOrderIds) }),
       });
       const data = await res.json();
       const list = data.vendors || [];
       setVendorPickerList(list);
-      // Default: select all
       setSelectedVendorIds(new Set(list.map(v => v.vendorId)));
-    } catch { setVendorPickerModal({ open: false, mode }); alert('Failed to load vendors.'); }
+      setPickerStep('vendors');
+    } catch { alert('Failed to load vendors.'); }
     finally { setLoadingPickerVendors(false); }
   };
 
@@ -769,7 +814,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       const res = await fetch(`${backendServer}/api/orders/bulk-export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds), vendorIds }),
+        body: JSON.stringify({ orderIds: Array.from(pickerOrderIds), vendorIds }),
       });
       if (!res.ok) throw new Error();
       const blob = await res.blob();
@@ -795,7 +840,7 @@ const AdminOrderList = ({ onOrderClick }) => {
       const res = await fetch(`${backendServer}/api/orders/bulk-po`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(selectedOrderIds), vendorIds: Array.from(selectedVendorIds) }),
+        body: JSON.stringify({ orderIds: Array.from(pickerOrderIds), vendorIds: Array.from(selectedVendorIds) }),
       });
       if (!res.ok) throw new Error();
       const html = await res.text();
@@ -1510,76 +1555,223 @@ const AdminOrderList = ({ onOrderClick }) => {
       {downloading && <LoadingOverlay />}
       {successMessage && <SuccessToast message={successMessage} onClose={() => setSuccessMessage(null)} />}
 
-      {/* Multi-select vendor picker modal (Excel + PDF) */}
-      {vendorPickerModal.open && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
-            <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
-              <h3 className="font-semibold text-base">
-                {vendorPickerModal.mode === 'excel' ? 'Select Vendors for Excel' : 'Select Vendors for PDF'}
-              </h3>
-              <button onClick={() => setVendorPickerModal({ open: false, mode: vendorPickerModal.mode })} className="hover:bg-white/20 rounded p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5">
-              {loadingPickerVendors ? (
-                <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
-                  <Loader2 className="w-5 h-5 animate-spin" /> Loading vendors…
+      {/* Multi-select vendor picker modal (Excel + PDF) — 2-step: Orders → Vendors */}
+      {vendorPickerModal.open && (() => {
+        const modeLabel = vendorPickerModal.mode === 'excel' ? 'Excel' : 'PDF';
+        const closeModal = () => setVendorPickerModal({ open: false, mode: vendorPickerModal.mode });
+
+        // ── Step 1: Confirm selected orders (grouped by client) ─────────────
+        if (pickerStep === 'orders') {
+          const ordersPool = (allOrders.length > 0 ? allOrders : orders);
+
+          // Show all orders from the selected clients (not filtered by checked state)
+          const selectedPool = ordersPool.filter(o => {
+            const key = (typeof o.user === 'object' ? (o.user?._id || o.user?.id) : o.user) || o.clientInfo?.name || 'unknown';
+            return pickerClientKeys.has(key);
+          });
+
+          // Group by client
+          const clientGroupMap = new Map();
+          selectedPool.forEach(o => {
+            const clientKey = (typeof o.user === 'object' ? (o.user?._id || o.user?.id) : o.user) || o.clientInfo?.name || 'unknown';
+            if (!clientGroupMap.has(clientKey)) {
+              clientGroupMap.set(clientKey, { clientInfo: o.clientInfo, orders: [] });
+            }
+            clientGroupMap.get(clientKey).orders.push(o);
+          });
+
+          // Sort each client's orders by orderNumber, then build groups array
+          const groups = [];
+          for (const [clientKey, group] of clientGroupMap) {
+            const sorted = [...group.orders].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+            groups.push({ clientKey, clientInfo: group.clientInfo, orders: sorted });
+          }
+
+          const toggleClientOrders = (clientKey, clientOrders) => {
+            const allSelected = clientOrders.every(o => pickerOrderIds.has(o._id));
+            setPickerOrderIds(prev => {
+              const next = new Set(prev);
+              clientOrders.forEach(o => allSelected ? next.delete(o._id) : next.add(o._id));
+              return next;
+            });
+          };
+
+          const toggleExpandClient = (clientKey) => {
+            setPickerExpandedClients(prev => {
+              const next = new Set(prev);
+              next.has(clientKey) ? next.delete(clientKey) : next.add(clientKey);
+              return next;
+            });
+          };
+
+          return (
+            <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col" style={{ maxHeight: '80vh' }}>
+                <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between shrink-0">
+                  <div>
+                    <h3 className="font-semibold text-base">Confirm Orders · {modeLabel}</h3>
+                    <p className="text-xs text-white/70 mt-0.5">Step 1 of 2 · {pickerOrderIds.size} order{pickerOrderIds.size !== 1 ? 's' : ''} selected</p>
+                  </div>
+                  <button onClick={closeModal} className="hover:bg-white/20 rounded p-1"><X className="w-4 h-4" /></button>
                 </div>
-              ) : vendorPickerList.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-6">No POs found for the selected units.</p>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-500">{selectedVendorIds.size} of {vendorPickerList.length} selected</span>
-                    <button onClick={toggleAllPickerVendors} className="text-xs text-[#005670] font-medium hover:underline">
-                      {selectedVendorIds.size === vendorPickerList.length ? 'Deselect All' : 'Select All'}
-                    </button>
+                <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1">
+                  {loadingPickerOrders ? (
+                    <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
+                      <Loader2 className="w-5 h-5 animate-spin" /> Loading orders…
+                    </div>
+                  ) : groups.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">No orders selected.</p>
+                  ) : groups.map(({ clientKey, clientInfo, orders: clientOrders }) => {
+                    const clientName = clientInfo?.name || '—';
+                    const unit       = clientInfo?.unitNumber ? ` · Unit ${clientInfo.unitNumber}` : '';
+                    const allClientSelected  = clientOrders.every(o => pickerOrderIds.has(o._id));
+                    const someClientSelected = clientOrders.some(o => pickerOrderIds.has(o._id));
+                    const isExpanded = pickerExpandedClients.has(clientKey);
+
+                    return (
+                      <div key={clientKey} className="rounded-lg border border-gray-200 overflow-hidden">
+                        {/* Client header row */}
+                        <div className={`flex items-center gap-2 px-3 py-2.5 select-none ${allClientSelected ? 'bg-[#005670]/5' : someClientSelected ? 'bg-blue-50/60' : 'bg-gray-50'}`}>
+                          <input
+                            type="checkbox"
+                            checked={allClientSelected}
+                            ref={el => { if (el) el.indeterminate = someClientSelected && !allClientSelected; }}
+                            onChange={() => toggleClientOrders(clientKey, clientOrders)}
+                            className="accent-[#005670] w-4 h-4 shrink-0 cursor-pointer"
+                          />
+                          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpandClient(clientKey)}>
+                            <span className={`text-sm font-semibold ${allClientSelected ? 'text-[#005670]' : someClientSelected ? 'text-[#005670]/80' : 'text-gray-700'}`}>
+                              {clientName}{unit}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-1.5">{clientOrders.length} order{clientOrders.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          <button onClick={() => toggleExpandClient(clientKey)} className="text-gray-400 hover:text-gray-600 shrink-0 cursor-pointer">
+                            <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Expanded order list */}
+                        {isExpanded && (
+                          <div className="border-t border-gray-100 divide-y divide-gray-100">
+                            {clientOrders.map(o => {
+                              const label   = o.orderLabel?.trim() || 'Order';
+                              const checked = pickerOrderIds.has(o._id);
+                              return (
+                                <label key={o._id} className={`flex items-center gap-3 px-4 py-2 cursor-pointer transition-colors ${checked ? 'bg-[#005670]/5' : 'bg-white hover:bg-gray-50'}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => setPickerOrderIds(prev => {
+                                      const next = new Set(prev);
+                                      next.has(o._id) ? next.delete(o._id) : next.add(o._id);
+                                      return next;
+                                    })}
+                                    className="accent-[#005670] w-3.5 h-3.5 shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    {o.orderNumber && (
+                                      <div className="text-xs text-gray-400 font-mono leading-tight">#{o.orderNumber}</div>
+                                    )}
+                                    <div className={`text-sm truncate ${checked ? 'text-[#005670] font-medium' : 'text-gray-600'}`}>
+                                      {label}
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2 p-4 shrink-0 border-t border-gray-100">
+                  <button onClick={closeModal} className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={goToVendorStep}
+                    disabled={pickerOrderIds.size === 0 || loadingPickerOrders || loadingPickerVendors}
+                    className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
+                  >
+                    {(loadingPickerOrders || loadingPickerVendors) ? <span className="flex items-center justify-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</span> : 'Next →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // ── Step 2: Vendor selection ─────────────────────────────────────────
+        return (
+          <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+              <div className="bg-[#005670] text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-base">Select Vendors · {modeLabel}</h3>
+                  <p className="text-xs text-white/70 mt-0.5">Step 2 of 2 · {pickerOrderIds.size} order{pickerOrderIds.size !== 1 ? 's' : ''}</p>
+                </div>
+                <button onClick={closeModal} className="hover:bg-white/20 rounded p-1"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="p-5">
+                {loadingPickerVendors ? (
+                  <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
+                    <Loader2 className="w-5 h-5 animate-spin" /> Loading vendors…
                   </div>
-                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                    {vendorPickerList.map(v => (
-                      <label
-                        key={v.vendorId}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
-                          selectedVendorIds.has(v.vendorId)
-                            ? 'border-[#005670] bg-[#005670]/5'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedVendorIds.has(v.vendorId)}
-                          onChange={() => togglePickerVendor(v.vendorId)}
-                          className="accent-[#005670] w-4 h-4 shrink-0"
-                        />
-                        <span className={`text-sm font-medium ${selectedVendorIds.has(v.vendorId) ? 'text-[#005670]' : 'text-gray-700'}`}>
-                          {v.vendorName}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => setVendorPickerModal({ open: false, mode: vendorPickerModal.mode })}
-                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={vendorPickerModal.mode === 'excel' ? doExcelDownload : handleBulkPdfGenerate}
-                  disabled={selectedVendorIds.size === 0 || loadingPickerVendors}
-                  className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
-                >
-                  {vendorPickerModal.mode === 'excel' ? 'Download Excel' : 'Generate PDF'}
-                </button>
+                ) : vendorPickerList.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-6">No POs found for the selected orders.</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs text-gray-500">{selectedVendorIds.size} of {vendorPickerList.length} selected</span>
+                      <button onClick={toggleAllPickerVendors} className="text-xs text-[#005670] font-medium hover:underline">
+                        {selectedVendorIds.size === vendorPickerList.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                      {vendorPickerList.map(v => (
+                        <label
+                          key={v.vendorId}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
+                            selectedVendorIds.has(v.vendorId) ? 'border-[#005670] bg-[#005670]/5' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedVendorIds.has(v.vendorId)}
+                            onChange={() => togglePickerVendor(v.vendorId)}
+                            className="accent-[#005670] w-4 h-4 shrink-0"
+                          />
+                          <span className={`text-sm font-medium ${selectedVendorIds.has(v.vendorId) ? 'text-[#005670]' : 'text-gray-700'}`}>
+                            {v.vendorName}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => setPickerStep('orders')}
+                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    onClick={vendorPickerModal.mode === 'excel' ? doExcelDownload : handleBulkPdfGenerate}
+                    disabled={selectedVendorIds.size === 0 || loadingPickerVendors}
+                    className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
+                  >
+                    {vendorPickerModal.mode === 'excel' ? 'Download Excel' : 'Generate PDF'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Proposal version selection modal */}
       {proposalSelectModal && <ProposalSelectModal
