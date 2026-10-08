@@ -54,6 +54,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   // For pin dragging on the floor plan
   const draggingPinRef  = useRef(null); // { pinId, startX, startY, origX, origY, renderedW, renderedH }
   const floorPlanRef    = useRef(null); // ref to the floor plan container div
+  const floorPlanImgRef = useRef(null); // ref to the floor plan img element
   const fileInputRef    = useRef(null);
   const fullviewFileRef = useRef(null);
   const roomFileRefs    = useRef({});   // { roomName: inputRef }
@@ -296,6 +297,15 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
     return () => obs.disconnect();
   }, [imgNatSize]);
 
+  // If the browser already has the floor plan image cached, onLoad won't fire →
+  // imgNatSize stays null → canvasLayout null → pins invisible. Check after render.
+  useEffect(() => {
+    const img = floorPlanImgRef.current;
+    if (img?.complete && img.naturalWidth) {
+      setImgNatSize({ w: img.naturalWidth, h: img.naturalHeight });
+    }
+  }, [fullPlan?._id]);
+
   // ── Pin controls ──────────────────────────────────────────────────────────
   const rotatePin   = (id, deg) => setPins(prev => prev.map(p => p._id === id ? { ...p, rotation: (p.rotation + deg + 360) % 360 } : p));
   const scalePin    = (id, d)   => setPins(prev => prev.map(p => p._id === id ? { ...p, scale: Math.max(0.5, Math.min(3, (p.scale || 1) + d)) } : p));
@@ -488,6 +498,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                   onClick={() => setSelectedPinId(null)}
                 >
                   <img
+                    ref={floorPlanImgRef}
                     src={`${fullPlan.imageUrl}?v=${fullPlan._id}`}
                     alt="Floor plan"
                     className="w-full h-full object-contain block"
