@@ -47,11 +47,15 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const [searchSku, setSearchSku]       = useState('');
   const [loading, setLoading]           = useState(true);
   const [dragOverFloorPlan, setDragOverFloorPlan] = useState(false);
+  // Natural image dimensions + computed object-contain layout within the canvas container
+  const [imgNatSize, setImgNatSize]   = useState(null); // { w, h }
+  const [canvasLayout, setCanvasLayout] = useState(null); // { renderedW, renderedH, offX, offY }
 
   // For pin dragging on the floor plan
-  const draggingPinRef  = useRef(null); // { pinId, startX, startY, origX, origY }
+  const draggingPinRef  = useRef(null); // { pinId, startX, startY, origX, origY, renderedW, renderedH }
   const floorPlanRef    = useRef(null); // ref to the floor plan container div
   const fileInputRef    = useRef(null);
+  const fullviewFileRef = useRef(null);
   const roomFileRefs    = useRef({});   // { roomName: inputRef }
 
   const token = () => localStorage.getItem('token');
@@ -83,8 +87,9 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
     load();
   }, [clientUserId]);
 
-  const fullPlan   = plans.find(p => p.type === 'full');
-  const tabs       = ['full', ...rooms];
+  const fullPlan      = plans.find(p => p.type === 'full');       // pin layout plan
+  const fullviewPlan  = plans.find(p => p.type === 'fullview');  // clean floor plan for PDF
+  const tabs          = ['full', 'fullview', ...rooms];
 
   // ── Upload image to DO Spaces ─────────────────────────────────────────────
   const uploadImage = async (file, type, room = '') => {
@@ -107,10 +112,16 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, room, imageUrl: publicUrl, imageKey: key }),
       });
-      const { plan } = await createRes.json();
+      const responseData = await createRes.json();
+      const plan = responseData.plan;
+      if (!plan) {
+        console.error('Upload failed: backend did not return a plan', responseData);
+        return;
+      }
 
       setPlans(prev => {
-        const filtered = prev.filter(p => !(p.type === type && (type === 'full' || p.room === room)));
+        const isSingleType = type === 'full' || type === 'fullview';
+        const filtered = prev.filter(p => !(p.type === type && (isSingleType || p.room === room)));
         return [...filtered, plan];
       });
       if (type === 'full') setPins([]);
@@ -208,8 +219,15 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
     const data = JSON.parse(raw);
     const rect = floorPlanRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const x = ((e.clientX - rect.left) / rect.width)  * 100;
-    const y = ((e.clientY - rect.top)  / rect.height) * 100;
+    let x, y;
+    if (canvasLayout) {
+      // Convert container coords → image-relative % (accounts for object-contain letterboxing)
+      x = Math.max(0, Math.min(100, ((e.clientX - rect.left - canvasLayout.offX) / canvasLayout.renderedW) * 100));
+      y = Math.max(0, Math.min(100, ((e.clientY - rect.top  - canvasLayout.offY) / canvasLayout.renderedH) * 100));
+    } else {
+      x = ((e.clientX - rect.left) / rect.width)  * 100;
+      y = ((e.clientY - rect.top)  / rect.height) * 100;
+    }
     const newPin = { _id: `pin_${Date.now()}`, ...data, x, y, rotation: 0, scale: 1 };
     setPins(prev => [...prev, newPin]);
     setSelectedPinId(newPin._id);
@@ -228,8 +246,9 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
       startMouseY: e.clientY,
       origX: pin.x,
       origY: pin.y,
-      rectW: rect.width,
-      rectH: rect.height,
+      // Use rendered image dimensions so drag delta is in image-% space
+      renderedW: canvasLayout?.renderedW ?? rect.width,
+      renderedH: canvasLayout?.renderedH ?? rect.height,
     };
     window.addEventListener('mousemove', handlePinMouseMove);
     window.addEventListener('mouseup',   handlePinMouseUp);
@@ -238,8 +257,8 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const handlePinMouseMove = useCallback((e) => {
     const d = draggingPinRef.current;
     if (!d) return;
-    const dx = ((e.clientX - d.startMouseX) / d.rectW) * 100;
-    const dy = ((e.clientY - d.startMouseY) / d.rectH) * 100;
+    const dx = ((e.clientX - d.startMouseX) / d.renderedW) * 100;
+    const dy = ((e.clientY - d.startMouseY) / d.renderedH) * 100;
     setPins(prev => prev.map(p =>
       p._id === d.pinId
         ? { ...p, x: Math.max(0, Math.min(100, d.origX + dx)), y: Math.max(0, Math.min(100, d.origY + dy)) }
@@ -257,6 +276,23 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
     window.removeEventListener('mousemove', handlePinMouseMove);
     window.removeEventListener('mouseup',   handlePinMouseUp);
   }, [handlePinMouseMove, handlePinMouseUp]);
+
+  // ── Recompute object-contain layout whenever image size or container size changes ──
+  useEffect(() => {
+    const el = floorPlanRef.current;
+    if (!el || !imgNatSize) return;
+    const compute = () => {
+      const { width: cW, height: cH } = el.getBoundingClientRect();
+      if (!cW || !cH) return;
+      const scale = Math.min(cW / imgNatSize.w, cH / imgNatSize.h);
+      const rW = imgNatSize.w * scale, rH = imgNatSize.h * scale;
+      setCanvasLayout({ renderedW: rW, renderedH: rH, offX: (cW - rW) / 2, offY: (cH - rH) / 2 });
+    };
+    compute();
+    const obs = new ResizeObserver(compute);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [imgNatSize]);
 
   // ── Pin controls ──────────────────────────────────────────────────────────
   const rotatePin   = (id, deg) => setPins(prev => prev.map(p => p._id === id ? { ...p, rotation: (p.rotation + deg + 360) % 360 } : p));
@@ -319,7 +355,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                   : 'border-transparent text-gray-500 hover:text-gray-800'
               }`}
             >
-              {tab === 'full' ? 'Full Floor Plan' : tab}
+              {tab === 'fullview' ? 'Full Floor Plan' : tab === 'full' ? 'Pin Layout' : tab}
             </button>
           ))}
         </div>
@@ -330,8 +366,53 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
         <div className="flex-1 flex items-center justify-center bg-gray-50">
           <Loader2 className="w-8 h-8 animate-spin text-[#005670]" />
         </div>
+      ) : activeTab === 'fullview' ? (
+        // ── FULL FLOOR PLAN (PDF VIEW) TAB ──────────────────────────────────
+        <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-6 overflow-auto">
+          <div className="w-full max-w-4xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-gray-800">Full Floor Plan</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Image used as the full-page floor plan in the PDF download</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {fullviewPlan && (
+                  <button onClick={() => deletePlan(fullviewPlan._id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                  </button>
+                )}
+                <button
+                  onClick={() => fullviewFileRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#005670] text-white rounded-lg hover:bg-[#004558] transition-colors disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  {fullviewPlan ? 'Replace Image' : 'Upload Image'}
+                </button>
+              </div>
+            </div>
+            <input ref={fullviewFileRef} type="file" accept="image/*" className="hidden"
+              onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], 'fullview')} />
+            {fullviewPlan ? (
+              <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                <img src={fullviewPlan.imageUrl} alt="Full Floor Plan" className="w-full object-contain max-h-[600px]" />
+              </div>
+            ) : (
+              <div
+                onClick={() => fullviewFileRef.current?.click()}
+                className="w-full h-64 border-2 border-dashed border-[#005670]/40 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#005670] hover:bg-[#005670]/5 transition-colors"
+              >
+                {uploading ? (
+                  <><Loader2 className="w-10 h-10 animate-spin text-[#005670]" /><p className="text-sm text-gray-500">Uploading…</p></>
+                ) : (
+                  <><Upload className="w-10 h-10 text-[#005670]/40" /><p className="font-semibold text-gray-600">Upload Full Floor Plan</p><p className="text-xs text-gray-400">JPG, PNG, WEBP — click to browse</p></>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       ) : activeTab === 'full' ? (
-        // ── FULL FLOOR PLAN TAB ─────────────────────────────────────────────
+        // ── PIN LAYOUT TAB ──────────────────────────────────────────────────
         <div className="flex-1 flex overflow-hidden bg-gray-50">
           {/* Left: Floor plan canvas */}
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -400,16 +481,18 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                     alt="Floor plan"
                     className="w-full h-full object-contain block"
                     draggable={false}
+                    onLoad={e => setImgNatSize({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
                   />
 
-                  {/* Pins */}
-                  {pins.map(pin => (
+                  {/* Pin overlay — sized to exactly cover the rendered image area (object-contain) so
+                      pin.x/y as % of this div matches image-relative % stored in the database */}
+                  {canvasLayout && pins.map(pin => (
                     <div
                       key={pin._id}
                       className={`absolute cursor-grab active:cursor-grabbing group ${selectedPinId === pin._id ? 'z-20' : 'z-10'}`}
                       style={{
-                        left: `${pin.x}%`,
-                        top:  `${pin.y}%`,
+                        left: `${canvasLayout.offX + (pin.x / 100) * canvasLayout.renderedW}px`,
+                        top:  `${canvasLayout.offY + (pin.y / 100) * canvasLayout.renderedH}px`,
                         transform: `translate(-50%, -100%) rotate(${pin.rotation || 0}deg) scale(${pin.scale || 1})`,
                         transformOrigin: '50% 100%',
                       }}
