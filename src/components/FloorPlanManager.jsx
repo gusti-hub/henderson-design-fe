@@ -47,8 +47,6 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const [searchSku, setSearchSku]       = useState('');
   const [loading, setLoading]           = useState(true);
   const [dragOverFloorPlan, setDragOverFloorPlan] = useState(false);
-  // Natural image dimensions + computed object-contain layout within the canvas container
-  const [imgNatSize, setImgNatSize]   = useState(null); // { w, h }
   const [canvasLayout, setCanvasLayout] = useState(null); // { renderedW, renderedH, offX, offY }
 
   // For pin dragging on the floor plan
@@ -280,30 +278,35 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
     window.removeEventListener('mouseup',   handlePinMouseUp);
   }, [handlePinMouseMove, handlePinMouseUp]);
 
-  // ── Recompute object-contain layout whenever image size or container size changes ──
+  // ── Recompute object-contain layout ─────────────────────────────────────────
+  // Runs when fullPlan changes. Reads naturalWidth/Height directly from the img
+  // element so it works for both fresh loads (via native 'load' listener) and
+  // cached images (img.complete = true synchronously after render).
   useEffect(() => {
-    const el = floorPlanRef.current;
-    if (!el || !imgNatSize) return;
+    const container = floorPlanRef.current;
+    const img       = floorPlanImgRef.current;
+    if (!container) return;
+
     const compute = () => {
-      const { width: cW, height: cH } = el.getBoundingClientRect();
+      const { width: cW, height: cH } = container.getBoundingClientRect();
       if (!cW || !cH) return;
-      const scale = Math.min(cW / imgNatSize.w, cH / imgNatSize.h);
-      const rW = imgNatSize.w * scale, rH = imgNatSize.h * scale;
+      const natW = img?.naturalWidth  || 0;
+      const natH = img?.naturalHeight || 0;
+      if (!natW || !natH) return;
+      const scale = Math.min(cW / natW, cH / natH);
+      const rW = natW * scale, rH = natH * scale;
       setCanvasLayout({ renderedW: rW, renderedH: rH, offX: (cW - rW) / 2, offY: (cH - rH) / 2 });
     };
-    compute();
-    const obs = new ResizeObserver(compute);
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [imgNatSize]);
 
-  // If the browser already has the floor plan image cached, onLoad won't fire →
-  // imgNatSize stays null → canvasLayout null → pins invisible. Check after render.
-  useEffect(() => {
-    const img = floorPlanImgRef.current;
-    if (img?.complete && img.naturalWidth) {
-      setImgNatSize({ w: img.naturalWidth, h: img.naturalHeight });
-    }
+    compute(); // immediate — works when image is already cached/complete
+    const resizeObs = new ResizeObserver(compute);
+    resizeObs.observe(container);
+    if (img) img.addEventListener('load', compute); // native listener — fires even for cached images
+
+    return () => {
+      resizeObs.disconnect();
+      if (img) img.removeEventListener('load', compute);
+    };
   }, [fullPlan?._id]);
 
   // ── Pin controls ──────────────────────────────────────────────────────────
@@ -503,7 +506,6 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                     alt="Floor plan"
                     className="w-full h-full object-contain block"
                     draggable={false}
-                    onLoad={e => setImgNatSize({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
                   />
 
                   {/* Pin overlay — sized to exactly cover the rendered image area (object-contain) so
