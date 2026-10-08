@@ -87,8 +87,8 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
     load();
   }, [clientUserId]);
 
-  const fullPlan      = plans.find(p => p.type === 'full');       // pin layout plan
-  const fullviewPlan  = plans.find(p => p.type === 'fullview');  // clean floor plan for PDF
+  const fullPlan      = plans.find(p => p.type === 'full');
+  const fullviewPlan  = plans.find(p => p.type === 'room' && p.room === '_fullview_');
   const tabs          = ['full', 'fullview', ...rooms];
 
   // ── Upload image to DO Spaces ─────────────────────────────────────────────
@@ -394,7 +394,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
               </div>
             </div>
             <input ref={fullviewFileRef} type="file" accept="image/*" className="hidden"
-              onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], 'fullview')} />
+              onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], 'room', '_fullview_')} />
             {fullviewPlan ? (
               <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
                 <img
