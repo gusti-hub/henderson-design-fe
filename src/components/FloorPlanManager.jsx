@@ -115,7 +115,8 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
       const responseData = await createRes.json();
       const plan = responseData.plan;
       if (!plan) {
-        console.error('Upload failed: backend did not return a plan', responseData);
+        const msg = responseData.message || 'Upload failed. Please try again.';
+        alert(msg);
         return;
       }
 
@@ -127,6 +128,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
       if (type === 'full') setPins([]);
       // Reset all file inputs so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fullviewFileRef.current) fullviewFileRef.current.value = '';
       Object.values(roomFileRefs.current).forEach(ref => { if (ref) ref.value = ''; });
     } finally {
       setUploading(false);
@@ -395,7 +397,16 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
               onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], 'fullview')} />
             {fullviewPlan ? (
               <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-                <img src={fullviewPlan.imageUrl} alt="Full Floor Plan" className="w-full object-contain max-h-[600px]" />
+                <img
+                  key={fullviewPlan._id}
+                  src={`${fullviewPlan.imageUrl}?v=${fullviewPlan._id}`}
+                  alt="Full Floor Plan"
+                  className="w-full object-contain max-h-[600px] min-h-[200px] block"
+                  onError={e => { e.target.style.display = 'none'; e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex'); }}
+                />
+                <div style={{display:'none'}} className="w-full min-h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                  Image could not be loaded
+                </div>
               </div>
             ) : (
               <div
