@@ -313,6 +313,17 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const rotatePin   = (id, deg) => setPins(prev => prev.map(p => p._id === id ? { ...p, rotation: (p.rotation + deg + 360) % 360 } : p));
   const scalePin    = (id, d)   => setPins(prev => prev.map(p => p._id === id ? { ...p, scale: Math.max(0.5, Math.min(3, (p.scale || 1) + d)) } : p));
   const deletePin   = (id)      => { setPins(prev => prev.filter(p => p._id !== id)); setSelectedPinId(null); };
+  const toggleLabelBreak = (id, hyphenIdx) => {
+    setPins(prev => prev.map(p => {
+      if (p._id !== id) return p;
+      // Restore original label (replace | back to -)
+      const restored = p.skuLabel.includes('|') ? p.skuLabel.replace('|', '-') : p.skuLabel;
+      const currentBreakIdx = p.skuLabel.includes('|') ? p.skuLabel.indexOf('|') : -1;
+      if (hyphenIdx === -1 || currentBreakIdx === hyphenIdx) return { ...p, skuLabel: restored };
+      // Replace the hyphen at hyphenIdx with | (hyphen disappears, each line is clean)
+      return { ...p, skuLabel: restored.slice(0, hyphenIdx) + '|' + restored.slice(hyphenIdx + 1) };
+    }));
+  };
 
   // ── Filtered SKU list ─────────────────────────────────────────────────────
   const filteredProducts = products.filter(p =>
@@ -524,30 +535,65 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                       onClick={e => { e.stopPropagation(); setSelectedPinId(pin._id); }}
                     >
                       {/* Label — transparent so floor plan shows through */}
-                      <div className={`px-1.5 py-0.5 rounded text-xs font-bold whitespace-nowrap ${
+                      <div className={`px-1.5 py-0.5 rounded text-xs font-bold whitespace-nowrap text-center leading-tight ${
                         selectedPinId === pin._id
                           ? 'bg-[#005670]/70 text-white'
                           : 'bg-transparent text-[#005670]'
                       }`}
                         style={{ textShadow: selectedPinId === pin._id ? 'none' : '0 0 3px #fff, 0 0 3px #fff' }}
                       >
-                        {pin.skuLabel}
+                        {pin.skuLabel.includes('|') ? (
+                          <>{pin.skuLabel.split('|')[0]}<br />{pin.skuLabel.split('|')[1]}</>
+                        ) : pin.skuLabel}
                       </div>
                       {/* Controls — show on selected */}
-                      {selectedPinId === pin._id && (
-                        <div
-                          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex items-center gap-1 bg-white rounded-lg shadow-xl border border-gray-200 px-2 py-1"
-                          onClick={e => e.stopPropagation()}
-                          onMouseDown={e => e.stopPropagation()}
-                        >
-                          <button title="Rotate left"   onClick={() => rotatePin(pin._id, -15)} className="p-1 hover:bg-gray-100 rounded"><RotateCcw className="w-3.5 h-3.5 text-gray-600" /></button>
-                          <button title="Rotate right"  onClick={() => rotatePin(pin._id,  15)} className="p-1 hover:bg-gray-100 rounded"><RotateCw  className="w-3.5 h-3.5 text-gray-600" /></button>
-                          <button title="Scale down"    onClick={() => scalePin(pin._id, -0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomOut   className="w-3.5 h-3.5 text-gray-600" /></button>
-                          <button title="Scale up"      onClick={() => scalePin(pin._id,  0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomIn    className="w-3.5 h-3.5 text-gray-600" /></button>
-                          <div className="w-px h-4 bg-gray-200 mx-0.5" />
-                          <button title="Delete pin"    onClick={() => deletePin(pin._id)}      className="p-1 hover:bg-red-50 rounded"><Trash2    className="w-3.5 h-3.5 text-red-500" /></button>
-                        </div>
-                      )}
+                      {selectedPinId === pin._id && (() => {
+                        const restored = pin.skuLabel.includes('|') ? pin.skuLabel.replace('|', '-') : pin.skuLabel;
+                        const breakIdx = pin.skuLabel.includes('|') ? pin.skuLabel.indexOf('|') : -1;
+                        // Find all hyphen positions in the restored label
+                        const hyphenPositions = [];
+                        for (let i = 0; i < restored.length; i++) {
+                          if (restored[i] === '-') hyphenPositions.push(i);
+                        }
+                        // Build segments separated by hyphens for display
+                        const segments = restored.split('-');
+                        return (
+                          <div
+                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 px-2 py-1"
+                            onClick={e => e.stopPropagation()}
+                            onMouseDown={e => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-1">
+                              <button title="Rotate left"   onClick={() => rotatePin(pin._id, -15)} className="p-1 hover:bg-gray-100 rounded"><RotateCcw className="w-3.5 h-3.5 text-gray-600" /></button>
+                              <button title="Rotate right"  onClick={() => rotatePin(pin._id,  15)} className="p-1 hover:bg-gray-100 rounded"><RotateCw  className="w-3.5 h-3.5 text-gray-600" /></button>
+                              <button title="Scale down"    onClick={() => scalePin(pin._id, -0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomOut   className="w-3.5 h-3.5 text-gray-600" /></button>
+                              <button title="Scale up"      onClick={() => scalePin(pin._id,  0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomIn    className="w-3.5 h-3.5 text-gray-600" /></button>
+                              <div className="w-px h-4 bg-gray-200 mx-0.5" />
+                              <button title="Delete pin"    onClick={() => deletePin(pin._id)}      className="p-1 hover:bg-red-50 rounded"><Trash2    className="w-3.5 h-3.5 text-red-500" /></button>
+                            </div>
+                            {hyphenPositions.length > 0 && (
+                              <div className="flex items-center mt-1 pt-1 border-t border-gray-100">
+                                {segments.map((seg, i) => (
+                                  <span key={i} className="flex items-center">
+                                    {i > 0 && (
+                                      <button
+                                        onClick={() => toggleLabelBreak(pin._id, hyphenPositions[i - 1])}
+                                        title={breakIdx === hyphenPositions[i - 1] ? 'Hapus baris baru' : 'Potong di sini'}
+                                        className={`mx-0.5 px-0.5 h-4 text-[9px] rounded transition-colors font-bold ${
+                                          breakIdx === hyphenPositions[i - 1]
+                                            ? 'bg-[#005670] text-white'
+                                            : 'bg-gray-100 text-gray-400 hover:bg-[#005670]/20 hover:text-[#005670]'
+                                        }`}
+                                      >↵</button>
+                                    )}
+                                    <span className="text-[9px] font-mono text-gray-600">{seg}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
 
@@ -620,7 +666,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
             </div>
             {selectedPin && (
               <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-                <p className="text-xs font-bold text-gray-600 mb-2">Selected: {selectedPin.skuLabel}</p>
+                <p className="text-xs font-bold text-gray-600 mb-2">Selected: {selectedPin.skuLabel.replace('|', '')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   <button onClick={() => rotatePin(selectedPin._id, -15)} className="flex items-center gap-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"><RotateCcw className="w-3 h-3" /> −15°</button>
                   <button onClick={() => rotatePin(selectedPin._id,  15)} className="flex items-center gap-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"><RotateCw  className="w-3 h-3" /> +15°</button>
