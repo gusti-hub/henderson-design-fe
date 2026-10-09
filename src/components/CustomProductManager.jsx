@@ -279,7 +279,7 @@ const applyFieldUpdate = (item, field, value) => {
   } else {
     updated[field] = value;
   }
-  if (field === 'unitPrice' || field === 'quantity') {
+  if ((field === 'unitPrice' || field === 'quantity') && !updated.isParent) {
     updated.finalPrice = (Number(updated.quantity) || 1) * (Number(updated.unitPrice) || 0);
   }
   return updated;
@@ -2547,6 +2547,7 @@ const GroupProductCard = ({
 }) => {
   const [name, setName]   = useState(parent.name || '');
   const [room, setRoom]   = useState(parent.selectedOptions?.room || '');
+  const [qty, setQty]     = useState(parent.quantity || 1);
   const [desc, setDesc]   = useState(parent.selectedOptions?.specifications || '');
   const [uploadedImages, setUploadedImages] = useState(parent.selectedOptions?.uploadedImages || []);
   const [saving, setSaving] = useState(false);
@@ -2555,6 +2556,7 @@ const GroupProductCard = ({
   useEffect(() => {
     setName(parent.name || '');
     setRoom(parent.selectedOptions?.room || '');
+    setQty(parent.quantity || 1);
     setDesc(parent.selectedOptions?.specifications || '');
     setUploadedImages(parent.selectedOptions?.uploadedImages || []);
   }, [parent]);
@@ -2578,10 +2580,12 @@ const GroupProductCard = ({
   const handleSave = async () => {
     if (!name.trim()) { onToast('Group must have a name!', 'error'); return; }
     if (saving) return;
+    const groupQty = Math.max(1, Math.floor(Number(qty)) || 1);
     setSaving(true);
     try {
       onUpdateParent(parentIndex, 'name', name);
       onUpdateParent(parentIndex, 'selectedOptions.room', room);
+      onUpdateParent(parentIndex, 'quantity', groupQty);
       onUpdateParent(parentIndex, 'selectedOptions.specifications', desc);
       onUpdateParent(parentIndex, 'selectedOptions.uploadedImages', uploadedImages);
       onUpdateParent(parentIndex, 'finalPrice', childTotal);
@@ -2590,7 +2594,7 @@ const GroupProductCard = ({
       const token = localStorage.getItem('token');
       const updatedAllProducts = allProducts.map((p, i) => {
         if (i === parentIndex) {
-          return { ...p, name, finalPrice: childTotal, unitPrice: childTotal,
+          return { ...p, name, quantity: groupQty, finalPrice: childTotal, unitPrice: childTotal,
             selectedOptions: { ...p.selectedOptions, room, specifications: desc, uploadedImages } };
         }
         return p;
@@ -2670,7 +2674,7 @@ const GroupProductCard = ({
           {/* Basic Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
             <h4 className="text-sm font-bold text-gray-900">Group Info</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-[1fr_1fr_6rem] gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
                 <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Living Room Package" disabled={locked} />
@@ -2678,6 +2682,10 @@ const GroupProductCard = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Room</label>
                 <RoomServiceField value={room} onChange={setRoom} disabled={locked} inputCls={inputCls} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Qty</label>
+                <input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} className={inputCls} disabled={locked} />
               </div>
             </div>
             <div>

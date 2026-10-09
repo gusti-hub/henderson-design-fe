@@ -196,6 +196,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
     ? (taxRate > 0 ? groupFinalPrice / (1 + taxRate / 100) : groupFinalPrice)
     : msrp * (1 + markupPct / 100);
   const sub = isGroupParent ? sell : sell * qty;
+  const unit = isGroupParent ? sell / qty : sell;
   const tax = taxRate > 0 ? sub * (taxRate / 100) : 0;
   const total = isGroupParent ? groupFinalPrice : sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
@@ -257,7 +258,7 @@ const ProductRow = React.forwardRef(({ product, isFirst = false, onDelete, onRef
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Unit:</span><span>${fmt(sell)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Unit:</span><span>${fmt(unit)}</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
         {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Tax ({taxRate}%):</span><span>${fmt(tax)}</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid #d1d5db', paddingTop: '2px', marginTop: '2px' }}>
@@ -307,6 +308,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
     ? (taxRate > 0 ? groupFinalPrice / (1 + taxRate / 100) : groupFinalPrice)
     : msrp * (1 + markupPct / 100);
   const sub = isGroupParent ? sell : sell * qty;
+  const unit = isGroupParent ? sell / qty : sell;
   const tax = taxRate > 0 ? sub * (taxRate / 100) : 0;
   const total = isGroupParent ? groupFinalPrice : sub + tax;
   const bt = isFirst ? 'none' : '1px solid #e5e7eb';
@@ -358,7 +360,7 @@ const ProductRowV2 = React.forwardRef(({ product, isFirst = false, onDelete, onR
       </td>
       <td style={{ ...tdBase, width: '145px', padding: '7px 5px', fontSize: '12px', textAlign: 'right', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Qty:</span><span>{qty} {o.units || 'Each'}</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Unit:</span><span>${fmt(sell)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Unit:</span><span>${fmt(unit)}</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Subtotal:</span><span>${fmt(sub)}</span></div>
         {taxRate > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#000000' }}>Tax ({taxRate}%):</span><span>${fmt(tax)}</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid #d1d5db', paddingTop: '2px', marginTop: '2px' }}>
@@ -1125,7 +1127,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
         // Measure price column directly instead of using a formula
         const pw = document.createElement('div');
         pw.style.cssText = 'width:145px;padding:7px 5px;font-size:12px;line-height:1.55;text-align:right;box-sizing:border-box';
-        pw.innerHTML = '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>1 Each</span></div>'
+        pw.innerHTML = '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>' + (p.quantity || 1) + ' ' + (o.units || 'Each') + '</span></div>'
           + '<div style="display:flex;justify-content:space-between"><span>Unit:</span><span>$0.00</span></div>'
           + '<div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>$0.00</span></div>'
           + (taxRate > 0 ? '<div style="display:flex;justify-content:space-between"><span>Tax:</span><span>$0.00</span></div>' : '')

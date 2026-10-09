@@ -133,7 +133,7 @@ const COGReportViewer = ({ orderId, onClose }) => {
     );
   }
 
-  const products  = order.selectedProducts || [];
+  const products  = (order.selectedProducts || []).filter(p => !p.isParent);
   const grouped   = groupByRoom(products);
   const grandTotal = products.reduce((sum, p) => sum + getNetCost(p) * (p.quantity || 1), 0);
   const todayStr  = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });

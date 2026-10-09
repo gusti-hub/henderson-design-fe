@@ -181,7 +181,7 @@ const AdminOrderDetail = ({ orderId, setActiveMenu }) => {
                   Unit Price: ${product.unitPrice?.toFixed(2)}
                 </p>
                 <p className="text-[#005670] font-medium">
-                  Total Price: ${(product.unitPrice * product.quantity)?.toFixed(2)}
+                  Total Price: ${(product.isParent ? product.unitPrice : product.unitPrice * product.quantity)?.toFixed(2)}
                 </p>
               </div>
             </div>

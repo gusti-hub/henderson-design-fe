@@ -347,7 +347,7 @@ const BulkProposalPrint = () => {
             // Price column (same approach as ProposalEditor)
             const pw = document.createElement('div');
             pw.style.cssText = 'width:145px;padding:7px 5px;font-size:12px;line-height:1.55;text-align:right;box-sizing:border-box';
-            pw.innerHTML = '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>1 Each</span></div>'
+            pw.innerHTML = '<div style="display:flex;justify-content:space-between"><span>Qty:</span><span>' + (p.quantity || 1) + ' ' + esc(o.units || 'Each') + '</span></div>'
               + '<div style="display:flex;justify-content:space-between"><span>Unit:</span><span>$0.00</span></div>'
               + '<div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>$0.00</span></div>'
               + (taxRate > 0 ? '<div style="display:flex;justify-content:space-between"><span>Tax:</span><span>$0.00</span></div>' : '')

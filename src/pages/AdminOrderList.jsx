@@ -206,7 +206,7 @@ const AllProductsView = ({ orders, searchTerm, setSearchTerm, onDownloadAllRepor
   const allProducts = React.useMemo(() => {
     const flat = [];
     (orders || []).forEach(order => {
-      (order.selectedProducts || []).forEach(p => {
+      (order.selectedProducts || []).filter(p => !p.isParent).forEach(p => {
         flat.push({
           ...p,
           _orderId:       order._id,
