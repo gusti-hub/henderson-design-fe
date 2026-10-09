@@ -184,6 +184,15 @@ const PrintView = ({ expense, onClose }) => {
 
         .edoc-body { padding-bottom: 72px; }
 
+        .ewm {
+          position: absolute; top: 50%; left: 50%;
+          transform: translate(-50%, -50%) rotate(-45deg);
+          font-size: 96px; font-weight: 900; letter-spacing: 0.08em;
+          pointer-events: none; user-select: none; white-space: nowrap;
+          z-index: 999; opacity: 0.18; color: #7e22ce;
+          font-family: Arial, sans-serif;
+        }
+
         .edoc-footer {
           position: absolute;
           bottom: 0.28in;
@@ -258,6 +267,7 @@ const PrintView = ({ expense, onClose }) => {
       {/* ── Printable area ── */}
       <div className="epc epc-bg">
         <div className="edoc">
+          {expense.status === 'paid' && <div className="ewm">PAID</div>}
           <div className="edoc-body">
 
             {/* Header */}
