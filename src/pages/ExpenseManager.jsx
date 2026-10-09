@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import BillInvoiceEditor from '../components/BillInvoiceEditor';
+import { toInvoiceNumber } from '../utils/invoiceNumber';
 
 const SERVICE_TYPES = [
   { id: 'decommission',    label: 'Decommission',                    icon: '🗑️', defaultRate: 0,   unit: 'flat', isEmployee: false },
@@ -1266,7 +1267,8 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Notes</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-28">Status</th>
                     <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">QuickBooks</th>
-                    <th className="px-4 py-2 w-10"></th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-44">Invoice</th>
+                    <th className="px-4 py-2 w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -1275,6 +1277,7 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                     const isApproved = pv.status === 'approved' || pv.status === 'paid';
                     const psCfg      = PS_CFG[pv.status] || PS_CFG.draft;
                     const qbId       = getQBId(pvId, pv.quickbooksId);
+                    const invNumber  = toInvoiceNumber(pv.proposalNumber || selectedOrder.proposalNumber);
                     return (
                       <tr key={pvId} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-2"><span className="text-xs font-mono font-semibold text-[#005670]">{pv.proposalNumber || selectedOrder.proposalNumber || '—'}</span></td>
@@ -1295,8 +1298,17 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                             syncing={syncingIds[pvId]}
                           />
                         </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-mono font-semibold text-[#005670]">{invNumber || '—'}</span>
+                            <span className={`inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${psCfg.cls}`}>{psCfg.label}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-2">
-                          <button onClick={() => window.open(`/admin/proposal/${pv._orderId || selectedOrder._id}`, '_blank')} title="View" className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"><Eye className="w-3.5 h-3.5" /></button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => window.open(`/admin/proposal/${pv._orderId || selectedOrder._id}`, '_blank')} title="View proposal" className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"><Eye className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => window.open(`/admin/invoice/${pv._orderId || selectedOrder._id}`, '_blank')} title="View / generate invoice" className="p-1.5 text-[#005670] hover:bg-[#005670]/10 rounded-lg transition-all"><Receipt className="w-3.5 h-3.5" /></button>
+                          </div>
                         </td>
                       </tr>
                     );

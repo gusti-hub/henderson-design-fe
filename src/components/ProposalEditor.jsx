@@ -14,6 +14,7 @@ import { X, Printer, ChevronLeft, Loader2, EyeOff, Eye, Save, Plus } from 'lucid
 import { backendServer } from '../utils/info';
 import { toJsDelivrUrl } from '../utils/imageUrl';
 import { renderRichText, renderRichTextHtml } from '../utils/richTextUtils';
+import { toInvoiceNumber } from '../utils/invoiceNumber';
 
 // Strip inline font-size from TipTap HTML so it inherits the parent cell's 12px
 const stripFontSize = (html) => {
@@ -606,7 +607,10 @@ const ItemTogglePanel = ({ productsWithIds, hiddenIds, toggleHidden, onClose, on
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const ProposalEditor = ({ orderId, version, onClose }) => {
+// mode='invoice' renders the same live proposal data as an Invoice (read-only)
+const ProposalEditor = ({ orderId, version, onClose, mode = 'proposal' }) => {
+  const isInvoice = mode === 'invoice';
+  const docLabel   = isInvoice ? 'Invoice' : 'Proposal';
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
   const [proposalData, setProposalData] = useState(null);
@@ -867,7 +871,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
+      document.title = docLabel + '_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
     }
     return () => { document.title = originalTitle; };
   }, [proposalData, clientInfo, originalTitle]);
@@ -908,7 +912,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
       const excluded = r.data.excludedProducts || [];
       setExcludedProducts(excluded);
-      if (excluded.length > 0) {
+      if (!isInvoice && excluded.length > 0) {
         setShowExcludedPanel(true);
       }
 
@@ -1043,7 +1047,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     return sortRoomEntries(Array.from(map.entries()));
   }, [productsWithIds, hiddenIds]);
 
-  const TOTALS_H = 100;
+  const TOTALS_H = isInvoice ? 125 : 100;
 
   const packItems = (items, headerH, contHeaderH = 30) => {
     const result = []; let cur = [], used = headerH;
@@ -1140,7 +1144,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     // Measure ContHeader (the "Products (continued)" mini-header on page 2+)
     const contHeaderH = measureEl(
       '<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px">' +
-      '<span>Client — Products (continued)</span><span>Proposal #: ---</span></div>'
+      '<span>Client — Products (continued)</span><span>' + docLabel + ' #: ---</span></div>'
     );
     document.body.removeChild(sandbox);
     setPages(packItems(items, headerH, contHeaderH));
@@ -1163,7 +1167,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     if (proposalData && clientInfo.name) {
       const cn = clientInfo.name?.replace(/\s+/g, '_') || 'Client';
       const un = clientInfo.unitNumber?.replace(/\s+/g, '_') || '';
-      document.title = 'Proposal_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
+      document.title = docLabel + '_' + cn + (un ? '_' + un : '') + '_' + new Date().toISOString().split('T')[0];
     }
     const urls = visibleProducts.map(getImgSrc).filter(Boolean);
     const entries = await Promise.all(urls.map(url => new Promise(resolve => {
@@ -1192,11 +1196,15 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
   if (loading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#005670]" /></div>;
 
   const totals        = calcTotals();
-  const dpn           = proposalNumber || '—';
+  const dpn           = (isInvoice ? toInvoiceNumber(proposalNumber) : proposalNumber) || '—';
+  const payment      = isInvoice && proposalStatus === 'paid' ? totals.total : 0;
+  const totalDue     = Math.max(0, totals.total - payment);
+  const wmStatus     = proposalStatus;
+  const wmOn         = showWatermark || (isInvoice && proposalStatus === 'paid');
   const today         = new Date().toLocaleDateString();
   const rg            = buildRoomGroups();
   const totalPP       = pages?.length || 0;
-  const excludedCount = excludedProducts.length;
+  const excludedCount = isInvoice ? 0 : excludedProducts.length;
   const sidebarOpen   = showExcludedPanel;
 
   const orderDisplayName = (() => {
@@ -1214,7 +1222,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       <div style={{ textAlign: 'center', marginBottom: '14px' }}>
         <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
       </div>
-      <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
+      <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>{docLabel}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
           <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name || '—'}</p>
@@ -1223,8 +1231,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
         </div>
         <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
-          <p style={{ margin: 0 }}><strong>Proposal #:</strong> {dpn}</p>
-          <p style={{ margin: 0 }}>Proposal Date: {today}</p>
+          <p style={{ margin: 0 }}><strong>{docLabel} #:</strong> {dpn}</p>
+          <p style={{ margin: 0 }}>{docLabel} Date: {today}</p>
         </div>
       </div>
       <div style={{ marginBottom: '12px', fontSize: '12px' }}>
@@ -1236,7 +1244,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
   const ContHeader = () => (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '11px', color: '#6b7280', borderBottom: '1px solid #e5e7eb', paddingBottom: '5px' }}>
       <span>{clientInfo.name} — Products (continued)</span>
-      <span>Proposal #: {dpn}</span>
+      <span>{docLabel} #: {dpn}</span>
     </div>
   );
 
@@ -1299,6 +1307,12 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
         <div className="flex items-center gap-2">
           {/* Status */}
+          {isInvoice ? (
+            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${proposalStatus === 'sent' ? 'bg-blue-100 text-blue-700' : proposalStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : proposalStatus === 'paid' ? 'bg-purple-100 text-purple-700' : proposalStatus === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}
+              title="Status follows the proposal">
+              {({ draft: 'Draft', sent: 'Sent to Client', approved: 'Approved', paid: 'Paid', rejected: 'Rejected' })[proposalStatus] || 'Draft'}
+            </span>
+          ) : (
           <div className="flex items-center gap-1.5">
             <select value={proposalStatus} onChange={e => handleStatusChange(e.target.value)} disabled={savingStatus}
               className={`px-2.5 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer appearance-none ${proposalStatus === 'draft' ? 'bg-gray-100 text-gray-600' : proposalStatus === 'sent' ? 'bg-blue-100 text-blue-700' : proposalStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : proposalStatus === 'paid' ? 'bg-purple-100 text-purple-700' : proposalStatus === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'} ${savingStatus ? 'opacity-50' : ''}`}>
@@ -1310,6 +1324,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
             </select>
             {savingStatus && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
           </div>
+          )}
           <div className="h-5 w-px bg-gray-200" />
 
           {/* Watermark toggle */}
@@ -1320,6 +1335,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
             {showWatermark ? '🔖 Watermark On' : '🔖 Watermark Off'}
           </button>
 
+          {!isInvoice && (<>
           {/* Show/Hide items toggle */}
           <button
             onClick={() => setShowTogglePanel(p => !p)}
@@ -1360,6 +1376,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               <button onClick={() => setDepositPercent(p => Math.min(100, p + 10))} className="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 text-base font-bold leading-none">+</button>
             </div>
           </div>
+
+          </>)}
 
           {/* Template toggle */}
           <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
@@ -1432,18 +1450,26 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                 <React.Fragment key={pi}>
                   <span className="pgl no-print">Page {pi + 1}{(pages || []).length > 1 ? ' — Products (' + (pi + 1) + '/' + (pages || []).length + ')' : ' — Products'}</span>
                   <div className="lp">
-                    {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
+                    {wmOn && <div className={`wm wm-${wmStatus}`}>{wmStatus.toUpperCase()}</div>}
                     <div className="lp-slot" style={slotStyle}>
                       {pi === 0 ? <P1Header /> : <ContHeader />}
                       {renderItems(items, undefined, undefined, productsMap, ActiveRowV2, compressedImages)}
-                      {pi === (pages || []).length - 1 && (
+                      {pi === (pages || []).length - 1 && (isInvoice ? (
+                        <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
+                          <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
+                          <p style={{ margin: 0 }}>Sales Tax: ${fmt(totals.salesTax)}</p>
+                          <p style={{ margin: 0 }}>Total: ${fmt(totals.total)}</p>
+                          <p style={{ margin: 0 }}>Payment: ${fmt(payment)}</p>
+                          <p style={{ margin: 0, fontWeight: '700' }}>Total Due: ${fmt(totalDue)}</p>
+                        </div>
+                      ) : (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
                           <p style={{ margin: 0 }}>Sales Tax: ${fmt(totals.salesTax)}</p>
                           <p style={{ margin: 0 }}>Total: ${fmt(totals.total)}</p>
                           <p style={{ margin: 0, fontWeight: '700' }}>Required Deposit ({depositPercent}%): ${fmt(totals.deposit)}</p>
                         </div>
-                      )}
+                      ))}
                     </div>
                     <PageFooter />
                   </div>
@@ -1454,9 +1480,9 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Warranty page */}
               <span className="pgl no-print">Page {totalPP + 1} — Warranty &amp; Terms</span>
               <div className="lp">
-                {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
+                {wmOn && <div className={`wm wm-${wmStatus}`}>{wmStatus.toUpperCase()}</div>}
                 <div className="lp-slot" style={slotStyle}>
-                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>Proposal Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
+                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '10px', fontSize: '16px' }}>{docLabel} Terms: Henderson Design Group Warranty &amp; Aftercare Terms and Conditions</div>
                   <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
                     <p style={{ marginTop: 0, marginBottom: '10px' }}>Henderson Design Group (HDG) stands behind the quality of the furnishings, fixtures, lighting, accessories, and related products provided as part of the Ālia Furnishings Collections.</p>
                     <p style={{ marginBottom: '6px' }}>Warranty coverage begins on the installation date and includes:</p>
@@ -1480,12 +1506,12 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
               {/* Signature page */}
               <span className="pgl no-print">Page {totalPP + 2} — Signature</span>
               <div className="lp last">
-                {showWatermark && <div className={`wm wm-${proposalStatus}`}>{proposalStatus.toUpperCase()}</div>}
+                {wmOn && <div className={`wm wm-${wmStatus}`}>{wmStatus.toUpperCase()}</div>}
                 <div className="lp-slot" style={slotStyle}>
                   <div style={{ textAlign: 'center', marginBottom: '14px' }}>
                     <img src="/images/HDG-Logo.png" alt="Henderson Design Group" style={{ height: '44px', width: 'auto', display: 'inline-block', filter: LOGO_FILTER }} />
                   </div>
-                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>Proposal</div>
+                  <div style={{ color: '#000000', fontWeight: '700', marginBottom: '12px', fontSize: '16px' }}>{docLabel}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div style={{ fontSize: '12px', lineHeight: '1.7' }}>
                       <p style={{ margin: 0, fontWeight: '600' }}>{clientInfo.name}</p>
@@ -1494,8 +1520,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                       {clientInfo.email && <p style={{ margin: 0 }}>{clientInfo.email}</p>}
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.7' }}>
-                      <p style={{ margin: 0 }}><strong>Proposal #:</strong> {dpn}</p>
-                      <p style={{ margin: 0 }}>Proposal Date: {today}</p>
+                      <p style={{ margin: 0 }}><strong>{docLabel} #:</strong> {dpn}</p>
+                      <p style={{ margin: 0 }}>{docLabel} Date: {today}</p>
                     </div>
                   </div>
                   <div style={{ marginBottom: '12px', fontSize: '12px' }}>

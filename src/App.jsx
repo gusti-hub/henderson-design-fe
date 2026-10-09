@@ -30,6 +30,19 @@ const ProposalEditorWrapper = () => {
   );
 };
 
+const InvoiceViewerWrapper = () => {
+  const { orderId, version } = useParams();
+  const navigate = useNavigate();
+  const handleClose = () => {
+    navigate('/admin-panel', { state: { tab: '/orders' } });
+  };
+  return (
+    <ProtectedRoute requireEmployee={true} element={
+      <ProposalEditor mode="invoice" orderId={orderId} version={version} onClose={handleClose} />
+    } />
+  );
+};
+
 function App() {
   return (
     <Routes>
@@ -49,6 +62,7 @@ function App() {
       <Route path="/invoice/:clientId/:invoiceNumber" element={<InvoiceHTML />} />
 
       <Route path="/admin/proposal/:orderId/:version?" element={<ProposalEditorWrapper />} />
+      <Route path="/admin/invoice/:orderId/:version?" element={<InvoiceViewerWrapper />} />
 
       <Route path="/admin/bulk-print" element={
         <ProtectedRoute element={<BulkProposalPrint />} allowedRoles={['admin', 'designer']} />
