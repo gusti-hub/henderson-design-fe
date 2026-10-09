@@ -179,7 +179,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href     = url;
-      a.download = `FloorPlan_${(clientName || 'Client').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      a.download = `InstallBinder_${(clientName || 'Client').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } finally {
