@@ -617,6 +617,9 @@ const ProposalEditor = ({ orderId, version, onClose, mode = 'proposal' }) => {
   const [clientInfo, setClientInfo]     = useState({});
   const [proposalNumber, setProposalNumber] = useState(null);
   const [proposalStatus, setProposalStatus] = useState('draft');
+  const [savedPayment, setSavedPayment]     = useState(null);   // null = automatic
+  const [paymentDraft, setPaymentDraft]     = useState(null);   // string while editing
+  const [savingPayment, setSavingPayment]   = useState(false);
   const [showWatermark, setShowWatermark]   = useState(false);
   const [savingStatus, setSavingStatus]     = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
@@ -929,6 +932,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       });
       setProposalNumber(r.data.proposalNumber || null);
       setProposalStatus(r.data.status || 'draft');
+      setSavedPayment(r.data.invoicePayment ?? null);
       setOrderInfo({ orderNumber: r.data.orderNumber, orderLabel: r.data.orderLabel });
       setDepositPercent(r.data.depositPercent ?? 100);
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
@@ -948,6 +952,22 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       else { const d = await res.json(); alert('Failed: ' + (d.message || '')); }
     } catch (err) { alert('Failed: ' + err.message); }
     finally { setSavingStatus(false); }
+  };
+
+  const savePayment = async (amount, markPaid = false) => {
+    setSavingPayment(true);
+    try {
+      const t = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/invoice-payment`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, markPaid, version: proposalData?.version || undefined }),
+      });
+      const d = await res.json();
+      if (res.ok) { setSavedPayment(d.invoicePayment ?? null); setPaymentDraft(null); if (d.status) setProposalStatus(d.status); }
+      else alert('Failed: ' + (d.message || ''));
+    } catch (err) { alert('Failed: ' + err.message); }
+    finally { setSavingPayment(false); }
   };
 
   const handleStatusChange = (newStatus) => {
@@ -1197,10 +1217,15 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
   const totals        = calcTotals();
   const dpn           = (isInvoice ? toInvoiceNumber(proposalNumber) : proposalNumber) || '—';
-  const payment      = isInvoice && proposalStatus === 'paid' ? totals.total : 0;
-  const totalDue     = Math.max(0, totals.total - payment);
-  const wmStatus     = proposalStatus;
-  const wmOn         = showWatermark || (isInvoice && proposalStatus === 'paid');
+  const autoPayment  = isInvoice && proposalStatus === 'paid' ? totals.total : 0;
+  const draftNum     = paymentDraft !== null ? Math.max(0, parseFloat(paymentDraft) || 0) : null;
+  const payment      = draftNum !== null ? draftNum : (savedPayment ?? autoPayment);
+  const totalDue     = Math.round((totals.total - payment) * 100) / 100;
+  // Invoice is PAID when nothing is due (or there is a credit); underpaid invoices never get the stamp
+  const invoicePaid  = isInvoice && totals.total > 0 && totalDue <= 0;
+  const paymentLocked = isInvoice && proposalStatus === 'paid';
+  const wmStatus     = invoicePaid ? 'paid' : proposalStatus;
+  const wmOn         = isInvoice ? (invoicePaid || (showWatermark && proposalStatus !== 'paid')) : showWatermark;
   const today         = new Date().toLocaleDateString();
   const rg            = buildRoomGroups();
   const totalPP       = pages?.length || 0;
@@ -1260,11 +1285,13 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
           .print-area, .print-area * { visibility: visible; }
           .print-area { position: absolute; left: 0; top: 0; width: 100%; background: white; }
           .no-print, .mbox { display: none !important; }
+          .print-only { display: inline !important; }
           .lp { width: 8.5in !important; height: 11in !important; overflow: hidden !important; page-break-after: always !important; break-after: page !important; box-shadow: none !important; margin: 0 !important; position: relative !important; }
           .lp.last { page-break-after: avoid !important; break-after: avoid !important; }
           .lp-slot { overflow: hidden !important; }
         }
         @page { size: 8.5in 11in; margin: 0; }
+        .print-only { display: none; }
         .pw { background: #b8b8b8; padding: 20px 0 40px; }
         .pgl { display: block; width: 8.5in; margin: 0 auto; background: #005670; color: white; font-size: 10px; font-weight: 600; padding: 3px 14px; border-radius: 4px 4px 0 0; box-sizing: border-box; letter-spacing: 0.03em; }
         .lp { position: relative; background: white; width: 8.5in; height: 11in; overflow: visible; box-shadow: 0 2px 16px rgba(0,0,0,0.18); margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; }
@@ -1459,8 +1486,32 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
                           <p style={{ margin: 0 }}>Sales Tax: ${fmt(totals.salesTax)}</p>
                           <p style={{ margin: 0 }}>Total: ${fmt(totals.total)}</p>
-                          <p style={{ margin: 0 }}>Payment: ${fmt(payment)}</p>
-                          <p style={{ margin: 0, fontWeight: '700' }}>Total Due: ${fmt(totalDue)}</p>
+                          <p style={{ margin: 0 }}>
+                            Payment: $<span className={paymentLocked ? undefined : 'print-only'}>{fmt(payment)}</span>
+                            {!paymentLocked && <span className="no-print">
+                              <input
+                                type="number" min="0" step="0.01"
+                                value={paymentDraft ?? payment.toFixed(2)}
+                                onChange={e => setPaymentDraft(e.target.value)}
+                                style={{ width: '110px', height: '20px', textAlign: 'right', fontSize: '12px', padding: '0 4px', marginLeft: '2px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                              />
+                              {paymentDraft !== null && (
+                                <>
+                                  <button onClick={() => savePayment(draftNum, invoicePaid)} disabled={savingPayment}
+                                    style={{ marginLeft: '6px', padding: '0 8px', height: '20px', fontSize: '11px', fontWeight: 600, color: '#fff', background: '#005670', borderRadius: '4px', opacity: savingPayment ? 0.5 : 1 }}>
+                                    {savingPayment ? 'Saving…' : 'Save'}
+                                  </button>
+                                  <button onClick={() => setPaymentDraft(null)} disabled={savingPayment}
+                                    style={{ marginLeft: '4px', padding: '0 6px', height: '20px', fontSize: '11px', color: '#6b7280' }}>Cancel</button>
+                                </>
+                              )}
+                              {paymentDraft === null && savedPayment !== null && (
+                                <button onClick={() => savePayment(null)} disabled={savingPayment} title="Back to automatic (full total when status is Paid)"
+                                  style={{ marginLeft: '6px', padding: '0 6px', height: '20px', fontSize: '11px', color: '#6b7280', textDecoration: 'underline' }}>Reset</button>
+                              )}
+                            </span>}
+                          </p>
+                          <p style={{ margin: 0, fontWeight: '700' }}>Total Due: {totalDue < 0 ? '-' : ''}${fmt(Math.abs(totalDue))}</p>
                         </div>
                       ) : (
                         <div style={{ textAlign: 'right', marginTop: '10px', paddingTop: '4px', fontSize: '12px', lineHeight: '1.8' }}>
