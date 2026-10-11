@@ -121,6 +121,8 @@ const PrintView = ({ expense, onClose }) => {
   const sub = (expense.lines || []).reduce((s, l) => s + parseFloat(l.amount || 0), 0);
   const tax = sub * (parseFloat(expense.taxRate || 0) / 100);
   const tot = sub + tax;
+  const payment = expense.status === 'paid' && !(parseFloat(expense.payment) > 0) ? tot : (parseFloat(expense.payment) || 0);
+  const due     = Math.round((tot - payment) * 100) / 100;
   const f2  = (n) => `$${parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // ✅ Tentukan subtitle header
@@ -366,6 +368,12 @@ const PrintView = ({ expense, onClose }) => {
                   <tr><td className="lb">Subtotal:</td><td className="am">{f2(sub)}</td></tr>
                   <tr><td className="lb">Taxes:</td><td className="am">{f2(tax)}</td></tr>
                   <tr className="totl"><td className="lb">Total:</td><td className="am">{f2(tot)}</td></tr>
+                  {(expense.status === 'paid' || payment > 0) && (
+                    <>
+                      <tr><td className="lb">Payment:</td><td className="am">{f2(payment)}</td></tr>
+                      <tr className="totl"><td className="lb">Total Due:</td><td className="am">{due < 0 ? '-' : ''}{f2(Math.abs(due))}</td></tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -430,6 +438,7 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
       id: l.id || l._id?.toString() || (Date.now() + Math.random()),
     })),
   }));
+  const origStatus = React.useRef(initial.status);
   const [saving, setSaving]     = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [empSearch, setEmpSearch] = useState(initial.employeeName || '');
@@ -462,6 +471,9 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
   const sub = inv.lines.reduce((s, l) => s + parseFloat(l.amount || 0), 0);
   const tax = sub * (parseFloat(inv.taxRate || 0) / 100);
   const tot = sub + tax;
+  const paymentLocked = origStatus.current === 'paid' && inv.status === 'paid';
+  const payNum = paymentLocked && !(parseFloat(inv.payment) > 0) ? tot : (parseFloat(inv.payment) || 0);
+  const payDue = Math.round((tot - payNum) * 100) / 100;
   const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]';
   return (
     <div className="space-y-5">
@@ -593,6 +605,22 @@ const ExpenseEditor = ({ expense: initial, onSave, onCancel, onPrint }) => {
               <div className="flex justify-between items-center text-gray-600"><span>Tax Rate (%)</span><input type="number" min="0" step="0.001" value={inv.taxRate} onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d{0,3}$/.test(v)) upd('taxRate', v); }} onBlur={e => { const n = parseFloat(e.target.value); upd('taxRate', isNaN(n) ? 0 : Math.round(n * 1000) / 1000); }} className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-right" /></div>
               <div className="flex justify-between text-gray-600"><span>Taxes</span><span>{fmt(tax)}</span></div>
               <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-200 text-[#005670]"><span>Total</span><span>{fmt(tot)}</span></div>
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Payment</span>
+                <input type="number" min="0" step="0.01" disabled={paymentLocked}
+                  value={paymentLocked ? payNum.toFixed(2) : (inv.payment ?? 0)}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setInv(p => {
+                      const n = Math.max(0, parseFloat(v) || 0);
+                      const paidNow = tot > 0 && Math.round((tot - n) * 100) <= 0;
+                      return { ...p, payment: v, status: paidNow ? 'paid' : p.status };
+                    });
+                  }}
+                  className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right disabled:bg-gray-100 disabled:text-gray-500" />
+              </div>
+              <div className="flex justify-between font-bold text-base text-[#005670]"><span>Total Due</span><span>{payDue < 0 ? '-' : ''}{fmt(Math.abs(payDue))}</span></div>
+              {paymentLocked && <p className="text-[10px] text-gray-400">Paid — payment is locked. Change the status to edit it.</p>}
             </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
