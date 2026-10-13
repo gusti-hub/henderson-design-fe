@@ -5,7 +5,7 @@ import {
   Search, Filter, Sparkles, AlertCircle, Mail, Phone,
   User, Building2, CheckCircle, Clock, ClipboardList, MapPin, TrendingUp,
   Calendar, Activity, ChevronLeft, ChevronRight, ClipboardCheck,
-  ShoppingBag, Download, Users, Edit3, BarChart2, MoreHorizontal
+  ShoppingBag, Download, Users, Edit3, BarChart2, MoreHorizontal, DollarSign
 } from 'lucide-react';
 import { backendServer } from '../utils/info';
 import { pdf } from '@react-pdf/renderer';
@@ -566,6 +566,8 @@ const ClientManagement = () => {
     bedroomCount: '',
     packageType: 'investor',
     pricingYear: 2026,
+    creditBalance: '',
+    creditExpected: '',
     calculatedAmount: 0,
     designer: '',
     projectManager: '',
@@ -839,6 +841,8 @@ const ClientManagement = () => {
       bedroomCount: '',
       packageType: 'investor',
       pricingYear: 2026,
+      creditBalance: '',
+      creditExpected: '',
       calculatedAmount: 0,
       designer: '',
       projectManager: '',
@@ -883,6 +887,8 @@ const ClientManagement = () => {
         bedroomCount: client.bedroomCount ? String(client.bedroomCount) : '',
         packageType: client.packageType || 'investor',
         pricingYear: client.pricingYear || 2026,
+        creditBalance: client.creditBalance > 0 ? String(client.creditBalance) : '',
+        creditExpected: client.creditBalance > 0 ? String(client.creditBalance) : '',
         calculatedAmount: client.paymentInfo?.totalAmount || 0,
         designer: client.teamAssignment?.designer || '',
         projectManager: client.teamAssignment?.projectManager || '',
@@ -1016,6 +1022,10 @@ const ClientManagement = () => {
         propertyType: formData.propertyType,
         packageType: formData.packageType,
         pricingYear: formData.pricingYear || 2026,
+        // Credit: sent only when changed, and tagged with the balance the form loaded so a stale form can't undo invoice usage
+        ...(String(formData.creditBalance ?? '') !== String(formData.creditExpected ?? '')
+          ? { creditBalance: formData.creditBalance === '' ? 0 : formData.creditBalance, expectedCreditBalance: formData.creditExpected === '' ? 0 : formData.creditExpected }
+          : {}),
         floorPlan: CUSTOM_COLLECTIONS.includes(formData.collection)
           ? 'Custom Project'
           : formData.floorPlan,
@@ -1953,6 +1963,27 @@ const FormModal = React.memo(
                   ]}
                 />
               </div>
+            </div>
+
+            {/* Credit / remaining deposit */}
+            <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200">
+              <h4 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+                Credit / Remaining Deposit
+                <span className="text-xs font-normal text-gray-400 ml-1">(Optional)</span>
+              </h4>
+              <p className="text-xs text-gray-500 mb-4">
+                Balance the client can apply to invoices. It goes down automatically as invoices use it.
+              </p>
+              <Input
+                label="Credit balance (USD)"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.creditBalance ?? ''}
+                onChange={(v) => setFormData(prev => ({ ...prev, creditBalance: v }))}
+                placeholder="0.00"
+              />
             </div>
 
             {/* ✅ NEW: Address Section */}
@@ -3132,6 +3163,12 @@ const ViewMode = React.memo(({ client }) => (
         <div className="space-y-2">
           <label className="text-xs font-medium text-gray-500 uppercase">Phone</label>
           <p className="text-lg">{client.phoneNumber}</p>
+        </div>
+      )}
+      {client?.creditBalance > 0 && (
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-500 uppercase">Credit / Remaining Deposit</label>
+          <p className="text-lg font-bold text-emerald-700">${Number(client.creditBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
       )}
       <div className="space-y-2">

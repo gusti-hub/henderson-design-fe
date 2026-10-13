@@ -620,6 +620,10 @@ const ProposalEditor = ({ orderId, version, onClose, mode = 'proposal' }) => {
   const [savedPayment, setSavedPayment]     = useState(null);   // null = automatic
   const [paymentDraft, setPaymentDraft]     = useState(null);   // string while editing
   const [savingPayment, setSavingPayment]   = useState(false);
+  const [savedCredit, setSavedCredit]       = useState(0);      // client credit applied to this invoice
+  const [creditDraft, setCreditDraft]       = useState(null);   // string while editing
+  const [clientCredit, setClientCredit]     = useState(0);      // client's remaining credit balance
+  const [savingCredit, setSavingCredit]     = useState(false);
   const [showWatermark, setShowWatermark]   = useState(false);
   const [savingStatus, setSavingStatus]     = useState(false);
   const [showPrintInstructions, setShowPrintInstructions] = useState(false);
@@ -933,6 +937,8 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       setProposalNumber(r.data.proposalNumber || null);
       setProposalStatus(r.data.status || 'draft');
       setSavedPayment(r.data.invoicePayment ?? null);
+      setSavedCredit(r.data.invoiceCredit || 0);
+      setClientCredit(r.data.user?.creditBalance || 0);
       setOrderInfo({ orderNumber: r.data.orderNumber, orderLabel: r.data.orderLabel });
       setDepositPercent(r.data.depositPercent ?? 100);
     } catch (e) { console.error(e); alert('Failed to load proposal data'); }
@@ -968,6 +974,29 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
       else alert('Failed: ' + (d.message || ''));
     } catch (err) { alert('Failed: ' + err.message); }
     finally { setSavingPayment(false); }
+  };
+
+  const saveCredit = async (amount, markPaid = false) => {
+    setSavingCredit(true);
+    try {
+      const t = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/proposals/${orderId}/invoice-credit`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, markPaid }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setSavedCredit(d.invoiceCredit || 0);
+        setClientCredit(d.creditBalance || 0);
+        setCreditDraft(null);
+        if (d.status) setProposalStatus(d.status);
+      } else {
+        if (typeof d.creditBalance === 'number') setClientCredit(d.creditBalance);
+        alert('Failed: ' + (d.message || ''));
+      }
+    } catch (err) { alert('Failed: ' + err.message); }
+    finally { setSavingCredit(false); }
   };
 
   const handleStatusChange = (newStatus) => {
@@ -1073,7 +1102,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
     return sortRoomEntries(Array.from(map.entries()));
   }, [productsWithIds, hiddenIds]);
 
-  const TOTALS_H = isInvoice ? 125 : 100;
+  const TOTALS_H = isInvoice ? 150 : 100;
 
   const packItems = (items, headerH, contHeaderH = 30) => {
     const result = []; let cur = [], used = headerH;
@@ -1223,10 +1252,16 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
 
   const totals        = calcTotals();
   const dpn           = (isInvoice ? toInvoiceNumber(proposalNumber) : proposalNumber) || '—';
-  const autoPayment  = isInvoice && proposalStatus === 'paid' ? totals.total : 0;
+  const r2c          = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const creditDraftNum = creditDraft !== null ? Math.max(0, parseFloat(creditDraft) || 0) : null;
+  const creditApplied  = isInvoice ? (creditDraftNum !== null ? creditDraftNum : savedCredit) : 0;
+  const autoPayment  = isInvoice && proposalStatus === 'paid' ? Math.max(0, r2c(totals.total - savedCredit)) : 0;
   const draftNum     = paymentDraft !== null ? Math.max(0, parseFloat(paymentDraft) || 0) : null;
   const payment      = draftNum !== null ? draftNum : (savedPayment ?? autoPayment);
-  const totalDue     = Math.round((totals.total - payment) * 100) / 100;
+  const totalDue     = r2c(totals.total - creditApplied - payment);
+  // Most credit this invoice can take: what the client has (plus what is already applied) and what is still owed
+  const creditMax    = Math.max(0, r2c(Math.min(clientCredit + savedCredit, totals.total - payment)));
+  const creditVisible = isInvoice && (clientCredit > 0 || savedCredit > 0);
   // Invoice is PAID when nothing is due (or there is a credit); underpaid invoices never get the stamp
   const invoicePaid  = isInvoice && totals.total > 0 && totalDue <= 0;
   const paymentLocked = isInvoice && proposalStatus === 'paid';
@@ -1492,6 +1527,35 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                           <p style={{ margin: 0 }}>Sub Total: ${fmt(totals.subtotal)}</p>
                           <p style={{ margin: 0 }}>Sales Tax: ${fmt(totals.salesTax)}</p>
                           <p style={{ margin: 0 }}>Total: ${fmt(totals.total)}</p>
+                          {creditVisible && (
+                            <p style={{ margin: 0 }} className={savedCredit > 0 ? undefined : 'no-print'}>
+                              Credit Applied: -$<span className={paymentLocked ? undefined : 'print-only'}>{fmt(savedCredit)}</span>
+                              {!paymentLocked && <span className="no-print">
+                                <input
+                                  type="number" min="0" step="0.01"
+                                  value={creditDraft ?? savedCredit.toFixed(2)}
+                                  onChange={e => setCreditDraft(e.target.value)}
+                                  style={{ width: '110px', height: '20px', textAlign: 'right', fontSize: '12px', padding: '0 4px', marginLeft: '2px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                />
+                                {creditDraft !== null && (
+                                  <>
+                                    <button onClick={() => saveCredit(creditDraftNum, totals.total > 0 && r2c(totals.total - creditDraftNum - payment) <= 0)}
+                                      disabled={savingCredit || creditDraftNum > creditMax}
+                                      style={{ marginLeft: '6px', padding: '0 8px', height: '20px', fontSize: '11px', fontWeight: 600, color: '#fff', background: '#005670', borderRadius: '4px', opacity: (savingCredit || creditDraftNum > creditMax) ? 0.5 : 1 }}>
+                                      {savingCredit ? 'Saving…' : 'Apply'}
+                                    </button>
+                                    <button onClick={() => setCreditDraft(null)} disabled={savingCredit}
+                                      style={{ marginLeft: '4px', padding: '0 6px', height: '20px', fontSize: '11px', color: '#6b7280' }}>Cancel</button>
+                                  </>
+                                )}
+                                <span style={{ marginLeft: '8px', fontSize: '11px', color: creditDraft !== null && creditDraftNum > creditMax ? '#dc2626' : '#6b7280' }}>
+                                  {creditDraft !== null && creditDraftNum > creditMax
+                                    ? `Max $${fmt(creditMax)}`
+                                    : `Available: $${fmt(clientCredit)}`}
+                                </span>
+                              </span>}
+                            </p>
+                          )}
                           <p style={{ margin: 0 }}>
                             Payment: $<span className={paymentLocked ? undefined : 'print-only'}>{fmt(payment)}</span>
                             {!paymentLocked && <span className="no-print">
@@ -1503,7 +1567,7 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
                               />
                               {paymentDraft !== null && (
                                 <>
-                                  <button onClick={() => savePayment(draftNum, invoicePaid)} disabled={savingPayment}
+                                  <button onClick={() => savePayment(draftNum, totals.total > 0 && r2c(totals.total - savedCredit - draftNum) <= 0)} disabled={savingPayment}
                                     style={{ marginLeft: '6px', padding: '0 8px', height: '20px', fontSize: '11px', fontWeight: 600, color: '#fff', background: '#005670', borderRadius: '4px', opacity: savingPayment ? 0.5 : 1 }}>
                                     {savingPayment ? 'Saving…' : 'Save'}
                                   </button>
