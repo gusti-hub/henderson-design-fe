@@ -43,6 +43,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const [uploading, setUploading]       = useState(false);
   const [saving, setSaving]             = useState(false);
   const [downloading, setDownloading]   = useState(false);
+  const [downloadingXls, setDownloadingXls] = useState(false);
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [searchSku, setSearchSku]       = useState('');
   const [loading, setLoading]           = useState(true);
@@ -152,6 +153,30 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Download Install Binder as Excel ──────────────────────────────────────
+  const downloadExcel = async () => {
+    setDownloadingXls(true);
+    try {
+      const res = await fetch(`${backendServer}/api/floor-plans/${clientUserId}/excel`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        alert(`Excel error: ${err.message || res.status}`);
+        return;
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `InstallBinder_${(clientName || 'Client').replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingXls(false);
     }
   };
 
@@ -361,6 +386,14 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
           >
             {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Download PDF
+          </button>
+          <button
+            onClick={downloadExcel}
+            disabled={downloadingXls}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {downloadingXls ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Download Excel
           </button>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
             <X className="w-5 h-5" />
