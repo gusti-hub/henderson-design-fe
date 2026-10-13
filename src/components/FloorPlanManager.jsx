@@ -374,7 +374,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
         <div className="flex items-center gap-3">
           <Map className="w-5 h-5" />
           <div>
-            <h2 className="font-bold text-lg leading-tight">Floor Plans</h2>
+            <h2 className="font-bold text-lg leading-tight">Install Binder</h2>
             <p className="text-xs text-white/70">{clientName}</p>
           </div>
         </div>

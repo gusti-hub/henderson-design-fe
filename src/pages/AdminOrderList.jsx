@@ -650,6 +650,32 @@ const AdminOrderList = ({ onOrderClick }) => {
   };
 
   // ── Download helpers ──────────────────────────────────────────────────────
+  // Install Binder PDF = the same document as the Floor Plan page (covers, project directory, floor plans, tables)
+  const handleInstallBinderPdf = async (order) => {
+    const clientId = typeof order.user === 'object' ? (order.user?._id || order.user?.id) : order.user;
+    if (!clientId) { alert('This order has no client.'); return; }
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/floor-plans/${clientId}/pdf`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(res.status === 404
+          ? 'No floor plans have been uploaded for this client yet. Add them in Install Binder first, then download again.'
+          : (err.message || 'Failed to download. Please try again.'));
+        return;
+      }
+      const blob = await res.blob();
+      const safeClient = (order.clientInfo?.name || 'Client').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${safeClient} - Install Binder.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { alert('Failed to download. Please try again.'); }
+    finally { setDownloading(false); }
+  };
+
   const handleDownload = async (orderId, type, clientName, label, ext = 'xlsx') => {
     setDownloading(true);
     try {
@@ -1239,7 +1265,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                 onClick={() => setFloorPlanClient({ clientId: clientOrdersView.clientId, clientName: clientInfo?.name || 'Client' })}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#005670] border border-[#005670]/30 text-xs font-semibold rounded-lg hover:bg-[#005670]/5 transition-colors"
               >
-                <MapIcon className="w-3.5 h-3.5" /> Floor Plans
+                <MapIcon className="w-3.5 h-3.5" /> Install Binder
               </button>
               <button
                 onClick={handleNewOrderFromTable}
@@ -1960,7 +1986,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                           order={order}
                           onEdit={() => handleEdit(order)}
                           onView={() => onOrderClick && onOrderClick(order._id)}
-                          onInstallBinder={() => handleDownload(order._id, 'install-binder', order.clientInfo?.name, 'Install Binder', 'pdf')}
+                          onInstallBinder={() => handleInstallBinderPdf(order)}
                           onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel', order.clientInfo?.name, 'Install Binder')}
                           onDownload={(type, label) => handleDownload(order._id, type, order.clientInfo?.name, label)}
                           onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
