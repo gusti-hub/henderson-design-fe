@@ -1028,33 +1028,34 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
   };
 
   // ── Totals ──
-  // Every row is rounded to cents exactly as it is displayed, so Sub Total + Sales Tax = Total
-  // and the total always equals the sum of the rows (no half-cent drift between documents).
+  // Same rule as QuickBooks: Sub Total = sum of rows (each rounded to cents), Sales Tax is rounded
+  // ONCE per tax rate from the taxable sub total, and Total = Sub Total + Sales Tax.
   const calcTotals = () => {
     const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
-    let sub = 0, taxT = 0;
+    let sub = 0;
+    const taxableByRate = new Map(); // rate -> taxable sub total
     visibleProducts.forEach(p => {
       const o = p.selectedOptions || {}, qty = p.quantity || 1;
-      const isGroupParent = p.isParent === true;
-      let rowSub, rowTax;
-      if (isGroupParent) {
+      let rowSub, taxRate;
+      if (p.isParent === true) {
         // finalPrice already includes tax — back-calculate the pre-tax portion
         const finalPrice = parseFloat(p.finalPrice) || 0;
-        const taxRate = p._avgChildTaxRate || 0;
+        taxRate = p._avgChildTaxRate || 0;
         rowSub = taxRate > 0 ? finalPrice / (1 + taxRate / 100) : finalPrice;
-        rowTax = finalPrice - rowSub;
       } else {
         const msrp = parseFloat(o.msrp) || 0;
         const markupPct = parseFloat(o.markupPercent) || 0;
-        const sell = msrp * (1 + markupPct / 100);
-        rowSub = sell * qty;
-        const taxRate = parseFloat(o.salesTaxRate) || 0;
-        rowTax = taxRate > 0 ? rowSub * (taxRate / 100) : 0;
+        rowSub = msrp * (1 + markupPct / 100) * qty;
+        taxRate = parseFloat(o.salesTaxRate) || 0;
       }
-      sub  += r2(rowSub);
-      taxT += r2(rowTax);
+      const rounded = r2(rowSub);
+      sub += rounded;
+      if (taxRate > 0) taxableByRate.set(taxRate, (taxableByRate.get(taxRate) || 0) + rounded);
     });
-    sub = r2(sub); taxT = r2(taxT);
+    sub = r2(sub);
+    let taxT = 0;
+    taxableByRate.forEach((taxable, rate) => { taxT += r2(taxable * (rate / 100)); });
+    taxT = r2(taxT);
     const total = r2(sub + taxT);
     return { subtotal: sub, salesTax: taxT, total, deposit: r2(total * (depositPercent / 100)) };
   };
