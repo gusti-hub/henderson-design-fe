@@ -1028,30 +1028,35 @@ const handleRefreshPrice = useCallback(async (sid, product) => {
   };
 
   // ── Totals ──
+  // Every row is rounded to cents exactly as it is displayed, so Sub Total + Sales Tax = Total
+  // and the total always equals the sum of the rows (no half-cent drift between documents).
   const calcTotals = () => {
+    const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
     let sub = 0, taxT = 0;
     visibleProducts.forEach(p => {
       const o = p.selectedOptions || {}, qty = p.quantity || 1;
       const isGroupParent = p.isParent === true;
+      let rowSub, rowTax;
       if (isGroupParent) {
-        // finalPrice already includes tax — back-calculate pre-tax portion
+        // finalPrice already includes tax — back-calculate the pre-tax portion
         const finalPrice = parseFloat(p.finalPrice) || 0;
         const taxRate = p._avgChildTaxRate || 0;
-        const preTax = taxRate > 0 ? finalPrice / (1 + taxRate / 100) : finalPrice;
-        sub += preTax;
-        taxT += finalPrice - preTax;
+        rowSub = taxRate > 0 ? finalPrice / (1 + taxRate / 100) : finalPrice;
+        rowTax = finalPrice - rowSub;
       } else {
         const msrp = parseFloat(o.msrp) || 0;
         const markupPct = parseFloat(o.markupPercent) || 0;
         const sell = msrp * (1 + markupPct / 100);
-        const line = sell * qty;
+        rowSub = sell * qty;
         const taxRate = parseFloat(o.salesTaxRate) || 0;
-        sub += line;
-        taxT += taxRate > 0 ? line * (taxRate / 100) : 0;
+        rowTax = taxRate > 0 ? rowSub * (taxRate / 100) : 0;
       }
+      sub  += r2(rowSub);
+      taxT += r2(rowTax);
     });
-    const total = sub + taxT;
-    return { subtotal: sub, salesTax: taxT, total, deposit: total * (depositPercent / 100) };
+    sub = r2(sub); taxT = r2(taxT);
+    const total = r2(sub + taxT);
+    return { subtotal: sub, salesTax: taxT, total, deposit: r2(total * (depositPercent / 100)) };
   };
 
   // ── Build room groups (includes sid for each product) ──

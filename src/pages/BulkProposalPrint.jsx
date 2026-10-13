@@ -455,8 +455,9 @@ const BulkProposalPrint = () => {
               const qty = p.quantity || 1;
               const sell = (parseFloat(o.msrp) || 0) * (1 + (parseFloat(o.markupPercent) || 0) / 100) * qty;
               const taxRate = parseFloat(o.salesTaxRate) || 0;
-              subtotal += sell;
-              taxTotal += taxRate > 0 ? sell * taxRate / 100 : 0;
+              const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+              subtotal += r2(sell);
+              taxTotal += taxRate > 0 ? r2(sell * taxRate / 100) : 0;
             });
             const total = subtotal + taxTotal;
             const dpct = depositPercent ?? 100;

@@ -736,7 +736,6 @@ const LogisticOrderTracker = () => {
           projectCode:         editForm.projectCode,
           poQuantity:          newPoQty,
           cargoReadyDate:      editForm.cargoReadyDate,
-          shipmentDate:        editForm.shipmentDate,
           logDrawing:          editForm.logDrawing,
           logMachining:        editForm.logMachining,
           logAssembly:         editForm.logAssembly,
@@ -828,7 +827,7 @@ const LogisticOrderTracker = () => {
         'PO Number','Project Code','Unit #','Client','Item Name','SKU','Vendor',
         'PO Qty','Shipped','Balance','Unit Price','Total Price',
         'Drawing','Machining','Assembly','Finishing','QC Checking','Packing',
-        'Status','Cargo Ready','Shipment Date','Exp. Ship Date','Exp. Arrival Date',
+        'Status','Cargo Ready','Exp. Ship Date','Exp. Arrival Date',
         'Container #','Packing List','Location','Remark',
       ];
       const wsData = [headers, ...data.map(row => [
@@ -838,7 +837,7 @@ const LogisticOrderTracker = () => {
         row.unitPrice??0, row.totalPrice??0,
         STAGE_LABEL(row.logDrawing), STAGE_LABEL(row.logMachining), STAGE_LABEL(row.logAssembly),
         STAGE_LABEL(row.logFinishing), STAGE_LABEL(row.logQcChecking), STAGE_LABEL(row.logPacking),
-        row.statusCategory||'', row.cargoReadyDate||'', row.shipmentDate||'',
+        row.statusCategory||'', row.cargoReadyDate||'',
         row.expectedShipDate||'', row.expectedArrivalDate||'',
         row.containerNumber||'', row.packingList||'', row.location||'', row.remark||'',
       ])];
@@ -962,9 +961,9 @@ const LogisticOrderTracker = () => {
             {hasFilters ? 'No entries match the current filters.' : 'No logistic entries found.'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 z-20 bg-gray-50 shadow-[0_1px_0_0_#e5e7eb]">
                 <tr className="border-b border-gray-200 bg-gray-50">
                   {/* Read-only sortable columns */}
                   <th onClick={() => handleSort('poNumber')}     className={thCls(sortCol==='poNumber')     + ' text-gray-600'}>PO# <SortIcon col="poNumber" /></th>
@@ -989,7 +988,6 @@ const LogisticOrderTracker = () => {
                   <th onClick={() => handleSort('statusCategory')}      className={thCls(sortCol==='statusCategory')      + ' text-[#005670]'}>Status <SortIcon col="statusCategory" /></th>
                   <th onClick={() => handleSort('orderDate')}           className={thCls(sortCol==='orderDate')           + ' text-[#005670]'}>Order Date <SortIcon col="orderDate" /></th>
                   <th onClick={() => handleSort('cargoReadyDate')}      className={thCls(sortCol==='cargoReadyDate')      + ' text-[#005670]'}>Cargo Ready <SortIcon col="cargoReadyDate" /></th>
-                  <th onClick={() => handleSort('shipmentDate')}        className={thCls(sortCol==='shipmentDate')        + ' text-[#005670]'}>Ship Date <SortIcon col="shipmentDate" /></th>
                   <th onClick={() => handleSort('expectedShipDate')}    className={thCls(sortCol==='expectedShipDate')    + ' text-[#005670]'}>Exp. Ship <SortIcon col="expectedShipDate" /></th>
                   <th onClick={() => handleSort('expectedArrivalDate')} className={thCls(sortCol==='expectedArrivalDate') + ' text-[#005670]'}>Exp. Arrival <SortIcon col="expectedArrivalDate" /></th>
                   <th onClick={() => handleSort('containerNumber')}     className={thCls(sortCol==='containerNumber')     + ' text-[#005670]'}>Container # <SortIcon col="containerNumber" /></th>
@@ -999,7 +997,7 @@ const LogisticOrderTracker = () => {
                   <th className="px-2 py-2.5 text-center font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Action</th>
                 </tr>
                 {/* Stage legend row */}
-                <tr className="border-b border-gray-100 bg-gray-50/60">
+                <tr className="border-b border-gray-100 bg-gray-50">
                   <td colSpan={10} />
                   <td className="px-2 pb-1.5 text-[10px] text-[#005670]/60 italic">editable ↓</td>
                   <td colSpan={6} className="pb-1.5">
@@ -1009,7 +1007,7 @@ const LogisticOrderTracker = () => {
                       ))}
                     </div>
                   </td>
-                  <td colSpan={9} />
+                  <td colSpan={8} />
                 </tr>
               </thead>
               <tbody>
@@ -1119,17 +1117,6 @@ const LogisticOrderTracker = () => {
                               onClick={e => e.stopPropagation()}
                               className={inputCls + ' min-w-[130px]'} />
                           : <span className="text-gray-600">{row.cargoReadyDate || '—'}</span>}
-                      </td>
-
-                      {/* ── Shipment Date ── */}
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        {isEditing
-                          ? <input type="date" value={editForm.shipmentDate ?? ''}
-                              onChange={e => setF('shipmentDate')(e.target.value)}
-                              onPaste={makeDatePasteHandler(setF('shipmentDate'))}
-                              onClick={e => e.stopPropagation()}
-                              className={inputCls + ' min-w-[130px]'} />
-                          : <span className="text-gray-600">{row.shipmentDate || '—'}</span>}
                       </td>
 
                       {/* ── Expected Ship Date ── */}

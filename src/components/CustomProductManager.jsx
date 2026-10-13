@@ -227,7 +227,7 @@ const defaultSelectedOptions = () => ({
   room: '', statusCategory: '', proposalNumber: '', shipTo: '', orderDate: '',
   revisedOrderDate: '', expectedShipDate: '', expectedArrivalDate: '', dateReceived: '', dateInspected: '',
   estimatedDeliveryDate: '', shippingCarrier: '', orderStatus: '', nextStep: '',
-  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '',
+  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '', installStatus: '', installDate: '',
   leadTime: '',   // ✅ PATCH 10
   productVendor: '',   // vendor name from product library
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
@@ -238,6 +238,42 @@ const defaultSelectedOptions = () => ({
   taxableCost: true, taxableMarkup: true, taxableShippingCost: true,
   taxableShippingMarkup: true, taxableOtherCost: true, taxableOtherMarkup: true,
 });
+
+// ─── Shared-with-Logistic fields: only fields the user actually edited may overwrite newer server values ──
+const SHARED_TRACKER_FIELDS = new Set([
+  'quantity',
+  'selectedOptions.expectedShipDate', 'selectedOptions.expectedArrivalDate',
+  'selectedOptions.statusCategory', 'selectedOptions.notes',
+  'selectedOptions.orderDate', 'selectedOptions.trackingInfo',
+]);
+const dirtyShared = new Map(); // productId -> Set(field)
+const markDirtyShared = (product, field) => {
+  const id = product?._id ? String(product._id) : '';
+  if (!id || id.startsWith('temp_')) return;
+  if (!dirtyShared.has(id)) dirtyShared.set(id, new Set());
+  dirtyShared.get(id).add(field);
+};
+const snapshotDirtyShared = () => {
+  const out = {};
+  dirtyShared.forEach((set, id) => { out[id] = [...set]; });
+  return out;
+};
+const clearDirtyShared = (snap) => {
+  Object.entries(snap).forEach(([id, fields]) => {
+    const set = dirtyShared.get(id);
+    if (!set) return;
+    fields.forEach(f => set.delete(f));
+    if (!set.size) dirtyShared.delete(id);
+  });
+};
+// PUT /api/orders/:id that tells the server which shared fields were really edited here
+const putOrderFetch = async (url, options) => {
+  const snap = snapshotDirtyShared();
+  const body = JSON.parse(options.body);
+  const res = await fetch(url, { ...options, body: JSON.stringify({ ...body, changedFields: snap }) });
+  if (res.ok) clearDirtyShared(snap);
+  return res;
+};
 
 // ─── ALLOWED FIELDS WHEN LOCKED ─────────────────────────────────────────────
 const ALLOWED_WHEN_LOCKED = new Set([
@@ -256,6 +292,7 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.warehouseReceivingNumber',
   'selectedOptions.poNumber', 'selectedOptions.vendorOrderNumber',
   'selectedOptions.trackingInfo', 'selectedOptions.deliveryStatus',
+  'selectedOptions.installStatus', 'selectedOptions.installDate',
   'selectedOptions.notes',
   'selectedOptions.leadTime',   // ✅ PATCH 10
   'selectedOptions.units', 'selectedOptions.msrp', 'selectedOptions.discountPercent',
@@ -715,7 +752,7 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
         placement:       p.placement   || null,
       }));
 
-      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+      const res = await putOrderFetch(`${backendServer}/api/orders/${order._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
@@ -934,7 +971,7 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
         placement: p.placement || null,
       }));
 
-      const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+      const res = await putOrderFetch(`${backendServer}/api/orders/${liveOrder._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
@@ -976,7 +1013,7 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
             isParent: p.isParent || false, parentId: p.parentId || null,
             selectedOptions: p.selectedOptions || {}, placement: p.placement || null,
           }));
-          const res = await fetch(`${backendServer}/api/orders/${liveOrder._id}`, {
+          const res = await putOrderFetch(`${backendServer}/api/orders/${liveOrder._id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
@@ -1001,6 +1038,12 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
         return applyFieldUpdate(prev, field, value);
       });
       return;
+    }
+    // Mark synchronously: a save can start in the same tick, before React runs the state updater below
+    const current = savedProducts[index];
+    if (current && SHARED_TRACKER_FIELDS.has(field)
+        && !(current.isEditable === false && !ALLOWED_WHEN_LOCKED.has(field))) {
+      markDirtyShared(current, field);
     }
     setSavedProducts(prev => {
       const updated = [...prev];
@@ -1084,7 +1127,7 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
           setSavedProducts(updatedProducts);
           if (expandedProduct === index) setExpandedProduct(null);
 
-          const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+          const res = await putOrderFetch(`${backendServer}/api/orders/${order._id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
@@ -1296,7 +1339,7 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
     try {
       const token = localStorage.getItem('token');
       const payload = reordered.map(({ _uid, ...p }) => p);
-      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+      const res = await putOrderFetch(`${backendServer}/api/orders/${order._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ selectedProducts: payload }),
@@ -2565,6 +2608,8 @@ const GroupProductCard = ({
     return sum + (parseFloat(c.finalPrice) || parseFloat(c.unitPrice) || 0);
   }, 0);
   const childTotal = childSellTotal; // alias kept for save logic
+  // An unsaved (draft) group must never ride along when a child is saved, or it is persisted as a blank parent
+  const persistedProducts = allProducts.filter(p => !String(p._id || '').startsWith('temp_'));
   const childPurchaseTotal = children.reduce((sum, c) => {
     const opts = c.selectedOptions || {};
     const qty = parseFloat(c.quantity) || 1;
@@ -2612,7 +2657,7 @@ const GroupProductCard = ({
         placement: p.placement || null,
       }));
 
-      const res = await fetch(`${backendServer}/api/orders/${order._id}`, {
+      const res = await putOrderFetch(`${backendServer}/api/orders/${order._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ selectedProducts: payload, status: 'ongoing', step: 2 }),
@@ -2742,15 +2787,15 @@ const GroupProductCard = ({
               <div className="space-y-2">
                 {children.map((child, ci) => {
                   const childIndex = (child._id && !String(child._id).startsWith('temp_'))
-                    ? allProducts.findIndex(p => String(p._id) === String(child._id))
-                    : allProducts.findIndex(p => p.product_id === child.product_id);
+                    ? persistedProducts.findIndex(p => String(p._id) === String(child._id))
+                    : persistedProducts.findIndex(p => p.product_id === child.product_id);
                   return (
                     <ProductCard
                       key={child._id || ci}
                       product={child}
                       index={childIndex}
                       order={order}
-                      allProducts={allProducts}
+                      allProducts={persistedProducts}
                       expanded={expandedChild === ci}
                       onToggleExpand={() => setExpandedChild(expandedChild === ci ? null : ci)}
                       onUpdate={onUpdateChild || onUpdateParent}
@@ -3165,6 +3210,8 @@ const ProductCard = ({
       trackingInfo:          src.selectedOptions?.trackingInfo          || '',
       deliveryStatus:        src.selectedOptions?.deliveryStatus        || '',
       installerNotes:        src.selectedOptions?.installerNotes        || '',
+      installStatus:         src.selectedOptions?.installStatus         || '',
+      installDate:           src.selectedOptions?.installDate           || '',
       leadTime:              src.selectedOptions?.leadTime              || '',
       woodFinishVendor:      src.selectedOptions?.woodFinishVendor      || '',
       woodFinishClient:      src.selectedOptions?.woodFinishClient      || '',
@@ -3304,7 +3351,7 @@ const ProductCard = ({
         );
       }
 
-      const saveResponse = await fetch(`${backendServer}/api/orders/${order._id}`, {
+      const saveResponse = await putOrderFetch(`${backendServer}/api/orders/${order._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ selectedProducts: updatedProducts, status: 'ongoing', step: 2 })
@@ -4100,6 +4147,31 @@ const ProductCard = ({
                       className={`${inputCls} resize-none`}
                       rows={3}
                       placeholder="e.g. Place against east wall, requires 2 people to lift..."
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Status</label>
+                    <select
+                      value={product.selectedOptions?.installStatus || ''}
+                      onChange={(e) => upd('installStatus', e.target.value)}
+                      className={`${inputCls} bg-white`}
+                    >
+                      <option value="">— Not set —</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="Installed">Installed</option>
+                      <option value="Issue">Issue</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Date</label>
+                    <input
+                      type="date"
+                      value={product.selectedOptions?.installDate || ''}
+                      onChange={(e) => upd('installDate', e.target.value)}
+                      className={inputCls}
                     />
                   </div>
                 </div>

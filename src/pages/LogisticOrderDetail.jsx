@@ -129,7 +129,6 @@ const LogisticOrderDetail = ({ entry: initialEntry, statusCategories, onBack, on
           projectCode:         form.projectCode,
 
           cargoReadyDate:      form.cargoReadyDate,
-          shipmentDate:        form.shipmentDate,
           logDrawing:          form.logDrawing,
           logMachining:        form.logMachining,
           logAssembly:         form.logAssembly,
@@ -264,7 +263,6 @@ const LogisticOrderDetail = ({ entry: initialEntry, statusCategories, onBack, on
       <Section title="Shipment & Status">
         {canEdit ? <EditField label="Order Date"            value={form.orderDate}           onChange={set('orderDate')}           type="date" /> : <ReadField label="Order Date"            value={form.orderDate} />}
         {canEdit ? <EditField label="Cargo Ready Date"      value={form.cargoReadyDate}      onChange={set('cargoReadyDate')}      type="date" /> : <ReadField label="Cargo Ready Date"      value={form.cargoReadyDate} />}
-        {canEdit ? <EditField label="Shipment Date"         value={form.shipmentDate}        onChange={set('shipmentDate')}        type="date" /> : <ReadField label="Shipment Date"         value={form.shipmentDate} />}
         {canEdit ? <EditField label="Expected Ship Date"    value={form.expectedShipDate}    onChange={set('expectedShipDate')}    type="date" /> : <ReadField label="Expected Ship Date"    value={form.expectedShipDate} />}
         {canEdit ? <EditField label="Expected Arrival Date" value={form.expectedArrivalDate} onChange={set('expectedArrivalDate')} type="date" /> : <ReadField label="Expected Arrival Date" value={form.expectedArrivalDate} />}
         {canEdit
