@@ -99,6 +99,33 @@ const makeDatePasteHandler = (setter) => (e) => {
   if (parsed) setter(parsed);
 };
 
+// ─── Which item an audit entry is about: item name, SKU, PO, vendor, client / unit / room ─────────
+const AuditItemInfo = ({ log }) => {
+  const c = log.context || {};
+  const chip = (label, value) => (value ? (
+    <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">
+      {label && <span className="text-gray-400">{label}</span>}{value}
+    </span>
+  ) : null);
+  return (
+    <div className="mt-0.5 space-y-1">
+      {log.productName && <div className="text-sm text-gray-700 font-medium truncate" title={log.productName}>{log.productName}</div>}
+      <div className="flex flex-wrap gap-1">
+        {chip('SKU', c.sku)}
+        {chip('PO', c.poNumber)}
+        {chip('', c.vendor)}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {chip('', c.client)}
+        {chip('Unit', c.unit)}
+        {chip('', c.room)}
+        {chip('Order #', c.orderNumber)}
+        {chip('Project', c.projectCode)}
+      </div>
+    </div>
+  );
+};
+
 // ─── Global Audit Panel (all products / all orders) ──────────────────────────
 const GlobalAuditPanel = ({ token, onClose, onRollbackDone }) => {
   const [logs, setLogs]         = useState([]);
@@ -207,7 +234,7 @@ const GlobalAuditPanel = ({ token, onClose, onRollbackDone }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="text" placeholder="Search product, user, field…" value={qInput} onChange={e => setQInput(e.target.value)}
+            <input type="text" placeholder="Search item, PO, vendor, SKU, unit, client, user…" value={qInput} onChange={e => setQInput(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005670]/30" />
           </div>
           <input type="text" placeholder="Filter by user" value={user} onChange={e => setUser(e.target.value)}
@@ -285,9 +312,7 @@ const GlobalAuditPanel = ({ token, onClose, onRollbackDone }) => {
                         <span className="text-xs text-gray-400">{when}</span>
                         {isRollback && <span className="text-xs px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded font-medium">rollback</span>}
                       </div>
-                      {log.productName && (
-                        <div className="text-xs text-gray-500 mt-0.5 truncate">{log.productName}</div>
-                      )}
+                      <AuditItemInfo log={log} />
                     </div>
 
                     {/* Right: changes */}
@@ -424,6 +449,9 @@ const AuditDrawer = ({ row, token, onClose, onRollbackDone }) => {
               {logs.length > 0 && <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{logs.length}</span>}
             </div>
             <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[240px]" title={row.itemName}>{row.itemName || '—'} · {row.poNumber || '—'}</p>
+            <p className="text-[11px] text-gray-400 truncate max-w-[240px]" title={[row.vendor, row.skuNo, row.clientName, row.unitNumber, row.location].filter(Boolean).join(' · ')}>
+              {[row.vendor, row.skuNo && `SKU ${row.skuNo}`, row.clientName, row.unitNumber && `Unit ${row.unitNumber}`, row.location].filter(Boolean).join(' · ')}
+            </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors">
             <X className="w-4 h-4 text-gray-500" />
