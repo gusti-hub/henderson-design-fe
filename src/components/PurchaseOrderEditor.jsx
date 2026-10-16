@@ -331,6 +331,7 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
     const shipping   = parseFloat(headerFields.shipping) || 0;
     const others     = parseFloat(headerFields.others) || 0;
     return {
+      itemsSubTotal: subTotal,
       subTotal: subTotal + addTotal,
       shipping,
       others,
@@ -828,6 +829,19 @@ const PurchaseOrderEditor = ({ orderId, vendorId, version, onClose }) => {
                   </tr>
                 );
               })}
+
+              {/* ── Sub total of the items only (before extra costs from Expense Manager) ── */}
+              {additionalLines.length > 0 && (
+                <tr className="po-items-subtotal">
+                  <td colSpan={2} style={{ borderTop: '2px solid #333', borderBottom: '1px solid #333', padding: 0 }}></td>
+                  <td className="price-cell po-field-label" style={{ borderTop: '2px solid #333', borderBottom: '1px solid #333', fontWeight: '700', padding: '6px 8px' }}>
+                    Sub Total (Items):
+                  </td>
+                  <td className="price-cell" style={{ borderTop: '2px solid #333', borderBottom: '1px solid #333', fontWeight: '700', padding: '6px 8px' }}>
+                    ${totals.itemsSubTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              )}
 
               {/* ── Additional Lines ── */}
               {additionalLines.map((al, idx) => (
