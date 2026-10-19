@@ -249,6 +249,7 @@ const AuditLogDrawer = ({ isOpen, onClose, orderId, focusProduct, onRollbackDone
   const [pagination,    setPagination]    = useState({ page: 1, totalPages: 1, total: 0 });
   const [filterAction,  setFilterAction]  = useState('');
   const [searchQuery,   setSearchQuery]   = useState('');
+  const [debouncedQ,    setDebouncedQ]    = useState('');   // what is actually sent to the server
   const [rollbackEntry, setRollbackEntry] = useState(null);
   const [rolling,       setRolling]       = useState(false);
   const [successMsg,    setSuccessMsg]    = useState('');
@@ -277,6 +278,7 @@ const AuditLogDrawer = ({ isOpen, onClose, orderId, focusProduct, onRollbackDone
       } else {
         const params = new URLSearchParams({ page, limit: 40 });
         if (filterAction) params.set('action', filterAction);
+        if (debouncedQ)   params.set('q', debouncedQ);
         url = `${backendServer}/api/orders/${orderId}/audit-log?${params}`;
       }
 
@@ -297,7 +299,7 @@ const AuditLogDrawer = ({ isOpen, onClose, orderId, focusProduct, onRollbackDone
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [orderId, token, filterAction, activeFocus]);
+  }, [orderId, token, filterAction, activeFocus, debouncedQ]);
 
   const fetchStats = useCallback(async () => {
     if (!orderId) return;
@@ -320,8 +322,14 @@ const AuditLogDrawer = ({ isOpen, onClose, orderId, focusProduct, onRollbackDone
     prevOpenRef.current = isOpen;
   }, [isOpen, fetchLogs, fetchStats, activeFocus, filterAction]);
 
-  // ── Search filter (client-side) ────────────────────────────────────────────
-  const filtered = searchQuery.trim()
+  // Search the whole order history on the server (debounced); the single-product view is searched locally
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // ── Search filter: local only for the single-product view (full history is searched by the server) ──
+  const filtered = (activeFocus && searchQuery.trim())
     ? logs.filter(l => {
         const q = searchQuery.toLowerCase();
         return (
