@@ -817,7 +817,8 @@ const LogisticOrderTracker = () => {
 
   // ─── Sort header helper ───────────────────────────────────────────────────
   // Frozen (sticky-left) columns: PO# → SKU. Fixed widths so each column's left offset is exact.
-  const FROZEN_W = [120, 90, 70, 200, 120];
+  // SKU column fits a typical 28-char SKU (mono text-[11px] ≈ 6.6px/char); rarer longer SKUs wrap to a second line
+  const FROZEN_W = [120, 90, 70, 200, 212];
   const FROZEN_LEFT = FROZEN_W.map((_, i) => FROZEN_W.slice(0, i).reduce((a, b) => a + b, 0));
   const frozenStyle = (i) => ({ left: FROZEN_LEFT[i], width: FROZEN_W[i], minWidth: FROZEN_W[i], maxWidth: FROZEN_W[i] });
 
@@ -1077,7 +1078,7 @@ const LogisticOrderTracker = () => {
                         <div className="font-medium text-gray-800 truncate" title={row.itemName || ''}>{row.itemName || '—'}</div>
                       </td>
                       <td style={frozenStyle(4)} className={`px-2 py-2 sticky z-10 border-r border-gray-200 ${frzBg}`}>
-                        <div className="text-gray-500 font-mono text-xs truncate" title={row.skuNo || ''}>{row.skuNo || '—'}</div>
+                        <div className="text-gray-500 font-mono text-[11px] leading-tight break-all">{row.skuNo || '—'}</div>
                       </td>
                       <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{row.vendor || '—'}</td>
                       <td className="px-2 py-2 text-center font-medium text-gray-700">
