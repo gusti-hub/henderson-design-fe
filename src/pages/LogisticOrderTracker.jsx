@@ -994,7 +994,7 @@ const LogisticOrderTracker = () => {
               <thead className="sticky top-0 z-20 bg-gray-50 shadow-[0_1px_0_0_#e5e7eb]">
                 <tr className="border-b border-gray-200 bg-gray-50">
                   {/* Read-only sortable columns */}
-                  <th onClick={() => handleSort('poNumber')}     className={thCls(sortCol==='poNumber')     + ' text-gray-600'}>PO# <SortIcon col="poNumber" /></th>
+                  <th onClick={() => handleSort('poNumber')}     className={thCls(sortCol==='poNumber')     + ' text-gray-600 sticky left-0 z-30 bg-gray-50 border-r border-gray-200'}>PO# <SortIcon col="poNumber" /></th>
                   <th onClick={() => handleSort('poStatus')}     className={thCls(sortCol==='poStatus')     + ' text-gray-600'}>PO Status <SortIcon col="poStatus" /></th>
                   <th onClick={() => handleSort('unitNumber')}   className={thCls(sortCol==='unitNumber')   + ' text-gray-600'}>Unit # <SortIcon col="unitNumber" /></th>
                   <th onClick={() => handleSort('itemName')}     className={thCls(sortCol==='itemName')     + ' text-gray-600'}>Item Name <SortIcon col="itemName" /></th>
@@ -1053,7 +1053,7 @@ const LogisticOrderTracker = () => {
                         if (window.getSelection()?.type === 'Range') return;
                         openEdit(row, key);
                       } : undefined}
-                      className={`border-b transition-colors ${
+                      className={`group border-b transition-colors ${
                         isEditing
                           ? 'bg-[#005670]/5 border-[#005670]/20'
                           : readOnly
@@ -1062,7 +1062,9 @@ const LogisticOrderTracker = () => {
                       }`}
                     >
                       {/* ── Read-only cells ── */}
-                      <td className="px-2 py-2 font-mono text-gray-700 whitespace-nowrap">{row.poNumber || '—'}</td>
+                      <td className={`px-2 py-2 font-mono text-gray-700 whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${
+                        isEditing ? 'bg-[#f2f7f9]' : readOnly ? 'bg-gray-50' : 'bg-white group-hover:bg-gray-50'
+                      }`}>{row.poNumber || '—'}</td>
                       <td className="px-2 py-2 whitespace-nowrap">
                         {row.poStatus ? <PoStatusBadge status={row.poStatus} /> : <span className="text-gray-300">—</span>}
                       </td>

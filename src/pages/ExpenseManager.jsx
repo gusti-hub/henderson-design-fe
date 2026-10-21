@@ -728,6 +728,20 @@ const QBCell = ({ qbId, onSend, onResync, onRetry, failedMsg, notReadyMsg, synci
   );
 };
 
+// ─── Search box (table headers) ───────────────────────────────────────────────
+const TableSearch = ({ value, onChange, placeholder }) => (
+  <div className="relative">
+    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-56 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#005670] focus:border-[#005670]"
+    />
+  </div>
+);
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 const Pagination = ({ current, total, onChange }) => {
   if (total <= 1) return null;
@@ -761,6 +775,9 @@ const ExpenseManager = () => {
   const [expensePage, setExpensePage]           = useState(1);
   const [proposalPage, setProposalPage]         = useState(1);
   const [poPage, setPoPage]                     = useState(1);
+  const [poSearch, setPoSearch]                 = useState('');
+  const [expSearch, setExpSearch]               = useState('');
+  const [pvSearch, setPvSearch]                 = useState('');
   const [proposalVersions, setProposalVersions] = useState([]);
   // confirmModal: { title, message, warning?, confirmLabel, confirmCls?, onConfirm }
   const [confirmModal, setConfirmModal]         = useState(null);
@@ -1132,8 +1149,10 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
     };
  
     // ── Paged data ─────────────────────────────────────────────────────────
-    const totalExpPages = Math.ceil(expenses.length / ROWS_PER_PAGE);
-    const pagedExp      = expenses.slice((expensePage - 1) * ROWS_PER_PAGE, expensePage * ROWS_PER_PAGE);
+    const expQuery      = expSearch.trim().toLowerCase();
+    const filteredExp   = expQuery ? expenses.filter(e => (e.expenseNumber || '').toLowerCase().includes(expQuery)) : expenses;
+    const totalExpPages = Math.ceil(filteredExp.length / ROWS_PER_PAGE);
+    const pagedExp      = filteredExp.slice((expensePage - 1) * ROWS_PER_PAGE, expensePage * ROWS_PER_PAGE);
  
     const PS_CFG = {
       draft:    { cls: 'bg-gray-100 text-gray-500 border-gray-200',          label: 'Draft'          },
@@ -1142,8 +1161,15 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
       paid:     { cls: 'bg-purple-100 text-purple-700 border-purple-200',    label: 'Paid'           },
       rejected: { cls: 'bg-red-100 text-red-600 border-red-200',             label: 'Rejected'       },
     };
-    const totalPvPages = Math.ceil(proposalVersions.length / ROWS_PER_PAGE);
-    const pagedPv      = proposalVersions.slice((proposalPage - 1) * ROWS_PER_PAGE, proposalPage * ROWS_PER_PAGE);
+    const pvQuery      = pvSearch.trim().toLowerCase();
+    const filteredPv   = pvQuery
+      ? proposalVersions.filter(pv => {
+          const num = pv.proposalNumber || selectedOrder.proposalNumber || '';
+          return `${num} ${toInvoiceNumber(num)}`.toLowerCase().includes(pvQuery);
+        })
+      : proposalVersions;
+    const totalPvPages = Math.ceil(filteredPv.length / ROWS_PER_PAGE);
+    const pagedPv      = filteredPv.slice((proposalPage - 1) * ROWS_PER_PAGE, proposalPage * ROWS_PER_PAGE);
  
     const confirmedIds = new Set((poSummary?.details || []).map(d => d.poVersionId?.toString()));
     const allPORows    = allPOVersions.map(v => ({
@@ -1153,8 +1179,12 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
         ? (poSummary.details.find(d => d.poVersionId?.toString() === v.poVersionId?.toString())?.quickbooksId ?? v.quickbooksId)
         : v.quickbooksId,
     }));
-    const totalPoPages = Math.ceil(allPORows.length / ROWS_PER_PAGE);
-    const pagedPO      = allPORows.slice((poPage - 1) * ROWS_PER_PAGE, poPage * ROWS_PER_PAGE);
+    const poQuery      = poSearch.trim().toLowerCase();
+    const filteredPORows = poQuery
+      ? allPORows.filter(po => `${po.vendorName || ''} ${po.poNumber || ''}`.toLowerCase().includes(poQuery))
+      : allPORows;
+    const totalPoPages = Math.ceil(filteredPORows.length / ROWS_PER_PAGE);
+    const pagedPO      = filteredPORows.slice((poPage - 1) * ROWS_PER_PAGE, poPage * ROWS_PER_PAGE);
  
     return (
       <div className="space-y-6 max-w-[1400px] mx-auto">
@@ -1206,10 +1236,13 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                 );
               })()}
             </div>
-            <button onClick={() => { setEditingExpense(emptyExpense(selectedOrder._id, selectedOrder)); setView('editor'); }}
-              className="flex items-center gap-2 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold hover:bg-[#004558] shadow-sm">
-              <Plus className="w-4 h-4" /> New Expense
-            </button>
+            <div className="flex items-center gap-3">
+              <TableSearch value={expSearch} onChange={(v) => { setExpSearch(v); setExpensePage(1); }} placeholder="Search expense #..." />
+              <button onClick={() => { setEditingExpense(emptyExpense(selectedOrder._id, selectedOrder)); setView('editor'); }}
+                className="flex items-center gap-2 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold hover:bg-[#004558] shadow-sm">
+                <Plus className="w-4 h-4" /> New Expense
+              </button>
+            </div>
           </div>
           {expenses.length === 0 ? (
             <div className="px-5 py-8 text-center"><FileText className="w-10 h-10 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">No expenses yet — click New Expense to start</p></div>
@@ -1228,6 +1261,9 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
+                  {filteredExp.length === 0 && (
+                    <tr><td colSpan={7} className="px-5 py-6 text-center text-xs text-gray-400">No expenses match "{expSearch}"</td></tr>
+                  )}
                   {pagedExp.map(exp => {
                     const id       = exp.id || exp._id;
                     const locked   = exp.status === 'confirmed' || exp.status === 'paid';
@@ -1278,6 +1314,8 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
               <h3 className="text-base font-semibold text-gray-800">📄 Proposals</h3>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">{proposalVersions.length} proposal{proposalVersions.length !== 1 ? 's' : ''}</span>
             </div>
+            <div className="flex items-center gap-3">
+            {proposalVersions.length > 0 && <TableSearch value={pvSearch} onChange={(v) => { setPvSearch(v); setProposalPage(1); }} placeholder="Search proposal #..." />}
             {proposalVersions.length === 0 ? (
               <button
                 onClick={() => createProposalDraft(selectedOrder._id)}
@@ -1285,12 +1323,8 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#005670] rounded-lg hover:bg-[#004a60] disabled:opacity-50 transition-colors">
                 <FileText className="w-3.5 h-3.5" />{saving ? 'Creating…' : 'Create Proposal'}
               </button>
-            ) : (
-              <button onClick={() => window.open(`/admin/proposal/${proposalVersions[0]?._orderId || selectedOrder._id}`, '_blank')}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#005670] border border-[#005670]/30 rounded-lg hover:bg-[#005670]/5 transition-colors">
-                <FileText className="w-3.5 h-3.5" />Open Proposal Editor
-              </button>
-            )}
+            ) : null}
+            </div>
           </div>
           {proposalVersions.length === 0 ? (
             <div className="px-5 py-8 text-center"><FileText className="w-10 h-10 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">No proposals yet</p><p className="text-xs text-gray-300 mt-1">Click "Create Proposal" to auto-generate from order products</p></div>
@@ -1310,6 +1344,9 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
+                  {filteredPv.length === 0 && (
+                    <tr><td colSpan={8} className="px-5 py-6 text-center text-xs text-gray-400">No proposals match "{pvSearch}"</td></tr>
+                  )}
                   {pagedPv.map((pv) => {
                     const pvId       = pv._id?.toString();
                     const isApproved = pv.status === 'approved' || pv.status === 'paid';
@@ -1371,8 +1408,16 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                 return <div className="flex items-center gap-1.5">{confirmed > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">{confirmed} Confirmed</span>}{pending > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">{pending} Pending</span>}</div>;
               })()}
             </div>
-            {/* ✅ FIX: Header button removed — each vendor row has its own View button below */}
-            <span className="text-xs text-gray-400 italic">Open per-vendor ↓</span>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={poSearch}
+                onChange={(e) => { setPoSearch(e.target.value); setPoPage(1); }}
+                placeholder="Search vendor or PO #..."
+                className="w-56 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#005670] focus:border-[#005670]"
+              />
+            </div>
           </div>
           {allPORows.length === 0 ? (
             <div className="px-5 py-8 text-center"><FileText className="w-10 h-10 text-gray-200 mx-auto mb-2" /><p className="text-sm text-gray-400">No purchase orders yet</p><p className="text-xs text-gray-300 mt-1">Open PO Manager to create purchase orders per vendor</p></div>
@@ -1391,6 +1436,9 @@ if ((view === 'list' || view === 'project') && selectedOrder) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
+                  {filteredPORows.length === 0 && (
+                    <tr><td colSpan={7} className="px-5 py-6 text-center text-xs text-gray-400">No purchase orders match "{poSearch}"</td></tr>
+                  )}
                   {pagedPO.map((po, i) => {
                     if (po._type === 'confirmed') {
                       const poId      = po.poVersionId?.toString();
