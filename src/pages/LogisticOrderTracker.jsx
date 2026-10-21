@@ -816,6 +816,11 @@ const LogisticOrderTracker = () => {
   autoSaveRef.current = handleSave;
 
   // ─── Sort header helper ───────────────────────────────────────────────────
+  // Frozen (sticky-left) columns: PO# → SKU. Fixed widths so each column's left offset is exact.
+  const FROZEN_W = [120, 90, 70, 200, 120];
+  const FROZEN_LEFT = FROZEN_W.map((_, i) => FROZEN_W.slice(0, i).reduce((a, b) => a + b, 0));
+  const frozenStyle = (i) => ({ left: FROZEN_LEFT[i], width: FROZEN_W[i], minWidth: FROZEN_W[i], maxWidth: FROZEN_W[i] });
+
   const thCls = (active) =>
     `px-2 py-2.5 text-left font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none transition-colors ${
       active ? 'bg-gray-100' : 'hover:bg-gray-100'
@@ -994,11 +999,11 @@ const LogisticOrderTracker = () => {
               <thead className="sticky top-0 z-20 bg-gray-50 shadow-[0_1px_0_0_#e5e7eb]">
                 <tr className="border-b border-gray-200 bg-gray-50">
                   {/* Read-only sortable columns */}
-                  <th onClick={() => handleSort('poNumber')}     className={thCls(sortCol==='poNumber')     + ' text-gray-600 sticky left-0 z-30 bg-gray-50 border-r border-gray-200'}>PO# <SortIcon col="poNumber" /></th>
-                  <th onClick={() => handleSort('poStatus')}     className={thCls(sortCol==='poStatus')     + ' text-gray-600'}>PO Status <SortIcon col="poStatus" /></th>
-                  <th onClick={() => handleSort('unitNumber')}   className={thCls(sortCol==='unitNumber')   + ' text-gray-600'}>Unit # <SortIcon col="unitNumber" /></th>
-                  <th onClick={() => handleSort('itemName')}     className={thCls(sortCol==='itemName')     + ' text-gray-600'}>Item Name <SortIcon col="itemName" /></th>
-                  <th onClick={() => handleSort('skuNo')}        className={thCls(sortCol==='skuNo')        + ' text-gray-600'}>SKU <SortIcon col="skuNo" /></th>
+                  <th onClick={() => handleSort('poNumber')}     style={frozenStyle(0)} className={thCls(sortCol==='poNumber')     + ' text-gray-600 sticky z-30 bg-gray-50'}>PO# <SortIcon col="poNumber" /></th>
+                  <th onClick={() => handleSort('poStatus')} style={frozenStyle(1)} className={thCls(sortCol==='poStatus') + ' text-gray-600 sticky z-30 bg-gray-50'}>PO Status <SortIcon col="poStatus" /></th>
+                  <th onClick={() => handleSort('unitNumber')} style={frozenStyle(2)} className={thCls(sortCol==='unitNumber') + ' text-gray-600 sticky z-30 bg-gray-50'}>Unit # <SortIcon col="unitNumber" /></th>
+                  <th onClick={() => handleSort('itemName')} style={frozenStyle(3)} className={thCls(sortCol==='itemName') + ' text-gray-600 sticky z-30 bg-gray-50'}>Item Name <SortIcon col="itemName" /></th>
+                  <th onClick={() => handleSort('skuNo')} style={frozenStyle(4)} className={thCls(sortCol==='skuNo') + ' text-gray-600 sticky z-30 bg-gray-50 border-r border-gray-200'}>SKU <SortIcon col="skuNo" /></th>
                   <th onClick={() => handleSort('vendor')}       className={thCls(sortCol==='vendor')       + ' text-gray-600'}>Vendor <SortIcon col="vendor" /></th>
                   <th onClick={() => handleSort('poQuantity')}   className={thCls(sortCol==='poQuantity')   + ' text-gray-600'}>PO Qty <SortIcon col="poQuantity" /></th>
                   <th onClick={() => handleSort('shippedQuantity')} className={thCls(sortCol==='shippedQuantity') + ' text-gray-600'}>Shipped <SortIcon col="shippedQuantity" /></th>
@@ -1043,6 +1048,7 @@ const LogisticOrderTracker = () => {
                   const key       = getKey(row, idx);
                   const isEditing = editingKey === key;
                   const readOnly  = !!row._readOnly;
+                  const frzBg     = isEditing ? 'bg-[#f2f7f9]' : readOnly ? 'bg-gray-50' : 'bg-white group-hover:bg-gray-50';
 
                   return (
                     <tr
@@ -1062,18 +1068,16 @@ const LogisticOrderTracker = () => {
                       }`}
                     >
                       {/* ── Read-only cells ── */}
-                      <td className={`px-2 py-2 font-mono text-gray-700 whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${
-                        isEditing ? 'bg-[#f2f7f9]' : readOnly ? 'bg-gray-50' : 'bg-white group-hover:bg-gray-50'
-                      }`}>{row.poNumber || '—'}</td>
-                      <td className="px-2 py-2 whitespace-nowrap">
+                      <td style={frozenStyle(0)} className={`px-2 py-2 font-mono text-gray-700 whitespace-nowrap overflow-hidden sticky z-10 ${frzBg}`}>{row.poNumber || '—'}</td>
+                      <td style={frozenStyle(1)} className={`px-2 py-2 whitespace-nowrap overflow-hidden sticky z-10 ${frzBg}`}>
                         {row.poStatus ? <PoStatusBadge status={row.poStatus} /> : <span className="text-gray-300">—</span>}
                       </td>
-                      <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{row.unitNumber || '—'}</td>
-                      <td className="px-2 py-2 max-w-[220px]">
+                      <td style={frozenStyle(2)} className={`px-2 py-2 text-gray-600 whitespace-nowrap overflow-hidden sticky z-10 ${frzBg}`}>{row.unitNumber || '—'}</td>
+                      <td style={frozenStyle(3)} className={`px-2 py-2 sticky z-10 ${frzBg}`}>
                         <div className="font-medium text-gray-800 truncate" title={row.itemName || ''}>{row.itemName || '—'}</div>
                       </td>
-                      <td className="px-2 py-2 max-w-[100px]">
-                        <div className="text-gray-500 font-mono text-xs truncate">{row.skuNo || '—'}</div>
+                      <td style={frozenStyle(4)} className={`px-2 py-2 sticky z-10 border-r border-gray-200 ${frzBg}`}>
+                        <div className="text-gray-500 font-mono text-xs truncate" title={row.skuNo || ''}>{row.skuNo || '—'}</div>
                       </td>
                       <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{row.vendor || '—'}</td>
                       <td className="px-2 py-2 text-center font-medium text-gray-700">
