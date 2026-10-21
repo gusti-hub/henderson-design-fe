@@ -11,7 +11,7 @@ import React, { useEffect, useRef } from 'react';
 import { Info, Tag } from 'lucide-react';
 
 const UNIT_OPTIONS = [
-  'Each', 'Set', 'Pair', 'Box', 'Case', 'Roll',
+  'Each', 'Set', 'Pair', 'Box', 'Case', 'Roll', 'Panel',
   'Yard', 'Foot', 'Meter', 'Square Foot', 'Linear Foot',
 ];
 
