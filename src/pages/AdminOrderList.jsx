@@ -106,9 +106,20 @@ const StatusChanger = ({ order, onStatusChange }) => {
   );
 };
 
-const PackageBadge = ({ packageType }) => {
-  const cfg = { investor:{label:'Nalu',cls:'bg-blue-100 text-blue-700'}, custom:{label:'Lani',cls:'bg-purple-100 text-purple-700'}, library:{label:'Library',cls:'bg-teal-100 text-teal-700'} }[packageType] || {label:'Nalu',cls:'bg-blue-100 text-blue-700'};
-  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>{cfg.label}</span>;
+// Package label comes from the client's collection (Nalu / Lani / Custom) — packageType alone is 'custom' for almost every client
+const PackageBadge = ({ packageType, collection }) => {
+  const col = String(collection || '');
+  const NALU   = { label: 'Nalu',    cls: 'bg-blue-100 text-blue-700' };
+  const LANI   = { label: 'Lani',    cls: 'bg-purple-100 text-purple-700' };
+  const CUSTOM = { label: 'Custom',  cls: 'bg-amber-100 text-amber-700' };
+  const LIB    = { label: 'Library', cls: 'bg-teal-100 text-teal-700' };
+  let cfg;
+  if (packageType === 'library') cfg = LIB;
+  else if (/lani/i.test(col)) cfg = LANI;
+  else if (/nalu/i.test(col)) cfg = NALU;
+  else if (/custom/i.test(col)) cfg = CUSTOM;
+  else cfg = { investor: NALU, custom: LANI }[packageType] || NALU;   // no collection on the client: previous behaviour
+  return <span title={col || undefined} className={`px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>{cfg.label}</span>;
 };
 
 // ─── Portal dropdown ──────────────────────────────────────────────────────────
@@ -1964,7 +1975,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5"><PackageBadge packageType={order.packageType} /></td>
+                      <td className="px-4 py-3.5"><PackageBadge packageType={order.packageType} collection={order.user?.collection} /></td>
                       <td className="px-4 py-3.5 text-sm text-gray-500">{order.selectedPlan?.title || '—'}</td>
                       <td className="px-4 py-3.5">
                         {order && <StatusChanger order={order} onStatusChange={handleStatusChange} />}
