@@ -22,6 +22,7 @@ import ImageLibrary from './ImageLibrary';
 import { useAuth } from '../hooks/useAuth';
 import { hasPermission } from '../utils/auth';
 import { ACTIONS } from '../utils/actions';
+import { backendServer } from '../utils/info';
 
 const AdminPanel = () => {
   const { user, logout } = useAuth();
@@ -32,6 +33,20 @@ const AdminPanel = () => {
   useEffect(() => {
     if (location.state?.tab) setActiveMenu(location.state.tab);
   }, [location.state?.tab]);
+
+  // Heartbeat for the Team attendance report: tells the server this user is working (every 2 min, only while the tab is visible)
+  useEffect(() => {
+    const ping = () => {
+      if (document.hidden) return;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      fetch(`${backendServer}/api/activity/heartbeat`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    };
+    ping();
+    const timer = setInterval(ping, 120000);
+    document.addEventListener('visibilitychange', ping);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', ping); };
+  }, []);
 
   const adminName = user?.name || 'Admin';
   const userRole  = localStorage.getItem('role');
@@ -76,7 +91,7 @@ const AdminPanel = () => {
       return <AdminOrderDetail orderId={orderId} setActiveMenu={setActiveMenu} />;
     }
     switch (activeMenu) {
-      case '/dashboard':         return <Dashboard />;
+      case '/dashboard':         return <Dashboard onNavigate={setActiveMenu} allowedPaths={menuItems.map(i => i.path)} canViewAttendance={can(ACTIONS.VIEW_USERS)} />;
       case '/user-management':   return <UserManagement />;
       case '/client-management': return <ClientManagement />;
       case '/orders':            return <AdminOrderList onOrderClick={(id) => setActiveMenu(`/orders/${id}`)} />;
@@ -89,7 +104,7 @@ const AdminPanel = () => {
       case '/logistic-tracker':  return <LogisticOrderTracker />;
       case '/role-management':   return <RoleManagement />;
       case '/image-library':     return <ImageLibrary />;
-      default:                   return <Dashboard />;
+      default:                   return <Dashboard onNavigate={setActiveMenu} allowedPaths={menuItems.map(i => i.path)} canViewAttendance={can(ACTIONS.VIEW_USERS)} />;
     }
   };
 

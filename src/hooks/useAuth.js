@@ -1,6 +1,7 @@
 // src/hooks/useAuth.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { isTokenValid, getAuthUser, getTokenExpiresIn, clearAuth } from '../utils/auth';
+import { backendServer } from '../utils/info';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -9,6 +10,15 @@ export const useAuth = () => {
 
   const logout = useCallback((redirectTo = '/portal-login') => {
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    // Tell the server the user checked out (fire-and-forget; keepalive lets it finish while the page redirects)
+    try {
+      if (isTokenValid()) {
+        fetch(`${backendServer}/api/activity/logout`, {
+          method: 'POST', keepalive: true,
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }).catch(() => {});
+      }
+    } catch { /* never block logout */ }
     clearAuth();
     setUser(null);
     window.location.href = redirectTo;
