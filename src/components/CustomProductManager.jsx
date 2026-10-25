@@ -1381,9 +1381,13 @@ const CustomProductManager = ({ order, onSave, onBack, allowLibraryEdit = false 
             </button>
             <h2 className="text-2xl font-bold text-gray-900">🎨 Custom Product Manager</h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <p className="text-sm text-gray-600">
-                {order?.clientInfo?.name} • Unit {order?.clientInfo?.unitNumber}
-              </p>
+              <p className="text-base font-semibold text-gray-800">{order?.clientInfo?.name}</p>
+              {order?.clientInfo?.unitNumber && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#005670] text-white rounded-lg text-sm font-bold tracking-wide">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70">Unit</span>
+                  {order.clientInfo.unitNumber}
+                </span>
+              )}
               {/* {liveOrder?.proposalNumber && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#005670]/10 text-[#005670] rounded-lg text-xs font-semibold font-mono">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
