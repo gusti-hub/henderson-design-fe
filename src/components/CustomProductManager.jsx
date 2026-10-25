@@ -3414,6 +3414,12 @@ const ProductCard = ({
 
   const displayNumber = index === 'draft' ? 'New' : `#${index + 1}`;
 
+  // "2026-09-18" → "Sep 18" (no timezone shift: built from the parts, not parsed as UTC)
+  const shortDate = (ymd) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || ''));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  };
+
   return (
     <div
       className={`bg-white rounded-xl shadow-sm border-2 transition-all duration-150 ${
@@ -3474,6 +3480,19 @@ const ProductCard = ({
               {opts.statusCategory && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
                   {opts.statusCategory}
+                </span>
+              )}
+              {/* Warehouse steps: received into our care → inspected. Shown as soon as the date is filled in (Status tab) */}
+              {opts.dateReceived && (
+                <span title={`Date received: ${opts.dateReceived}`}
+                  className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                  ✓ Received {shortDate(opts.dateReceived)}
+                </span>
+              )}
+              {opts.dateInspected && (
+                <span title={`Date inspected: ${opts.dateInspected}`}
+                  className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                  ✓ Inspected {shortDate(opts.dateInspected)}
                 </span>
               )}
               {/* ✅ PATCH 10: show lead time badge in header if set */}
