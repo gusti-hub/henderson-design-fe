@@ -1158,6 +1158,38 @@ const ClientManagement = () => {
     [fetchClients, fetchPendingCount]
   );
 
+  // Manually email the client their portal login details. A NEW temporary password is generated (the old one is stored hashed and cannot be re-sent).
+  const handleSendLoginEmail = useCallback(
+    async (client) => {
+      if (!client.email) { alert(`${client.name} has no email address.`); return; }
+      const loggedIn = !!client.lastLogin;
+      const message = loggedIn
+        ? `${client.name} has already logged in (last: ${new Date(client.lastLogin).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}).\n\nSending login details sets a NEW password and their current password will stop working.\n\nSend to ${client.email}?`
+        : `Send portal login details to ${client.email}?\n\nA temporary password will be generated and emailed together with the login link.`;
+      if (!window.confirm(message)) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${backendServer}/api/clients/${client._id}/send-login-email`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmReset: loggedIn }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.message || 'Failed to send login details. Please try again.');
+          return;
+        }
+        alert(`✅ ${data.message}`);
+        await fetchClients();
+      } catch (error) {
+        console.error('Send login email error:', error);
+        alert('Failed to send login details. Please try again.');
+      }
+    },
+    [fetchClients]
+  );
+
   const paginationPages = useMemo(() => {
     const pages = [];
     const maxVisible = 5;
@@ -1263,6 +1295,7 @@ const ClientManagement = () => {
           onOpenOrdersModal={openOrdersModal}
           onOpenFillQuestionnaireModal={openFillQuestionnaireModal}
           onOpenProjectSummaryModal={openProjectSummaryModal}
+          onSendLoginEmail={handleSendLoginEmail}
         />
       )}
 
@@ -1380,7 +1413,7 @@ const usePortalDropdown = (triggerRef, open) => {
 
 const ClientActionMenu = ({
   client, hasQuest,
-  onEdit, onJourney, onQuestionnaire, onFillQuestionnaire, onProjectSummary, onDelete,
+  onEdit, onJourney, onQuestionnaire, onFillQuestionnaire, onProjectSummary, onSendLoginEmail, onDelete,
 }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
@@ -1431,6 +1464,7 @@ const ClientActionMenu = ({
           )}
           <Sep />
           <Item icon={BarChart2}    label="Project Summary"      onClick={onProjectSummary}  color="text-teal-600" />
+          <Item icon={Mail}         label="Send Login Email"     onClick={onSendLoginEmail}  color="text-blue-600" />
           <Sep />
           <Item icon={Trash2}       label="Delete Client"        onClick={onDelete}           color="text-red-600" />
         </div>,
@@ -1455,7 +1489,8 @@ const ClientTable = React.memo(
     onOpenQuestionnaireModal,
     onOpenOrdersModal,
     onOpenFillQuestionnaireModal,
-    onOpenProjectSummaryModal
+    onOpenProjectSummaryModal,
+    onSendLoginEmail
   }) => {
     
     const getJourneyStatus = (clientId) => {
@@ -1508,7 +1543,7 @@ const ClientTable = React.memo(
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Property</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Team Assignment</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Journey Status</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Last Modified</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Last Login</th>
                 <th className="text-left px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Property Type</th> 
                 <th className="text-right px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -1618,13 +1653,23 @@ const ClientTable = React.memo(
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                        <span className={`text-xs font-medium ${
-                          client.lastLogin ? 'text-gray-700' : 'text-gray-400'
-                        }`}>
-                          {formatLastLogin(client.lastLogin)}
-                        </span>
+                      <div className="space-y-1">
+                        {client.lastLogin ? (
+                          <div className="flex items-center gap-1.5" title={new Date(client.lastLogin).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}>
+                            <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                            <span className="text-xs font-medium text-gray-700">{formatLastLogin(client.lastLogin)}</span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+                            title="This client has never logged in to the portal">
+                            Never logged in
+                          </span>
+                        )}
+                        {client.loginEmailSentAt && (
+                          <p className="text-[11px] text-gray-400" title={new Date(client.loginEmailSentAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}>
+                            Login email sent {formatLastLogin(client.loginEmailSentAt)}
+                          </p>
+                        )}
                       </div>
                     </td>
 
@@ -1653,6 +1698,7 @@ const ClientTable = React.memo(
                             onQuestionnaire={() => onOpenQuestionnaireModal(client)}
                             onFillQuestionnaire={() => onOpenFillQuestionnaireModal(client)}
                             onProjectSummary={() => onOpenProjectSummaryModal(client)}
+                            onSendLoginEmail={() => onSendLoginEmail(client)}
                             onDelete={() => onDeleteClient(client._id)}
                           />
                         )}
