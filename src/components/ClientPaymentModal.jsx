@@ -157,18 +157,33 @@ const ClientPaymentModal = ({ orderId, clientName, onClose }) => {
             {/* Toggle + Bank */}
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Visibility toggle */}
-              <div className="flex-1 bg-gray-50 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Show Payment Tab to Client</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Client will see bank info + payment status</p>
+              <div className={`flex-1 rounded-xl p-4 border-2 transition-colors ${data.enabled ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">Show Payment Tab to Client</p>
+                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${data.enabled ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-700'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${data.enabled ? 'bg-white' : 'bg-gray-500'}`} />
+                        {saving ? 'SAVING…' : data.enabled ? 'ON' : 'OFF'}
+                      </span>
+                      <span className={`text-xs font-medium ${data.enabled ? 'text-green-700' : 'text-gray-500'}`}>
+                        {data.enabled ? 'Client can see the Payment Info tab' : 'Hidden from the client'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!data.enabled}
+                    aria-label="Show Payment Tab to Client"
+                    onClick={() => patchSettings({ enabled: !data.enabled })}
+                    disabled={saving}
+                    className={`relative w-14 h-7 rounded-full transition-colors shrink-0 disabled:opacity-60 ${data.enabled ? 'bg-green-600' : 'bg-gray-400'}`}
+                  >
+                    <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${data.enabled ? 'translate-x-7' : 'translate-x-0.5'}`} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => patchSettings({ enabled: !data.enabled })}
-                  disabled={saving}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${data.enabled ? 'bg-[#005670]' : 'bg-gray-300'}`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${data.enabled ? 'translate-x-7' : 'translate-x-1'}`} />
-                </button>
+                <p className="text-xs text-gray-500 mt-2.5">Shows bank info + payment status. Applies to <b>all orders of this client</b>.</p>
               </div>
 
               {/* Bank selection */}
