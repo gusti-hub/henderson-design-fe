@@ -44,6 +44,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const [saving, setSaving]             = useState(false);
   const [downloading, setDownloading]   = useState(false);
   const [downloadingXls, setDownloadingXls] = useState(false);
+  const [downloadingFP, setDownloadingFP]   = useState(false);
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [searchSku, setSearchSku]       = useState('');
   const [loading, setLoading]           = useState(true);
@@ -177,6 +178,30 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
       URL.revokeObjectURL(url);
     } finally {
       setDownloadingXls(false);
+    }
+  };
+
+  // ── Download Field Pack (crew-facing PDF, uses the room floor plans uploaded here) ──
+  const downloadFieldPack = async () => {
+    setDownloadingFP(true);
+    try {
+      const res = await fetch(`${backendServer}/api/floor-plans/${clientUserId}/field-pack`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        alert(`Field Pack error: ${err.message || res.status}`);
+        return;
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `InstallBinder_FieldPack_${(clientName || 'Client').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingFP(false);
     }
   };
 
@@ -386,6 +411,15 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
           >
             {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Download PDF
+          </button>
+          <button
+            onClick={downloadFieldPack}
+            disabled={downloadingFP}
+            title="Crew-facing field pack: unit marker, room guide, plan + item cards per room"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {downloadingFP ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Field Pack PDF
           </button>
           <button
             onClick={downloadExcel}

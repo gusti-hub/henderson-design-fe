@@ -141,7 +141,7 @@ const usePortalDropdown = (triggerRef, open) => {
 };
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
-const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary, onPaymentSettings }) => {
+const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInstallBinderExcel, onFieldPack, onDownload, onCOGExcel, onCOGWithBill, onPO, onProjectSummary, onPaymentSettings }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const { pos, menuRef } = usePortalDropdown(triggerRef, open);
@@ -190,6 +190,7 @@ const ActionMenu = ({ order, onEdit, onView, onProposal, onInstallBinder, onInst
           <Group label="Documents" />
           <Item icon={Download}     label="Install Binder (PDF)"          onClick={onInstallBinder}         color="text-green-600" />
           <Item icon={Download}     label="Install Binder (Excel)"        onClick={onInstallBinderExcel}    color="text-emerald-600" />
+          <Item icon={Download}     label="Install Binder (Field Pack PDF)" onClick={onFieldPack}           color="text-teal-600" />
           <Sep />
           <Item icon={Download}     label="Order Summary (Excel)"         onClick={() => onDownload('summary', 'Order Summary')} />
           <Item icon={TrendingUp}   label="Status Report"                 onClick={() => onDownload('status-report', 'Status Report')} color="text-teal-600" />
@@ -681,6 +682,30 @@ const AdminOrderList = ({ onOrderClick }) => {
       const safeClient = (order.clientInfo?.name || 'Client').replace(/[^a-zA-Z0-9 ]/g, '').trim();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `${safeClient} - Install Binder.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { alert('Failed to download. Please try again.'); }
+    finally { setDownloading(false); }
+  };
+
+  // Install Binder "Field Pack": the crew-facing PDF (unit marker, room guide, plan + item cards per room, carton / lighting / completion sheets)
+  const handleFieldPackPdf = async (order) => {
+    const clientId = typeof order.user === 'object' ? (order.user?._id || order.user?.id) : order.user;
+    if (!clientId) { alert('This order has no client.'); return; }
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendServer}/api/floor-plans/${clientId}/field-pack`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to download. Please try again.');
+        return;
+      }
+      const blob = await res.blob();
+      const safeClient = (order.clientInfo?.name || 'Client').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${safeClient} - Install Binder Field Pack.pdf`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch { alert('Failed to download. Please try again.'); }
@@ -1999,6 +2024,7 @@ const AdminOrderList = ({ onOrderClick }) => {
                           onView={() => onOrderClick && onOrderClick(order._id)}
                           onInstallBinder={() => handleInstallBinderPdf(order)}
                           onInstallBinderExcel={() => handleDownload(order._id, 'install-binder-excel', order.clientInfo?.name, 'Install Binder')}
+                          onFieldPack={() => handleFieldPackPdf(order)}
                           onDownload={(type, label) => handleDownload(order._id, type, order.clientInfo?.name, label)}
                           onCOGExcel={() => handleCOGDownload(order._id, order.clientInfo?.name)}
                           onCOGWithBill={() => handleCOGWithBillDownload(order._id, order.clientInfo?.name)}
