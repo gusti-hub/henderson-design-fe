@@ -227,7 +227,7 @@ const defaultSelectedOptions = () => ({
   room: '', statusCategory: '', proposalNumber: '', shipTo: '', orderDate: '',
   revisedOrderDate: '', expectedShipDate: '', expectedArrivalDate: '', dateReceived: '', dateInspected: '',
   estimatedDeliveryDate: '', shippingCarrier: '', orderStatus: '', nextStep: '',
-  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '', installStatus: '', installDate: '',
+  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '', installStatus: '', installId: '', installDate: '',
   leadTime: '',   // ✅ PATCH 10
   productVendor: '',   // vendor name from product library
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
@@ -245,6 +245,7 @@ const SHARED_TRACKER_FIELDS = new Set([
   'selectedOptions.expectedShipDate', 'selectedOptions.expectedArrivalDate',
   'selectedOptions.statusCategory', 'selectedOptions.notes',
   'selectedOptions.orderDate', 'selectedOptions.trackingInfo',
+  'selectedOptions.installId',
 ]);
 const dirtyShared = new Map(); // productId -> Set(field)
 const markDirtyShared = (product, field) => {
@@ -292,7 +293,7 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.warehouseReceivingNumber',
   'selectedOptions.poNumber', 'selectedOptions.vendorOrderNumber',
   'selectedOptions.trackingInfo', 'selectedOptions.deliveryStatus',
-  'selectedOptions.installStatus', 'selectedOptions.installDate',
+  'selectedOptions.installStatus', 'selectedOptions.installId', 'selectedOptions.installDate',
   'selectedOptions.notes',
   'selectedOptions.leadTime',   // ✅ PATCH 10
   'selectedOptions.units', 'selectedOptions.msrp', 'selectedOptions.discountPercent',
@@ -3215,6 +3216,7 @@ const ProductCard = ({
       deliveryStatus:        src.selectedOptions?.deliveryStatus        || '',
       installerNotes:        src.selectedOptions?.installerNotes        || '',
       installStatus:         src.selectedOptions?.installStatus         || '',
+      installId:             src.selectedOptions?.installId             || '',
       installDate:           src.selectedOptions?.installDate           || '',
       leadTime:              src.selectedOptions?.leadTime              || '',
       woodFinishVendor:      src.selectedOptions?.woodFinishVendor      || '',
@@ -4187,6 +4189,19 @@ const ProductCard = ({
                       <option value="Installed">Installed</option>
                       <option value="Issue">Issue</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Install ID
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">shared code on Field Pack / tag, e.g. 701-LIV-08</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={product.selectedOptions?.installId || ''}
+                      onChange={(e) => upd('installId', e.target.value)}
+                      className={inputCls}
+                      placeholder="Blank = numbered automatically"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Install Date</label>

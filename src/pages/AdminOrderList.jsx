@@ -673,9 +673,7 @@ const AdminOrderList = ({ onOrderClick }) => {
         { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(res.status === 404
-          ? 'No floor plans have been uploaded for this client yet. Add them in Install Binder first, then download again.'
-          : (err.message || 'Failed to download. Please try again.'));
+        alert(err.message || 'Failed to download. Please try again.');
         return;
       }
       const blob = await res.blob();

@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  X, Upload, Trash2, RotateCcw, RotateCw, ZoomIn, ZoomOut,
+  X, Upload, Trash2, ZoomIn, ZoomOut,
   Download, Save, Loader2, Map, ChevronDown, ChevronUp, AlertCircle,
+  Clock, CalendarClock, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
+
+// Legend icon per Install Status (Not set = plain green dot)
+const STATUS_ICONS = { pending: Clock, scheduled: CalendarClock, installed: CheckCircle2, issue: AlertTriangle };
 import { backendServer } from '../utils/info';
 
 const ROOM_CODES = {
@@ -38,6 +42,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   const [activeTab, setActiveTab]       = useState('full');
   const [plans, setPlans]               = useState([]);       // all saved plans
   const [products, setProducts]         = useState([]);       // all SKUs across orders
+  const [legend, setLegend]             = useState([]);       // Install Status → colour (from the server)
   const [rooms, setRooms]               = useState([]);       // room names
   const [pins, setPins]                 = useState([]);       // current pins on full plan
   const [uploading, setUploading]       = useState(false);
@@ -76,6 +81,7 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
         setPlans(loadedPlans);
         setProducts(prodsData.products || []);
         setRooms(prodsData.rooms || []);
+        setLegend(prodsData.legend || []);
         // Load pins from full plan
         const full = loadedPlans.find(p => p.type === 'full');
         if (full) setPins(full.pins || []);
@@ -360,21 +366,8 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   }, [fullPlan?._id]);
 
   // ── Pin controls ──────────────────────────────────────────────────────────
-  const rotatePin   = (id, deg) => setPins(prev => prev.map(p => p._id === id ? { ...p, rotation: (p.rotation + deg + 360) % 360 } : p));
   const scalePin    = (id, d)   => setPins(prev => prev.map(p => p._id === id ? { ...p, scale: Math.max(0.5, Math.min(3, (p.scale || 1) + d)) } : p));
   const deletePin   = (id)      => { setPins(prev => prev.filter(p => p._id !== id)); setSelectedPinId(null); };
-  const toggleLabelBreak = (id, hyphenIdx) => {
-    setPins(prev => prev.map(p => {
-      if (p._id !== id) return p;
-      // Restore original label (replace | back to -)
-      const restored = p.skuLabel.includes('|') ? p.skuLabel.replace('|', '-') : p.skuLabel;
-      const currentBreakIdx = p.skuLabel.includes('|') ? p.skuLabel.indexOf('|') : -1;
-      if (hyphenIdx === -1 || currentBreakIdx === hyphenIdx) return { ...p, skuLabel: restored };
-      // Replace the hyphen at hyphenIdx with | (hyphen disappears, each line is clean)
-      return { ...p, skuLabel: restored.slice(0, hyphenIdx) + '|' + restored.slice(hyphenIdx + 1) };
-    }));
-  };
-
   // ── Filtered SKU list ─────────────────────────────────────────────────────
   const filteredProducts = products.filter(p =>
     !searchSku ||
@@ -384,6 +377,22 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
   );
 
   const selectedPin = pins.find(p => p._id === selectedPinId);
+
+  // Pin = numbered circle; number = item number of the shared ID (701-LIV-07 → 07), colour = the item's Install Status.
+  // Looked up live from the product list, so a status change shows up on the pin without re-placing it.
+  // (plain object: `Map` is the lucide icon in this file)
+  const productById = {};
+  products.forEach(pr => { productById[String(pr._id)] = pr; });
+  const pinInfo = (pin) => {
+    const pr = productById[String(pin.productId)];
+    return {
+      num: pr?.num || '–',
+      color: pr?.status?.color || '#8a979c',
+      statusLabel: pr?.status?.label || '—',
+      sharedId: pr?.sharedId || '',
+      name: pr?.name || '',
+    };
+  };
 
   // Count how many times each product has been pinned
   const placedCountMap = {};
@@ -588,81 +597,53 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
 
                   {/* Pin overlay — sized to exactly cover the rendered image area (object-contain) so
                       pin.x/y as % of this div matches image-relative % stored in the database */}
-                  {canvasLayout && pins.map(pin => (
-                    <div
-                      key={pin._id}
-                      className={`absolute cursor-grab active:cursor-grabbing group ${selectedPinId === pin._id ? 'z-20' : 'z-10'}`}
-                      style={{
-                        left: `${canvasLayout.offX + (pin.x / 100) * canvasLayout.renderedW}px`,
-                        top:  `${canvasLayout.offY + (pin.y / 100) * canvasLayout.renderedH}px`,
-                        transform: `translate(-50%, -100%) rotate(${pin.rotation || 0}deg) scale(${pin.scale || 1})`,
-                        transformOrigin: '50% 100%',
-                      }}
-                      onMouseDown={e => handlePinMouseDown(e, pin)}
-                      onClick={e => { e.stopPropagation(); setSelectedPinId(pin._id); }}
-                    >
-                      {/* Label — transparent so floor plan shows through */}
-                      <div className={`px-1.5 py-0.5 rounded text-xs font-bold whitespace-nowrap text-center leading-tight ${
-                        selectedPinId === pin._id
-                          ? 'bg-[#005670]/70 text-white'
-                          : 'bg-transparent text-[#005670]'
-                      }`}
-                        style={{ textShadow: selectedPinId === pin._id ? 'none' : '0 0 3px #fff, 0 0 3px #fff' }}
+                  {canvasLayout && pins.map(pin => {
+                    const info = pinInfo(pin);
+                    // Diameter follows the image width (same ratio in the PDF), so pins look the same on any screen
+                    const d = Math.max(18, canvasLayout.renderedW * 0.024) * (pin.scale || 1);
+                    const selected = selectedPinId === pin._id;
+                    return (
+                      <div
+                        key={pin._id}
+                        className={`absolute cursor-grab active:cursor-grabbing group ${selected ? 'z-20' : 'z-10'}`}
+                        style={{
+                          left: `${canvasLayout.offX + (pin.x / 100) * canvasLayout.renderedW}px`,
+                          top:  `${canvasLayout.offY + (pin.y / 100) * canvasLayout.renderedH}px`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                        title={[info.sharedId || pin.skuLabel, info.name, info.statusLabel].filter(Boolean).join(' · ')}
+                        onMouseDown={e => handlePinMouseDown(e, pin)}
+                        onClick={e => { e.stopPropagation(); setSelectedPinId(pin._id); }}
                       >
-                        {pin.skuLabel.includes('|') ? (
-                          <>{pin.skuLabel.split('|')[0]}<br />{pin.skuLabel.split('|')[1]}</>
-                        ) : pin.skuLabel}
-                      </div>
-                      {/* Controls — show on selected */}
-                      {selectedPinId === pin._id && (() => {
-                        const restored = pin.skuLabel.includes('|') ? pin.skuLabel.replace('|', '-') : pin.skuLabel;
-                        const breakIdx = pin.skuLabel.includes('|') ? pin.skuLabel.indexOf('|') : -1;
-                        // Find all hyphen positions in the restored label
-                        const hyphenPositions = [];
-                        for (let i = 0; i < restored.length; i++) {
-                          if (restored[i] === '-') hyphenPositions.push(i);
-                        }
-                        // Build segments separated by hyphens for display
-                        const segments = restored.split('-');
-                        return (
+                        <div
+                          className="flex items-center justify-center rounded-full text-white font-bold leading-none select-none"
+                          style={{
+                            width: d, height: d, background: info.color, fontSize: d * 0.42,
+                            border: '2px solid #fff',
+                            boxShadow: selected ? '0 0 0 3px rgba(0,86,112,.7), 0 1px 4px rgba(0,0,0,.4)' : '0 1px 4px rgba(0,0,0,.4)',
+                          }}
+                        >
+                          {info.num}
+                        </div>
+                        {selected && (
                           <div
-                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 px-2 py-1"
+                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 px-2 py-1 whitespace-nowrap"
                             onClick={e => e.stopPropagation()}
                             onMouseDown={e => e.stopPropagation()}
                           >
-                            <div className="flex items-center gap-1">
-                              <button title="Rotate left"   onClick={() => rotatePin(pin._id, -15)} className="p-1 hover:bg-gray-100 rounded"><RotateCcw className="w-3.5 h-3.5 text-gray-600" /></button>
-                              <button title="Rotate right"  onClick={() => rotatePin(pin._id,  15)} className="p-1 hover:bg-gray-100 rounded"><RotateCw  className="w-3.5 h-3.5 text-gray-600" /></button>
-                              <button title="Scale down"    onClick={() => scalePin(pin._id, -0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomOut   className="w-3.5 h-3.5 text-gray-600" /></button>
-                              <button title="Scale up"      onClick={() => scalePin(pin._id,  0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomIn    className="w-3.5 h-3.5 text-gray-600" /></button>
+                            <p className="text-[10px] font-semibold text-gray-700 px-1">{info.sharedId || pin.skuLabel}</p>
+                            <p className="text-[10px] px-1 pb-1" style={{ color: info.color }}>● {info.statusLabel}</p>
+                            <div className="flex items-center gap-1 border-t border-gray-100 pt-1">
+                              <button title="Smaller" onClick={() => scalePin(pin._id, -0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomOut className="w-3.5 h-3.5 text-gray-600" /></button>
+                              <button title="Larger"  onClick={() => scalePin(pin._id,  0.1)} className="p-1 hover:bg-gray-100 rounded"><ZoomIn  className="w-3.5 h-3.5 text-gray-600" /></button>
                               <div className="w-px h-4 bg-gray-200 mx-0.5" />
-                              <button title="Delete pin"    onClick={() => deletePin(pin._id)}      className="p-1 hover:bg-red-50 rounded"><Trash2    className="w-3.5 h-3.5 text-red-500" /></button>
+                              <button title="Delete pin" onClick={() => deletePin(pin._id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                             </div>
-                            {hyphenPositions.length > 0 && (
-                              <div className="flex items-center mt-1 pt-1 border-t border-gray-100">
-                                {segments.map((seg, i) => (
-                                  <span key={i} className="flex items-center">
-                                    {i > 0 && (
-                                      <button
-                                        onClick={() => toggleLabelBreak(pin._id, hyphenPositions[i - 1])}
-                                        title={breakIdx === hyphenPositions[i - 1] ? 'Hapus baris baru' : 'Potong di sini'}
-                                        className={`mx-0.5 px-0.5 h-4 text-[9px] rounded transition-colors font-bold ${
-                                          breakIdx === hyphenPositions[i - 1]
-                                            ? 'bg-[#005670] text-white'
-                                            : 'bg-gray-100 text-gray-400 hover:bg-[#005670]/20 hover:text-[#005670]'
-                                        }`}
-                                      >↵</button>
-                                    )}
-                                    <span className="text-[9px] font-mono text-gray-600">{seg}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
                           </div>
-                        );
-                      })()}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    );
+                  })}
 
                   {dragOverFloorPlan && (
                     <div className="absolute inset-0 bg-[#005670]/10 flex items-center justify-center pointer-events-none rounded-xl">
@@ -685,6 +666,20 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                 placeholder="Search SKU or room…"
                 className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005670]/20 focus:border-[#005670]"
               />
+              {legend.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-x-2.5 gap-y-1" title="Pin colour = Install Status">
+                  {legend.map(l => {
+                    const Icon = STATUS_ICONS[l.key];
+                    return (
+                      <span key={l.key} className="inline-flex items-center gap-1 text-[10px] text-gray-600">
+                        <span className="w-4 h-4 rounded-full inline-flex items-center justify-center" style={{ background: l.color }}>
+                          {Icon && <Icon className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />}
+                        </span>{l.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto">
               {filteredProducts.length === 0 ? (
@@ -707,8 +702,12 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
                         className={`px-3 py-2.5 select-none transition-colors ${isFull ? 'opacity-40 cursor-not-allowed bg-gray-50' : 'cursor-grab active:cursor-grabbing hover:bg-[#005670]/5'}`}
                       >
                         <div className="flex items-start gap-2">
-                          <div className={`w-5 h-5 flex-shrink-0 mt-0.5 rounded flex items-center justify-center ${isFull ? 'bg-gray-200' : 'bg-[#005670]/10'}`}>
-                            <span className={`text-[8px] font-bold ${isFull ? 'text-gray-400' : 'text-[#005670]'}`}>SKU</span>
+                          <div
+                            className="w-6 h-6 flex-shrink-0 mt-0.5 rounded-full flex items-center justify-center text-white font-bold"
+                            style={{ background: p.status?.color || '#8a979c', fontSize: 10, opacity: isFull ? 0.4 : 1 }}
+                            title={p.status?.label || ''}
+                          >
+                            {p.num || '–'}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-gray-800 truncate">{buildSkuLabel(p)}</p>
@@ -733,10 +732,8 @@ const FloorPlanManager = ({ clientUserId, clientName, onClose }) => {
             </div>
             {selectedPin && (
               <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-                <p className="text-xs font-bold text-gray-600 mb-2">Selected: {selectedPin.skuLabel.replace('|', '')}</p>
+                <p className="text-xs font-bold text-gray-600 mb-2">Selected: {pinInfo(selectedPin).sharedId || selectedPin.skuLabel}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => rotatePin(selectedPin._id, -15)} className="flex items-center gap-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"><RotateCcw className="w-3 h-3" /> −15°</button>
-                  <button onClick={() => rotatePin(selectedPin._id,  15)} className="flex items-center gap-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"><RotateCw  className="w-3 h-3" /> +15°</button>
                   <button onClick={() => scalePin(selectedPin._id, -0.1)} className="flex items-center gap-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"><ZoomOut   className="w-3 h-3" /> Smaller</button>
                   <button onClick={() => scalePin(selectedPin._id,  0.1)} className="flex items-center gap-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"><ZoomIn    className="w-3 h-3" /> Bigger</button>
                   <button onClick={() => deletePin(selectedPin._id)}       className="flex items-center gap-1 px-2 py-1 text-xs bg-red-50 border border-red-200 text-red-600 rounded hover:bg-red-100"><Trash2    className="w-3 h-3" /> Delete</button>

@@ -70,6 +70,7 @@ const emptyForm = () => ({
   vendor:              '',   // vendor name (linked to Vendor Management)
   description:         '',
   vendorDescription:   '',
+  installInstruction:  '',
   itemUrl:             '',
   colorFinish:         '',
   itemClass:           '',
@@ -217,6 +218,7 @@ const ProductConfiguration = () => {
       vendor:            product.vendor            || '',
       description:       product.description       || '',
       vendorDescription: product.vendorDescription || '',
+      installInstruction: product.installInstruction || '',
       itemUrl:           product.itemUrl           || '',
       colorFinish:       product.colorFinish       || '',
       itemClass:         product.itemClass         || '',
@@ -302,6 +304,7 @@ const ProductConfiguration = () => {
       fd.append('name',              formData.name);
       fd.append('description',       formData.description);
       fd.append('vendorDescription', formData.vendorDescription || '');
+    fd.append('installInstruction', formData.installInstruction || '');
       fd.append('itemUrl',           formData.itemUrl           || '');
       fd.append('colorFinish',       formData.colorFinish       || '');
       fd.append('itemClass',         formData.itemClass         || '');
@@ -718,6 +721,21 @@ const ProductConfiguration = () => {
                     placeholder="Internal / vendor-facing notes..."
                     minRows={3}
                   />
+                </div>
+              </div>
+
+              {/* ── Install instructions (printed on the Field Pack / Install Binder) ── */}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-800">🛠 Install Instruction</h4>
+                  <p className="text-xs text-gray-400">Printed on the Field Pack for every item with this SKU</p>
+                </div>
+                <div>
+                  <label className={labelCls}>Install Instruction</label>
+                  <input type="text" value={formData.installInstruction}
+                    onChange={e => setFormData(f => ({ ...f, installInstruction: e.target.value }))}
+                    className={inputCls}
+                    placeholder="e.g. Verify finish, position and operation as applicable." />
                 </div>
               </div>
 

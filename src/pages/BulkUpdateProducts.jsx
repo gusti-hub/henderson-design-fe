@@ -13,6 +13,7 @@ const token = () => localStorage.getItem('token');
 
 const UPDATABLE_COLUMNS = [
   'product_id','name','description','vendorDescription',
+  'installInstruction',
   'category','collection','package','dimension',
   'buyPrice','sellPrice2025','sellPrice2026','sellPrice',
   'colorFinish','itemUrl','itemClass','woodFinish','fabric','others',
@@ -24,6 +25,7 @@ const FIELD_LABELS = {
   name:              'Item Name',
   description:       'Client Description',
   vendorDescription: 'Vendor Description',
+  installInstruction:'Install Instruction',
   category:          'Category',
   collection:        'Collection',
   package:           'Package',
@@ -132,7 +134,20 @@ const BulkUpdateProducts = ({ onComplete, backendServer: bsProp }) => {
         try {
           const text = e.target.result;
           const clean = text.replace(/^\uFEFF/, '');
-          const lines = clean.split(/\r?\n/).filter(l => l.trim());
+          // Split into records on line breaks that are NOT inside a quoted cell (multi-line cells, e.g. Install Instruction)
+          const lines = [];
+          { let cur = '', q = false;
+            for (let i = 0; i < clean.length; i++) {
+              const ch = clean[i];
+              if (ch === '"') q = !q;
+              if (!q && (ch === '\n' || ch === '\r')) {
+                if (ch === '\r' && clean[i + 1] === '\n') i++;
+                if (cur.trim()) lines.push(cur);
+                cur = '';
+              } else cur += ch;
+            }
+            if (cur.trim()) lines.push(cur);
+          }
           if (lines.length < 2) throw new Error('File is empty or has only headers');
 
           const parseLine = (line) => {
