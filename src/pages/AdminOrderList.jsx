@@ -829,7 +829,7 @@ const AdminOrderList = ({ onOrderClick }) => {
     setLoadingPickerVendors(true);
     try {
       const token = localStorage.getItem('token');
-      const endpoint = vendorPickerModal.mode === 'excel'
+      const endpoint = (vendorPickerModal.mode === 'excel' || vendorPickerModal.mode === 'proposal')
         ? `${backendServer}/api/orders/bulk-export-vendors`
         : `${backendServer}/api/orders/bulk-po-vendors`;
       const res = await fetch(endpoint, {
@@ -864,9 +864,12 @@ const AdminOrderList = ({ onOrderClick }) => {
 
   // ── Bulk Excel export ─────────────────────────────────────────────────────
   const handleBulkExcel = () => openVendorPicker('excel');
+  // Bulk Proposal = same picker and Excel pipeline as Bulk PO, with the proposal columns + Sell Price
+  const handleBulkProposal = () => openVendorPicker('proposal');
 
   const doExcelDownload = async () => {
-    setVendorPickerModal({ open: false, mode: 'excel' });
+    const isProposal = vendorPickerModal.mode === 'proposal';
+    setVendorPickerModal({ open: false, mode: isProposal ? 'proposal' : 'excel' });
     setDownloading(true);
     try {
       const token = localStorage.getItem('token');
@@ -874,16 +877,16 @@ const AdminOrderList = ({ onOrderClick }) => {
       const res = await fetch(`${backendServer}/api/orders/bulk-export`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: Array.from(pickerOrderIds), vendorIds }),
+        body: JSON.stringify({ orderIds: Array.from(pickerOrderIds), vendorIds, ...(isProposal && { mode: 'proposal' }) }),
       });
       if (!res.ok) throw new Error();
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url;
-      a.download = `Alia - Combined Export - ${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.download = `Alia - ${isProposal ? 'Combined Proposal Export' : 'Combined Export'} - ${new Date().toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showSuccess('Combined Excel exported');
+      showSuccess(isProposal ? 'Combined Proposal Excel exported' : 'Combined Excel exported');
     } catch { alert('Failed to export. Please try again.'); }
     finally { setDownloading(false); }
   };
@@ -1617,7 +1620,7 @@ const AdminOrderList = ({ onOrderClick }) => {
 
       {/* Multi-select vendor picker modal (Excel + PDF) — 2-step: Orders → Vendors */}
       {vendorPickerModal.open && (() => {
-        const modeLabel = vendorPickerModal.mode === 'excel' ? 'Excel' : 'PDF';
+        const modeLabel = vendorPickerModal.mode === 'excel' ? 'Excel' : vendorPickerModal.mode === 'proposal' ? 'Proposal Excel' : 'PDF';
         const closeModal = () => setVendorPickerModal({ open: false, mode: vendorPickerModal.mode });
 
         // ── Step 1: Confirm selected orders (grouped by client) ─────────────
@@ -1820,11 +1823,11 @@ const AdminOrderList = ({ onOrderClick }) => {
                     ← Back
                   </button>
                   <button
-                    onClick={vendorPickerModal.mode === 'excel' ? doExcelDownload : handleBulkPdfGenerate}
+                    onClick={(vendorPickerModal.mode === 'excel' || vendorPickerModal.mode === 'proposal') ? doExcelDownload : handleBulkPdfGenerate}
                     disabled={selectedVendorIds.size === 0 || loadingPickerVendors}
                     className="flex-1 px-4 py-2 bg-[#005670] text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#004558]"
                   >
-                    {vendorPickerModal.mode === 'excel' ? 'Download Excel' : 'Generate PDF'}
+                    {(vendorPickerModal.mode === 'excel' || vendorPickerModal.mode === 'proposal') ? 'Download Excel' : 'Generate PDF'}
                   </button>
                 </div>
               </div>
@@ -1926,6 +1929,14 @@ const AdminOrderList = ({ onOrderClick }) => {
                 >
                   {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   PO Excel
+                </button>
+                <button
+                  onClick={handleBulkProposal}
+                  disabled={downloading}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#005670] rounded-lg text-sm font-semibold hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Proposal Excel
                 </button>
                 <button
                   onClick={handleBulkPdfOpen}

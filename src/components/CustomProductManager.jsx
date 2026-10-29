@@ -4193,7 +4193,7 @@ const ProductCard = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Install ID
-                      <span className="ml-1.5 text-xs text-gray-400 font-normal">enter the number only, e.g. 12 → 711-LIV-012</span>
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">enter the number only, e.g. 12 → 711-LIV-12</span>
                     </label>
                     <input
                       type="text"
