@@ -227,7 +227,7 @@ const defaultSelectedOptions = () => ({
   room: '', statusCategory: '', proposalNumber: '', shipTo: '', orderDate: '',
   revisedOrderDate: '', expectedShipDate: '', expectedArrivalDate: '', dateReceived: '', dateInspected: '',
   estimatedDeliveryDate: '', shippingCarrier: '', orderStatus: '', nextStep: '',
-  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '', installStatus: '', installId: '', installDate: '',
+  nextStepDate: '', warehouseReceivingNumber: '', installerNotes: '', installStatus: '', installId: '', installInstruction: '', installDate: '',
   leadTime: '',   // ✅ PATCH 10
   productVendor: '',   // vendor name from product library
   units: 'Each', msrp: 0, discountPercent: 0, netCostOverride: null,
@@ -245,7 +245,7 @@ const SHARED_TRACKER_FIELDS = new Set([
   'selectedOptions.expectedShipDate', 'selectedOptions.expectedArrivalDate',
   'selectedOptions.statusCategory', 'selectedOptions.notes',
   'selectedOptions.orderDate', 'selectedOptions.trackingInfo',
-  'selectedOptions.installId',
+  'selectedOptions.installId', 'selectedOptions.installInstruction',
 ]);
 const dirtyShared = new Map(); // productId -> Set(field)
 const markDirtyShared = (product, field) => {
@@ -293,7 +293,7 @@ const ALLOWED_WHEN_LOCKED = new Set([
   'selectedOptions.warehouseReceivingNumber',
   'selectedOptions.poNumber', 'selectedOptions.vendorOrderNumber',
   'selectedOptions.trackingInfo', 'selectedOptions.deliveryStatus',
-  'selectedOptions.installStatus', 'selectedOptions.installId', 'selectedOptions.installDate',
+  'selectedOptions.installStatus', 'selectedOptions.installId', 'selectedOptions.installInstruction', 'selectedOptions.installDate',
   'selectedOptions.notes',
   'selectedOptions.leadTime',   // ✅ PATCH 10
   'selectedOptions.units', 'selectedOptions.msrp', 'selectedOptions.discountPercent',
@@ -321,6 +321,63 @@ const applyFieldUpdate = (item, field, value) => {
     updated.finalPrice = (Number(updated.quantity) || 1) * (Number(updated.unitPrice) || 0);
   }
   return updated;
+};
+
+// ─── Install instruction of an item ─────────────────────────────────────────
+// An item that has a master product (library link or exact SKU) shows the master's instruction, read-only (edited in Product
+// Configuration). A custom item has no master, so its own instruction is typed here. Both end up on the Field Pack / Install Binder.
+const masterInstructionCache = new Map();   // `${libraryProductId}|${sku}` → { found, text }
+const InstallInstructionField = ({ product, upd, inputCls }) => {
+  const libId = String(product.libraryProductId?._id || product.libraryProductId || '');
+  const sku = String(product.product_id || '').trim();
+  const key = `${libId}|${sku}`;
+  const [master, setMaster] = useState(() => masterInstructionCache.get(key) || null);
+  useEffect(() => {
+    const cached = masterInstructionCache.get(key);
+    if (cached) { setMaster(cached); return; }
+    if (!libId && !sku) { setMaster({ found: false, text: '' }); return; }
+    let alive = true;
+    fetch(`${backendServer}/api/products/install-instructions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ key: 'k', libraryProductId: libId || undefined, product_id: sku }] }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const m = d?.result?.k;
+        if (!m) return;                       // lookup failed: stay in the loading state, never guess
+        masterInstructionCache.set(key, m);
+        if (alive) setMaster(m);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [key]);
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        Install Instruction
+        <span className="ml-1.5 text-xs text-gray-400 font-normal">
+          {master?.found ? 'from the master product (edit it in Product Configuration)' : 'custom item: printed on the Field Pack / Install Binder'}
+        </span>
+      </label>
+      {master === null ? (
+        <input type="text" disabled className={`${inputCls} bg-gray-50 text-gray-400`} placeholder="Checking master product…" />
+      ) : master.found ? (
+        <div className={`${inputCls} bg-gray-50 text-gray-700 min-h-[38px]`}>
+          {master.text || <span className="text-gray-400">— not set on the master product</span>}
+        </div>
+      ) : (
+        <input
+          type="text"
+          value={product.selectedOptions?.installInstruction || ''}
+          onChange={(e) => upd('installInstruction', e.target.value)}
+          className={inputCls}
+          placeholder="e.g. Verify finish, position and operation as applicable."
+        />
+      )}
+    </div>
+  );
 };
 
 const ConfirmModal = ({ isOpen, title, message, confirmLabel = 'Confirm', confirmVariant = 'danger', onConfirm, onCancel, hideCancel = false }) => {
@@ -3217,6 +3274,7 @@ const ProductCard = ({
       installerNotes:        src.selectedOptions?.installerNotes        || '',
       installStatus:         src.selectedOptions?.installStatus         || '',
       installId:             src.selectedOptions?.installId             || '',
+      installInstruction:    src.selectedOptions?.installInstruction    || '',
       installDate:           src.selectedOptions?.installDate           || '',
       leadTime:              src.selectedOptions?.leadTime              || '',
       woodFinishVendor:      src.selectedOptions?.woodFinishVendor      || '',
@@ -4213,6 +4271,7 @@ const ProductCard = ({
                     />
                   </div>
                 </div>
+                <InstallInstructionField product={product} upd={upd} inputCls={inputCls} />
               </div>
             )}
 
