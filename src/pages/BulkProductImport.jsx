@@ -94,6 +94,10 @@ const COLUMN_MAP = {
   vendordescription:   'vendorDescription',
   deskripsi:           'vendorDescription',
 
+  // Install instruction (printed on the Field Pack / Install Binder)
+  installinstruction:  'installInstruction',
+  install_instruction: 'installInstruction',
+
   // Descriptions — with sub-header
   description_client:        'description',
   description_vendor:        'vendorDescription',
@@ -361,6 +365,7 @@ const BulkProductImport = ({ onComplete }) => {
           vendor:            row.vendor            || '',
           description:       row.description       || '',
           vendorDescription: row.vendorDescription || '',
+          installInstruction: row.installInstruction || '',
           colorFinish:       row.colorFinish       || '',
           itemClass:         row.itemClass         || '',
           itemUrl:           row.itemUrl           || '',
@@ -403,6 +408,19 @@ const BulkProductImport = ({ onComplete }) => {
 
       // Delete existing products by SKU before re-importing
       const token = localStorage.getItem('token');
+
+      // Re-importing replaces the product, so keep the Install Instruction that is already saved when the file leaves it blank
+      if (products.some(p => !p.installInstruction)) {
+        try {
+          const exRes = await fetch(`${backendServer}/api/products/export/all`, { headers: { Authorization: `Bearer ${token}` } });
+          if (exRes.ok) {
+            const ex = await exRes.json();
+            const saved = {};
+            (ex.products || []).forEach(x => { if (x.installInstruction) saved[String(x.product_id).toUpperCase()] = x.installInstruction; });
+            products.forEach(p => { if (!p.installInstruction) p.installInstruction = saved[String(p.product_id).toUpperCase()] || ''; });
+          }
+        } catch { /* nothing to carry over */ }
+      }
       const skus = products.map(p => p.product_id).filter(Boolean);
       if (skus.length) {
         setProgress('Removing existing products by SKU…');
@@ -493,7 +511,7 @@ const BulkProductImport = ({ onComplete }) => {
             ['SKU','product_id'],['ITEM NAME','name'],['VENDOR','vendor'],
             ['Buy Price','buyPrice'],['Pricing 2025','sellPrice2025'],['Pricing 2026 *','sellPrice2026'],
             ['DIMENSIONS','dimension'],['Collection','collection'],['Package','package'],
-            ['Description (CLIENT)','description'],['Deskripsi (VENDOR)','vendorDescription'],
+            ['Description (CLIENT)','description'],['Deskripsi (VENDOR)','vendorDescription'], ['Install Instruction','installInstruction'],
             ['FABRIC (CLIENT)','fabric'],['FABRIC (VENDOR)','colorFinish'],
             ['Wood/Finish (VENDOR)','woodFinish'],
             ['Arm Style / Drawer Fronts / Metal Finish / Seat / etc.','ca.*'],

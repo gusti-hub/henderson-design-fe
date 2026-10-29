@@ -4193,14 +4193,14 @@ const ProductCard = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Install ID
-                      <span className="ml-1.5 text-xs text-gray-400 font-normal">shared code on Field Pack / tag, e.g. 701-LIV-08</span>
+                      <span className="ml-1.5 text-xs text-gray-400 font-normal">enter the number only, e.g. 12 → 711-LIV-012</span>
                     </label>
                     <input
                       type="text"
                       value={product.selectedOptions?.installId || ''}
                       onChange={(e) => upd('installId', e.target.value)}
                       className={inputCls}
-                      placeholder="Blank = numbered automatically"
+                      placeholder="e.g. 12 (blank = dash)"
                     />
                   </div>
                   <div>
