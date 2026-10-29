@@ -4200,7 +4200,7 @@ const ProductCard = ({
                       value={product.selectedOptions?.installId || ''}
                       onChange={(e) => upd('installId', e.target.value)}
                       className={inputCls}
-                      placeholder="e.g. 12 (blank = dash)"
+                      placeholder="e.g. 12 (blank = numbered automatically)"
                     />
                   </div>
                   <div>
